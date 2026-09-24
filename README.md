@@ -27,7 +27,7 @@ below show both the decoded instructions and the remaining gaps.
 | P-code semantics | integer ALU and common multiplies, immediates, bit-field operations, linear address arithmetic, scalar and doubleword loads/stores, single-precision arithmetic and conversions, selected double-precision arithmetic and conversions, compares, shifts, branches/calls, `MVC` |
 | Other decoded instructions | lift to `c6000_unimpl_<mnemonic>` (32-bit) or `c6000_unimplemented` (compact) |
 | Function ID | generation script shipped; database not shipped (TI licence) |
-| Software loop controls | decoded, lifted as loop-buffer userops, and paired/annotated after disassembly; repeated buffer execution remains unmodelled |
+| Software loop controls | decoded and annotated; a separate cycle scheduler replays buffered packets and stage-boundary `ILC` changes |
 | Remaining double-precision floating point, advanced integer `.M` multiply, packed 8/16-bit arithmetic, Galois | decode only |
 
 Unimplemented instructions are **explicit, greppable placeholders**, not
@@ -56,8 +56,11 @@ Full-payload linear sweeps also completed with no zero-width p-code operands:
 
 The sweeps found 24 paired software loops and 43 buffer masks in stage 1,
 and 224 paired loops and 470 buffer masks in stage 2. No detected loop
-boundary was left unmatched. The loop-control userops are counted separately
-from unimplemented instruction placeholders.
+boundary was left unmatched. The loop schedule parsed and replayed all 24
+stage 1 loops and 206 stage 2 loops; 18 stage 2 bodies contain undecoded
+instruction gaps, so the scheduler declines to invent their missing cycles.
+The loop-control userops are counted separately from unimplemented instruction
+placeholders.
 
 `CPKT` headers now decode as named 4-byte rows. Undecoded slots remain: the
 stage 1 window is mostly `0xffffffff` fill/data, with a few unknown compact
@@ -288,14 +291,30 @@ it produces.
   `C6000SoftwareLoopAnalyzer` matches each disassembled loop start with its
   kernel boundary and adds Info bookmarks at both addresses. The bookmarks
   resolve the six-bit `SPKERNEL` field to stage/cycle delay using the loop's
-  initiation interval and show the source body and execute-packet count;
+  initiation interval and show the source body, execute-packet count and
+  dynamic length in cycles, including `NOP n` idle cycles;
   `SPMASK` bookmarks list the affected functional units. Source packets from
   different stages overlay the same buffer slots, so their count may exceed
   the buffer's 14-entry capacity. If an undecoded slot lies in the body, its
   byte count appears in the bookmark instead of an exact packet count.
-  The hardware's repeated execute-packet schedule and stage-boundary `ILC`
-  updates still require loop-buffer emulation. They are not ordinary PC branches
-  and are not reproduced by the decompiler's control-flow graph.
+  `C6000LoopBuffer` replays source and buffered instructions by cycle without
+  adding a false PC branch. It handles initiation interval overlap, source
+  `SPMASK` filtering, counted `SPLOOP`/`SPLOOPD` termination, the first-three-
+  cycle `SPLOOPD` grace period, and the three-cycle delayed `SPLOOPW`
+  predicate. The callback exposes each cycle's operations and `ILC` before
+  and after stage boundaries. In Ghidra's Script Manager, run
+  `C6000LoopReplay.java` on a selected `SPLOOP`, or pass its address, initial
+  `ILC` (for counted loops) or number of true predicate samples (for
+  `SPLOOPW`), and a cycle limit as arguments. For example,
+  `C6000LoopReplay.java 0xC00036A4 2 128` traces 48 cycles of the stage 2
+  loop at that address. `C6000LoopModelTest.java` checks all decoded loop
+  bodies in an imported image.
+
+  The scheduler reports operation order and loop-control state; it does not
+  execute each instruction's p-code or model instruction latency, interrupts,
+  nested reload, or post-body program-memory `SPMASK` overlays. Native Ghidra
+  decompilation still displays the loop-control userops, because the hardware
+  buffer does not correspond to an ordinary control-flow edge.
 * **Predication** is decoded, displayed and guards the modelled 32-bit p-code.
   Compact predication and packet-wide parallel effects need further work.
 * The generic corpus is assembled from GNU binutils, whose tic6x assembler
@@ -310,9 +329,11 @@ data/languages/          c6000.sinc (framework), c6000_decode.sinc (generated),
                          c6000_manual.sinc, c6000_compact.sinc, c6000_memory.sinc,
                          c6000_semantics.sinc,
                          c6000_placeholders.sinc (generated), ldefs/pspec/cspec/opinion
-ghidra_scripts/          C6000CorpusTest.java, C6000SoftwareLoopTest.java
+ghidra_scripts/          C6000CorpusTest.java, C6000SoftwareLoopTest.java,
+                         C6000LoopReplay.java, C6000LoopModelTest.java
 src/main/java/c6000/     C6000PacketContext.java, C6000PacketAnalyzer.java,
-                         C6000SoftwareLoops.java, C6000SoftwareLoopAnalyzer.java
+                         C6000SoftwareLoops.java, C6000SoftwareLoopAnalyzer.java,
+                         C6000LoopBuffer.java
 tools/                   build.sh, gen_decode.py, gen_memory.py, build_encodings.py,
                          oracle_compare.py, gen_fid.py
 .github/workflows/       build.yml

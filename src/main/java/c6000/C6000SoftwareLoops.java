@@ -143,66 +143,15 @@ public final class C6000SoftwareLoops {
 
 	private static String describeBody(Program program, Instruction start,
 			Instruction kernel) {
-		Listing listing = program.getListing();
-		Instruction cursor = start;
 		try {
-			// Instructions parallel with SPLOOP execute once and are not
-			// loaded into the buffer (SPRUFE8B section 7.11.2).
-			while (parallelWithNext(program, cursor)) {
-				cursor = nextExecutable(listing, cursor);
-				if (cursor == null || cursor.getMinAddress().compareTo(
-						kernel.getMinAddress()) >= 0) {
-					return null;
-				}
-			}
-			cursor = nextExecutable(listing, cursor);
-			if (cursor == null || cursor.getMinAddress().compareTo(
-						kernel.getMinAddress()) > 0) {
-				return null;
-			}
-			Address bodyStart = cursor.getMinAddress();
-			int packets = 1;
-			while (cursor.getMinAddress().compareTo(kernel.getMinAddress()) < 0) {
-				boolean parallel = parallelWithNext(program, cursor);
-				cursor = nextExecutable(listing, cursor);
-				if (cursor == null || cursor.getMinAddress().compareTo(
-						kernel.getMinAddress()) > 0) {
-					return null;
-				}
-				if (!parallel) {
-					packets++;
-				}
-			}
-			return "source body=" + bodyStart + ".." + kernel.getMinAddress() +
-				", " + packets + " source execute packet(s)";
+			C6000LoopBuffer buffer = C6000LoopBuffer.fromProgram(program, start, kernel);
+			return "source body=" + buffer.bodyStart() + ".." + kernel.getMinAddress() +
+				", " + buffer.sourcePackets() + " source execute packet(s), dynlen=" +
+				buffer.dynamicLength() + " cycle(s)";
 		}
-		catch (MemoryAccessException e) {
+		catch (MemoryAccessException | IllegalArgumentException e) {
 			return null;
 		}
-	}
-
-	private static Instruction nextExecutable(Listing listing, Instruction current) {
-		Instruction next = listing.getInstructionAfter(current.getMinAddress());
-		while (next != null && next.getMnemonicString().equals("CPKT")) {
-			next = listing.getInstructionAfter(next.getMinAddress());
-		}
-		return next;
-	}
-
-	private static boolean parallelWithNext(Program program, Instruction insn)
-			throws MemoryAccessException {
-		Address address = insn.getMinAddress();
-		if (insn.getLength() == 4) {
-			return (program.getMemory().getInt(address) & 1) != 0;
-		}
-		long packetBase = address.getOffset() & ~31L;
-		Address header = address.getNewAddress(packetBase + 28);
-		int headerWord = program.getMemory().getInt(header);
-		if ((headerWord >>> 28) != 0xe) {
-			throw new MemoryAccessException("missing compact packet header at " + header);
-		}
-		int slot = (int) ((address.getOffset() - packetBase) / 2);
-		return ((headerWord >>> slot) & 1) != 0;
 	}
 
 	private static int operand(Instruction insn) {
