@@ -29,7 +29,17 @@ public class C6000LoopDelayTest extends GhidraScript {
 		check(base, 0x14, 0x24, "ADDKPC", 3);
 		check(base, 0x2c, 0x3c, "BNOP", 3);
 		check(base, 0x60, 0x70, "LDW", 4);
-		println("C6000_LOOP_DELAY PASS loops=4 delayCycles=3/4");
+		for (int count = 1; count <= 9; count++) {
+			Address at = base.add(0xa0 + (count - 1) * 4);
+			disassemble(at);
+			Instruction nop = getInstructionAt(at);
+			if (nop == null || !nop.getMnemonicString().equals("NOP") ||
+				nop.getScalar(0) == null ||
+				nop.getScalar(0).getUnsignedValue() != count - 1) {
+				throw new AssertionError("wrong NOP count at " + at);
+			}
+		}
+		println("C6000_LOOP_DELAY PASS loops=4 nopCounts=1..9 delayCycles=3/4");
 	}
 
 	private void check(Address base, int startOffset, int kernelOffset,

@@ -16,11 +16,12 @@ state separate from register, memory, branch, and pipeline state when porting it
 | Short final loading stage | Idle cycles continue through its stage boundary | Zero and one-count firmware replay assertions |
 | `SPLOOPW` three-cycle delayed predicate and stage-boundary `ILC` decrement | `replayWhileDetailed` | Every detected firmware `SPLOOPW` replayed |
 | Post-`SPKERNEL` fetch delay and epilog overlap | `ReplayResult.firstPostBodyCycle`, `Cycle.postBodyFetchEnabled` | Stage 2 loop at `0xC0003362`: delay 8 cycles, first fetch cycle 18, replay ends at cycle 23 |
-| Post-body `SPMASK` suppression | `Cycle.overlayPostBody(packet)` filters buffered operations using the caller's selected program packet | 1 stage 1 and 47 stage 2 overlay cycles exercised with synthetic packets containing a `SPMASK` instruction drawn from firmware |
+| Post-body `SPMASK` suppression | `Cycle.overlayPostBody(packet)` filters buffered operations using the caller's selected program packet | 1 stage 1 and 53 stage 2 overlay cycles exercised with synthetic packets containing a `SPMASK` instruction drawn from firmware |
 | Counted-loop interrupt eligibility and buffer drain | `replayCountedDetailed` accepts a pending, unblocked interrupt signal, preserves `ILC`, disables post-body fetch, and returns `INTERRUPT_DRAINED` | Every counted firmware loop drained with a persistent pending signal and high `ILC`; short loops completed without accepting it |
-| `SPLOOPW` interrupt drain and delayed-condition exit | `replayWhileDetailed` continues predicate tests while draining and distinguishes `INTERRUPT_DRAINED` from `INTERRUPT_AT_POST_BODY` | All detected firmware `SPLOOPW` loops drained with a true predicate; synthetic predicate changes ended 7 stage 1 and 32 stage 2 drains at the post-body instruction |
-| Interrupt return packet and pipe-up | `InterruptHandoff` exposes the saved `SPLOOP` packet address, `ILC`, and `SPLX`; restart replay reverses source `SPMASK` behavior and makes `SPLOOPD` use `SPLOOP` initial control | All 248 detected firmware loops replayed on restart; 31 stage 1 and 584 stage 2 masked source operations were identified, and 3 stage 2 buffered operations ran through a source mask |
+| `SPLOOPW` interrupt drain and delayed-condition exit | `replayWhileDetailed` continues predicate tests while draining and distinguishes `INTERRUPT_DRAINED` from `INTERRUPT_AT_POST_BODY` | All detected firmware `SPLOOPW` loops drained with a true predicate; synthetic predicate changes ended 15 stage 1 and 39 stage 2 drains at the post-body instruction |
+| Interrupt return packet and pipe-up | `InterruptHandoff` exposes the saved `SPLOOP` packet address, `ILC`, and `SPLX`; restart replay reverses source `SPMASK` behavior and makes `SPLOOPD` use `SPLOOP` initial control | All 248 detected firmware loops replayed on restart; 31 stage 1 and 584 stage 2 masked source operations were identified, and 2 stage 2 buffered operations ran through a source mask |
 | Restart idle cycles for `BNOP`, masked `ADDKPC`, and protected loads | Source packet duration includes encoded delay counts and the compact header's `PROT` bit; restart issues an `Operation` with `idleOnly=true` for suppressed effects | Four assembled C674x loops cover displacement `BNOP`, masked register `BNOP`, masked `ADDKPC`, and a masked protected `LDW`. Firmware contains 6 stage 1 and 42 stage 2 protected source loads; all 248 loops replayed with the corrected durations |
+| Immediate `SPKERNELR` reload | `replayImmediateReload` starts each buffered invocation after the final kernel boundary, copies and decrements the visible `RILC`, and overlaps its prolog with the previous epilog | Assembled buffer sequence from TI Example 7-15 replays two or three invocations in 20 or 27 cycles, including simultaneous old `STW` and new `MV` issues |
 
 The replay result's cycle numbers begin at zero on the cycle **after** the
 `SPLOOP` execute packet. `firstPostBodyCycle == cycles` means fetching resumes
@@ -54,12 +55,15 @@ executing that instruction's p-code.
    Architectural blocking and pending interrupt state are supplied by the
    caller for either loop kind. The model does not determine handler-entry
    timing or write the CPU control registers itself.
-4. **Nested reload.** A predicated `SPLOOP/D` with `SPKERNELR` or a later
-   `SPMASKR` needs the outer predicate sampled four cycles before the final
-   kernel boundary, `RILC` copied and decremented into `ILC`, and a second LBC
-   while old stages drain and new stages reload. Branches can disable program
-   fetch during reload. `replayCountedDetailed` rejects these loops instead of
-   reporting an incomplete trace.
+4. **Remaining nested reload cases.** The dedicated immediate reload entry
+   point covers predicated `SPLOOP` with `SPKERNELR` when both the first and
+   subsequent invocation counts finish the loading stage. It samples the
+   caller's outer predicate four cycles before the last kernel boundary and
+   reads the caller's visible `RILC` at the boundary. `SPLOOPD`, zero or short
+   reload counts, delayed `SPMASKR` reload, and branch-based program-fetch
+   disabling still need models. A delayed reload also needs a second LBC
+   because the old drain and new prolog can have different offsets.
+   `replayCountedDetailed` continues to reject reloadable loops.
 5. **Exceptions and architectural validation.** Exceptions abort the buffer
    without a normal epilog. The emulator must also enforce the documented
    resource, register-access, `SPMASKR`/`SPKERNELR`, and reload-overlap
@@ -74,11 +78,12 @@ another independently validated reference. Firmware coverage verifies the
 encodings it contains; it cannot establish behavior for interrupt or nested
 reload paths that it does not exercise.
 
-The restart-delay fixture is `tests/fixtures/loop-delay.s`. Assemble its
+The restart-delay and immediate-reload fixture is `tests/fixtures/loop-delay.s`. Assemble its
 `.text` section as a raw binary with GNU `tic6x-unknown-elf-as -march=c674x`
 and `tic6x-unknown-elf-objcopy -O binary -j .text`, then import it at
-`0x1000` as `C6000:LE:32:default` and run `C6000LoopDelayTest.java` headlessly.
-The script prints `C6000_LOOP_DELAY PASS` after checking issue effects and
+`0x1000` as `C6000:LE:32:default` and run `C6000LoopDelayTest.java` and
+`C6000ImmediateReloadTest.java` headlessly. The scripts check issue effects and
 idle-cycle positions. The protected-load case uses a 32-bit `LDW` in a compact
 fetch packet with `PROT=1`. The same header rule also applies to 16-bit loads.
-The fixture does not replace hardware timing validation.
+The immediate-reload fixture includes a 32-bit `NOP 4`, validating its four-bit
+encoded count. These fixtures do not replace hardware timing validation.

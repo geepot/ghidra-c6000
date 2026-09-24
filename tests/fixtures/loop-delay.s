@@ -42,3 +42,28 @@ protected_load_loop:
     nop
     nop
     .word 0xe0100000
+
+    # Immediate nested reload from SPRUFE8B Example 7-15 (buffer part).
+    .p2align 5
+    .global immediate_reload_loop
+immediate_reload_loop:
+    [A1] sploop 1
+    ldw .D1T1 *A4++,A0
+    nop 4
+    mv .L2X A0,B0
+    spkernelr
+||  stw .D2T2 B0,*B4++
+    nop
+
+    .p2align 5
+    .global nop_count_cases
+nop_count_cases:
+    nop 1
+    nop 2
+    nop 3
+    nop 4
+    nop 5
+    nop 6
+    nop 7
+    nop 8
+    nop 9

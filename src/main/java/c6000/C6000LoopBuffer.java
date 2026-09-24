@@ -17,6 +17,7 @@ import java.util.Set;
 import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 import java.util.function.IntPredicate;
+import java.util.function.LongSupplier;
 
 import ghidra.program.model.address.Address;
 import ghidra.program.model.listing.Instruction;
@@ -33,8 +34,9 @@ import ghidra.program.model.scalar.Scalar;
  * the initiation interval. A consumer can execute each cycle's operations in
  * an emulator, or inspect the schedule without supplying register/memory state.
  * This models normal load, fetch and drain, interrupt drain, and loop pipe-up
- * after the caller restores saved SPLX and ILC. Handler timing and nested
- * reload require additional architectural state.
+ * after the caller restores saved SPLX and ILC, plus immediate SPKERNELR
+ * reload with caller-supplied outer predicate and RILC. Handler timing and
+ * delayed reload require additional architectural state.
  */
 public final class C6000LoopBuffer {
 
@@ -47,15 +49,23 @@ public final class C6000LoopBuffer {
 		public final int sourceCycle;
 		public final int iteration;
 		public final Origin origin;
+		/** Zero for the first invocation, increasing by one on each reload. */
+		public final int invocation;
 		/** Issue time is retained, but the emulator must not execute this instruction's p-code. */
 		public final boolean idleOnly;
 
 		private Operation(Instruction instruction, int sourceCycle, int iteration,
 				Origin origin, boolean idleOnly) {
+			this(instruction, sourceCycle, iteration, origin, idleOnly, 0);
+		}
+
+		private Operation(Instruction instruction, int sourceCycle, int iteration,
+				Origin origin, boolean idleOnly, int invocation) {
 			this.instruction = instruction;
 			this.sourceCycle = sourceCycle;
 			this.iteration = iteration;
 			this.origin = origin;
+			this.invocation = invocation;
 			this.idleOnly = idleOnly;
 		}
 	}
@@ -68,12 +78,25 @@ public final class C6000LoopBuffer {
 		public final boolean stageBoundary;
 		public final boolean terminatingBoundary;
 		public final boolean interruptBoundary;
+		/** Last kernel boundary that starts a new invocation on the next cycle. */
+		public final boolean reloadBoundary;
 		public final boolean postBodyFetchEnabled;
 		public final int postBodyCycle;
+		/** Invocation whose epilog is fetching the post-body packet. */
+		public final int postBodyInvocation;
 		public final List<Operation> operations;
 
 		private Cycle(int number, int ii, long before, long after,
 				boolean terminating, boolean interrupt, int firstPostBodyCycle,
+				List<Operation> operations) {
+			this(number, ii, before, after, terminating, interrupt, false,
+				firstPostBodyCycle, true, 0, operations);
+		}
+
+		private Cycle(int number, int ii, long before, long after,
+				boolean terminating, boolean interrupt, boolean reload,
+				int firstPostBodyCycle, boolean fetchAllowed,
+				int postBodyInvocation,
 				List<Operation> operations) {
 			this.number = number;
 			this.lbc = number % ii;
@@ -82,9 +105,11 @@ public final class C6000LoopBuffer {
 			this.stageBoundary = this.lbc == ii - 1;
 			this.terminatingBoundary = terminating;
 			this.interruptBoundary = interrupt;
-			this.postBodyFetchEnabled = firstPostBodyCycle >= 0 &&
+			this.reloadBoundary = reload;
+			this.postBodyFetchEnabled = fetchAllowed && firstPostBodyCycle >= 0 &&
 				number >= firstPostBodyCycle;
 			this.postBodyCycle = postBodyFetchEnabled ? number - firstPostBodyCycle : -1;
+			this.postBodyInvocation = postBodyFetchEnabled ? postBodyInvocation : -1;
 			this.operations = Collections.unmodifiableList(operations);
 		}
 
@@ -109,7 +134,8 @@ public final class C6000LoopBuffer {
 			for (Instruction insn : packet) {
 				String name = insn.getMnemonicString();
 				if (!name.contains("SPMASK") && !name.equals("CPKT")) {
-					merged.add(new Operation(insn, -1, postBodyCycle, Origin.PROGRAM, false));
+					merged.add(new Operation(insn, -1, postBodyCycle, Origin.PROGRAM,
+						false, postBodyInvocation));
 				}
 			}
 			for (Operation op : operations) {
@@ -127,15 +153,23 @@ public final class C6000LoopBuffer {
 		public final int cycles;
 		public final Outcome outcome;
 		public final long remainingIlc;
+		/** Number of invocations started from the buffer after the first. */
+		public final int reloads;
 		/** -1 for interrupt drain, when post-body program fetch stays disabled. */
 		public final int firstPostBodyCycle;
 
 		private ReplayResult(int cycles, int firstPostBodyCycle,
 				Outcome outcome, long remainingIlc) {
+			this(cycles, firstPostBodyCycle, outcome, remainingIlc, 0);
+		}
+
+		private ReplayResult(int cycles, int firstPostBodyCycle,
+				Outcome outcome, long remainingIlc, int reloads) {
 			this.cycles = cycles;
 			this.firstPostBodyCycle = firstPostBodyCycle;
 			this.outcome = outcome;
 			this.remainingIlc = remainingIlc;
+			this.reloads = reloads;
 		}
 	}
 
@@ -175,11 +209,13 @@ public final class C6000LoopBuffer {
 	private final List<SourceCycle> source;
 	private final Set<Address> protectedLoads;
 	private final boolean reloadable;
+	private final boolean immediateReload;
+	private final boolean predicatedStart;
 	private final int fetchDelay;
 
 	private C6000LoopBuffer(Kind kind, int ii, Address loopStart, Address bodyStart,
 			int sourcePackets, List<SourceCycle> source, Set<Address> protectedLoads,
-			boolean reloadable,
+			boolean reloadable, boolean immediateReload, boolean predicatedStart,
 			int fetchDelay) {
 		this.kind = kind;
 		this.ii = ii;
@@ -189,6 +225,8 @@ public final class C6000LoopBuffer {
 		this.source = source;
 		this.protectedLoads = protectedLoads;
 		this.reloadable = reloadable;
+		this.immediateReload = immediateReload;
+		this.predicatedStart = predicatedStart;
 		this.fetchDelay = fetchDelay;
 	}
 
@@ -295,11 +333,14 @@ public final class C6000LoopBuffer {
 		if (cycles.isEmpty() || cycles.size() > 48) {
 			throw new IllegalArgumentException("SPLOOP dynlen outside 1..48: " + cycles.size());
 		}
+		boolean predicatedStart = name.startsWith("[");
+		boolean immediateReload = kernel.getMnemonicString().contains("SPKERNELR");
 		boolean reloadable = kind != Kind.SPLOOPW &&
-			(name.startsWith("[") || kernel.getMnemonicString().contains("SPKERNELR"));
+			(predicatedStart || immediateReload);
 		return new C6000LoopBuffer(kind, ii, start.getMinAddress(), bodyStart,
 			packets, List.copyOf(cycles), Set.copyOf(protectedLoads),
-			reloadable, kernel.getMnemonicString().contains("SPKERNELR") ? 0 :
+			reloadable, immediateReload, predicatedStart,
+			immediateReload ? 0 :
 			fetchDelay(ii, scalar(kernel)));
 	}
 
@@ -348,6 +389,124 @@ public final class C6000LoopBuffer {
 			Consumer<Cycle> sink, IntPredicate pendingInterruptAtCycle) {
 		return replayCounted(restoredIlc, maxCycles, sink,
 			pendingInterruptAtCycle, true);
+	}
+
+	private static final class Invocation {
+		final int number;
+		final int startCycle;
+		int finalIteration = Integer.MAX_VALUE;
+		int drainEnd = Integer.MAX_VALUE;
+
+		Invocation(int number, int startCycle) {
+			this.number = number;
+			this.startCycle = startCycle;
+		}
+	}
+
+	/**
+	 * Replay a predicated SPLOOP/SPKERNELR with immediate reload. Each true
+	 * outer predicate at the last kernel boundary starts another invocation
+	 * from the buffer on the next cycle while the previous epilog drains.
+	 * The predicate callback receives the cycle four before that boundary;
+	 * the RILC supplier must return the value visible at the boundary. This
+	 * entry point requires counts long enough to finish the loading stage.
+	 * {@code postBodyFetchEnabled} reports the fetch window before any taken
+	 * outer branch disables it. The caller must gate
+	 * {@link Cycle#overlayPostBody(List)} with its own branch/PC state.
+	 */
+	public ReplayResult replayImmediateReload(long initialIlc, int maxCycles,
+			LongSupplier visibleRilc, IntPredicate outerPredicateAtCycle,
+			Consumer<Cycle> sink) {
+		if (!immediateReload || kind != Kind.SPLOOP || !predicatedStart) {
+			throw new IllegalStateException("requires predicated SPLOOP/SPKERNELR");
+		}
+		int loadingStages = (source.size() + ii - 1) / ii;
+		if (initialIlc < loadingStages || initialIlc > 0xffffffffL ||
+			maxCycles < 1) {
+			throw new IllegalArgumentException("initial ILC cannot finish loading");
+		}
+		List<Invocation> invocations = new ArrayList<>();
+		Invocation current = new Invocation(0, 0);
+		invocations.add(current);
+		long ilc = initialIlc - 1;
+		int lastLoadingBoundary = loadingStages * ii - 1;
+		int postBodyStart = -1;
+		int postBodyEnd = -1;
+		int postBodyInvocation = 0;
+		int reloads = 0;
+		for (int t = 0; t < maxCycles; t++) {
+			List<Operation> ops = new ArrayList<>();
+			for (int index = 0; index < invocations.size();) {
+				Invocation invocation = invocations.get(index);
+				if (t > invocation.drainEnd) {
+					invocations.remove(index);
+					continue;
+				}
+				index++;
+				int local = t - invocation.startCycle;
+				if (local < 0) continue;
+				if (invocation.number == 0) {
+					ops.addAll(operationsAt(local, invocation.finalIteration,
+						false, false));
+				}
+				else appendReloadOperations(ops, invocation, local);
+			}
+			long before = ilc;
+			boolean ending = false;
+			boolean reloading = false;
+			boolean fetch = postBodyStart >= 0 && t >= postBodyStart &&
+				t < postBodyEnd;
+			int fetchStart = postBodyStart;
+			int fetchInvocation = postBodyInvocation;
+			if (current != null) {
+				int local = t - current.startCycle;
+				if ((local + 1) % ii == 0) {
+					if (ilc != 0) ilc--;
+					else {
+						if (local < lastLoadingBoundary) {
+							throw new IllegalStateException("reload count ended during loading");
+						}
+						ending = true;
+						current.finalIteration = local / ii;
+						current.drainEnd = Math.max(t, current.startCycle +
+							current.finalIteration * ii + source.size() - 1);
+						postBodyStart = t + 1;
+						postBodyEnd = t + 1 + source.size();
+						postBodyInvocation = current.number;
+						if (outerPredicateAtCycle.test(t - 4)) {
+							long rilc = visibleRilc.getAsLong();
+							if (rilc < loadingStages || rilc > 0xffffffffL) {
+								throw new IllegalArgumentException("RILC cannot finish loading");
+							}
+							ilc = rilc - 1;
+							current = new Invocation(++reloads, t + 1);
+							invocations.add(current);
+							reloading = true;
+						}
+						else current = null;
+					}
+				}
+			}
+			sink.accept(new Cycle(t, ii, before, ilc, ending, false,
+				reloading, fetchStart, fetch, fetchInvocation, ops));
+			if (current == null && t >= invocations.get(invocations.size() - 1).drainEnd) {
+				return new ReplayResult(t + 1, postBodyStart, Outcome.COMPLETE,
+					ilc, reloads);
+			}
+		}
+		throw new IllegalStateException("reload trace exceeds " + maxCycles + " cycles");
+	}
+
+	private void appendReloadOperations(List<Operation> ops, Invocation invocation,
+			int local) {
+		for (int s = local % ii; s <= local && s < source.size(); s += ii) {
+			int iteration = (local - s) / ii;
+			if (iteration > invocation.finalIteration) continue;
+			for (Instruction insn : source.get(s).buffered) {
+				ops.add(new Operation(insn, s, iteration, Origin.BUFFER, false,
+					invocation.number));
+			}
+		}
 	}
 
 	private ReplayResult replayCounted(long initialIlc, int maxCycles,

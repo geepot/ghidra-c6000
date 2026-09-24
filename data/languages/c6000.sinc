@@ -140,7 +140,7 @@ define token insn32 (32)
   opm=(7,11)  opn=(6,10)  opd=(6,9)
 
   # operand fields
-  xbit=(12,12)  ybit=(7,7)  hbit=(6,6)  nbit=(12,12)
+  xbit=(12,12)  ybit=(7,7)  hbit=(6,6)  nbit=(13,16)
   scbit=(23,23) nabit=(5,5)  rbit=(8,8)
   ucst5=(13,17) scst5=(13,17) signed cst5=(13,17)
   cst5_hi=(18,22) crf_dst=(23,27)
