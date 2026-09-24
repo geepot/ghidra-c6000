@@ -5,6 +5,7 @@
 
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.HexFormat;
+import java.util.List;
 
 import c6000.C6000LoopBuffer;
 import c6000.C6000LoopBuffer.ReplayResult;
@@ -19,6 +20,19 @@ public class C6000LoopModelTest extends GhidraScript {
 		int skipped = 0;
 		int unsupported = 0;
 		int replayed = 0;
+		Instruction maskProbe = null;
+		InstructionIterator maskInstructions = currentProgram.getListing().getInstructions(true);
+		while (maskInstructions.hasNext()) {
+			Instruction candidate = maskInstructions.next();
+			if (candidate.getMnemonicString().equals("SPMASK") &&
+				candidate.getScalar(0) != null &&
+				candidate.getScalar(0).getUnsignedValue() != 0) {
+				maskProbe = candidate;
+				break;
+			}
+		}
+		final Instruction overlayMask = maskProbe;
+		AtomicInteger maskedOverlays = new AtomicInteger();
 		InstructionIterator instructions = currentProgram.getListing().getInstructions(true);
 		while (instructions.hasNext()) {
 			monitor.checkCancelled();
@@ -70,6 +84,22 @@ public class C6000LoopModelTest extends GhidraScript {
 							firstFetch.compareAndSet(-1, cycle.number);
 							if (cycle.postBodyCycle != cycle.number - firstFetch.get()) {
 								throw new AssertionError("bad post-body fetch index");
+							}
+							if (overlayMask != null) {
+								int mask = (int) overlayMask.getScalar(0).getUnsignedValue();
+								int removed = 0;
+								for (C6000LoopBuffer.Operation op : cycle.operations) {
+									if (op.origin == C6000LoopBuffer.Origin.BUFFER &&
+										(unitBit(op.instruction.getMnemonicString()) & mask) != 0) {
+										removed++;
+									}
+								}
+								if (cycle.overlayPostBody(List.of(overlayMask)).size() !=
+									cycle.operations.size() - removed) {
+									throw new AssertionError("bad SPMASK overlay at " +
+										start.getMinAddress());
+								}
+								if (removed > 0) maskedOverlays.incrementAndGet();
 							}
 						}
 					});
@@ -132,7 +162,22 @@ public class C6000LoopModelTest extends GhidraScript {
 			}
 		}
 		println("C6000_MODEL parsed=" + parsed + " replayed=" + replayed +
-			" skipped=" + skipped + " unsupported=" + unsupported);
+			" skipped=" + skipped + " unsupported=" + unsupported +
+			" maskOverlays=" + maskedOverlays.get());
+	}
+
+	private static int unitBit(String mnemonic) {
+		int dot = mnemonic.indexOf('.');
+		if (dot < 0 || dot + 2 >= mnemonic.length()) return 0;
+		int side = mnemonic.charAt(dot + 2) - '1';
+		if (side < 0 || side > 1) return 0;
+		switch (mnemonic.charAt(dot + 1)) {
+			case 'L': return 1 << side;
+			case 'S': return 1 << (side + 2);
+			case 'D': return 1 << (side + 4);
+			case 'M': return 1 << (side + 6);
+			default: return 0;
+		}
 	}
 
 	private String gapDetail(String message) throws Exception {

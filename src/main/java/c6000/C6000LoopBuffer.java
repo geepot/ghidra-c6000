@@ -75,6 +75,39 @@ public final class C6000LoopBuffer {
 			this.postBodyCycle = postBodyFetchEnabled ? number - firstPostBodyCycle : -1;
 			this.operations = Collections.unmodifiableList(operations);
 		}
+
+		/**
+		 * Combine a fetched post-body execute packet with this buffered cycle.
+		 * Operations in the result are simultaneous; list order is for display.
+		 * The caller supplies the packet selected by its own PC/branch state.
+		 */
+		public List<Operation> overlayPostBody(List<Instruction> packet) {
+			if (!postBodyFetchEnabled) {
+				throw new IllegalStateException("post-body fetch is disabled");
+			}
+			int mask = 0;
+			for (Instruction insn : packet) {
+				String name = insn.getMnemonicString();
+				if (name.contains("SPMASKR")) {
+					throw new UnsupportedOperationException("SPMASKR requires nested reload state");
+				}
+				if (name.contains("SPMASK")) mask |= scalar(insn) & 0xff;
+			}
+			List<Operation> merged = new ArrayList<>();
+			for (Instruction insn : packet) {
+				String name = insn.getMnemonicString();
+				if (!name.contains("SPMASK") && !name.equals("CPKT")) {
+					merged.add(new Operation(insn, -1, postBodyCycle, Origin.PROGRAM));
+				}
+			}
+			for (Operation op : operations) {
+				if (op.origin != Origin.BUFFER ||
+					(unitBit(op.instruction.getMnemonicString()) & mask) == 0) {
+					merged.add(op);
+				}
+			}
+			return Collections.unmodifiableList(merged);
+		}
 	}
 
 	/** Completion time and the first cycle that may fetch after SPKERNEL. */
