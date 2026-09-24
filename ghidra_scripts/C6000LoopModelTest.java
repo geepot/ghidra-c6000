@@ -21,6 +21,7 @@ public class C6000LoopModelTest extends GhidraScript {
 		int skipped = 0;
 		int unsupported = 0;
 		int replayed = 0;
+		int whileInterruptExits = 0;
 		Instruction maskProbe = null;
 		InstructionIterator maskInstructions = currentProgram.getListing().getInstructions(true);
 		while (maskInstructions.hasNext()) {
@@ -69,6 +70,37 @@ public class C6000LoopModelTest extends GhidraScript {
 					if (result.outcome != Outcome.COMPLETE || result.cycles < ii ||
 						result.firstPostBodyCycle != result.cycles) {
 						throw new AssertionError("bad SPLOOPW exit");
+					}
+					AtomicInteger interruptAt = new AtomicInteger(-1);
+					ReplayResult drained = buffer.replayWhileDetailed(5, 512, cycle -> {
+						if (cycle.interruptBoundary) {
+							if (!interruptAt.compareAndSet(-1, cycle.number) ||
+								!cycle.stageBoundary || cycle.number < 3 ||
+								cycle.number < ((dynlen + ii - 1) / ii) * ii - 1) {
+								throw new AssertionError("bad SPLOOPW interrupt boundary");
+							}
+						}
+						if (cycle.postBodyFetchEnabled || cycle.terminatingBoundary) {
+							throw new AssertionError("bad SPLOOPW interrupt drain");
+						}
+					}, () -> true, cycle -> true);
+					if (drained.outcome != Outcome.INTERRUPT_DRAINED ||
+						interruptAt.get() < 0 || drained.firstPostBodyCycle != -1) {
+						throw new AssertionError("bad SPLOOPW interrupt result");
+					}
+					AtomicInteger earlyInterrupt = new AtomicInteger(-1);
+					ReplayResult exitedDuringDrain = buffer.replayWhileDetailed(5, 512,
+						cycle -> {
+							if (cycle.interruptBoundary) earlyInterrupt.set(cycle.number);
+						}, () -> earlyInterrupt.get() < 0, cycle -> true);
+					if (exitedDuringDrain.outcome == Outcome.INTERRUPT_AT_POST_BODY) {
+						whileInterruptExits++;
+						if (exitedDuringDrain.firstPostBodyCycle != exitedDuringDrain.cycles) {
+							throw new AssertionError("bad post-body interrupt target");
+						}
+					}
+					else if (exitedDuringDrain.outcome != Outcome.INTERRUPT_DRAINED) {
+						throw new AssertionError("bad SPLOOPW drain outcome");
 					}
 				}
 				else {
@@ -174,8 +206,9 @@ public class C6000LoopModelTest extends GhidraScript {
 						throw new AssertionError("bad interrupt result at " +
 							start.getMinAddress());
 					}
+					long lowIlc = (dynlen + ii - 1) / ii > 1 ? 1 : 0;
 					ReplayResult tooShortToInterrupt = buffer.replayCountedDetailed(
-						1, 512, cycle -> {
+						lowIlc, 512, cycle -> {
 							if (cycle.interruptBoundary) {
 								throw new AssertionError("early interrupt at " +
 									start.getMinAddress());
@@ -199,7 +232,8 @@ public class C6000LoopModelTest extends GhidraScript {
 		}
 		println("C6000_MODEL parsed=" + parsed + " replayed=" + replayed +
 			" skipped=" + skipped + " unsupported=" + unsupported +
-			" maskOverlays=" + maskedOverlays.get());
+			" maskOverlays=" + maskedOverlays.get() +
+			" whileInterruptExits=" + whileInterruptExits);
 	}
 
 	private static int unitBit(String mnemonic) {

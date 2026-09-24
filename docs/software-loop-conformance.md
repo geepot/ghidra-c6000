@@ -18,6 +18,7 @@ state separate from register, memory, branch, and pipeline state when porting it
 | Post-`SPKERNEL` fetch delay and epilog overlap | `ReplayResult.firstPostBodyCycle`, `Cycle.postBodyFetchEnabled` | Stage 2 loop at `0xC0003362`: delay 8 cycles, first fetch cycle 18, replay ends at cycle 23 |
 | Post-body `SPMASK` suppression | `Cycle.overlayPostBody(packet)` filters buffered operations using the caller's selected program packet | 1 stage 1 and 45 stage 2 overlay cycles exercised with synthetic packets containing a `SPMASK` instruction drawn from firmware |
 | Counted-loop interrupt eligibility and buffer drain | `replayCountedDetailed` accepts a pending, unblocked interrupt signal, preserves `ILC`, disables post-body fetch, and returns `INTERRUPT_DRAINED` | Every counted firmware loop drained with a persistent pending signal and high `ILC`; short loops completed without accepting it |
+| `SPLOOPW` interrupt drain and delayed-condition exit | `replayWhileDetailed` continues predicate tests while draining and distinguishes `INTERRUPT_DRAINED` from `INTERRUPT_AT_POST_BODY` | All detected firmware `SPLOOPW` loops drained with a true predicate; synthetic predicate changes ended 3 stage 1 and 23 stage 2 drains at the post-body instruction |
 
 The replay result's cycle numbers begin at zero on the cycle **after** the
 `SPLOOP` execute packet. `firstPostBodyCycle == cycles` means fetching resumes
@@ -38,14 +39,16 @@ simultaneous even though the API returns a list for inspection.
    currently reports when an operation is issued, not when its result becomes
    visible.
 3. **Interrupt completion and restart.** Counted-loop buffer draining now
-   ends with preserved `ILC` and disabled program-memory fetch. The emulator
+   ends with preserved `ILC` and disabled program-memory fetch; `SPLOOPW`
+   draining can instead hand the interrupt to the first post-body instruction.
+   The emulator
    must then finish pending register writes, save the `SPLOOP` packet address
    in `IRP` or `NRP`, and preserve `SPLX` in `ITSR` or `NTSR`. A restart suppresses parallel
    setup instructions and source `SPMASK` operations, executes buffered masked
    instructions, treats `BNOP` as idle cycles, and treats `SPLOOPD` as `SPLOOP`.
-   `SPLOOPW` interrupt draining additionally reevaluates its delayed condition
-   during draining and remains unmodelled. Architectural blocking and pending
-   interrupt state are supplied by the caller for counted loops.
+   Architectural blocking and pending interrupt state are supplied by the
+   caller for either loop kind. The model does not determine handler-entry
+   timing or restore the interrupted loop state on return.
 4. **Nested reload.** A predicated `SPLOOP/D` with `SPKERNELR` or a later
    `SPMASKR` needs the outer predicate sampled four cycles before the final
    kernel boundary, `RILC` copied and decremented into `ILC`, and a second LBC

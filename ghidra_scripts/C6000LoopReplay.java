@@ -6,6 +6,7 @@
 // arg 2 is the number of predicate samples that remain true (default 2).
 // Arg 3 is the maximum number of cycles (default 512). For SPLOOPW, arg 4
 // is the initial ILC value (default 0), which is traced but does not govern exit.
+// Arg 5 is the first pending, unblocked interrupt cycle for SPLOOPW.
 // For counted loops, arg 4 is the first cycle with a pending unblocked interrupt.
 
 import java.util.concurrent.atomic.AtomicInteger;
@@ -46,8 +47,11 @@ public class C6000LoopReplay extends GhidraScript {
 		if (buffer.kind() == C6000LoopBuffer.Kind.SPLOOPW) {
 			AtomicInteger samples = new AtomicInteger();
 			long initialIlc = args.length > 3 ? Long.decode(args[3]) : 0;
+			int interruptAt = args.length > 4 ? Integer.decode(args[4]) :
+				Integer.MAX_VALUE;
 			result = buffer.replayWhileDetailed(initialIlc, limit, this::showCycle,
-				() -> samples.getAndIncrement() < count);
+				() -> samples.getAndIncrement() < count,
+				cycle -> cycle >= interruptAt);
 		}
 		else {
 			int interruptAt = args.length > 3 ? Integer.decode(args[3]) :

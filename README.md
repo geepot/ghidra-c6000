@@ -313,13 +313,16 @@ it produces.
   For counted loops, a caller-supplied pending, unblocked interrupt signal can
   start draining at an eligible stage boundary; the result preserves `ILC` and
   keeps post-body fetch disabled. The result stops when the loop buffer finishes
-  draining, before pending pipeline writes and handler entry.
+  draining, before pending pipeline writes and handler entry. `SPLOOPW` keeps
+  testing its delayed predicate during interrupt drain; if it ends the loop,
+  the result identifies the first post-body instruction as the interrupt target.
   In Ghidra's Script Manager, run
   `C6000LoopReplay.java` on a selected `SPLOOP`, or pass its address, initial
   `ILC` (for counted loops) or number of true predicate samples (for
   `SPLOOPW`), and a cycle limit as arguments. A fourth argument supplies the
   initial `ILC` for a `SPLOOPW` trace or the first pending-interrupt cycle for a
-  counted trace. For example,
+  counted trace. A fifth argument supplies the `SPLOOPW` pending-interrupt cycle.
+  For example,
   `C6000LoopReplay.java 0xC00036A4 2 128` traces 48 cycles of the stage 2
   loop at that address. `C6000LoopModelTest.java` checks all decoded loop
   bodies in an imported image.

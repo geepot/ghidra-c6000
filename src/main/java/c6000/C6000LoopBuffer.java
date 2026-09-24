@@ -37,7 +37,7 @@ public final class C6000LoopBuffer {
 
 	public enum Kind { SPLOOP, SPLOOPD, SPLOOPW }
 	public enum Origin { PROGRAM, BUFFER }
-	public enum Outcome { COMPLETE, INTERRUPT_DRAINED }
+	public enum Outcome { COMPLETE, INTERRUPT_DRAINED, INTERRUPT_AT_POST_BODY }
 
 	public static final class Operation {
 		public final Instruction instruction;
@@ -360,22 +360,48 @@ public final class C6000LoopBuffer {
 
 	public ReplayResult replayWhileDetailed(long initialIlc, int maxCycles,
 			Consumer<Cycle> sink, BooleanSupplier continuePredicate) {
+		return replayWhileDetailed(initialIlc, maxCycles, sink,
+			continuePredicate, cycle -> false);
+	}
+
+	/**
+	 * SPLOOPW interrupt draining keeps testing the delayed predicate. If the
+	 * predicate ends the loop while draining, the next post-body instruction
+	 * is the one interrupted, not the buffered loop.
+	 */
+	public ReplayResult replayWhileDetailed(long initialIlc, int maxCycles,
+			Consumer<Cycle> sink, BooleanSupplier continuePredicate,
+			IntPredicate pendingInterruptAtCycle) {
 		if (kind != Kind.SPLOOPW) throw new IllegalStateException("not SPLOOPW");
 		if (initialIlc < 0 || initialIlc > 0xffffffffL || maxCycles < 1) {
 			throw new IllegalArgumentException();
 		}
 		long ilc = initialIlc;
 		boolean[] delayed = new boolean[3];
+		int lastLoadingBoundary = ((source.size() + ii - 1) / ii) * ii - 1;
+		int finalIteration = Integer.MAX_VALUE;
+		int drainEnd = Integer.MAX_VALUE;
+		boolean interrupted = false;
 		for (int t = 0; t < maxCycles; t++) {
-			List<Operation> ops = operationsAt(t, Integer.MAX_VALUE, false);
+			List<Operation> ops = operationsAt(t, finalIteration, false);
 			boolean boundary = (t + 1) % ii == 0;
 			boolean terminate = boundary && t >= 3 && !delayed[(t - 3) % 3];
+			boolean interrupt = false;
+			if (boundary && !terminate && !interrupted && t >= 3 &&
+				t >= lastLoadingBoundary && pendingInterruptAtCycle.test(t)) {
+				interrupt = true;
+				interrupted = true;
+				finalIteration = t / ii;
+				drainEnd = Math.max(t, finalIteration * ii + source.size() - 1);
+			}
 			long before = ilc;
 			if (boundary) ilc = (ilc - 1) & 0xffffffffL;
-			sink.accept(new Cycle(t, ii, before, ilc, terminate, false,
-				Integer.MAX_VALUE, ops));
+			sink.accept(new Cycle(t, ii, before, ilc, terminate, interrupt,
+				interrupted ? -1 : Integer.MAX_VALUE, ops));
 			if (terminate) return new ReplayResult(t + 1, t + 1,
-				Outcome.COMPLETE, ilc);
+				interrupted ? Outcome.INTERRUPT_AT_POST_BODY : Outcome.COMPLETE, ilc);
+			if (t >= drainEnd) return new ReplayResult(t + 1, -1,
+				Outcome.INTERRUPT_DRAINED, ilc);
 			// The first three cycles cannot terminate, but their predicate
 			// samples may be used at the first eligible boundary.
 			delayed[t % 3] = continuePredicate.getAsBoolean();
