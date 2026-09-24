@@ -46,6 +46,28 @@ for side, file in ((0, "A"), (1, "B")):
         )
 lines.append("")
 
+# SUBDP's reverse .L encoding may take src1 from the cross path while src2
+# remains local; the S reverse encoding swaps the arithmetic operands instead.
+for unit_side in (0, 1):
+    local_file = "B" if unit_side else "A"
+    for pair in range(16):
+        even = pair * 2
+        lines.append(
+            f'Src2PairLocal: "{local_file}{even + 1}:{local_file}{even}" is '
+            f'src2_pair_index={pair} & i18=0 & i1={unit_side} '
+            f'{{ export {local_file}{even + 1}_{local_file}{even}; }}'
+        )
+    for cross in (0, 1):
+        file = "B" if unit_side ^ cross else "A"
+        for pair in range(16):
+            even = pair * 2
+            lines.append(
+                f'Src1PairX: "{file}{even + 1}:{file}{even}" is '
+                f'src1_pair_index={pair} & i13=0 & i1={unit_side} & i12={cross} '
+                f'{{ export {file}{even + 1}_{file}{even}; }}'
+            )
+lines.append("")
+
 # Double-precision source pairs use the src2 field and its cross-path bit.
 for unit_side in (0, 1):
     for cross in (0, 1):

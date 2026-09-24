@@ -78,6 +78,10 @@ First public release.
   doubleword transfers retain doubleword scaling.
 * `MPYLHU` and `PACK2` now lift their unsigned halfword multiply and
   halfword packing operations.
+* The reverse cross-path forms of `SUBDP` now display the architectural
+  source order and lift 64-bit subtraction. `MPY32` and its mixed-sign and
+  unsigned pair forms, `MPYHL`/`MPYLH` halfword forms, `MPYI`, and `PACKL4`
+  now lift their documented integer operations.
 
 ### Notes
 * `buildExtension` does not compile SLEIGH. `tools/build.sh` (and CI) run

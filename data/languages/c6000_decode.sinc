@@ -580,11 +580,11 @@
 :MPYHIR.M1 Src1, Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=0 & i7=0 & i8=0 & i9=0 & i10=1 & i11=0 & i1=0 & c_is16=0 & Cond & creg!=7 & Src1 & Src2 & Dst { if (Cond == 0) goto <skip>; c6000_unimpl_mpyhir(); <skip> }
 :MPYHIR.M2 Src1, Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=0 & i7=0 & i8=0 & i9=0 & i10=1 & i11=0 & i1=1 & c_is16=0 & Cond & creg!=7 & Src1 & Src2 & Dst { if (Cond == 0) goto <skip>; c6000_unimpl_mpyhir(); <skip> }
 
-:MPYHL.M1 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=0 & i6=0 & i7=1 & i8=0 & i9=0 & i10=1 & i11=0 & i1=0 & c_is16=0 & Cond & creg!=7 & Src1 & Src2 & Dst { if (Cond == 0) goto <skip>; c6000_unimpl_mpyhl(); <skip> }
-:MPYHL.M2 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=0 & i6=0 & i7=1 & i8=0 & i9=0 & i10=1 & i11=0 & i1=1 & c_is16=0 & Cond & creg!=7 & Src1 & Src2 & Dst { if (Cond == 0) goto <skip>; c6000_unimpl_mpyhl(); <skip> }
+:MPYHL.M1 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=0 & i6=0 & i7=1 & i8=0 & i9=0 & i10=1 & i11=0 & i1=0 & c_is16=0 & Cond & creg!=7 & Src1 & Src2 & Dst { if (Cond == 0) goto <skip>; c6000_sem_mpyhl(Src1, Src2, Dst); <skip> }
+:MPYHL.M2 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=0 & i6=0 & i7=1 & i8=0 & i9=0 & i10=1 & i11=0 & i1=1 & c_is16=0 & Cond & creg!=7 & Src1 & Src2 & Dst { if (Cond == 0) goto <skip>; c6000_sem_mpyhl(Src1, Src2, Dst); <skip> }
 
-:MPYHLU.M1 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=0 & i6=0 & i7=1 & i8=1 & i9=1 & i10=1 & i11=0 & i1=0 & c_is16=0 & Cond & creg!=7 & Src1 & Src2 & Dst { if (Cond == 0) goto <skip>; c6000_unimpl_mpyhlu(); <skip> }
-:MPYHLU.M2 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=0 & i6=0 & i7=1 & i8=1 & i9=1 & i10=1 & i11=0 & i1=1 & c_is16=0 & Cond & creg!=7 & Src1 & Src2 & Dst { if (Cond == 0) goto <skip>; c6000_unimpl_mpyhlu(); <skip> }
+:MPYHLU.M1 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=0 & i6=0 & i7=1 & i8=1 & i9=1 & i10=1 & i11=0 & i1=0 & c_is16=0 & Cond & creg!=7 & Src1 & Src2 & Dst { if (Cond == 0) goto <skip>; c6000_sem_mpyhlu(Src1, Src2, Dst); <skip> }
+:MPYHLU.M2 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=0 & i6=0 & i7=1 & i8=1 & i9=1 & i10=1 & i11=0 & i1=1 & c_is16=0 & Cond & creg!=7 & Src1 & Src2 & Dst { if (Cond == 0) goto <skip>; c6000_sem_mpyhlu(Src1, Src2, Dst); <skip> }
 
 :MPYHSLU.M1 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=0 & i6=0 & i7=1 & i8=1 & i9=0 & i10=1 & i11=0 & i1=0 & c_is16=0 & Cond & creg!=7 & Src1 & Src2 & Dst { if (Cond == 0) goto <skip>; c6000_unimpl_mpyhslu(); <skip> }
 :MPYHSLU.M2 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=0 & i6=0 & i7=1 & i8=1 & i9=0 & i10=1 & i11=0 & i1=1 & c_is16=0 & Cond & creg!=7 & Src1 & Src2 & Dst { if (Cond == 0) goto <skip>; c6000_unimpl_mpyhslu(); <skip> }
@@ -601,10 +601,10 @@
 :MPYHUS.M1 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=0 & i6=0 & i7=1 & i8=0 & i9=1 & i10=0 & i11=0 & i1=0 & c_is16=0 & Cond & creg!=7 & Src1 & Src2 & Dst { if (Cond == 0) goto <skip>; c6000_unimpl_mpyhus(); <skip> }
 :MPYHUS.M2 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=0 & i6=0 & i7=1 & i8=0 & i9=1 & i10=0 & i11=0 & i1=1 & c_is16=0 & Cond & creg!=7 & Src1 & Src2 & Dst { if (Cond == 0) goto <skip>; c6000_unimpl_mpyhus(); <skip> }
 
-:MPYI.M1 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=0 & i6=0 & i11=0 & i10=0 & i9=1 & i8=0 & i7=0 & i1=0 & c_is16=0 & Cond & creg!=7 & Src1 & Src2 & Dst { if (Cond == 0) goto <skip>; c6000_unimpl_mpyi(); <skip> }
-:MPYI.M2 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=0 & i6=0 & i11=0 & i10=0 & i9=1 & i8=0 & i7=0 & i1=1 & c_is16=0 & Cond & creg!=7 & Src1 & Src2 & Dst { if (Cond == 0) goto <skip>; c6000_unimpl_mpyi(); <skip> }
-:MPYI.M1 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=0 & i6=0 & i11=0 & i10=0 & i9=1 & i8=1 & i7=0 & i1=0 & c_is16=0 & Cond & creg!=7 & Src1 & Src2 & Dst { if (Cond == 0) goto <skip>; c6000_unimpl_mpyi(); <skip> }
-:MPYI.M2 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=0 & i6=0 & i11=0 & i10=0 & i9=1 & i8=1 & i7=0 & i1=1 & c_is16=0 & Cond & creg!=7 & Src1 & Src2 & Dst { if (Cond == 0) goto <skip>; c6000_unimpl_mpyi(); <skip> }
+:MPYI.M1 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=0 & i6=0 & i11=0 & i10=0 & i9=1 & i8=0 & i7=0 & i1=0 & c_is16=0 & Cond & creg!=7 & Src1 & Src2 & Dst { if (Cond == 0) goto <skip>; c6000_sem_mpyi(Src1, Src2, Dst); <skip> }
+:MPYI.M2 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=0 & i6=0 & i11=0 & i10=0 & i9=1 & i8=0 & i7=0 & i1=1 & c_is16=0 & Cond & creg!=7 & Src1 & Src2 & Dst { if (Cond == 0) goto <skip>; c6000_sem_mpyi(Src1, Src2, Dst); <skip> }
+:MPYI.M1 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=0 & i6=0 & i11=0 & i10=0 & i9=1 & i8=1 & i7=0 & i1=0 & c_is16=0 & Cond & creg!=7 & Src1 & Src2 & Dst { if (Cond == 0) goto <skip>; c6000_sem_mpyi(Src1, Src2, Dst); <skip> }
+:MPYI.M2 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=0 & i6=0 & i11=0 & i10=0 & i9=1 & i8=1 & i7=0 & i1=1 & c_is16=0 & Cond & creg!=7 & Src1 & Src2 & Dst { if (Cond == 0) goto <skip>; c6000_sem_mpyi(Src1, Src2, Dst); <skip> }
 
 :MPYID.M1 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=0 & i6=0 & i11=0 & i10=1 & i9=0 & i8=0 & i7=0 & i1=0 & c_is16=0 & Cond & creg!=7 & Src1 & Src2 & Dst { if (Cond == 0) goto <skip>; c6000_unimpl_mpyid(); <skip> }
 :MPYID.M2 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=0 & i6=0 & i11=0 & i10=1 & i9=0 & i8=0 & i7=0 & i1=1 & c_is16=0 & Cond & creg!=7 & Src1 & Src2 & Dst { if (Cond == 0) goto <skip>; c6000_unimpl_mpyid(); <skip> }
@@ -615,8 +615,8 @@
 :MPYILR.M1 Src2, Src1, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=0 & i7=1 & i8=1 & i9=1 & i10=0 & i11=0 & i1=0 & c_is16=0 & Cond & creg!=7 & Src2 & Src1 & Dst { if (Cond == 0) goto <skip>; c6000_unimpl_mpyilr(); <skip> }
 :MPYILR.M2 Src2, Src1, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=0 & i7=1 & i8=1 & i9=1 & i10=0 & i11=0 & i1=1 & c_is16=0 & Cond & creg!=7 & Src2 & Src1 & Dst { if (Cond == 0) goto <skip>; c6000_unimpl_mpyilr(); <skip> }
 
-:MPYLH.M1 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=0 & i6=0 & i7=1 & i8=0 & i9=0 & i10=0 & i11=1 & i1=0 & c_is16=0 & Cond & creg!=7 & Src1 & Src2 & Dst { if (Cond == 0) goto <skip>; c6000_unimpl_mpylh(); <skip> }
-:MPYLH.M2 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=0 & i6=0 & i7=1 & i8=0 & i9=0 & i10=0 & i11=1 & i1=1 & c_is16=0 & Cond & creg!=7 & Src1 & Src2 & Dst { if (Cond == 0) goto <skip>; c6000_unimpl_mpylh(); <skip> }
+:MPYLH.M1 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=0 & i6=0 & i7=1 & i8=0 & i9=0 & i10=0 & i11=1 & i1=0 & c_is16=0 & Cond & creg!=7 & Src1 & Src2 & Dst { if (Cond == 0) goto <skip>; c6000_sem_mpylh(Src1, Src2, Dst); <skip> }
+:MPYLH.M2 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=0 & i6=0 & i7=1 & i8=0 & i9=0 & i10=0 & i11=1 & i1=1 & c_is16=0 & Cond & creg!=7 & Src1 & Src2 & Dst { if (Cond == 0) goto <skip>; c6000_sem_mpylh(Src1, Src2, Dst); <skip> }
 
 :MPYLHU.M1 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=0 & i6=0 & i7=1 & i8=1 & i9=1 & i10=0 & i11=1 & i1=0 & c_is16=0 & Cond & creg!=7 & Src1 & Src2 & Dst { if (Cond == 0) goto <skip>; c6000_sem_mpylhu(Src1, Src2, Dst); <skip> }
 :MPYLHU.M2 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=0 & i6=0 & i7=1 & i8=1 & i9=1 & i10=0 & i11=1 & i1=1 & c_is16=0 & Cond & creg!=7 & Src1 & Src2 & Dst { if (Cond == 0) goto <skip>; c6000_sem_mpylhu(Src1, Src2, Dst); <skip> }
@@ -663,20 +663,20 @@
 :MPY2IR.M1 Src1, Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=1 & i7=1 & i8=1 & i9=1 & i10=0 & i11=0 & i28=1 & i29=0 & i30=0 & i31=0 & i1=0 & c_is16=0 & Src1 & Src2 & Dst { c6000_unimpl_mpy2ir(); }
 :MPY2IR.M2 Src1, Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=1 & i7=1 & i8=1 & i9=1 & i10=0 & i11=0 & i28=1 & i29=0 & i30=0 & i31=0 & i1=1 & c_is16=0 & Src1 & Src2 & Dst { c6000_unimpl_mpy2ir(); }
 
-:MPY32.M1 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=0 & i6=0 & i7=0 & i8=0 & i9=0 & i10=0 & i11=1 & i1=0 & c_is16=0 & Cond & creg!=7 & Src1 & Src2 & Dst { if (Cond == 0) goto <skip>; c6000_unimpl_mpy32(); <skip> }
-:MPY32.M2 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=0 & i6=0 & i7=0 & i8=0 & i9=0 & i10=0 & i11=1 & i1=1 & c_is16=0 & Cond & creg!=7 & Src1 & Src2 & Dst { if (Cond == 0) goto <skip>; c6000_unimpl_mpy32(); <skip> }
+:MPY32.M1 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=0 & i6=0 & i7=0 & i8=0 & i9=0 & i10=0 & i11=1 & i1=0 & c_is16=0 & Cond & creg!=7 & Src1 & Src2 & Dst { if (Cond == 0) goto <skip>; c6000_sem_mpy32_32(Src1, Src2, Dst); <skip> }
+:MPY32.M2 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=0 & i6=0 & i7=0 & i8=0 & i9=0 & i10=0 & i11=1 & i1=1 & c_is16=0 & Cond & creg!=7 & Src1 & Src2 & Dst { if (Cond == 0) goto <skip>; c6000_sem_mpy32_32(Src1, Src2, Dst); <skip> }
 
-:MPY32.M1 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=0 & i6=0 & i7=0 & i8=0 & i9=1 & i10=0 & i11=1 & i1=0 & c_is16=0 & Cond & creg!=7 & Src1 & Src2 & Dst { if (Cond == 0) goto <skip>; c6000_unimpl_mpy32(); <skip> }
-:MPY32.M2 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=0 & i6=0 & i7=0 & i8=0 & i9=1 & i10=0 & i11=1 & i1=1 & c_is16=0 & Cond & creg!=7 & Src1 & Src2 & Dst { if (Cond == 0) goto <skip>; c6000_unimpl_mpy32(); <skip> }
+:MPY32.M1 Src1, Src2, DstPair is i2=0 & i3=0 & i4=0 & i5=0 & i6=0 & i7=0 & i8=0 & i9=1 & i10=0 & i11=1 & i1=0 & c_is16=0 & Cond & creg!=7 & Src1 & Src2 & DstPair { if (Cond == 0) goto <skip>; c6000_sem_mpy32_64(Src1, Src2, DstPair); <skip> }
+:MPY32.M2 Src1, Src2, DstPair is i2=0 & i3=0 & i4=0 & i5=0 & i6=0 & i7=0 & i8=0 & i9=1 & i10=0 & i11=1 & i1=1 & c_is16=0 & Cond & creg!=7 & Src1 & Src2 & DstPair { if (Cond == 0) goto <skip>; c6000_sem_mpy32_64(Src1, Src2, DstPair); <skip> }
 
-:MPY32SU.M1 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=0 & i6=0 & i7=0 & i8=1 & i9=1 & i10=0 & i11=1 & i1=0 & c_is16=0 & Cond & creg!=7 & Src1 & Src2 & Dst { if (Cond == 0) goto <skip>; c6000_unimpl_mpy32su(); <skip> }
-:MPY32SU.M2 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=0 & i6=0 & i7=0 & i8=1 & i9=1 & i10=0 & i11=1 & i1=1 & c_is16=0 & Cond & creg!=7 & Src1 & Src2 & Dst { if (Cond == 0) goto <skip>; c6000_unimpl_mpy32su(); <skip> }
+:MPY32SU.M1 Src1, Src2, DstPair is i2=0 & i3=0 & i4=0 & i5=0 & i6=0 & i7=0 & i8=1 & i9=1 & i10=0 & i11=1 & i1=0 & c_is16=0 & Cond & creg!=7 & Src1 & Src2 & DstPair { if (Cond == 0) goto <skip>; c6000_sem_mpy32su(Src1, Src2, DstPair); <skip> }
+:MPY32SU.M2 Src1, Src2, DstPair is i2=0 & i3=0 & i4=0 & i5=0 & i6=0 & i7=0 & i8=1 & i9=1 & i10=0 & i11=1 & i1=1 & c_is16=0 & Cond & creg!=7 & Src1 & Src2 & DstPair { if (Cond == 0) goto <skip>; c6000_sem_mpy32su(Src1, Src2, DstPair); <skip> }
 
-:MPY32U.M1 Src1, Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=0 & i7=0 & i8=0 & i9=1 & i10=1 & i11=0 & i1=0 & c_is16=0 & Cond & creg!=7 & Src1 & Src2 & Dst { if (Cond == 0) goto <skip>; c6000_unimpl_mpy32u(); <skip> }
-:MPY32U.M2 Src1, Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=0 & i7=0 & i8=0 & i9=1 & i10=1 & i11=0 & i1=1 & c_is16=0 & Cond & creg!=7 & Src1 & Src2 & Dst { if (Cond == 0) goto <skip>; c6000_unimpl_mpy32u(); <skip> }
+:MPY32U.M1 Src1, Src2, DstPair is i2=0 & i3=0 & i4=1 & i5=1 & i6=0 & i7=0 & i8=0 & i9=1 & i10=1 & i11=0 & i1=0 & c_is16=0 & Cond & creg!=7 & Src1 & Src2 & DstPair { if (Cond == 0) goto <skip>; c6000_sem_mpy32u(Src1, Src2, DstPair); <skip> }
+:MPY32U.M2 Src1, Src2, DstPair is i2=0 & i3=0 & i4=1 & i5=1 & i6=0 & i7=0 & i8=0 & i9=1 & i10=1 & i11=0 & i1=1 & c_is16=0 & Cond & creg!=7 & Src1 & Src2 & DstPair { if (Cond == 0) goto <skip>; c6000_sem_mpy32u(Src1, Src2, DstPair); <skip> }
 
-:MPY32US.M1 Src1, Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=1 & i7=0 & i8=0 & i9=1 & i10=1 & i11=0 & i1=0 & c_is16=0 & Cond & creg!=7 & Src1 & Src2 & Dst { if (Cond == 0) goto <skip>; c6000_unimpl_mpy32us(); <skip> }
-:MPY32US.M2 Src1, Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=1 & i7=0 & i8=0 & i9=1 & i10=1 & i11=0 & i1=1 & c_is16=0 & Cond & creg!=7 & Src1 & Src2 & Dst { if (Cond == 0) goto <skip>; c6000_unimpl_mpy32us(); <skip> }
+:MPY32US.M1 Src1, Src2, DstPair is i2=0 & i3=0 & i4=1 & i5=1 & i6=1 & i7=0 & i8=0 & i9=1 & i10=1 & i11=0 & i1=0 & c_is16=0 & Cond & creg!=7 & Src1 & Src2 & DstPair { if (Cond == 0) goto <skip>; c6000_sem_mpy32us(Src1, Src2, DstPair); <skip> }
+:MPY32US.M2 Src1, Src2, DstPair is i2=0 & i3=0 & i4=1 & i5=1 & i6=1 & i7=0 & i8=0 & i9=1 & i10=1 & i11=0 & i1=1 & c_is16=0 & Cond & creg!=7 & Src1 & Src2 & DstPair { if (Cond == 0) goto <skip>; c6000_sem_mpy32us(Src1, Src2, DstPair); <skip> }
 
 :MV.L1 Src2, Dst is i2=0 & i3=1 & i4=1 & i5=0 & i6=0 & i7=0 & i8=0 & i9=0 & i10=1 & i11=0 & i12=0 & i13=0 & i14=0 & i15=0 & i16=0 & i17=0 & i1=0 & c_is16=0 & Cond & creg!=7 & Src2 & Dst { if (Cond == 0) goto <skip>; c6000_sem_mv(Src2, Dst); <skip> }
 :MV.L2 Src2, Dst is i2=0 & i3=1 & i4=1 & i5=0 & i6=0 & i7=0 & i8=0 & i9=0 & i10=1 & i11=0 & i12=0 & i13=0 & i14=0 & i15=0 & i16=0 & i17=0 & i1=1 & c_is16=0 & Cond & creg!=7 & Src2 & Dst { if (Cond == 0) goto <skip>; c6000_sem_mv(Src2, Dst); <skip> }
@@ -761,8 +761,8 @@
 :PACKLH2.S1 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i6=0 & i7=0 & i8=0 & i9=0 & i10=1 & i11=0 & i1=0 & c_is16=0 & Cond & creg!=7 & Src1 & Src2 & Dst { if (Cond == 0) goto <skip>; c6000_unimpl_packlh2(); <skip> }
 :PACKLH2.S2 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i6=0 & i7=0 & i8=0 & i9=0 & i10=1 & i11=0 & i1=1 & c_is16=0 & Cond & creg!=7 & Src1 & Src2 & Dst { if (Cond == 0) goto <skip>; c6000_unimpl_packlh2(); <skip> }
 
-:PACKL4.L1 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i5=0 & i6=0 & i7=0 & i8=1 & i9=0 & i10=1 & i11=1 & i1=0 & c_is16=0 & Cond & creg!=7 & Src1 & Src2 & Dst { if (Cond == 0) goto <skip>; c6000_unimpl_packl4(); <skip> }
-:PACKL4.L2 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i5=0 & i6=0 & i7=0 & i8=1 & i9=0 & i10=1 & i11=1 & i1=1 & c_is16=0 & Cond & creg!=7 & Src1 & Src2 & Dst { if (Cond == 0) goto <skip>; c6000_unimpl_packl4(); <skip> }
+:PACKL4.L1 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i5=0 & i6=0 & i7=0 & i8=1 & i9=0 & i10=1 & i11=1 & i1=0 & c_is16=0 & Cond & creg!=7 & Src1 & Src2 & Dst { if (Cond == 0) goto <skip>; c6000_sem_packl4(Src1, Src2, Dst); <skip> }
+:PACKL4.L2 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i5=0 & i6=0 & i7=0 & i8=1 & i9=0 & i10=1 & i11=1 & i1=1 & c_is16=0 & Cond & creg!=7 & Src1 & Src2 & Dst { if (Cond == 0) goto <skip>; c6000_sem_packl4(Src1, Src2, Dst); <skip> }
 
 :RCPDP.S1 Src2, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i6=1 & i7=0 & i8=1 & i9=1 & i10=0 & i11=1 & i13=0 & i14=0 & i15=0 & i16=0 & i17=0 & i1=0 & c_is16=0 & Cond & creg!=7 & Src2 & Dst { if (Cond == 0) goto <skip>; c6000_unimpl_rcpdp(); <skip> }
 :RCPDP.S2 Src2, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i6=1 & i7=0 & i8=1 & i9=1 & i10=0 & i11=1 & i13=0 & i14=0 & i15=0 & i16=0 & i17=0 & i1=1 & c_is16=0 & Cond & creg!=7 & Src2 & Dst { if (Cond == 0) goto <skip>; c6000_unimpl_rcpdp(); <skip> }
@@ -1134,14 +1134,14 @@
 :SUBC.L1 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i5=1 & i6=1 & i7=0 & i8=1 & i9=0 & i10=0 & i11=1 & i1=0 & c_is16=0 & Cond & creg!=7 & Src1 & Src2 & Dst { if (Cond == 0) goto <skip>; c6000_sem_subc(Src1, Src2, Dst); <skip> }
 :SUBC.L2 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i5=1 & i6=1 & i7=0 & i8=1 & i9=0 & i10=0 & i11=1 & i1=1 & c_is16=0 & Cond & creg!=7 & Src1 & Src2 & Dst { if (Cond == 0) goto <skip>; c6000_sem_subc(Src1, Src2, Dst); <skip> }
 
-:SUBDP.L1 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=0 & i10=0 & i9=1 & i8=1 & i7=0 & i6=0 & i5=1 & i1=0 & c_is16=0 & Cond & creg!=7 & Src1 & Src2 & Dst { if (Cond == 0) goto <skip>; c6000_unimpl_subdp(); <skip> }
-:SUBDP.L2 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=0 & i10=0 & i9=1 & i8=1 & i7=0 & i6=0 & i5=1 & i1=1 & c_is16=0 & Cond & creg!=7 & Src1 & Src2 & Dst { if (Cond == 0) goto <skip>; c6000_unimpl_subdp(); <skip> }
-:SUBDP.L1 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=0 & i10=0 & i9=1 & i8=1 & i7=1 & i6=0 & i5=1 & i1=0 & c_is16=0 & Cond & creg!=7 & Src1 & Src2 & Dst { if (Cond == 0) goto <skip>; c6000_unimpl_subdp(); <skip> }
-:SUBDP.L2 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=0 & i10=0 & i9=1 & i8=1 & i7=1 & i6=0 & i5=1 & i1=1 & c_is16=0 & Cond & creg!=7 & Src1 & Src2 & Dst { if (Cond == 0) goto <skip>; c6000_unimpl_subdp(); <skip> }
-:SUBDP.L1 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=1 & i10=1 & i9=1 & i8=0 & i7=0 & i6=1 & i5=1 & i1=0 & c_is16=0 & Cond & creg!=7 & Src1 & Src2 & Dst { if (Cond == 0) goto <skip>; c6000_unimpl_subdp(); <skip> }
-:SUBDP.L2 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=1 & i10=1 & i9=1 & i8=0 & i7=0 & i6=1 & i5=1 & i1=1 & c_is16=0 & Cond & creg!=7 & Src1 & Src2 & Dst { if (Cond == 0) goto <skip>; c6000_unimpl_subdp(); <skip> }
-:SUBDP.L1 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=1 & i10=1 & i9=1 & i8=0 & i7=1 & i6=1 & i5=1 & i1=0 & c_is16=0 & Cond & creg!=7 & Src1 & Src2 & Dst { if (Cond == 0) goto <skip>; c6000_unimpl_subdp(); <skip> }
-:SUBDP.L2 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=1 & i10=1 & i9=1 & i8=0 & i7=1 & i6=1 & i5=1 & i1=1 & c_is16=0 & Cond & creg!=7 & Src1 & Src2 & Dst { if (Cond == 0) goto <skip>; c6000_unimpl_subdp(); <skip> }
+:SUBDP.L1 Src1Pair, Src2Pair, DstPair is i2=0 & i3=1 & i4=1 & i11=0 & i10=0 & i9=1 & i8=1 & i7=0 & i6=0 & i5=1 & i1=0 & c_is16=0 & Cond & creg!=7 & Src1Pair & Src2Pair & DstPair { if (Cond == 0) goto <skip>; c6000_sem_subdp(Src1Pair, Src2Pair, DstPair); <skip> }
+:SUBDP.L2 Src1Pair, Src2Pair, DstPair is i2=0 & i3=1 & i4=1 & i11=0 & i10=0 & i9=1 & i8=1 & i7=0 & i6=0 & i5=1 & i1=1 & c_is16=0 & Cond & creg!=7 & Src1Pair & Src2Pair & DstPair { if (Cond == 0) goto <skip>; c6000_sem_subdp(Src1Pair, Src2Pair, DstPair); <skip> }
+:SUBDP.L1 Src2PairLocal, Src1PairX, DstPair is i2=0 & i3=1 & i4=1 & i11=0 & i10=0 & i9=1 & i8=1 & i7=1 & i6=0 & i5=1 & i1=0 & c_is16=0 & Cond & creg!=7 & Src2PairLocal & Src1PairX & DstPair { if (Cond == 0) goto <skip>; c6000_sem_subdp(Src2PairLocal, Src1PairX, DstPair); <skip> }
+:SUBDP.L2 Src2PairLocal, Src1PairX, DstPair is i2=0 & i3=1 & i4=1 & i11=0 & i10=0 & i9=1 & i8=1 & i7=1 & i6=0 & i5=1 & i1=1 & c_is16=0 & Cond & creg!=7 & Src2PairLocal & Src1PairX & DstPair { if (Cond == 0) goto <skip>; c6000_sem_subdp(Src2PairLocal, Src1PairX, DstPair); <skip> }
+:SUBDP.L1 Src1Pair, Src2Pair, DstPair is i2=0 & i3=1 & i4=1 & i11=1 & i10=1 & i9=1 & i8=0 & i7=0 & i6=1 & i5=1 & i1=0 & c_is16=0 & Cond & creg!=7 & Src1Pair & Src2Pair & DstPair { if (Cond == 0) goto <skip>; c6000_sem_subdp(Src1Pair, Src2Pair, DstPair); <skip> }
+:SUBDP.L2 Src1Pair, Src2Pair, DstPair is i2=0 & i3=1 & i4=1 & i11=1 & i10=1 & i9=1 & i8=0 & i7=0 & i6=1 & i5=1 & i1=1 & c_is16=0 & Cond & creg!=7 & Src1Pair & Src2Pair & DstPair { if (Cond == 0) goto <skip>; c6000_sem_subdp(Src1Pair, Src2Pair, DstPair); <skip> }
+:SUBDP.L1 Src2Pair, Src1Pair, DstPair is i2=0 & i3=1 & i4=1 & i11=1 & i10=1 & i9=1 & i8=0 & i7=1 & i6=1 & i5=1 & i1=0 & c_is16=0 & Cond & creg!=7 & Src2Pair & Src1Pair & DstPair { if (Cond == 0) goto <skip>; c6000_sem_subdp(Src2Pair, Src1Pair, DstPair); <skip> }
+:SUBDP.L2 Src2Pair, Src1Pair, DstPair is i2=0 & i3=1 & i4=1 & i11=1 & i10=1 & i9=1 & i8=0 & i7=1 & i6=1 & i5=1 & i1=1 & c_is16=0 & Cond & creg!=7 & Src2Pair & Src1Pair & DstPair { if (Cond == 0) goto <skip>; c6000_sem_subdp(Src2Pair, Src1Pair, DstPair); <skip> }
 
 :SUBSP.L1 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=0 & i10=0 & i9=1 & i8=0 & i7=0 & i6=0 & i5=1 & i1=0 & c_is16=0 & Cond & creg!=7 & Src1 & Src2 & Dst { if (Cond == 0) goto <skip>; c6000_sem_subsp(Src1, Src2, Dst); <skip> }
 :SUBSP.L2 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=0 & i10=0 & i9=1 & i8=0 & i7=0 & i6=0 & i5=1 & i1=1 & c_is16=0 & Cond & creg!=7 & Src1 & Src2 & Dst { if (Cond == 0) goto <skip>; c6000_sem_subsp(Src1, Src2, Dst); <skip> }

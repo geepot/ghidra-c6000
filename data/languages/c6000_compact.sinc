@@ -700,9 +700,9 @@ CTgt10: reloc is cq_scst10 [ reloc = (inst_start & 0xffffffe0) + (cq_scst10 << 1
 # ---------------------------------------------------------------------------
 
 :MPY^CUnitM RA15, RX97, RA1110 is c_is16=1 & CUnitM & j4=1 & j3=1 & j2=1 & j1=1 & j6=0 & j5=0 & c_sat=0 & RA15 & RX97 & RA1110 { local a:4 = (RA15 << 16) s>> 16; local b:4 = (RX97 << 16) s>> 16; RA1110 = a * b; }
-:MPYH^CUnitM RA15, RX97, RA1110 is c_is16=1 & CUnitM & j4=1 & j3=1 & j2=1 & j1=1 & j6=0 & j5=1 & c_sat=0 & RA15 & RX97 & RA1110 { c6000_unimplemented(); }
-:MPYLH^CUnitM RA15, RX97, RA1110 is c_is16=1 & CUnitM & j4=1 & j3=1 & j2=1 & j1=1 & j6=1 & j5=0 & c_sat=0 & RA15 & RX97 & RA1110 { c6000_unimplemented(); }
-:MPYHL^CUnitM RA15, RX97, RA1110 is c_is16=1 & CUnitM & j4=1 & j3=1 & j2=1 & j1=1 & j6=1 & j5=1 & c_sat=0 & RA15 & RX97 & RA1110 { c6000_unimplemented(); }
+:MPYH^CUnitM RA15, RX97, RA1110 is c_is16=1 & CUnitM & j4=1 & j3=1 & j2=1 & j1=1 & j6=0 & j5=1 & c_sat=0 & RA15 & RX97 & RA1110 { RA1110 = (RA15 s>> 16) * (RX97 s>> 16); }
+:MPYLH^CUnitM RA15, RX97, RA1110 is c_is16=1 & CUnitM & j4=1 & j3=1 & j2=1 & j1=1 & j6=1 & j5=0 & c_sat=0 & RA15 & RX97 & RA1110 { local a:4 = (RA15 << 16) s>> 16; RA1110 = a * (RX97 s>> 16); }
+:MPYHL^CUnitM RA15, RX97, RA1110 is c_is16=1 & CUnitM & j4=1 & j3=1 & j2=1 & j1=1 & j6=1 & j5=1 & c_sat=0 & RA15 & RX97 & RA1110 { local b:4 = (RX97 << 16) s>> 16; RA1110 = (RA15 s>> 16) * b; }
 :SMPY^CUnitM RA15, RX97, RA1110 is c_is16=1 & CUnitM & j4=1 & j3=1 & j2=1 & j1=1 & j6=0 & j5=0 & c_sat=1 & RA15 & RX97 & RA1110 { c6000_unimplemented(); }
 :SMPYH^CUnitM RA15, RX97, RA1110 is c_is16=1 & CUnitM & j4=1 & j3=1 & j2=1 & j1=1 & j6=0 & j5=1 & c_sat=1 & RA15 & RX97 & RA1110 { c6000_unimplemented(); }
 :SMPYLH^CUnitM RA15, RX97, RA1110 is c_is16=1 & CUnitM & j4=1 & j3=1 & j2=1 & j1=1 & j6=1 & j5=0 & c_sat=1 & RA15 & RX97 & RA1110 { c6000_unimplemented(); }

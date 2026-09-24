@@ -866,9 +866,19 @@ w("")
 for sat in (0, 1):
     for op, base in ((0, "MPY"), (1, "MPYH"), (2, "MPYLH"), (3, "MPYHL")):
         mn = ("S" + base) if sat else base
-        sem = ("local a:4 = (RA15 << 16) s>> 16; "
-               "local b:4 = (RX97 << 16) s>> 16; RA1110 = a * b;") \
-              if (sat == 0 and op == 0) else unimpl()
+        if sat:
+            sem = unimpl()
+        elif op == 0:
+            sem = ("local a:4 = (RA15 << 16) s>> 16; "
+                   "local b:4 = (RX97 << 16) s>> 16; RA1110 = a * b;")
+        elif op == 1:
+            sem = "RA1110 = (RA15 s>> 16) * (RX97 s>> 16);"
+        elif op == 2:
+            sem = ("local a:4 = (RA15 << 16) s>> 16; "
+                   "RA1110 = a * (RX97 s>> 16);")
+        else:
+            sem = ("local b:4 = (RX97 << 16) s>> 16; "
+                   "RA1110 = (RA15 s>> 16) * b;")
         con("%s^CUnitM RA15, RX97, RA1110" % mn,
             ["j4=1", "j3=1", "j2=1", "j1=1", "j6=%d" % ((op >> 1) & 1), "j5=%d" % (op & 1),
              "c_sat=%d" % sat, "RA15", "RX97", "RA1110"], sem)

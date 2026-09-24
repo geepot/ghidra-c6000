@@ -43,15 +43,15 @@ C6000CorpusTest.java stage1   # or stage2
 
 | Corpus (first 12,288 / 131,072 bytes) | Bytes decoded | Instructions | Compact 16-bit | Headers | Unimplemented p-code | Undecoded slots | Byte coverage |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| CDJ-2000NXS stage 1, base `0x11801da0` | 11,318 | 3,175 | 691 | 161 | 88 (2%) | 244 | **92.1%** |
-| CDJ-2000NXS stage 2, base `0xC0000000` | 130,802 | 36,510 | 7,619 | 2,209 | 719 (1%) | 95 | **99.8%** |
+| CDJ-2000NXS stage 1, base `0x11801da0` | 11,318 | 3,175 | 691 | 161 | 85 (2%) | 244 | **92.1%** |
+| CDJ-2000NXS stage 2, base `0xC0000000` | 130,802 | 36,510 | 7,619 | 2,209 | 676 (1%) | 95 | **99.8%** |
 
 Full-payload linear sweeps also completed with no zero-width p-code operands:
 
 | Corpus | Payload bytes | Bytes decoded | Instructions | Unimplemented p-code | Undecoded slots | Byte coverage |
 |---|---:|---:|---:|---:|---:|---:|
-| Stage 1 | 55,120 | 40,550 | 10,496 | 1,185 (11%) | 3,647 | **73.6%** |
-| Stage 2 | 361,248 | 335,562 | 91,317 | 1,039 (1%) | 6,484 | **92.9%** |
+| Stage 1 | 55,120 | 40,402 | 10,459 | 953 (9%) | 3,684 | **73.3%** |
+| Stage 2 | 361,248 | 335,562 | 91,317 | 950 (1%) | 6,484 | **92.9%** |
 
 `CPKT` headers now decode as named 4-byte rows. Undecoded slots remain: the
 stage 1 window is mostly `0xffffffff` fill/data, with a few unknown compact

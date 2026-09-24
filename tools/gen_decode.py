@@ -223,11 +223,17 @@ def main():
                 ops = ["BdecTgt", "Dst"]
             if mnem == "MPYLI":
                 ops = ["Src1", "Src2", "DstPair"]
+            if mnem in {"MPY32U", "MPY32SU", "MPY32US"}:
+                ops = ["Src1", "Src2", "DstPair"]
+            if mnem == "MPY32" and any(f["lo"] == 9 and f["const"] == "1" for f in fields):
+                ops = ["Src1", "Src2", "DstPair"]
             if mnem in {"INTDP", "INTDPU", "SPDP"}:
                 ops = ["Src2", "DstPair"]
             if mnem == "DPSP":
                 ops = ["Src2Pair", "Dst"]
             if mnem in {"ADDDP", "MPYDP"}:
+                ops = ["Src1Pair", "Src2Pair", "DstPair"]
+            if mnem == "SUBDP":
                 ops = ["Src1Pair", "Src2Pair", "DstPair"]
             if mnem in {"CMPEQDP", "CMPGTDP", "CMPLTDP"}:
                 ops = ["Src1Pair", "Src2Pair", "Dst"]
@@ -263,6 +269,10 @@ def main():
                     ops[1] = "UCst5"
                 if mnem == "LMBD" and v == "1101010":
                     ops[0] = "Cst5"
+                if mnem == "SUBDP" and v == "0011101":
+                    ops = ["Src2PairLocal", "Src1PairX", "DstPair"]
+                if mnem == "SUBDP" and v == "1110111":
+                    ops = ["Src2Pair", "Src1Pair", "DstPair"]
                 base = pattern_of(fields, v)
                 if base is None:
                     continue
@@ -327,6 +337,8 @@ def main():
                     elif mnem in SEMANTIC_MNEMONICS:
                         args = ", ".join(o for o in (ops or []) if not o.startswith(chr(34)))
                         macro = "c6000_sem_%s" % mnem.lower()
+                        if mnem == "MPY32":
+                            macro += "_64" if ops[-1] == "DstPair" else "_32"
                         if mnem in {"CLR", "EXT", "EXTU", "SET"} and "src1" in names:
                             macro += "_r"
                         if mnem == "B" and ops and ops[0] != "BranchTarget":
