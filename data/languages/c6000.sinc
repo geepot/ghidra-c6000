@@ -84,6 +84,10 @@ define register offset=0x2000 size=4
 # instruction.
 define register offset=0x3000 size=4 [ contextreg ];
 
+# Synthetic execution address for Ghidra's p-code emulator.  C6000 exposes
+# PCE1 to instructions, while the emulator needs a distinct current PC.
+define register offset=0x3100 size=4 [ PC ];
+
 # Every field is `noflow`: each describes the fetch packet that physically
 # contains the slot, so it must never be inherited from the instruction that
 # happens to precede it.  Without `noflow` the disassembler propagates the

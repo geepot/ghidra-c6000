@@ -20,6 +20,70 @@ macro c6000_sem_add(a, b, d) { d = a + b; }
 macro c6000_sem_addu(a, b, d) { d = a + b; }
 # SEM: SUB
 macro c6000_sem_sub(a, b, d) { d = a - b; }
+
+# Compact saturating arithmetic (SPRUFE8B Figures D-4, E-5, F-22, F-25,
+# F-26).  P-code records the final CSR.SAT value; the CPU's one-cycle-later
+# flag write belongs to the execute-packet/pipeline model.
+macro c6000_sem_sadd32(a, b, d) {
+  local x:8 = sext(a);
+  local y:8 = sext(b);
+  local result:8 = x + y;
+  if (result s> 0x7fffffff) goto <positive>;
+  if (result s< -0x80000000) goto <negative>;
+  d = result:4;
+  goto <done>;
+  <positive> d = 0x7fffffff;
+  CSR = CSR | 0x200;
+  goto <done>;
+  <negative> d = 0x80000000;
+  CSR = CSR | 0x200;
+  <done>
+}
+macro c6000_sem_ssub32(a, b, d) {
+  local x:8 = sext(a);
+  local y:8 = sext(b);
+  local result:8 = x - y;
+  if (result s> 0x7fffffff) goto <positive>;
+  if (result s< -0x80000000) goto <negative>;
+  d = result:4;
+  goto <done>;
+  <positive> d = 0x7fffffff;
+  CSR = CSR | 0x200;
+  goto <done>;
+  <negative> d = 0x80000000;
+  CSR = CSR | 0x200;
+  <done>
+}
+macro c6000_sem_smpy16(a, b, d) {
+  local product:4 = a * b;
+  local shifted:4 = product << 1;
+  if (shifted == 0x80000000) goto <sat>;
+  d = shifted;
+  goto <done>;
+  <sat> d = 0x7fffffff;
+  CSR = CSR | 0x200;
+  <done>
+}
+macro c6000_sem_sshl32(v, c, d) {
+  local count:4 = c & 63;
+  if (count > 31) goto <large>;
+  local wide:8 = sext(v);
+  wide = wide << count;
+  if (wide s> 0x7fffffff) goto <positive>;
+  if (wide s< -0x80000000) goto <negative>;
+  d = wide:4;
+  goto <done>;
+  <large> if (v s> 0) goto <positive>;
+  if (v s< 0) goto <negative>;
+  d = 0;
+  goto <done>;
+  <positive> d = 0x7fffffff;
+  CSR = CSR | 0x200;
+  goto <done>;
+  <negative> d = 0x80000000;
+  CSR = CSR | 0x200;
+  <done>
+}
 # SEM: AND
 macro c6000_sem_and(a, b, d) { d = a & b; }
 # SEM: OR
