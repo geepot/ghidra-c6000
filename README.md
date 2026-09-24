@@ -304,7 +304,9 @@ it produces.
   cycle `SPLOOPD` grace period, and the three-cycle delayed `SPLOOPW`
   predicate. `SPLOOPW` also decrements `ILC` at every stage boundary without
   using it to decide termination. The callback exposes each cycle's operations
-  and `ILC` before and after stage boundaries. In Ghidra's Script Manager, run
+  and `ILC` before and after stage boundaries. Zero- and one-iteration loops
+  issue idle cycles through the last loading-stage boundary when the body ends
+  partway through a stage. In Ghidra's Script Manager, run
   `C6000LoopReplay.java` on a selected `SPLOOP`, or pass its address, initial
   `ILC` (for counted loops) or number of true predicate samples (for
   `SPLOOPW`), and a cycle limit as arguments. A fourth argument supplies the

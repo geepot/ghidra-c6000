@@ -206,7 +206,8 @@ public final class C6000LoopBuffer {
 		boolean initiallyZero = kind == Kind.SPLOOP && ilc == 0;
 		if (kind == Kind.SPLOOP && ilc != 0) ilc--;
 		int finalIteration = initiallyZero ? -1 : Integer.MAX_VALUE;
-		int drainEnd = initiallyZero ? source.size() - 1 : Integer.MAX_VALUE;
+		int lastLoadingBoundary = ((source.size() + ii - 1) / ii) * ii - 1;
+		int drainEnd = initiallyZero ? lastLoadingBoundary : Integer.MAX_VALUE;
 		for (int t = 0; t < maxCycles; t++) {
 			int iteration = t / ii;
 			List<Operation> ops = operationsAt(t, finalIteration, initiallyZero);
@@ -219,6 +220,10 @@ public final class C6000LoopBuffer {
 						terminate = true;
 						finalIteration = iteration;
 						drainEnd = Math.max(t, iteration * ii + source.size() - 1);
+						// If the initial invocation has no later iteration, the
+						// buffer remains active through its last loading boundary.
+						if (iteration == 0) drainEnd = Math.max(drainEnd,
+							lastLoadingBoundary);
 					}
 					else ilc--;
 				}

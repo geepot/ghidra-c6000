@@ -66,8 +66,10 @@ public class C6000LoopModelTest extends GhidraScript {
 						throw new AssertionError("bad duration at " + start.getMinAddress() +
 							": " + cycles + " != " + expected);
 					}
+					int lastLoadingBoundary = ((dynlen + ii - 1) / ii) * ii;
 					int zeroExpected = buffer.kind() == C6000LoopBuffer.Kind.SPLOOP ?
-						dynlen : Math.max(dynlen, ii) + (3 / ii) * ii;
+						lastLoadingBoundary :
+						Math.max(lastLoadingBoundary, dynlen + (3 / ii) * ii);
 					int zeroCycles = buffer.replayCounted(0, 512, cycle -> {
 						if (buffer.kind() == C6000LoopBuffer.Kind.SPLOOP) {
 							for (C6000LoopBuffer.Operation op : cycle.operations) {
@@ -81,6 +83,14 @@ public class C6000LoopModelTest extends GhidraScript {
 					if (zeroCycles != zeroExpected) {
 						throw new AssertionError("bad zero-ILC duration at " +
 							start.getMinAddress() + ": " + zeroCycles + " != " + zeroExpected);
+					}
+					if (buffer.kind() == C6000LoopBuffer.Kind.SPLOOP) {
+						int oneCycles = buffer.replayCounted(1, 512, cycle -> {});
+						if (oneCycles != lastLoadingBoundary) {
+							throw new AssertionError("bad one-iteration duration at " +
+								start.getMinAddress() + ": " + oneCycles + " != " +
+								lastLoadingBoundary);
+						}
 					}
 				}
 				replayed++;
