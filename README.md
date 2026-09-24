@@ -316,21 +316,29 @@ it produces.
   draining, before pending pipeline writes and handler entry. `SPLOOPW` keeps
   testing its delayed predicate during interrupt drain; if it ends the loop,
   the result identifies the first post-body instruction as the interrupt target.
+  An `INTERRUPT_DRAINED` result yields an `InterruptHandoff` with the saved
+  `SPLOOP` packet address, `ILC`, and `SPLX` state. After the caller restores
+  architectural state, `replayCountedRestart` or `replayWhileRestart` pipes the
+  loop back up: source `SPMASK` suppresses program operations, buffered masked
+  operations execute, and `SPLOOPD` uses the `SPLOOP` initial test/decrement.
   In Ghidra's Script Manager, run
   `C6000LoopReplay.java` on a selected `SPLOOP`, or pass its address, initial
   `ILC` (for counted loops) or number of true predicate samples (for
   `SPLOOPW`), and a cycle limit as arguments. A fourth argument supplies the
   initial `ILC` for a `SPLOOPW` trace or the first pending-interrupt cycle for a
   counted trace. A fifth argument supplies the `SPLOOPW` pending-interrupt cycle.
+  Append `restart` after the interrupt argument to trace return with saved
+  `SPLX=1`.
   For example,
   `C6000LoopReplay.java 0xC00036A4 2 128` traces 48 cycles of the stage 2
   loop at that address. `C6000LoopModelTest.java` checks all decoded loop
   bodies in an imported image.
 
   The scheduler reports operation order and loop-control state; it does not
-  execute each instruction's p-code or model instruction latency, interrupt
-  handler entry and restart, nested reload, or choose the post-body
-  program-memory packet after branches.
+  execute each instruction's p-code or model instruction latency, pipeline
+  writeback and handler entry, nested reload, or choose the post-body
+  program-memory packet after branches. Restart of masked `BNOP`/`ADDKPC`
+  idle-cycle operations is rejected until their special timing is modelled.
   [The loop conformance notes](docs/software-loop-conformance.md) specify
   the remaining emulator state. Native Ghidra decompilation still displays
   the loop-control userops, because the hardware buffer does not correspond

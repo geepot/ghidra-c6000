@@ -19,6 +19,7 @@ state separate from register, memory, branch, and pipeline state when porting it
 | Post-body `SPMASK` suppression | `Cycle.overlayPostBody(packet)` filters buffered operations using the caller's selected program packet | 1 stage 1 and 45 stage 2 overlay cycles exercised with synthetic packets containing a `SPMASK` instruction drawn from firmware |
 | Counted-loop interrupt eligibility and buffer drain | `replayCountedDetailed` accepts a pending, unblocked interrupt signal, preserves `ILC`, disables post-body fetch, and returns `INTERRUPT_DRAINED` | Every counted firmware loop drained with a persistent pending signal and high `ILC`; short loops completed without accepting it |
 | `SPLOOPW` interrupt drain and delayed-condition exit | `replayWhileDetailed` continues predicate tests while draining and distinguishes `INTERRUPT_DRAINED` from `INTERRUPT_AT_POST_BODY` | All detected firmware `SPLOOPW` loops drained with a true predicate; synthetic predicate changes ended 3 stage 1 and 23 stage 2 drains at the post-body instruction |
+| Interrupt return packet and pipe-up | `InterruptHandoff` exposes the saved `SPLOOP` packet address, `ILC`, and `SPLX`; restart replay reverses source `SPMASK` behavior and makes `SPLOOPD` use `SPLOOP` initial control | All 248 detected firmware loops replayed on restart; 31 stage 1 and 584 stage 2 masked source operations were identified, and 3 stage 2 buffered operations ran through a source mask |
 
 The replay result's cycle numbers begin at zero on the cycle **after** the
 `SPLOOP` execute packet. `firstPostBodyCycle == cycles` means fetching resumes
@@ -38,17 +39,19 @@ simultaneous even though the API returns a list for inspection.
    and control-register writes mature at different phases. The loop scheduler
    currently reports when an operation is issued, not when its result becomes
    visible.
-3. **Interrupt completion and restart.** Counted-loop buffer draining now
+3. **Interrupt completion and architectural return.** Counted-loop buffer draining now
    ends with preserved `ILC` and disabled program-memory fetch; `SPLOOPW`
    draining can instead hand the interrupt to the first post-body instruction.
-   The emulator
-   must then finish pending register writes, save the `SPLOOP` packet address
-   in `IRP` or `NRP`, and preserve `SPLX` in `ITSR` or `NTSR`. A restart suppresses parallel
-   setup instructions and source `SPMASK` operations, executes buffered masked
-   instructions, treats `BNOP` as idle cycles, and treats `SPLOOPD` as `SPLOOP`.
+   The emulator must finish pending register writes, write the saved packet
+   address to `IRP` or `NRP`, preserve `SPLX` in `ITSR` or `NTSR`, and restore
+   those registers on return. Restart replay handles source/buffer mask
+   reversal and `SPLOOPD` initial control; the caller must suppress
+   instructions parallel with the restarted `SPLOOP` packet. Masked `BNOP`,
+   `ADDKPC`, and protected-load idle cycles need their special restart timing;
+   the first two are explicitly rejected by this scheduler.
    Architectural blocking and pending interrupt state are supplied by the
    caller for either loop kind. The model does not determine handler-entry
-   timing or restore the interrupted loop state on return.
+   timing or write the CPU control registers itself.
 4. **Nested reload.** A predicated `SPLOOP/D` with `SPKERNELR` or a later
    `SPMASKR` needs the outer predicate sampled four cycles before the final
    kernel boundary, `RILC` copied and decremented into `ILC`, and a second LBC

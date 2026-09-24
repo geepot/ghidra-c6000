@@ -8,6 +8,7 @@
 // is the initial ILC value (default 0), which is traced but does not govern exit.
 // Arg 5 is the first pending, unblocked interrupt cycle for SPLOOPW.
 // For counted loops, arg 4 is the first cycle with a pending unblocked interrupt.
+// Pass "restart" after the interrupt argument to model return with saved SPLX=1.
 
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -49,15 +50,23 @@ public class C6000LoopReplay extends GhidraScript {
 			long initialIlc = args.length > 3 ? Long.decode(args[3]) : 0;
 			int interruptAt = args.length > 4 ? Integer.decode(args[4]) :
 				Integer.MAX_VALUE;
-			result = buffer.replayWhileDetailed(initialIlc, limit, this::showCycle,
-				() -> samples.getAndIncrement() < count,
-				cycle -> cycle >= interruptAt);
+			boolean restart = args.length > 5 && args[5].equals("restart");
+			result = restart ? buffer.replayWhileRestart(initialIlc, limit,
+				this::showCycle, () -> samples.getAndIncrement() < count,
+				cycle -> cycle >= interruptAt) :
+				buffer.replayWhileDetailed(initialIlc, limit, this::showCycle,
+					() -> samples.getAndIncrement() < count,
+					cycle -> cycle >= interruptAt);
 		}
 		else {
 			int interruptAt = args.length > 3 ? Integer.decode(args[3]) :
 				Integer.MAX_VALUE;
-			result = buffer.replayCountedDetailed(Integer.toUnsignedLong(count),
-				limit, this::showCycle, cycle -> cycle >= interruptAt);
+			boolean restart = args.length > 4 && args[4].equals("restart");
+			result = restart ? buffer.replayCountedRestart(
+				Integer.toUnsignedLong(count), limit, this::showCycle,
+				cycle -> cycle >= interruptAt) :
+				buffer.replayCountedDetailed(Integer.toUnsignedLong(count),
+					limit, this::showCycle, cycle -> cycle >= interruptAt);
 		}
 		println("C6000_REPLAY_END cycles=" + result.cycles +
 			" outcome=" + result.outcome + " ILC=" + result.remainingIlc +

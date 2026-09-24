@@ -30,8 +30,9 @@ import ghidra.program.model.scalar.Scalar;
  * unmasked instructions execute from the loop buffer at the same offset within
  * the initiation interval. A consumer can execute each cycle's operations in
  * an emulator, or inspect the schedule without supplying register/memory state.
- * This models normal load, fetch and drain, plus counted-loop interrupt drain.
- * Restart and nested reload require additional architectural state.
+ * This models normal load, fetch and drain, interrupt drain, and loop pipe-up
+ * after the caller restores saved SPLX and ILC. Handler timing and nested
+ * reload require additional architectural state.
  */
 public final class C6000LoopBuffer {
 
@@ -133,6 +134,22 @@ public final class C6000LoopBuffer {
 		}
 	}
 
+	/** State handed to the CPU once buffer drain and pending writes complete. */
+	public static final class InterruptHandoff {
+		public final Address returnPacket;
+		public final long ilc;
+		public final boolean savedSplx;
+		public final int bufferDrainCycles;
+
+		private InterruptHandoff(Address returnPacket, long ilc,
+				int bufferDrainCycles) {
+			this.returnPacket = returnPacket;
+			this.ilc = ilc;
+			this.savedSplx = true;
+			this.bufferDrainCycles = bufferDrainCycles;
+		}
+	}
+
 	private static final class SourceCycle {
 		final List<Instruction> program;
 		final List<Instruction> buffered;
@@ -147,17 +164,19 @@ public final class C6000LoopBuffer {
 
 	private final Kind kind;
 	private final int ii;
+	private final Address loopStart;
 	private final Address bodyStart;
 	private final int sourcePackets;
 	private final List<SourceCycle> source;
 	private final boolean reloadable;
 	private final int fetchDelay;
 
-	private C6000LoopBuffer(Kind kind, int ii, Address bodyStart,
+	private C6000LoopBuffer(Kind kind, int ii, Address loopStart, Address bodyStart,
 			int sourcePackets, List<SourceCycle> source, boolean reloadable,
 			int fetchDelay) {
 		this.kind = kind;
 		this.ii = ii;
+		this.loopStart = loopStart;
 		this.bodyStart = bodyStart;
 		this.sourcePackets = sourcePackets;
 		this.source = source;
@@ -168,8 +187,22 @@ public final class C6000LoopBuffer {
 	public Kind kind() { return kind; }
 	public int initiationInterval() { return ii; }
 	public int dynamicLength() { return source.size(); }
+	/** Unit mask issued by the source packet in this cycle, or zero afterward. */
+	public int sourceMaskAt(int cycle) {
+		return cycle >= 0 && cycle < source.size() ? source.get(cycle).unitMask : 0;
+	}
 	public int sourcePackets() { return sourcePackets; }
 	public Address bodyStart() { return bodyStart; }
+	/** Address of the execute packet to save in IRP/NRP for an interrupted loop. */
+	public Address interruptReturnPacket() { return loopStart; }
+
+	/** Build the IRP/NRP and ITSR/NTSR handoff after pipeline writeback. */
+	public InterruptHandoff interruptHandoff(ReplayResult result) {
+		if (result.outcome != Outcome.INTERRUPT_DRAINED) {
+			throw new IllegalArgumentException("loop did not finish interrupt draining");
+		}
+		return new InterruptHandoff(loopStart, result.remainingIlc, result.cycles);
+	}
 	public boolean reloadable() { return reloadable; }
 	public int fetchDelayCycles() { return fetchDelay; }
 
@@ -251,7 +284,8 @@ public final class C6000LoopBuffer {
 		}
 		boolean reloadable = kind != Kind.SPLOOPW &&
 			(name.startsWith("[") || kernel.getMnemonicString().contains("SPKERNELR"));
-		return new C6000LoopBuffer(kind, ii, bodyStart, packets, List.copyOf(cycles),
+		return new C6000LoopBuffer(kind, ii, start.getMinAddress(), bodyStart,
+			packets, List.copyOf(cycles),
 			reloadable, kernel.getMnemonicString().contains("SPKERNELR") ? 0 :
 			fetchDelay(ii, scalar(kernel)));
 	}
@@ -288,14 +322,33 @@ public final class C6000LoopBuffer {
 	 */
 	public ReplayResult replayCountedDetailed(long initialIlc, int maxCycles,
 			Consumer<Cycle> sink, IntPredicate pendingInterruptAtCycle) {
+		return replayCounted(initialIlc, maxCycles, sink,
+			pendingInterruptAtCycle, false);
+	}
+
+	/**
+	 * Resume an interrupted counted loop after the caller restores ILC and
+	 * enters the SPLOOP packet with saved SPLX=1. SPLOOPD then uses SPLOOP's
+	 * initial test/decrement, and source SPMASK reverses its pipe-up behavior.
+	 */
+	public ReplayResult replayCountedRestart(long restoredIlc, int maxCycles,
+			Consumer<Cycle> sink, IntPredicate pendingInterruptAtCycle) {
+		checkRestartDelays();
+		return replayCounted(restoredIlc, maxCycles, sink,
+			pendingInterruptAtCycle, true);
+	}
+
+	private ReplayResult replayCounted(long initialIlc, int maxCycles,
+			Consumer<Cycle> sink, IntPredicate pendingInterruptAtCycle,
+			boolean restart) {
 		if (kind == Kind.SPLOOPW) throw new IllegalStateException("SPLOOPW uses a predicate");
 		if (reloadable) throw new UnsupportedOperationException("nested reload needs RILC and an outer-loop predicate");
 		if (initialIlc < 0 || initialIlc > 0xffffffffL || maxCycles < 1) {
 			throw new IllegalArgumentException();
 		}
 		long ilc = initialIlc;
-		boolean initiallyZero = kind == Kind.SPLOOP && ilc == 0;
-		if (kind == Kind.SPLOOP && ilc != 0) ilc--;
+		boolean initiallyZero = (kind == Kind.SPLOOP || restart) && ilc == 0;
+		if ((kind == Kind.SPLOOP || restart) && ilc != 0) ilc--;
 		int finalIteration = initiallyZero ? -1 : Integer.MAX_VALUE;
 		int lastLoadingBoundary = ((source.size() + ii - 1) / ii) * ii - 1;
 		int drainEnd = initiallyZero ? lastLoadingBoundary : Integer.MAX_VALUE;
@@ -305,13 +358,14 @@ public final class C6000LoopBuffer {
 		int loadingStages = (source.size() + ii - 1) / ii;
 		for (int t = 0; t < maxCycles; t++) {
 			int iteration = t / ii;
-			List<Operation> ops = operationsAt(t, finalIteration, initiallyZero);
+			List<Operation> ops = operationsAt(t, finalIteration, initiallyZero,
+				restart);
 			long before = ilc;
 			boolean terminate = false;
 			boolean interrupt = false;
 			if ((t + 1) % ii == 0 && !initiallyZero && finalIteration == Integer.MAX_VALUE) {
 				// SPLOOPD suppresses the test and decrement for cycles 0..2.
-				if (kind != Kind.SPLOOPD || t >= 3) {
+				if (kind != Kind.SPLOOPD || restart || t >= 3) {
 					if (ilc != 0 && t >= lastLoadingBoundary &&
 						ilc >= loadingStages && pendingInterruptAtCycle.test(t)) {
 						interrupt = true;
@@ -372,6 +426,22 @@ public final class C6000LoopBuffer {
 	public ReplayResult replayWhileDetailed(long initialIlc, int maxCycles,
 			Consumer<Cycle> sink, BooleanSupplier continuePredicate,
 			IntPredicate pendingInterruptAtCycle) {
+		return replayWhile(initialIlc, maxCycles, sink, continuePredicate,
+			pendingInterruptAtCycle, false);
+	}
+
+	/** Resume an interrupted SPLOOPW after restoring SPLX and ILC. */
+	public ReplayResult replayWhileRestart(long restoredIlc, int maxCycles,
+			Consumer<Cycle> sink, BooleanSupplier continuePredicate,
+			IntPredicate pendingInterruptAtCycle) {
+		checkRestartDelays();
+		return replayWhile(restoredIlc, maxCycles, sink, continuePredicate,
+			pendingInterruptAtCycle, true);
+	}
+
+	private ReplayResult replayWhile(long initialIlc, int maxCycles,
+			Consumer<Cycle> sink, BooleanSupplier continuePredicate,
+			IntPredicate pendingInterruptAtCycle, boolean restart) {
 		if (kind != Kind.SPLOOPW) throw new IllegalStateException("not SPLOOPW");
 		if (initialIlc < 0 || initialIlc > 0xffffffffL || maxCycles < 1) {
 			throw new IllegalArgumentException();
@@ -383,7 +453,7 @@ public final class C6000LoopBuffer {
 		int drainEnd = Integer.MAX_VALUE;
 		boolean interrupted = false;
 		for (int t = 0; t < maxCycles; t++) {
-			List<Operation> ops = operationsAt(t, finalIteration, false);
+			List<Operation> ops = operationsAt(t, finalIteration, false, restart);
 			boolean boundary = (t + 1) % ii == 0;
 			boolean terminate = boundary && t >= 3 && !delayed[(t - 3) % 3];
 			boolean interrupt = false;
@@ -409,16 +479,20 @@ public final class C6000LoopBuffer {
 		throw new IllegalStateException("loop trace exceeds " + maxCycles + " cycles");
 	}
 
-	private List<Operation> operationsAt(int t, int finalIteration, boolean initiallyZero) {
+	private List<Operation> operationsAt(int t, int finalIteration,
+			boolean initiallyZero, boolean restart) {
 		List<Operation> ops = new ArrayList<>();
-		int memoryMask = t < source.size() ? source.get(t).unitMask : 0;
+		int memoryMask = !restart && t < source.size() ? source.get(t).unitMask : 0;
 		for (int s = t % ii; s <= t && s < source.size(); s += ii) {
 			int iteration = (t - s) / ii;
 			SourceCycle cell = source.get(s);
 			if (iteration == 0) {
 				// The source is fetched once, including its SPMASKed setup code.
 				for (Instruction insn : cell.program) {
-					if (!initiallyZero || (unitBit(insn.getMnemonicString()) & cell.unitMask) != 0) {
+					boolean masked = (unitBit(insn.getMnemonicString()) &
+						cell.unitMask) != 0;
+					if (restart ? !initiallyZero && !masked :
+						!initiallyZero || masked) {
 						ops.add(new Operation(insn, s, 0, Origin.PROGRAM));
 					}
 				}
@@ -432,6 +506,19 @@ public final class C6000LoopBuffer {
 			}
 		}
 		return ops;
+	}
+
+	private void checkRestartDelays() {
+		for (SourceCycle cell : source) {
+			for (Instruction insn : cell.program) {
+				String name = insn.getMnemonicString();
+				if (name.contains("BNOP") || name.contains("ADDKPC")) {
+					throw new UnsupportedOperationException(
+						"restart delay-slot operation needs an idle-cycle model at " +
+						insn.getMinAddress());
+				}
+			}
+		}
 	}
 
 	private static int scalar(Instruction insn) {

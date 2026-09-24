@@ -35,6 +35,8 @@ public class C6000LoopModelTest extends GhidraScript {
 		}
 		final Instruction overlayMask = maskProbe;
 		AtomicInteger maskedOverlays = new AtomicInteger();
+		AtomicInteger maskedSourceOps = new AtomicInteger();
+		AtomicInteger restartBufferOpsThroughMask = new AtomicInteger();
 		InstructionIterator instructions = currentProgram.getListing().getInstructions(true);
 		while (instructions.hasNext()) {
 			monitor.checkCancelled();
@@ -52,12 +54,22 @@ public class C6000LoopModelTest extends GhidraScript {
 			try {
 				C6000LoopBuffer buffer = C6000LoopBuffer.fromProgram(
 					currentProgram, start, kernel);
+				if (!buffer.interruptReturnPacket().equals(start.getMinAddress())) {
+					throw new AssertionError("wrong interrupt return packet");
+				}
 				parsed++;
 				int ii = buffer.initiationInterval();
 				int dynlen = buffer.dynamicLength();
 				if (buffer.kind() == C6000LoopBuffer.Kind.SPLOOPW) {
 					AtomicInteger samples = new AtomicInteger();
 					ReplayResult result = buffer.replayWhileDetailed(5, 512, cycle -> {
+						for (C6000LoopBuffer.Operation op : cycle.operations) {
+							if (op.origin == C6000LoopBuffer.Origin.PROGRAM &&
+								(unitBit(op.instruction.getMnemonicString()) &
+									buffer.sourceMaskAt(op.sourceCycle)) != 0) {
+								maskedSourceOps.incrementAndGet();
+							}
+						}
 						long expectedBefore = (5L - cycle.number / ii) & 0xffffffffL;
 						long expectedAfter = (expectedBefore - (cycle.stageBoundary ? 1 : 0)) &
 							0xffffffffL;
@@ -88,6 +100,13 @@ public class C6000LoopModelTest extends GhidraScript {
 						interruptAt.get() < 0 || drained.firstPostBodyCycle != -1) {
 						throw new AssertionError("bad SPLOOPW interrupt result");
 					}
+					C6000LoopBuffer.InterruptHandoff whileHandoff =
+						buffer.interruptHandoff(drained);
+					if (!whileHandoff.returnPacket.equals(start.getMinAddress()) ||
+						whileHandoff.ilc != drained.remainingIlc ||
+						!whileHandoff.savedSplx) {
+						throw new AssertionError("bad SPLOOPW interrupt handoff");
+					}
 					AtomicInteger earlyInterrupt = new AtomicInteger(-1);
 					ReplayResult exitedDuringDrain = buffer.replayWhileDetailed(5, 512,
 						cycle -> {
@@ -102,6 +121,17 @@ public class C6000LoopModelTest extends GhidraScript {
 					else if (exitedDuringDrain.outcome != Outcome.INTERRUPT_DRAINED) {
 						throw new AssertionError("bad SPLOOPW drain outcome");
 					}
+					AtomicInteger restartedSamples = new AtomicInteger();
+					ReplayResult restarted = buffer.replayWhileRestart(whileHandoff.ilc, 512,
+						cycle -> checkRestartMasks(buffer, cycle,
+							restartBufferOpsThroughMask),
+						() -> restartedSamples.getAndIncrement() < 2 * ii,
+						cycle -> false);
+					if (restarted.outcome != Outcome.COMPLETE ||
+						restarted.cycles != result.cycles) {
+						throw new AssertionError("bad SPLOOPW restart at " +
+							start.getMinAddress());
+					}
 				}
 				else {
 					int first = buffer.kind() == C6000LoopBuffer.Kind.SPLOOP ? 2 :
@@ -111,6 +141,13 @@ public class C6000LoopModelTest extends GhidraScript {
 					int expected = Math.max(dynlen, ii) + (first - 1) * ii;
 					AtomicInteger firstFetch = new AtomicInteger(-1);
 					ReplayResult result = buffer.replayCountedDetailed(2, 512, cycle -> {
+						for (C6000LoopBuffer.Operation op : cycle.operations) {
+							if (op.origin == C6000LoopBuffer.Origin.PROGRAM &&
+								(unitBit(op.instruction.getMnemonicString()) &
+									buffer.sourceMaskAt(op.sourceCycle)) != 0) {
+								maskedSourceOps.incrementAndGet();
+							}
+						}
 						if (cycle.lbc != cycle.number % ii || cycle.ilcAfter > cycle.ilcBefore) {
 							throw new AssertionError("bad ILC/LBC at " + start.getMinAddress());
 						}
@@ -206,6 +243,13 @@ public class C6000LoopModelTest extends GhidraScript {
 						throw new AssertionError("bad interrupt result at " +
 							start.getMinAddress());
 					}
+					C6000LoopBuffer.InterruptHandoff countedHandoff =
+						buffer.interruptHandoff(drained);
+					if (!countedHandoff.returnPacket.equals(start.getMinAddress()) ||
+						countedHandoff.ilc != drained.remainingIlc ||
+						!countedHandoff.savedSplx) {
+						throw new AssertionError("bad counted interrupt handoff");
+					}
 					long lowIlc = (dynlen + ii - 1) / ii > 1 ? 1 : 0;
 					ReplayResult tooShortToInterrupt = buffer.replayCountedDetailed(
 						lowIlc, 512, cycle -> {
@@ -216,6 +260,31 @@ public class C6000LoopModelTest extends GhidraScript {
 						}, cycle -> true);
 					if (tooShortToInterrupt.outcome != Outcome.COMPLETE) {
 						throw new AssertionError("short loop was interrupted");
+					}
+					ReplayResult restarted = buffer.replayCountedRestart(2, 512,
+						cycle -> {
+							checkRestartMasks(buffer, cycle,
+								restartBufferOpsThroughMask);
+							if (cycle.number == 0 && cycle.ilcBefore != 1) {
+								throw new AssertionError("restart did not initially decrement ILC");
+							}
+						}, cycle -> false);
+					int restartCycles = ii + Math.max(ii, dynlen);
+					if (restarted.outcome != Outcome.COMPLETE ||
+						restarted.cycles != restartCycles) {
+						throw new AssertionError("bad counted restart at " +
+							start.getMinAddress() + ": " + restarted.cycles +
+							" != " + restartCycles);
+					}
+					if (currentProgram.getName().equals("dsp.stage2.payload.bin") &&
+						start.getMinAddress().getOffset() == 0xc0003362L) {
+						ReplayResult resumed = buffer.replayCountedRestart(
+							countedHandoff.ilc, 1024, cycle -> {}, cycle -> false);
+						if (resumed.outcome != Outcome.COMPLETE ||
+							resumed.cycles != 513 || resumed.firstPostBodyCycle != 506 ||
+							resumed.remainingIlc != 0) {
+							throw new AssertionError("bad stage 2 interrupt return");
+						}
 					}
 				}
 				replayed++;
@@ -233,7 +302,23 @@ public class C6000LoopModelTest extends GhidraScript {
 		println("C6000_MODEL parsed=" + parsed + " replayed=" + replayed +
 			" skipped=" + skipped + " unsupported=" + unsupported +
 			" maskOverlays=" + maskedOverlays.get() +
-			" whileInterruptExits=" + whileInterruptExits);
+			" whileInterruptExits=" + whileInterruptExits +
+			" maskedSourceOps=" + maskedSourceOps.get() +
+			" restartBufferOpsThroughMask=" +
+			restartBufferOpsThroughMask.get());
+	}
+
+	private static void checkRestartMasks(C6000LoopBuffer buffer,
+			C6000LoopBuffer.Cycle cycle, AtomicInteger bufferOpsThroughMask) {
+		for (C6000LoopBuffer.Operation op : cycle.operations) {
+			int mask = buffer.sourceMaskAt(op.origin == C6000LoopBuffer.Origin.PROGRAM ?
+				op.sourceCycle : cycle.number);
+			if ((unitBit(op.instruction.getMnemonicString()) & mask) == 0) continue;
+			if (op.origin == C6000LoopBuffer.Origin.PROGRAM) {
+				throw new AssertionError("restart executed SPMASKed program operation");
+			}
+			bufferOpsThroughMask.incrementAndGet();
+		}
 	}
 
 	private static int unitBit(String mnemonic) {
