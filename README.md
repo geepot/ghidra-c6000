@@ -44,15 +44,15 @@ C6000CorpusTest.java stage1   # or stage2
 
 | Corpus (first 12,288 / 131,072 bytes) | Bytes decoded | Instructions | Compact 16-bit | Headers | Unimplemented p-code | Undecoded slots | Byte coverage |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| CDJ-2000NXS stage 1, base `0x11801da0` | 11,328 | 3,179 | 694 | 162 | 4 (<1%) | 240 | **92.2%** |
+| CDJ-2000NXS stage 1, base `0x11801da0` | 11,328 | 3,179 | 694 | 162 | 2 (<1%) | 240 | **92.2%** |
 | CDJ-2000NXS stage 2, base `0xC0000000` | 131,052 | 36,600 | 7,674 | 2,214 | 11 (<1%) | 5 | **99.98%** |
 
 Full-payload linear sweeps also completed with no zero-width p-code operands:
 
 | Corpus | Payload bytes | Bytes decoded | Instructions | Unimplemented p-code | Undecoded slots | Byte coverage |
 |---|---:|---:|---:|---:|---:|---:|
-| Stage 1 | 55,120 | 40,348 | 10,457 | 854 (8%) | 3,693 | **73.2%** |
-| Stage 2 | 361,248 | 335,972 | 91,483 | 32 (<1%) | 6,319 | **93.0%** |
+| Stage 1 | 55,120 | 40,328 | 10,452 | 844 (8%) | 3,698 | **73.2%** |
+| Stage 2 | 361,248 | 335,972 | 91,483 | 27 (<1%) | 6,319 | **93.0%** |
 
 The sweeps found 24 paired software loops and 43 buffer masks in stage 1,
 and 224 paired loops and 470 buffer masks in stage 2. No detected loop
@@ -100,6 +100,11 @@ with the BR header bit set. The processor
 spec declares a synthetic `PC` for Ghidra's emulator; architectural `PCE1`
 remains a separate control register. P-code updates `CSR.SAT` as an instruction
 effect; cycle-accurate placement of that write belongs to a pipeline model.
+
+`tests/fixtures/long-arith.py <image.bin> [be]` and
+`C6000LongArithmeticTest.java` check both endian variants of 32-bit `NORM`
+and `SUBU`. The seven cases include the 40-bit register-pair forms, sign
+boundaries, and a negative 40-bit subtraction result.
 
 The generated 32-bit decode table can be rebuilt from the public TI PDF:
 run `pdftotext -layout sprufe8b.pdf /tmp/c6000ref/sprufe8b.txt`, then

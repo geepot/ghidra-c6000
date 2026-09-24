@@ -20,6 +20,40 @@ macro c6000_sem_add(a, b, d) { d = a + b; }
 macro c6000_sem_addu(a, b, d) { d = a + b; }
 # SEM: SUB
 macro c6000_sem_sub(a, b, d) { d = a - b; }
+# SEM: SUBU
+macro c6000_sem_subu(a, b, d) {
+  local lhs:8 = zext(a);
+  local rhs:8 = zext(b);
+  # The long register stores a zero-extended signed 40-bit result.
+  d = (lhs - rhs) & 0xffffffffff;
+}
+# SEM: NORM
+macro c6000_sem_norm32(a, d) {
+  # Count redundant sign bits, excluding the sign bit itself.
+  if (a s< 0) goto <negative>;
+  d = lzcount(a) - 1;
+  goto <done>;
+  <negative> d = lzcount(~a) - 1;
+  <done>
+}
+macro c6000_sem_norm40(a, d) {
+  # A C6000 long occupies a register pair but is 40 bits wide.  Mask the
+  # unused upper 24 bits before counting.  Count the high eight and low 32
+  # bits separately: some p-code interpreters cap lzcount at its 32-bit
+  # result width even when the input has 64 bits.
+  local bits:8 = a & 0xffffffffff;
+  if ((bits & 0x8000000000) == 0) goto <positive>;
+  bits = (~bits) & 0xffffffffff;
+  <positive>
+  local upper:8 = bits >> 32;
+  local hi:4 = upper:4;
+  local lo:4 = bits:4;
+  if (hi == 0) goto <low>;
+  d = lzcount(hi) - 25;
+  goto <done>;
+  <low> d = lzcount(lo) + 7;
+  <done>
+}
 
 # Compact saturating arithmetic (SPRUFE8B Figures D-4, E-5, F-22, F-25,
 # F-26).  P-code records the final CSR.SAT value; the CPU's one-cycle-later

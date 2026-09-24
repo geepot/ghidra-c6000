@@ -31,6 +31,9 @@ First public release.
   run-time library built with the TI C6000 code generation tools.
 
 ### Fixed
+* `NORM` now distinguishes 32-bit and 40-bit sources, counts the 40-bit sign
+  width correctly, and `SUBU` writes its signed 40-bit result to a register
+  pair. Both have executable p-code instead of placeholders.
 * Compact fetch-packet headers now decode as `CPKT` instead of selecting a
   conflicting 32-bit opcode before predicate validation.
 * Signed immediates and `ADDKPC` operands use their documented fields; .L-unit

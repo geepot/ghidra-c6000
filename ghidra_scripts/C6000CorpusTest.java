@@ -96,6 +96,7 @@ public class C6000CorpusTest extends GhidraScript {
 		AddressSet corpus = new AddressSet(start, end);
 
 		Map<String, Integer> mnemonics = new TreeMap<>();
+		Map<String, Integer> placeholderMnemonics = new TreeMap<>();
 		int instructions = 0;
 		int bytes = 0;
 		int placeholders = 0;
@@ -168,7 +169,10 @@ public class C6000CorpusTest extends GhidraScript {
 					hasZeroWidth |= input.getSize() == 0;
 				}
 			}
-			if (hasPlaceholder) placeholders++;
+			if (hasPlaceholder) {
+				placeholders++;
+				placeholderMnemonics.merge(mnemonic, 1, Integer::sum);
+			}
 			if (hasLoopCommand) loopCommands++;
 			if (hasZeroWidth) invalidPcode++;
 			if (mnemonic.equals("CPKT")) {
@@ -206,6 +210,7 @@ public class C6000CorpusTest extends GhidraScript {
 				" decoded instructions contain zero-width p-code operands");
 		}
 		println("C6000_PCODE_OK image=" + label);
+		println("C6000_PLACEHOLDERS image=" + label + " " + placeholderMnemonics);
 		if (instructions > 0) {
 			println("C6000_MNEMONICS image=" + label + " " + mnemonics);
 		}

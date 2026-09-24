@@ -225,6 +225,11 @@ def main():
                 ops = ["Src1", "Src2", "DstPair"]
             if mnem in {"MPY32U", "MPY32SU", "MPY32US"}:
                 ops = ["Src1", "Src2", "DstPair"]
+            if mnem == "SUBU":
+                # Both opfield variants produce a signed 40-bit result in a
+                # long register pair, despite the primary syntax omitting
+                # the explicit dst_h:dst_l spelling.
+                ops = ["Src1", "Src2", "DstPair"]
             if mnem == "MPY32" and any(f["lo"] == 9 and f["const"] == "1" for f in fields):
                 ops = ["Src1", "Src2", "DstPair"]
             if mnem in {"INTDP", "INTDPU", "SPDP"}:
@@ -263,6 +268,9 @@ def main():
             base_ops = ops
             for v, mem_mode in variants:
                 ops = list(base_ops) if base_ops is not None else None
+                if mnem == "NORM" and v == "1100000":
+                    # This opfield is the 64-bit src2_h:src2_l form.
+                    ops = ["Src2Pair", "Dst"]
                 if mnem in {"MPY", "MPYSU"} and v in {"11000", "11110"}:
                     ops[0] = "SCst5"
                 if mnem == "ROTL" and v == "11110":
@@ -348,6 +356,8 @@ def main():
                             macro += "_64" if ops[-1] == "DstPair" else "_32"
                         if mnem in {"CLR", "EXT", "EXTU", "SET"} and "src1" in names:
                             macro += "_r"
+                        if mnem == "NORM":
+                            macro += "40" if v == "1100000" else "32"
                         if mnem == "B" and ops and ops[0] != "BranchTarget":
                             macro = "c6000_sem_b_ind"
                         sem = "%s(%s);" % (macro, args)
