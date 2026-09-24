@@ -90,10 +90,6 @@ public final class C6000PacketContext {
 			return 0;
 		}
 		Memory memory = program.getMemory();
-		Register ctx = program.getProgramContext().getBaseContextRegister();
-		if (ctx == null) {
-			return 0;
-		}
 
 		int packets = 0;
 		for (MemoryBlock block : memory.getBlocks()) {
@@ -128,28 +124,47 @@ public final class C6000PacketContext {
 				for (int i = 0; i < 7; i++) {
 					Address word = cursor.add(i * 4);
 					boolean compact = ((layout >>> i) & 1) == 1;
-					setSlot(program, ctx, word, compact, rs, dsz, prot, br, sat);
+					setSlot(program, word, compact, rs, dsz, prot, br, sat);
 					if (compact) {
-						setSlot(program, ctx, word.add(2), true, rs, dsz, prot, br, sat);
+						setSlot(program, word.add(2), true, rs, dsz, prot, br, sat);
 					}
 					else {
 						// make sure a stale 16-bit marking cannot survive
-						setSlot(program, ctx, word.add(2), false, 0, 0, 0, 0, 0);
+						setSlot(program, word.add(2), false, 0, 0, 0, 0, 0);
 					}
 				}
-				// the header word itself is a 32-bit word, not an instruction slot
-				setSlot(program, ctx, cursor.add(28), false, 0, 0, 0, 0, 0);
+				// The header word owns no instruction slot, so it is left
+				// unmarked: it is the only 32-bit word in a compact packet
+				// that is not part of the compact decode.
 				cursor = cursor.add(FETCH_PACKET_SIZE);
 			}
 		}
 		return packets;
 	}
 
-	private static void setSlot(Program program, Register ctx, Address at,
+	/**
+	 * Write one context slot.  The fields are written individually rather than
+	 * as one packed value on the base context register: Ghidra treats a write
+	 * through a context <em>field</em> register as a disassembly-context change,
+	 * which is what the SLEIGH matcher consults.
+	 */
+	private static void setSlot(Program program, Address at,
 			boolean is16, int rs, int dsz, int prot, int br, int sat) throws Exception {
-		int value = (is16 ? 1 : 0) | (rs << 1) | (dsz << 2) | (sat << 5)
-			| (br << 6) | (prot << 7);
-		program.getProgramContext().setValue(ctx, at, at,
+		setField(program, "c_is16", at, is16 ? 1 : 0);
+		setField(program, "c_rs", at, rs);
+		setField(program, "c_dsz", at, dsz);
+		setField(program, "c_prot", at, prot);
+		setField(program, "c_br", at, br);
+		setField(program, "c_sat", at, sat);
+	}
+
+	private static void setField(Program program, String name, Address at, int value)
+			throws Exception {
+		Register field = program.getRegister(name);
+		if (field == null) {
+			throw new IllegalStateException("C6000 language has no context field " + name);
+		}
+		program.getProgramContext().setValue(field, at, at,
 			BigInteger.valueOf(value));
 	}
 }

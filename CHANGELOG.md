@@ -11,7 +11,12 @@ First public release.
   opcode tables: every documented opcode matches, with the correct mnemonic,
   functional-unit suffix, operand list and instruction length.
 * Compact 16-bit instruction decode driven by the fetch-packet header word,
-  including correct lengths and packet boundaries.
+  covering SPRUFE8B appendices C.4, D.4, E.4, F.4, G.3 and H.4 (all but the
+  undocumented figure D-6), with correct lengths and packet boundaries.
+* The context fields are declared `noflow`. Without that attribute a compact
+  slot reached by fall-through inherits the preceding instruction's decode
+  parameters and is decoded as a 32-bit instruction; this was the single
+  hardest bug in the port and is recorded here deliberately.
 * Modelled p-code semantics for the integer ALU, immediate construction, loads
   and stores, branches and calls; every other instruction lifts to a named
   `c6000_unimpl_<mnemonic>` userop rather than to silently wrong data flow.

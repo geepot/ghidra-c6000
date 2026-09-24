@@ -106,7 +106,11 @@ define pcodeop c6000_unimpl_spmaskr;
 # being silently swallowed.
 # ---------------------------------------------------------------------------
 
-:UNKNOWN32 is i0 & c_is16=0 { c6000_unimpl_unknown(); }
+# No context constraint: the compact header word carries no decode context of
+# its own, so a context-guarded fallback would leave it undecoded.  More
+# specific constructors always win the tree, so this only fires on words that
+# nothing else claims.
+:UNKNOWN32 is i0 { c6000_unimpl_unknown(); }
 
 # Same fallback for a 16-bit compact slot that matches no implemented compact
 # opcode.  Two bytes, so the fetch-packet cadence is preserved.
@@ -124,4 +128,4 @@ define pcodeop c6000_unimpl_spmaskr;
 # the packet analyzer has already folded into the context register.
 # ---------------------------------------------------------------------------
 
-:CPKT hdr_layout, hdr_exp, hdr_pbits is i31=1 & i30=1 & i29=1 & i28=0 & c_is16=0 & hdr_layout & hdr_exp & hdr_pbits { }
+:CPKT is i31=1 & i30=1 & i29=1 & i28=0 & i0 { }

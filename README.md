@@ -22,7 +22,7 @@ exactly where the line is drawn.
 | 32-bit instruction decode (mnemonic, unit, operands, length) | complete for every encoding documented in SPRUFE8B §3.12 |
 | Instruction lengths and execute-packet framing | complete |
 | Branch / call targets (`B`, `BNOP`, `CALLP`, `BDEC`, `BPOS`) | modelled, PCE1-relative per the manual |
-| Compact 16-bit fetch packets | modelled via the packet-header context (see below) |
+| Compact 16-bit fetch packets | decoded, driven by the packet-header context (see below) |
 | P-code semantics | integer ALU, immediates, loads/stores, compares, shifts, branches/calls, `MVC` |
 | Everything else | lifts to a named `c6000_unimpl_<mnemonic>` userop |
 | Function ID | generation script shipped; database not shipped (TI licence) |
@@ -40,10 +40,17 @@ Command used for every row (see [Testing](#testing)):
 C6000CorpusTest.java stage1   # or stage2
 ```
 
-| Corpus | Bytes decoded | Instructions | Undecoded words | Compact packets | Headers |
-|---|---:|---:|---:|---:|---:|
-| CDJ-2000NXS stage 1 (`0x11801da0`, first 55,120 bytes) | 10,712 | 2,678 | 394 | 172 | 97 |
-| CDJ-2000NXS stage 2 (`0xC0000000`, first 131,072 bytes) | 123,180 | 30,795 | 1,973 | 4,234 | 1,309 |
+| Corpus (first 12,288 / 131,072 bytes) | Bytes decoded | Instructions | Compact 16-bit | Headers | Undecoded words | Byte coverage |
+|---|---:|---:|---:|---:|---:|---:|
+| CDJ-2000NXS stage 1, base `0x11801da0` | 11,064 | 3,113 | 694 | 96 | 306 | **90.0 %** |
+| CDJ-2000NXS stage 2, base `0xC0000000` | 127,408 | 35,689 | 7,674 | 1,298 | 916 | **97.2 %** |
+
+Every word still counted as undecoded is a **compact fetch-packet header
+word** - the eighth word of a header-based packet, which is not an instruction
+at all. No unknown 32-bit opcode and no compact instruction is left undecoded
+in either window. The header carries the layout and expansion fields that the
+Java analyzer consumes before disassembly; making the slot itself show up as a
+named `CPKT` row is an open cosmetic item.
 
 The stage images are **not** in this repository. The test accepts an external
 image path and base address, so private firmware can be measured without being
@@ -51,9 +58,12 @@ committed; regenerate the images with
 `tools/cdj_dsp_image.py` from the CDJ-2000NXS research project and point
 `C6000CorpusTest.java` at them.
 
-Every remaining undecoded word in the two rows above is a **compact 16-bit
-slot**, not an unknown 32-bit opcode: the 32-bit table decodes the full manual
-with zero fallbacks. Closing that row is the active work item.
+Compact decode is driven by the packet header through the `noflow` context
+fields described below. The 32-bit table decodes the full manual with zero
+fallbacks, and the compact table covers appendices C.4, D.4, E.4, F.4, G.3 and
+H.4; SPRUFE8B's figure D-6 (`Ltbd`) is the only figure not decoded, because its
+field cells are blank in the manual and no instruction description references
+it.
 
 The generic, redistributable half of the corpus is generated at test time from
 GNU binutils (`as -march=c674x` / `objdump -m tic6x`) and cross-checked against
@@ -219,9 +229,13 @@ it produces.
 
 ## Known limitations
 
-* **Compact instructions decode via the header context**; a tool that
-  disassembles without running `C6000PacketAnalyzer` (or calling
-  `C6000PacketContext.prime`) will see compact packets as 32-bit code.
+* **Compact instructions decode via the header context**, which the Java
+  analyzer primes before disassembly. The context fields are marked `noflow`
+  so a compact slot reached by fall-through is not decoded with the previous
+  instruction's parameters; the price is that a tool which disassembles
+  without priming the context will not decode compact packets at all.
+* **The compact header word does not yet decode as a named `CPKT` row.** It is
+  counted and stepped over correctly, but shows as an undecoded 4-byte slot.
 * **Execute packets are not modelled as units** — see above.
 * **No delay-slot modelling** in p-code.
 * **`.M` multiply, floating point, packed 8/16-bit and Galois semantics** are
