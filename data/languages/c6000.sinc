@@ -46,7 +46,7 @@ define register offset=0x1000 size=4
 #
 # SPRUFE8B sections 2.8, 2.9 and 2.10, with the MVC register addresses of
 # Table 3-27 (page 378).  These are exposed as 32-bit registers so that
-# MVC/MVCC/MVCDW can be lifted to real register moves.
+# the supported 32-bit MVC forms can be lifted to real register moves.
 # ---------------------------------------------------------------------------
 
 define register offset=0x2000 size=4
@@ -102,6 +102,7 @@ define token insn32 (32)
 
   # five-bit register fields, A-side view, and B-side view of the same bits
   ra_dst=(23,27)  rb_dst=(23,27)
+  pair_index=(24,27)
   ra_src1=(13,17) rb_src1=(13,17)
   ra_src2=(18,22) rb_src2=(18,22)
   ra_src=(18,22)  rb_src=(18,22)
@@ -117,8 +118,10 @@ define token insn32 (32)
   xbit=(12,12)  ybit=(7,7)  hbit=(6,6)  nbit=(12,12)
   scbit=(23,23) nabit=(5,5)  rbit=(8,8)
   ucst5=(13,17) scst5=(13,17) cst5=(13,17)
+  cst5_hi=(18,22) crf_dst=(23,27)
   csta=(13,17)  cstb=(8,12)
-  cst16=(7,22)  cst21=(7,27)  ucst15=(8,22)
+  cst16=(7,22)  cst21=(7,27) signed  ucst15=(8,22)
+  akpc_disp=(16,22) signed  akpc_nop=(13,15)
   mode=(9,12)   offr=(13,17)  off15=(8,22)  off4=(5,8)
   fstg=(13,15)  fcyc=(11,12)
   bnopd=(16,27) signed  bnopc=(13,15)
@@ -144,6 +147,7 @@ define token insn16 (16)
   q_r3b=(7,9)
   q_r2=(8,9)
   q_r2b=(5,6)
+  q_pair710=(7,10)
   q_uc2=(13,13)
   q_uc4=(13,15)
   q_off5=(7,11)
@@ -194,7 +198,7 @@ attach variables [ rb_dst rb_src1 rb_src2 rb_src rb_base rb_off ]
 
 # MVC control-register select (SPRUFE8B Table 3-27).  `_` marks encodings
 # that are reserved or that select no single register.
-attach variables [ crf ]
+attach variables [ crf crf_dst ]
   [ AMR CSR IFR ICR IER ISTP IRP NRP PCE1 _ TSCL TSCH _ ILC RILC REP
     PCE1 DNUM FADCR FAUCR FMCR SSR GPLYA GPLYB GFPGFR DIER TSR ITSR
     NTSR ECR _ IERR ];
@@ -268,35 +272,21 @@ attach variables [ cq_ret ]
 # Predication - SPRUFE8B Table 3-9
 # ---------------------------------------------------------------------------
 
-Cond: ""      is z=0 & creg=0 { }   # unconditional: creg=0, z=0 (SPRUFE8B Table 3-9)
-Cond: "[!B0]" is z=1 & creg=1 { }
-Cond: "[!B1]" is z=1 & creg=2 { }
-Cond: "[!B2]" is z=1 & creg=3 { }
-Cond: "[!A1]" is z=1 & creg=4 { }
-Cond: "[!A2]" is z=1 & creg=5 { }
-Cond: "[!A0]" is z=1 & creg=6 { }
-Cond: "[B0]"  is z=0 & creg=1 { }
-Cond: "[B1]"  is z=0 & creg=2 { }
-Cond: "[B2]"  is z=0 & creg=3 { }
-Cond: "[A1]"  is z=0 & creg=4 { }
-Cond: "[A2]"  is z=0 & creg=5 { }
-Cond: "[A0]"  is z=0 & creg=6 { }
+Cond: ""      is z=0 & creg=0 { export 1:1; }   # unconditional
+Cond: "[!B0]" is z=1 & creg=1 { local p:1 = (B0 == 0); export p; }
+Cond: "[!B1]" is z=1 & creg=2 { local p:1 = (B1 == 0); export p; }
+Cond: "[!B2]" is z=1 & creg=3 { local p:1 = (B2 == 0); export p; }
+Cond: "[!A1]" is z=1 & creg=4 { local p:1 = (A1 == 0); export p; }
+Cond: "[!A2]" is z=1 & creg=5 { local p:1 = (A2 == 0); export p; }
+Cond: "[!A0]" is z=1 & creg=6 { local p:1 = (A0 == 0); export p; }
+Cond: "[B0]"  is z=0 & creg=1 { local p:1 = (B0 != 0); export p; }
+Cond: "[B1]"  is z=0 & creg=2 { local p:1 = (B1 != 0); export p; }
+Cond: "[B2]"  is z=0 & creg=3 { local p:1 = (B2 != 0); export p; }
+Cond: "[A1]"  is z=0 & creg=4 { local p:1 = (A1 != 0); export p; }
+Cond: "[A2]"  is z=0 & creg=5 { local p:1 = (A2 != 0); export p; }
+Cond: "[A0]"  is z=0 & creg=6 { local p:1 = (A0 != 0); export p; }
 
 # Boolean pcode value of the predicate, for the semantic templates.
-
-# ---------------------------------------------------------------------------
-# Functional-unit suffixes; the side comes from the s bit for .L/.S/.M and
-# from the y bit for .D (SPRUFE8B Table C-2).
-# ---------------------------------------------------------------------------
-
-UnitL: ".L1" is i1=0 { }
-UnitL: ".L2" is i1=1 { }
-UnitS: ".S1" is i1=0 { }
-UnitS: ".S2" is i1=1 { }
-UnitM: ".M1" is i1=0 { }
-UnitM: ".M2" is i1=1 { }
-UnitD: ".D1" is i7=0 { }
-UnitD: ".D2" is i7=1 { }
 
 # ---------------------------------------------------------------------------
 # Register operands
@@ -311,6 +301,11 @@ Dst: rb_dst is rb_dst & i1=1 { export rb_dst; }
 Src: ra_src is ra_src & i1=0 { export ra_src; }
 Src: rb_src is rb_src & i1=1 { export rb_src; }
 
+# .D stores encode their data source in bits 27..23, whereas baseR occupies
+# bits 22..18.  Keep this separate from the general Src table above.
+StoreSrc: ra_dst is ra_dst & i1=0 { export ra_dst; }
+StoreSrc: rb_dst is rb_dst & i1=1 { export rb_dst; }
+
 # src2 is read from the opposite register file when the cross-path bit x is
 # set (SPRUFE8B section 2.4).
 Src2: ra_src2 is ra_src2 & i1=0 & i12=0 { export ra_src2; }
@@ -319,21 +314,22 @@ Src2: rb_src2 is rb_src2 & i1=1 & i12=0 { export rb_src2; }
 Src2: ra_src2 is ra_src2 & i1=1 & i12=1 { export ra_src2; }
 
 CtlReg: crf is crf { export crf; }
+CtlDst: crf_dst is crf_dst { export crf_dst; }
 
 # ---------------------------------------------------------------------------
 # Immediates
 # ---------------------------------------------------------------------------
 
-UCst5:  ucst5  is ucst5  { export ucst5; }
-SCst5:  scst5  is scst5  { export scst5; }
-Cst5:   cst5   is cst5   { export cst5; }
-UCst15: ucst15 is ucst15 { export ucst15; }
-Csta:   csta   is csta   { export csta; }
-Cstb:   cstb   is cstb   { export cstb; }
-Cst16:  cst16  is cst16  { export cst16; }
-Cst21:  cst21  is cst21  { export cst21; }
-Hbit:   hbit   is hbit   { export hbit; }
-Nbit:   nbit   is nbit   { export nbit; }
+UCst5:  ucst5  is ucst5  { export *[const]:4 ucst5; }
+Cst5:   cst5   is cst5   { export *[const]:4 cst5; }
+Cst5Hi: cst5_hi is cst5_hi { export *[const]:4 cst5_hi; }
+UCst15: ucst15 is ucst15 { export *[const]:4 ucst15; }
+Csta:   csta   is csta   { export *[const]:4 csta; }
+Cstb:   cstb   is cstb   { export *[const]:4 cstb; }
+Cst16:  cst16  is cst16  { export *[const]:4 cst16; }
+AKPCDisp: akpc_disp is akpc_disp { export *[const]:4 akpc_disp; }
+AKPCNop: akpc_nop is akpc_nop { export *[const]:4 akpc_nop; }
+Nbit:   nbit   is nbit   { export *[const]:4 nbit; }
 
 # Branch displacement: signed 21-bit, scaled by 4 and added to the address of
 # the instruction after the delay slots (SPRUFE8B, B/CALLP instruction
@@ -342,11 +338,11 @@ Nbit:   nbit   is nbit   { export nbit; }
 # the address of the first instruction of the fetch packet that contains the
 # branch (SPRUFE8B B/CALLP execution blocks).
 BranchTarget: reloc is cst21
-  [ reloc = (inst_start & 0xffffffe0) + (cst21 << 2); ] { export reloc; }
+  [ reloc = (inst_start & 0xffffffe0) + (cst21 << 2); ] { export *[const]:4 reloc; }
 
 # BNOP displacement target (SPRUFE8B figure F-10, BNOP execution block).
 BnopTgt: reloc is bnopd
-  [ reloc = (inst_start & 0xffffffe0) + (bnopd * 4); ] { export reloc; }
+  [ reloc = (inst_start & 0xffffffe0) + (bnopd * 4); ] { export *[const]:4 reloc; }
 
 # ---------------------------------------------------------------------------
 # .D unit addressing modes - SPRUFE8B Table C-3 / section 3.9.3
@@ -363,38 +359,10 @@ BaseReg: rb_base is rb_base & i7=1 { export rb_base; }
 OffReg: ra_off is ra_off & i7=0 { export ra_off; }
 OffReg: rb_off is rb_off & i7=1 { export rb_off; }
 
-MemReg: "^*-" ^ BaseReg ^ "[" ^ UCst5 ^ "]"  is mode=0x0 & ucst5 & BaseReg & UCst5
-  { local a:4 = BaseReg - (ucst5 * 1); export a; }
-MemReg: "^*+" ^ BaseReg ^ "[" ^ UCst5 ^ "]"  is mode=0x1 & ucst5 & BaseReg & UCst5
-  { local a:4 = BaseReg + (ucst5 * 1); export a; }
-MemReg: "^*-" ^ BaseReg ^ "[" ^ OffReg ^ "]" is mode=0x4 & offr & BaseReg & OffReg
-  { local a:4 = BaseReg - OffReg; export a; }
-MemReg: "^*+" ^ BaseReg ^ "[" ^ OffReg ^ "]" is mode=0x5 & offr & BaseReg & OffReg
-  { local a:4 = BaseReg + OffReg; export a; }
-MemReg: "^*--" ^ BaseReg ^ "[" ^ UCst5 ^ "]" is mode=0x8 & ucst5 & BaseReg & UCst5
-  { local a:4 = BaseReg - (ucst5 * 1); export a; }
-MemReg: "^*++" ^ BaseReg ^ "[" ^ UCst5 ^ "]" is mode=0x9 & ucst5 & BaseReg & UCst5
-  { local a:4 = BaseReg + (ucst5 * 1); export a; }
-MemReg: "^*" ^ BaseReg ^ "--[" ^ UCst5 ^ "]" is mode=0xa & ucst5 & BaseReg & UCst5
-  { local a:4 = BaseReg - (ucst5 * 1); export a; }
-MemReg: "^*" ^ BaseReg ^ "++[" ^ UCst5 ^ "]" is mode=0xb & ucst5 & BaseReg & UCst5
-  { local a:4 = BaseReg + (ucst5 * 1); export a; }
-MemReg: "^*--" ^ BaseReg ^ "[" ^ OffReg ^ "]" is mode=0xc & offr & BaseReg & OffReg
-  { local a:4 = BaseReg - OffReg; export a; }
-MemReg: "^*++" ^ BaseReg ^ "[" ^ OffReg ^ "]" is mode=0xd & offr & BaseReg & OffReg
-  { local a:4 = BaseReg + OffReg; export a; }
-MemReg: "^*" ^ BaseReg ^ "--[" ^ OffReg ^ "]" is mode=0xe & offr & BaseReg & OffReg
-  { local a:4 = BaseReg - OffReg; export a; }
-MemReg: "^*" ^ BaseReg ^ "++[" ^ OffReg ^ "]" is mode=0xf & offr & BaseReg & OffReg
-  { local a:4 = BaseReg + OffReg; export a; }
-
-# Long-immediate forms (SPRUFE8B Figures C-3 and C-5): the base is implicit,
-# B14 on .D1 and B15 on .D2, and the 15-bit offset is scaled by the access
-# size for the scaled variants.
-MemLong: "^*+B14[" ^ UCst15 ^ "]" is i7=0 & ucst15 & UCst15
-  { local a:4 = B14 + ucst15; export a; }
-MemLong: "^*+B15[" ^ UCst15 ^ "]" is i7=1 & ucst15 & UCst15
-  { local a:4 = B15 + ucst15; export a; }
+# Size-specific addressing, including pre/post updates, is generated from
+# SPRUFE8B section 3.9.3 and Table C-3. Long forms use B14/B15 selected by
+# y, while short forms select the .D unit and base register file by y.
+@include "c6000_memory.sinc"
 
 # ---------------------------------------------------------------------------
 # Unimplemented-operation placeholders and instruction semantics

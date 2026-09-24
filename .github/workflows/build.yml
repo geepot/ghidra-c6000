@@ -84,9 +84,11 @@ jobs:
             -loader BinaryLoader -loader-baseAddr 0x11801da0 \
             -processor C6000:LE:32:default -cspec default -noanalysis \
             -scriptPath ghidra_scripts -postScript C6000CorpusTest.java image \
-            "$GHIDRA_WORK/smoke.bin" 0x11801da0 0 64 -overwrite \
+            "$GHIDRA_WORK/smoke.bin" 0x11801da0 0 48 -overwrite \
             2>&1 | tee "$GHIDRA_WORK/smoke.log"
           grep -q "C6000_COVERAGE" "$GHIDRA_WORK/smoke.log"
+          grep -q "C6000_PCODE_OK" "$GHIDRA_WORK/smoke.log"
+          grep -q "undecoded=0" "$GHIDRA_WORK/smoke.log"
 
       - uses: actions/upload-artifact@v4
         with:

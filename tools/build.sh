@@ -78,10 +78,10 @@ DIST="$(ls -t "$ROOT"/dist/*_C6000.zip 2>/dev/null | head -1)"
 
 note "verifying zip contents"
 for sla in c6000_le c6000_be; do
-  unzip -l "$DIST" | grep -q "data/languages/$sla\.sla" || \
+  unzip -t "$DIST" "C6000/data/languages/$sla.sla" >/dev/null || \
     die "built zip is missing data/languages/$sla.sla"
 done
-unzip -l "$DIST" | grep -q 'data/languages/c6000\.opinion' || \
+unzip -t "$DIST" 'C6000/data/languages/c6000.opinion' >/dev/null || \
   die "built zip is missing the loader opinion"
 printf '  %s\n' "$DIST"
 

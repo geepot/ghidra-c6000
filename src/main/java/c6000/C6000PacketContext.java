@@ -111,6 +111,15 @@ public final class C6000PacketContext {
 				}
 				int header = memory.getInt(hdrAddr);
 				if ((header >>> 28) != 0xE) {
+					// A noflow context field with no explicit value does not
+					// reliably match a SLEIGH c_is16=0 constructor. Prime
+					// ordinary words as well as compact ones.
+					for (int i = 0; i < 8; i++) {
+						Address word = cursor.add(i * 4);
+						if (word.compareTo(start) >= 0 && word.compareTo(end) <= 0) {
+							setField(program, "c_is16", word, 0);
+						}
+					}
 					cursor = cursor.add(FETCH_PACKET_SIZE);
 					continue;
 				}
@@ -133,9 +142,8 @@ public final class C6000PacketContext {
 						setSlot(program, word.add(2), false, 0, 0, 0, 0, 0);
 					}
 				}
-				// The header word owns no instruction slot, so it is left
-				// unmarked: it is the only 32-bit word in a compact packet
-				// that is not part of the compact decode.
+				// The header is a 32-bit CPKT instruction, not a compact slot.
+				setField(program, "c_is16", hdrAddr, 0);
 				cursor = cursor.add(FETCH_PACKET_SIZE);
 			}
 		}
@@ -164,7 +172,14 @@ public final class C6000PacketContext {
 		if (field == null) {
 			throw new IllegalStateException("C6000 language has no context field " + name);
 		}
+		BigInteger wanted = BigInteger.valueOf(value);
+		// A corpus script or analyzer may prime an already disassembled image.
+		// Ghidra rejects context writes inside instructions, even if the value
+		// is unchanged, so make repeated priming safe.
+		if (wanted.equals(program.getProgramContext().getValue(field, at, false))) {
+			return;
+		}
 		program.getProgramContext().setValue(field, at, at,
-			BigInteger.valueOf(value));
+			wanted);
 	}
 }

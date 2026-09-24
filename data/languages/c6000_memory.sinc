@@ -1,0 +1,220 @@
+# GENERATED FILE - tools/gen_memory.py; edit the generator, not this file.
+# .D-unit addressing modes and scaled offsets (SPRUFE8B section 3.9.3).
+
+BaseLong: "B14" is i7=0 { export B14; }
+BaseLong: "B15" is i7=1 { export B15; }
+
+DstPair: "A1:A0" is pair_index=0 & i23=0 & i1=0 { export A0; }
+StoreSrcPair: "A1:A0" is pair_index=0 & i23=0 & i1=0 { export A0; }
+DstPairN: "A1:A0" is pair_index=0 & i1=0 { export A0; }
+StoreSrcPairN: "A1:A0" is pair_index=0 & i1=0 { export A0; }
+DstPair: "A3:A2" is pair_index=1 & i23=0 & i1=0 { export A2; }
+StoreSrcPair: "A3:A2" is pair_index=1 & i23=0 & i1=0 { export A2; }
+DstPairN: "A3:A2" is pair_index=1 & i1=0 { export A2; }
+StoreSrcPairN: "A3:A2" is pair_index=1 & i1=0 { export A2; }
+DstPair: "A5:A4" is pair_index=2 & i23=0 & i1=0 { export A4; }
+StoreSrcPair: "A5:A4" is pair_index=2 & i23=0 & i1=0 { export A4; }
+DstPairN: "A5:A4" is pair_index=2 & i1=0 { export A4; }
+StoreSrcPairN: "A5:A4" is pair_index=2 & i1=0 { export A4; }
+DstPair: "A7:A6" is pair_index=3 & i23=0 & i1=0 { export A6; }
+StoreSrcPair: "A7:A6" is pair_index=3 & i23=0 & i1=0 { export A6; }
+DstPairN: "A7:A6" is pair_index=3 & i1=0 { export A6; }
+StoreSrcPairN: "A7:A6" is pair_index=3 & i1=0 { export A6; }
+DstPair: "A9:A8" is pair_index=4 & i23=0 & i1=0 { export A8; }
+StoreSrcPair: "A9:A8" is pair_index=4 & i23=0 & i1=0 { export A8; }
+DstPairN: "A9:A8" is pair_index=4 & i1=0 { export A8; }
+StoreSrcPairN: "A9:A8" is pair_index=4 & i1=0 { export A8; }
+DstPair: "A11:A10" is pair_index=5 & i23=0 & i1=0 { export A10; }
+StoreSrcPair: "A11:A10" is pair_index=5 & i23=0 & i1=0 { export A10; }
+DstPairN: "A11:A10" is pair_index=5 & i1=0 { export A10; }
+StoreSrcPairN: "A11:A10" is pair_index=5 & i1=0 { export A10; }
+DstPair: "A13:A12" is pair_index=6 & i23=0 & i1=0 { export A12; }
+StoreSrcPair: "A13:A12" is pair_index=6 & i23=0 & i1=0 { export A12; }
+DstPairN: "A13:A12" is pair_index=6 & i1=0 { export A12; }
+StoreSrcPairN: "A13:A12" is pair_index=6 & i1=0 { export A12; }
+DstPair: "A15:A14" is pair_index=7 & i23=0 & i1=0 { export A14; }
+StoreSrcPair: "A15:A14" is pair_index=7 & i23=0 & i1=0 { export A14; }
+DstPairN: "A15:A14" is pair_index=7 & i1=0 { export A14; }
+StoreSrcPairN: "A15:A14" is pair_index=7 & i1=0 { export A14; }
+DstPair: "A17:A16" is pair_index=8 & i23=0 & i1=0 { export A16; }
+StoreSrcPair: "A17:A16" is pair_index=8 & i23=0 & i1=0 { export A16; }
+DstPairN: "A17:A16" is pair_index=8 & i1=0 { export A16; }
+StoreSrcPairN: "A17:A16" is pair_index=8 & i1=0 { export A16; }
+DstPair: "A19:A18" is pair_index=9 & i23=0 & i1=0 { export A18; }
+StoreSrcPair: "A19:A18" is pair_index=9 & i23=0 & i1=0 { export A18; }
+DstPairN: "A19:A18" is pair_index=9 & i1=0 { export A18; }
+StoreSrcPairN: "A19:A18" is pair_index=9 & i1=0 { export A18; }
+DstPair: "A21:A20" is pair_index=10 & i23=0 & i1=0 { export A20; }
+StoreSrcPair: "A21:A20" is pair_index=10 & i23=0 & i1=0 { export A20; }
+DstPairN: "A21:A20" is pair_index=10 & i1=0 { export A20; }
+StoreSrcPairN: "A21:A20" is pair_index=10 & i1=0 { export A20; }
+DstPair: "A23:A22" is pair_index=11 & i23=0 & i1=0 { export A22; }
+StoreSrcPair: "A23:A22" is pair_index=11 & i23=0 & i1=0 { export A22; }
+DstPairN: "A23:A22" is pair_index=11 & i1=0 { export A22; }
+StoreSrcPairN: "A23:A22" is pair_index=11 & i1=0 { export A22; }
+DstPair: "A25:A24" is pair_index=12 & i23=0 & i1=0 { export A24; }
+StoreSrcPair: "A25:A24" is pair_index=12 & i23=0 & i1=0 { export A24; }
+DstPairN: "A25:A24" is pair_index=12 & i1=0 { export A24; }
+StoreSrcPairN: "A25:A24" is pair_index=12 & i1=0 { export A24; }
+DstPair: "A27:A26" is pair_index=13 & i23=0 & i1=0 { export A26; }
+StoreSrcPair: "A27:A26" is pair_index=13 & i23=0 & i1=0 { export A26; }
+DstPairN: "A27:A26" is pair_index=13 & i1=0 { export A26; }
+StoreSrcPairN: "A27:A26" is pair_index=13 & i1=0 { export A26; }
+DstPair: "A29:A28" is pair_index=14 & i23=0 & i1=0 { export A28; }
+StoreSrcPair: "A29:A28" is pair_index=14 & i23=0 & i1=0 { export A28; }
+DstPairN: "A29:A28" is pair_index=14 & i1=0 { export A28; }
+StoreSrcPairN: "A29:A28" is pair_index=14 & i1=0 { export A28; }
+DstPair: "A31:A30" is pair_index=15 & i23=0 & i1=0 { export A30; }
+StoreSrcPair: "A31:A30" is pair_index=15 & i23=0 & i1=0 { export A30; }
+DstPairN: "A31:A30" is pair_index=15 & i1=0 { export A30; }
+StoreSrcPairN: "A31:A30" is pair_index=15 & i1=0 { export A30; }
+DstPair: "B1:B0" is pair_index=0 & i23=0 & i1=1 { export B0; }
+StoreSrcPair: "B1:B0" is pair_index=0 & i23=0 & i1=1 { export B0; }
+DstPairN: "B1:B0" is pair_index=0 & i1=1 { export B0; }
+StoreSrcPairN: "B1:B0" is pair_index=0 & i1=1 { export B0; }
+DstPair: "B3:B2" is pair_index=1 & i23=0 & i1=1 { export B2; }
+StoreSrcPair: "B3:B2" is pair_index=1 & i23=0 & i1=1 { export B2; }
+DstPairN: "B3:B2" is pair_index=1 & i1=1 { export B2; }
+StoreSrcPairN: "B3:B2" is pair_index=1 & i1=1 { export B2; }
+DstPair: "B5:B4" is pair_index=2 & i23=0 & i1=1 { export B4; }
+StoreSrcPair: "B5:B4" is pair_index=2 & i23=0 & i1=1 { export B4; }
+DstPairN: "B5:B4" is pair_index=2 & i1=1 { export B4; }
+StoreSrcPairN: "B5:B4" is pair_index=2 & i1=1 { export B4; }
+DstPair: "B7:B6" is pair_index=3 & i23=0 & i1=1 { export B6; }
+StoreSrcPair: "B7:B6" is pair_index=3 & i23=0 & i1=1 { export B6; }
+DstPairN: "B7:B6" is pair_index=3 & i1=1 { export B6; }
+StoreSrcPairN: "B7:B6" is pair_index=3 & i1=1 { export B6; }
+DstPair: "B9:B8" is pair_index=4 & i23=0 & i1=1 { export B8; }
+StoreSrcPair: "B9:B8" is pair_index=4 & i23=0 & i1=1 { export B8; }
+DstPairN: "B9:B8" is pair_index=4 & i1=1 { export B8; }
+StoreSrcPairN: "B9:B8" is pair_index=4 & i1=1 { export B8; }
+DstPair: "B11:B10" is pair_index=5 & i23=0 & i1=1 { export B10; }
+StoreSrcPair: "B11:B10" is pair_index=5 & i23=0 & i1=1 { export B10; }
+DstPairN: "B11:B10" is pair_index=5 & i1=1 { export B10; }
+StoreSrcPairN: "B11:B10" is pair_index=5 & i1=1 { export B10; }
+DstPair: "B13:B12" is pair_index=6 & i23=0 & i1=1 { export B12; }
+StoreSrcPair: "B13:B12" is pair_index=6 & i23=0 & i1=1 { export B12; }
+DstPairN: "B13:B12" is pair_index=6 & i1=1 { export B12; }
+StoreSrcPairN: "B13:B12" is pair_index=6 & i1=1 { export B12; }
+DstPair: "B15:B14" is pair_index=7 & i23=0 & i1=1 { export B14; }
+StoreSrcPair: "B15:B14" is pair_index=7 & i23=0 & i1=1 { export B14; }
+DstPairN: "B15:B14" is pair_index=7 & i1=1 { export B14; }
+StoreSrcPairN: "B15:B14" is pair_index=7 & i1=1 { export B14; }
+DstPair: "B17:B16" is pair_index=8 & i23=0 & i1=1 { export B16; }
+StoreSrcPair: "B17:B16" is pair_index=8 & i23=0 & i1=1 { export B16; }
+DstPairN: "B17:B16" is pair_index=8 & i1=1 { export B16; }
+StoreSrcPairN: "B17:B16" is pair_index=8 & i1=1 { export B16; }
+DstPair: "B19:B18" is pair_index=9 & i23=0 & i1=1 { export B18; }
+StoreSrcPair: "B19:B18" is pair_index=9 & i23=0 & i1=1 { export B18; }
+DstPairN: "B19:B18" is pair_index=9 & i1=1 { export B18; }
+StoreSrcPairN: "B19:B18" is pair_index=9 & i1=1 { export B18; }
+DstPair: "B21:B20" is pair_index=10 & i23=0 & i1=1 { export B20; }
+StoreSrcPair: "B21:B20" is pair_index=10 & i23=0 & i1=1 { export B20; }
+DstPairN: "B21:B20" is pair_index=10 & i1=1 { export B20; }
+StoreSrcPairN: "B21:B20" is pair_index=10 & i1=1 { export B20; }
+DstPair: "B23:B22" is pair_index=11 & i23=0 & i1=1 { export B22; }
+StoreSrcPair: "B23:B22" is pair_index=11 & i23=0 & i1=1 { export B22; }
+DstPairN: "B23:B22" is pair_index=11 & i1=1 { export B22; }
+StoreSrcPairN: "B23:B22" is pair_index=11 & i1=1 { export B22; }
+DstPair: "B25:B24" is pair_index=12 & i23=0 & i1=1 { export B24; }
+StoreSrcPair: "B25:B24" is pair_index=12 & i23=0 & i1=1 { export B24; }
+DstPairN: "B25:B24" is pair_index=12 & i1=1 { export B24; }
+StoreSrcPairN: "B25:B24" is pair_index=12 & i1=1 { export B24; }
+DstPair: "B27:B26" is pair_index=13 & i23=0 & i1=1 { export B26; }
+StoreSrcPair: "B27:B26" is pair_index=13 & i23=0 & i1=1 { export B26; }
+DstPairN: "B27:B26" is pair_index=13 & i1=1 { export B26; }
+StoreSrcPairN: "B27:B26" is pair_index=13 & i1=1 { export B26; }
+DstPair: "B29:B28" is pair_index=14 & i23=0 & i1=1 { export B28; }
+StoreSrcPair: "B29:B28" is pair_index=14 & i23=0 & i1=1 { export B28; }
+DstPairN: "B29:B28" is pair_index=14 & i1=1 { export B28; }
+StoreSrcPairN: "B29:B28" is pair_index=14 & i1=1 { export B28; }
+DstPair: "B31:B30" is pair_index=15 & i23=0 & i1=1 { export B30; }
+StoreSrcPair: "B31:B30" is pair_index=15 & i23=0 & i1=1 { export B30; }
+DstPairN: "B31:B30" is pair_index=15 & i1=1 { export B30; }
+StoreSrcPairN: "B31:B30" is pair_index=15 & i1=1 { export B30; }
+
+MemRegB: "*-" ^ BaseReg ^ "[" ^ UCst5 ^ "]" is mode=0x0 & ucst5 & BaseReg & UCst5 { local a:4 = BaseReg - UCst5; export a; }
+MemRegB: "*+" ^ BaseReg ^ "[" ^ UCst5 ^ "]" is mode=0x1 & ucst5 & BaseReg & UCst5 { local a:4 = BaseReg + UCst5; export a; }
+MemRegB: "*-" ^ BaseReg ^ "[" ^ OffReg ^ "]" is mode=0x4 & offr & BaseReg & OffReg { local a:4 = BaseReg - OffReg; export a; }
+MemRegB: "*+" ^ BaseReg ^ "[" ^ OffReg ^ "]" is mode=0x5 & offr & BaseReg & OffReg { local a:4 = BaseReg + OffReg; export a; }
+MemRegB: "*--" ^ BaseReg ^ "[" ^ UCst5 ^ "]" is mode=0x8 & ucst5 & BaseReg & UCst5 { local a:4 = BaseReg - UCst5; export a; }
+MemRegB: "*++" ^ BaseReg ^ "[" ^ UCst5 ^ "]" is mode=0x9 & ucst5 & BaseReg & UCst5 { local a:4 = BaseReg + UCst5; export a; }
+MemRegB: "*" ^ BaseReg ^ "--[" ^ UCst5 ^ "]" is mode=0xa & ucst5 & BaseReg & UCst5 { local a:4 = BaseReg - UCst5; export a; }
+MemRegB: "*" ^ BaseReg ^ "++[" ^ UCst5 ^ "]" is mode=0xb & ucst5 & BaseReg & UCst5 { local a:4 = BaseReg + UCst5; export a; }
+MemRegB: "*--" ^ BaseReg ^ "[" ^ OffReg ^ "]" is mode=0xc & offr & BaseReg & OffReg { local a:4 = BaseReg - OffReg; export a; }
+MemRegB: "*++" ^ BaseReg ^ "[" ^ OffReg ^ "]" is mode=0xd & offr & BaseReg & OffReg { local a:4 = BaseReg + OffReg; export a; }
+MemRegB: "*" ^ BaseReg ^ "--[" ^ OffReg ^ "]" is mode=0xe & offr & BaseReg & OffReg { local a:4 = BaseReg - OffReg; export a; }
+MemRegB: "*" ^ BaseReg ^ "++[" ^ OffReg ^ "]" is mode=0xf & offr & BaseReg & OffReg { local a:4 = BaseReg + OffReg; export a; }
+
+MemRegH: "*-" ^ BaseReg ^ "[" ^ UCst5 ^ "]" is mode=0x0 & ucst5 & BaseReg & UCst5 { local a:4 = BaseReg - (UCst5 << 1); export a; }
+MemRegH: "*+" ^ BaseReg ^ "[" ^ UCst5 ^ "]" is mode=0x1 & ucst5 & BaseReg & UCst5 { local a:4 = BaseReg + (UCst5 << 1); export a; }
+MemRegH: "*-" ^ BaseReg ^ "[" ^ OffReg ^ "]" is mode=0x4 & offr & BaseReg & OffReg { local a:4 = BaseReg - (OffReg << 1); export a; }
+MemRegH: "*+" ^ BaseReg ^ "[" ^ OffReg ^ "]" is mode=0x5 & offr & BaseReg & OffReg { local a:4 = BaseReg + (OffReg << 1); export a; }
+MemRegH: "*--" ^ BaseReg ^ "[" ^ UCst5 ^ "]" is mode=0x8 & ucst5 & BaseReg & UCst5 { local a:4 = BaseReg - (UCst5 << 1); export a; }
+MemRegH: "*++" ^ BaseReg ^ "[" ^ UCst5 ^ "]" is mode=0x9 & ucst5 & BaseReg & UCst5 { local a:4 = BaseReg + (UCst5 << 1); export a; }
+MemRegH: "*" ^ BaseReg ^ "--[" ^ UCst5 ^ "]" is mode=0xa & ucst5 & BaseReg & UCst5 { local a:4 = BaseReg - (UCst5 << 1); export a; }
+MemRegH: "*" ^ BaseReg ^ "++[" ^ UCst5 ^ "]" is mode=0xb & ucst5 & BaseReg & UCst5 { local a:4 = BaseReg + (UCst5 << 1); export a; }
+MemRegH: "*--" ^ BaseReg ^ "[" ^ OffReg ^ "]" is mode=0xc & offr & BaseReg & OffReg { local a:4 = BaseReg - (OffReg << 1); export a; }
+MemRegH: "*++" ^ BaseReg ^ "[" ^ OffReg ^ "]" is mode=0xd & offr & BaseReg & OffReg { local a:4 = BaseReg + (OffReg << 1); export a; }
+MemRegH: "*" ^ BaseReg ^ "--[" ^ OffReg ^ "]" is mode=0xe & offr & BaseReg & OffReg { local a:4 = BaseReg - (OffReg << 1); export a; }
+MemRegH: "*" ^ BaseReg ^ "++[" ^ OffReg ^ "]" is mode=0xf & offr & BaseReg & OffReg { local a:4 = BaseReg + (OffReg << 1); export a; }
+
+MemRegW: "*-" ^ BaseReg ^ "[" ^ UCst5 ^ "]" is mode=0x0 & ucst5 & BaseReg & UCst5 { local a:4 = BaseReg - (UCst5 << 2); export a; }
+MemRegW: "*+" ^ BaseReg ^ "[" ^ UCst5 ^ "]" is mode=0x1 & ucst5 & BaseReg & UCst5 { local a:4 = BaseReg + (UCst5 << 2); export a; }
+MemRegW: "*-" ^ BaseReg ^ "[" ^ OffReg ^ "]" is mode=0x4 & offr & BaseReg & OffReg { local a:4 = BaseReg - (OffReg << 2); export a; }
+MemRegW: "*+" ^ BaseReg ^ "[" ^ OffReg ^ "]" is mode=0x5 & offr & BaseReg & OffReg { local a:4 = BaseReg + (OffReg << 2); export a; }
+MemRegW: "*--" ^ BaseReg ^ "[" ^ UCst5 ^ "]" is mode=0x8 & ucst5 & BaseReg & UCst5 { local a:4 = BaseReg - (UCst5 << 2); export a; }
+MemRegW: "*++" ^ BaseReg ^ "[" ^ UCst5 ^ "]" is mode=0x9 & ucst5 & BaseReg & UCst5 { local a:4 = BaseReg + (UCst5 << 2); export a; }
+MemRegW: "*" ^ BaseReg ^ "--[" ^ UCst5 ^ "]" is mode=0xa & ucst5 & BaseReg & UCst5 { local a:4 = BaseReg - (UCst5 << 2); export a; }
+MemRegW: "*" ^ BaseReg ^ "++[" ^ UCst5 ^ "]" is mode=0xb & ucst5 & BaseReg & UCst5 { local a:4 = BaseReg + (UCst5 << 2); export a; }
+MemRegW: "*--" ^ BaseReg ^ "[" ^ OffReg ^ "]" is mode=0xc & offr & BaseReg & OffReg { local a:4 = BaseReg - (OffReg << 2); export a; }
+MemRegW: "*++" ^ BaseReg ^ "[" ^ OffReg ^ "]" is mode=0xd & offr & BaseReg & OffReg { local a:4 = BaseReg + (OffReg << 2); export a; }
+MemRegW: "*" ^ BaseReg ^ "--[" ^ OffReg ^ "]" is mode=0xe & offr & BaseReg & OffReg { local a:4 = BaseReg - (OffReg << 2); export a; }
+MemRegW: "*" ^ BaseReg ^ "++[" ^ OffReg ^ "]" is mode=0xf & offr & BaseReg & OffReg { local a:4 = BaseReg + (OffReg << 2); export a; }
+
+MemRegD: "*-" ^ BaseReg ^ "[" ^ UCst5 ^ "]" is mode=0x0 & ucst5 & BaseReg & UCst5 { local a:4 = BaseReg - (UCst5 << 3); export a; }
+MemRegD: "*+" ^ BaseReg ^ "[" ^ UCst5 ^ "]" is mode=0x1 & ucst5 & BaseReg & UCst5 { local a:4 = BaseReg + (UCst5 << 3); export a; }
+MemRegD: "*-" ^ BaseReg ^ "[" ^ OffReg ^ "]" is mode=0x4 & offr & BaseReg & OffReg { local a:4 = BaseReg - (OffReg << 3); export a; }
+MemRegD: "*+" ^ BaseReg ^ "[" ^ OffReg ^ "]" is mode=0x5 & offr & BaseReg & OffReg { local a:4 = BaseReg + (OffReg << 3); export a; }
+MemRegD: "*--" ^ BaseReg ^ "[" ^ UCst5 ^ "]" is mode=0x8 & ucst5 & BaseReg & UCst5 { local a:4 = BaseReg - (UCst5 << 3); export a; }
+MemRegD: "*++" ^ BaseReg ^ "[" ^ UCst5 ^ "]" is mode=0x9 & ucst5 & BaseReg & UCst5 { local a:4 = BaseReg + (UCst5 << 3); export a; }
+MemRegD: "*" ^ BaseReg ^ "--[" ^ UCst5 ^ "]" is mode=0xa & ucst5 & BaseReg & UCst5 { local a:4 = BaseReg - (UCst5 << 3); export a; }
+MemRegD: "*" ^ BaseReg ^ "++[" ^ UCst5 ^ "]" is mode=0xb & ucst5 & BaseReg & UCst5 { local a:4 = BaseReg + (UCst5 << 3); export a; }
+MemRegD: "*--" ^ BaseReg ^ "[" ^ OffReg ^ "]" is mode=0xc & offr & BaseReg & OffReg { local a:4 = BaseReg - (OffReg << 3); export a; }
+MemRegD: "*++" ^ BaseReg ^ "[" ^ OffReg ^ "]" is mode=0xd & offr & BaseReg & OffReg { local a:4 = BaseReg + (OffReg << 3); export a; }
+MemRegD: "*" ^ BaseReg ^ "--[" ^ OffReg ^ "]" is mode=0xe & offr & BaseReg & OffReg { local a:4 = BaseReg - (OffReg << 3); export a; }
+MemRegD: "*" ^ BaseReg ^ "++[" ^ OffReg ^ "]" is mode=0xf & offr & BaseReg & OffReg { local a:4 = BaseReg + (OffReg << 3); export a; }
+
+MemRegN: "*-" ^ BaseReg ^ "(" ^ UCst5 ^ ")" is mode=0x0 & ucst5 & BaseReg & UCst5 & scbit=0 { local a:4 = BaseReg - UCst5; export a; }
+MemRegN: "*+" ^ BaseReg ^ "(" ^ UCst5 ^ ")" is mode=0x1 & ucst5 & BaseReg & UCst5 & scbit=0 { local a:4 = BaseReg + UCst5; export a; }
+MemRegN: "*-" ^ BaseReg ^ "(" ^ OffReg ^ ")" is mode=0x4 & offr & BaseReg & OffReg & scbit=0 { local a:4 = BaseReg - OffReg; export a; }
+MemRegN: "*+" ^ BaseReg ^ "(" ^ OffReg ^ ")" is mode=0x5 & offr & BaseReg & OffReg & scbit=0 { local a:4 = BaseReg + OffReg; export a; }
+MemRegN: "*--" ^ BaseReg ^ "(" ^ UCst5 ^ ")" is mode=0x8 & ucst5 & BaseReg & UCst5 & scbit=0 { local a:4 = BaseReg - UCst5; export a; }
+MemRegN: "*++" ^ BaseReg ^ "(" ^ UCst5 ^ ")" is mode=0x9 & ucst5 & BaseReg & UCst5 & scbit=0 { local a:4 = BaseReg + UCst5; export a; }
+MemRegN: "*" ^ BaseReg ^ "--(" ^ UCst5 ^ ")" is mode=0xa & ucst5 & BaseReg & UCst5 & scbit=0 { local a:4 = BaseReg - UCst5; export a; }
+MemRegN: "*" ^ BaseReg ^ "++(" ^ UCst5 ^ ")" is mode=0xb & ucst5 & BaseReg & UCst5 & scbit=0 { local a:4 = BaseReg + UCst5; export a; }
+MemRegN: "*--" ^ BaseReg ^ "(" ^ OffReg ^ ")" is mode=0xc & offr & BaseReg & OffReg & scbit=0 { local a:4 = BaseReg - OffReg; export a; }
+MemRegN: "*++" ^ BaseReg ^ "(" ^ OffReg ^ ")" is mode=0xd & offr & BaseReg & OffReg & scbit=0 { local a:4 = BaseReg + OffReg; export a; }
+MemRegN: "*" ^ BaseReg ^ "--(" ^ OffReg ^ ")" is mode=0xe & offr & BaseReg & OffReg & scbit=0 { local a:4 = BaseReg - OffReg; export a; }
+MemRegN: "*" ^ BaseReg ^ "++(" ^ OffReg ^ ")" is mode=0xf & offr & BaseReg & OffReg & scbit=0 { local a:4 = BaseReg + OffReg; export a; }
+MemRegN: "*-" ^ BaseReg ^ "[" ^ UCst5 ^ "]" is mode=0x0 & ucst5 & BaseReg & UCst5 & scbit=1 { local a:4 = BaseReg - (UCst5 << 3); export a; }
+MemRegN: "*+" ^ BaseReg ^ "[" ^ UCst5 ^ "]" is mode=0x1 & ucst5 & BaseReg & UCst5 & scbit=1 { local a:4 = BaseReg + (UCst5 << 3); export a; }
+MemRegN: "*-" ^ BaseReg ^ "[" ^ OffReg ^ "]" is mode=0x4 & offr & BaseReg & OffReg & scbit=1 { local a:4 = BaseReg - (OffReg << 3); export a; }
+MemRegN: "*+" ^ BaseReg ^ "[" ^ OffReg ^ "]" is mode=0x5 & offr & BaseReg & OffReg & scbit=1 { local a:4 = BaseReg + (OffReg << 3); export a; }
+MemRegN: "*--" ^ BaseReg ^ "[" ^ UCst5 ^ "]" is mode=0x8 & ucst5 & BaseReg & UCst5 & scbit=1 { local a:4 = BaseReg - (UCst5 << 3); export a; }
+MemRegN: "*++" ^ BaseReg ^ "[" ^ UCst5 ^ "]" is mode=0x9 & ucst5 & BaseReg & UCst5 & scbit=1 { local a:4 = BaseReg + (UCst5 << 3); export a; }
+MemRegN: "*" ^ BaseReg ^ "--[" ^ UCst5 ^ "]" is mode=0xa & ucst5 & BaseReg & UCst5 & scbit=1 { local a:4 = BaseReg - (UCst5 << 3); export a; }
+MemRegN: "*" ^ BaseReg ^ "++[" ^ UCst5 ^ "]" is mode=0xb & ucst5 & BaseReg & UCst5 & scbit=1 { local a:4 = BaseReg + (UCst5 << 3); export a; }
+MemRegN: "*--" ^ BaseReg ^ "[" ^ OffReg ^ "]" is mode=0xc & offr & BaseReg & OffReg & scbit=1 { local a:4 = BaseReg - (OffReg << 3); export a; }
+MemRegN: "*++" ^ BaseReg ^ "[" ^ OffReg ^ "]" is mode=0xd & offr & BaseReg & OffReg & scbit=1 { local a:4 = BaseReg + (OffReg << 3); export a; }
+MemRegN: "*" ^ BaseReg ^ "--[" ^ OffReg ^ "]" is mode=0xe & offr & BaseReg & OffReg & scbit=1 { local a:4 = BaseReg - (OffReg << 3); export a; }
+MemRegN: "*" ^ BaseReg ^ "++[" ^ OffReg ^ "]" is mode=0xf & offr & BaseReg & OffReg & scbit=1 { local a:4 = BaseReg + (OffReg << 3); export a; }
+
+MemLongB: "*+B14[" ^ UCst15 ^ "]" is i7=0 & ucst15 & UCst15 { local a:4 = B14 + UCst15; export a; }
+MemLongB: "*+B15[" ^ UCst15 ^ "]" is i7=1 & ucst15 & UCst15 { local a:4 = B15 + UCst15; export a; }
+
+MemLongH: "*+B14[" ^ UCst15 ^ "]" is i7=0 & ucst15 & UCst15 { local a:4 = B14 + (UCst15 << 1); export a; }
+MemLongH: "*+B15[" ^ UCst15 ^ "]" is i7=1 & ucst15 & UCst15 { local a:4 = B15 + (UCst15 << 1); export a; }
+
+MemLongW: "*+B14[" ^ UCst15 ^ "]" is i7=0 & ucst15 & UCst15 { local a:4 = B14 + (UCst15 << 2); export a; }
+MemLongW: "*+B15[" ^ UCst15 ^ "]" is i7=1 & ucst15 & UCst15 { local a:4 = B15 + (UCst15 << 2); export a; }

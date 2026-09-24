@@ -6,27 +6,28 @@ no C6000 support ([NationalSecurityAgency/ghidra#1807](https://github.com/Nation
 this module adds it.
 
 The encodings and semantics are written independently from TI's public
-documentation, principally **SPRUFE8B**, the *TMS320C674x CPU and Instruction
-Set Reference Guide*. Every constructor names the figure or table it comes
-from. See [`NOTICE.md`](NOTICE.md) for the full provenance record — no
+documentation, principally **[SPRUFE8B](https://www.ti.com/lit/ug/sprufe8b/sprufe8b.pdf)**,
+the *TMS320C674x CPU and Instruction Set Reference Guide*. The handwritten
+definitions and generators identify their source figures and tables. See
+[`NOTICE.md`](NOTICE.md) for the full provenance record — no
 disassembler source was copied, which is what makes the Apache-2.0 licence
 below possible.
 
 ## Status
 
-This is a **working decoder with staged semantics**, and the README says
-exactly where the line is drawn.
+This is a **working decoder with staged semantics**. The firmware measurements
+below show both the decoded instructions and the remaining gaps.
 
 | Area | State |
 |---|---|
-| 32-bit instruction decode (mnemonic, unit, operands, length) | complete for every encoding documented in SPRUFE8B §3.12 |
-| Instruction lengths and execute-packet framing | complete |
-| Branch / call targets (`B`, `BNOP`, `CALLP`, `BDEC`, `BPOS`) | modelled, PCE1-relative per the manual |
-| Compact 16-bit fetch packets | decoded, driven by the packet-header context (see below) |
-| P-code semantics | integer ALU, immediates, loads/stores, compares, shifts, branches/calls, `MVC` |
-| Everything else | lifts to a named `c6000_unimpl_<mnemonic>` userop |
+| 32-bit instruction decode (mnemonic, unit, operands, length) | broad SPRUFE8B §3.12 coverage, plus legacy `MVC`; some words remain undecoded |
+| Instruction lengths and execute-packet framing | 2/4-byte lengths and compact layout context; execute packets are not atomic |
+| Branch / call targets (`B`, `BNOP`, `CALLP`) | modelled, PCE1-relative per the manual; `BDEC` and `BPOS` are placeholders |
+| Compact 16-bit fetch packets | most observed slots decode, driven by packet-header context (see below) |
+| P-code semantics | integer ALU, immediates, bit-field operations, linear address arithmetic, scalar loads/stores, scalar single-precision arithmetic and conversions, compares, shifts, branches/calls, `MVC` |
+| Other decoded instructions | lift to `c6000_unimpl_<mnemonic>` (32-bit) or `c6000_unimplemented` (compact) |
 | Function ID | generation script shipped; database not shipped (TI licence) |
-| Floating point, `.M` multiply, packed 8/16-bit arithmetic, Galois, SPLOOP buffer internals | decode only |
+| Double-precision floating point, integer `.M` multiply, packed 8/16-bit arithmetic, Galois, SPLOOP buffer internals | decode only |
 
 Unimplemented instructions are **explicit, greppable placeholders**, not
 silently wrong data flow. `C6000CorpusTest.java` counts how often each is
@@ -40,17 +41,28 @@ Command used for every row (see [Testing](#testing)):
 C6000CorpusTest.java stage1   # or stage2
 ```
 
-| Corpus (first 12,288 / 131,072 bytes) | Bytes decoded | Instructions | Compact 16-bit | Headers | Undecoded words | Byte coverage |
-|---|---:|---:|---:|---:|---:|---:|
-| CDJ-2000NXS stage 1, base `0x11801da0` | 11,064 | 3,113 | 694 | 96 | 306 | **90.0 %** |
-| CDJ-2000NXS stage 2, base `0xC0000000` | 127,408 | 35,689 | 7,674 | 1,298 | 916 | **97.2 %** |
+| Corpus (first 12,288 / 131,072 bytes) | Bytes decoded | Instructions | Compact 16-bit | Headers | Unimplemented p-code | Undecoded slots | Byte coverage |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| CDJ-2000NXS stage 1, base `0x11801da0` | 11,318 | 3,175 | 691 | 161 | 263 (8%) | 244 | **92.1%** |
+| CDJ-2000NXS stage 2, base `0xC0000000` | 130,802 | 36,510 | 7,619 | 2,209 | 2,168 (5%) | 95 | **99.8%** |
 
-Every word still counted as undecoded is a **compact fetch-packet header
-word** - the eighth word of a header-based packet, which is not an instruction
-at all. No unknown 32-bit opcode and no compact instruction is left undecoded
-in either window. The header carries the layout and expansion fields that the
-Java analyzer consumes before disassembly; making the slot itself show up as a
-named `CPKT` row is an open cosmetic item.
+Full-payload linear sweeps also completed with no zero-width p-code operands:
+
+| Corpus | Payload bytes | Bytes decoded | Instructions | Unimplemented p-code | Undecoded slots | Byte coverage |
+|---|---:|---:|---:|---:|---:|---:|
+| Stage 1 | 55,120 | 40,694 | 10,532 | 1,934 (18%) | 3,611 | **73.8%** |
+| Stage 2 | 361,248 | 335,562 | 91,317 | 4,435 (4%) | 6,484 | **92.9%** |
+
+`CPKT` headers now decode as named 4-byte rows. Undecoded slots remain: the
+stage 1 window is mostly `0xffffffff` fill/data, with a few unknown compact
+halfwords and an unresolved 32-bit word. The stage 2 window
+contains unknown compact halfwords and some 32-bit gaps. Byte coverage is a
+linear sweep of the stated windows or payloads, not a claim that every byte is
+code. The full stage 1 image in particular contains substantial fill/data.
+The full-payload sweeps used `-noanalysis`; normal Ghidra autoanalysis completed
+on the stage 2 code window. Running autoanalysis after a full stage 2 linear
+sweep exceeded the available Ghidra 12.1.3 heap, so the full-payload numbers
+are decode and p-code checks rather than a whole-image decompiler test.
 
 The stage images are **not** in this repository. The test accepts an external
 image path and base address, so private firmware can be measured without being
@@ -59,16 +71,24 @@ committed; regenerate the images with
 `C6000CorpusTest.java` at them.
 
 Compact decode is driven by the packet header through the `noflow` context
-fields described below. The 32-bit table decodes the full manual with zero
-fallbacks, and the compact table covers appendices C.4, D.4, E.4, F.4, G.3 and
-H.4; SPRUFE8B's figure D-6 (`Ltbd`) is the only figure not decoded, because its
-field cells are blank in the manual and no instruction description references
-it.
+fields described below. The 32-bit table covers the documented opcode maps;
+the compact table covers appendices C.4, D.4, E.4, F.4, G.3 and H.4, with
+unresolved patterns still visible in the corpus. SPRUFE8B's figure D-6
+(`Ltbd`) has blank field cells and no instruction description to resolve it.
 
 The generic, redistributable half of the corpus is generated at test time from
 GNU binutils (`as -march=c674x` / `objdump -m tic6x`) and cross-checked against
 this module by `tools/oracle_compare.py`; nothing built by TI or by binutils is
 committed.
+
+The generated 32-bit decode table can be rebuilt from the public TI PDF:
+run `pdftotext -layout sprufe8b.pdf /tmp/c6000ref/sprufe8b.txt`, then
+`python3 tools/build_encodings.py /tmp/c6000ref/sprufe8b.txt` and
+`python3 tools/gen_decode.py`. The intermediate `.research/` tables are
+gitignored. `tools/build_encodings.py` expands the manual's grouped `LDB(U)`
+and `LDH(U)` headings into distinct signed and unsigned opcodes; the generator
+rejects unconstrained opcode fields so a malformed parse cannot create a
+broad, false decode pattern.
 
 ## Build
 
@@ -234,20 +254,22 @@ it produces.
   so a compact slot reached by fall-through is not decoded with the previous
   instruction's parameters; the price is that a tool which disassembles
   without priming the context will not decode compact packets at all.
-* **The compact header word does not yet decode as a named `CPKT` row.** It is
-  counted and stepped over correctly, but shows as an undecoded 4-byte slot.
+* **Some compact and 32-bit words remain undecoded.** The decoder leaves them
+  undefined instead of guessing an instruction.
 * **Execute packets are not modelled as units** — see above.
 * **No delay-slot modelling** in p-code.
-* **`.M` multiply, floating point, packed 8/16-bit and Galois semantics** are
-  placeholders. Control-register reads/writes via `MVC` are decoded but the
-  control register is not yet distinguished from a general-purpose register in
-  every form.
+* **Circular AMR addressing is not modelled.** `.D` address arithmetic and
+  load/store effective addresses use linear mode, with size scaling and
+  pre/post register updates. Base writes occur after the memory transfer so a
+  store using the same register for its source and base reads the old value.
+* **Integer `.M` multiply, double-precision floating point, packed 8/16-bit,
+  Galois, and doubleword memory semantics** are placeholders. `MVC` uses distinct control registers
+  in its 32-bit forms; compact `MVC` is still a placeholder.
 * **`SPLOOP` buffer execution** is not modelled: the loop buffer is a
   microarchitectural structure with no program-counter effect, so the SPLOOP
   control instructions lift to placeholders rather than to a branch.
-* **Predication** is decoded and displayed (`[B0] ADD.L1 ...`) but is not
-  applied to the lifted p-code, so a predicated instruction's effects are not
-  conditional in the decompiler.
+* **Predication** is decoded, displayed and guards the modelled 32-bit p-code.
+  Compact predication and packet-wide parallel effects need further work.
 * The generic corpus is assembled from GNU binutils, whose tic6x assembler
   covers less of the ISA than the manual; it is a regression oracle, not a
   completeness proof.
@@ -257,19 +279,21 @@ it produces.
 ```
 build.gradle, settings.gradle, extension.properties, Module.manifest
 data/languages/          c6000.sinc (framework), c6000_decode.sinc (generated),
-                         c6000_manual.sinc, c6000_compact.sinc, c6000_semantics.sinc,
+                         c6000_manual.sinc, c6000_compact.sinc, c6000_memory.sinc,
+                         c6000_semantics.sinc,
                          c6000_placeholders.sinc (generated), ldefs/pspec/cspec/opinion
 ghidra_scripts/          C6000CorpusTest.java
 src/main/java/c6000/     C6000PacketContext.java, C6000PacketAnalyzer.java
-tools/                   build.sh, gen_decode.py, build_encodings.py,
+tools/                   build.sh, gen_decode.py, gen_memory.py, build_encodings.py,
                          oracle_compare.py, gen_fid.py
 .github/workflows/       build.yml
 ```
 
 `c6000_decode.sinc` and `c6000_placeholders.sinc` are generated by
 `tools/gen_decode.py` from an encoding table parsed out of SPRUFE8B §3.12
-(`tools/build_encodings.py`). They are committed so the extension builds
-without the manual; do not edit them by hand.
+(`tools/build_encodings.py`); `c6000_memory.sinc` comes from
+`tools/gen_memory.py`. They are committed so the extension builds without the
+manual; edit their generators rather than the generated files.
 
 ## Licence
 

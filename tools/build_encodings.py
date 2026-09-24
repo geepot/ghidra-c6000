@@ -12,9 +12,10 @@ Output: .research/encodings_resolved.json
 import json
 import re
 import sys
+from copy import deepcopy
 from collections import defaultdict
 
-SRC = "/tmp/c6000ref/sprufe8b.txt"
+SRC = sys.argv[1] if len(sys.argv) > 1 else "/tmp/c6000ref/sprufe8b.txt"
 lines = [x.replace("\x0c", "") for x in
          open(SRC, encoding="utf-8", errors="replace").read().split("\n")]
 start = [i for i, l in enumerate(lines)
@@ -27,7 +28,11 @@ blocks = []
 for i, l in enumerate(body):
     if l.startswith("Syntax"):
         for j in range(i - 1, max(0, i - 9), -1):
-            m = re.match(r"^([A-Z][A-Z0-9_.]*)\s{2,}(\S.*)$", body[j])
+            # The manual groups the signed and unsigned byte/halfword loads
+            # under LDB(U) and LDH(U).  Parentheses must be part of the
+            # heading; otherwise their opcode diagrams get attached to the
+            # preceding instruction (and create dangerously broad patterns).
+            m = re.match(r"^([A-Z][A-Z0-9_.()]*)\s{2,}(\S.*)$", body[j])
             if m and not body[j].startswith("www.ti.com"):
                 blocks.append((m.group(1), j))
                 break
@@ -126,8 +131,30 @@ for n, (name, ti) in enumerate(blocks):
                                 "unit_cell": mu.group(0).strip() if mu else ""})
         units.append({"heading": heading, "fields": fields, "leftover": rem,
                       "opcodes": ops})
-    results.append({"name": name, "syntax": syntax, "unit_syntax": unit_syntax,
-                    "units": units, "text": text})
+    if name in ("LDB(U)", "LDH(U)"):
+        # The op field is given in the data-type table rather than in an
+        # "Opcode map field used" table.  Expand the grouped descriptions
+        # into the four real mnemonics using those documented values.
+        opcodes = {"LDB(U)": (("LDB", "010"), ("LDBU", "001")),
+                   "LDH(U)": (("LDH", "100"), ("LDHU", "000"))}
+        for mnemonic, opvalue in opcodes[name]:
+            own_units = deepcopy(units)
+            for unit in own_units:
+                opfield = next((f for f in unit["fields"]
+                                if f["name"] == "op"), None)
+                if opfield is not None:
+                    assert opfield["width"] == len(opvalue)
+                    unit["opcodes"] = [{"opfield": opvalue,
+                                        "unit_cell": ".D1, .D2"}]
+            results.append({"name": mnemonic,
+                            "syntax": ["Syntax " + mnemonic +
+                                       " (.unit) *+baseR[ucst5], dst"],
+                            "unit_syntax": unit_syntax,
+                            "units": own_units, "text": text})
+    else:
+        results.append({"name": name, "syntax": syntax,
+                        "unit_syntax": unit_syntax,
+                        "units": units, "text": text})
 
 # ---- 1. drop assembler aliases -------------------------------------------
 ALIAS_RE = re.compile(r"The assembler uses the (?:operation )?([A-Z][A-Z0-9_]*)")

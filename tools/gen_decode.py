@@ -2,7 +2,8 @@
 """Generate data/languages/c6000_decode.sinc from the SPRUFE8B-derived
 encoding table (see tools/build_encodings.py).
 
-The generated file contains one SLEIGH constructor per documented opcode.
+The generated file contains SLEIGH constructors for documented opcodes and
+the legal short-memory addressing modes.
 Operands are rendered with the shared tables defined in c6000.sinc; the unit
 suffix comes from the opcode-map section itself, not from guesswork.
 
@@ -21,7 +22,7 @@ OUT = os.path.join(ROOT, "data/languages/c6000_decode.sinc")
 # Mnemonics with hand-written semantics, defined in c6000_semantics.sinc.
 SEMANTIC_MNEMONICS = set()
 # Encodings written by hand in c6000_manual.sinc.
-HAND_WRITTEN = {"BNOP", "SPLOOP", "SPLOOPD", "SPLOOPW", "SPKERNEL",
+HAND_WRITTEN = {"BNOP", "MVC", "SPLOOP", "SPLOOPD", "SPLOOPW", "SPKERNEL",
                 "SPKERNELR", "SPMASK", "SPMASKR", "CPKT"}
 sem_path = os.path.join(ROOT, "data/languages/c6000_semantics.sinc")
 if os.path.exists(sem_path):
@@ -32,6 +33,19 @@ if os.path.exists(sem_path):
 
 WILD = {"creg", "z"}
 UNIT_LETTERS = (".L", ".S", ".M", ".D")
+
+MEMORY_SUFFIX = {
+    "LDB": "B", "LDBU": "B", "STB": "B", "STBU": "B",
+    "LDH": "H", "LDHU": "H", "STH": "H", "STHU": "H",
+    "LDW": "W", "STW": "W", "LDDW": "D", "STDW": "D",
+    "LDNW": "N", "STNW": "N", "LDNDW": "N", "STNDW": "N",
+}
+
+
+def memory_operand(mnem, fields):
+    names = {f["name"] for f in fields}
+    long_form = "off15" in names or "ucst15" in names
+    return ("MemLong" if long_form else "MemReg") + MEMORY_SUFFIX.get(mnem, "W")
 
 
 def unit_letter(text):
@@ -71,8 +85,8 @@ def operands_for(syntax, fields, mnem):
     """Map the manual's operand list onto SLEIGH operand symbols."""
     names = {f["name"] for f in fields}
     if "baseR" in names:
-        mem = "MemLong" if ("off15" in names or "ucst15" in names) else "MemReg"
-        reg = "Dst" if "dst" in names else "Src"
+        mem = memory_operand(mnem, fields)
+        reg = "Dst" if "dst" in names else "StoreSrc"
         return [mem, reg] if mnem.startswith("LD") else [reg, mem]
     op = re.search(r"\)\s*(.*)$", syntax)
     if not op:
@@ -89,10 +103,7 @@ def operands_for(syntax, fields, mnem):
     out = []
     for p in parts:
         if p.startswith("*"):
-            if "ucst15" in names or "off15" in names:
-                out.append("MemLong")
-            else:
-                out.append("MemReg")
+            out.append(memory_operand(mnem, fields))
             continue
         base = re.split(r"[:_]", p.replace("_o", "").replace("_e", ""))[0]
         base = base.strip()
@@ -101,11 +112,15 @@ def operands_for(syntax, fields, mnem):
         elif base == "src2":
             out.append("Src2")
         elif base == "src":
-            out.append("Src")
+            out.append("StoreSrc" if mnem.startswith("ST") else "Src")
         elif base == "dst":
             out.append("Dst")
         elif base == "cst":
-            out.append("Cst16" if "cst16" in names else "Cst5")
+            if "cst16" in names:
+                out.append("Cst16")
+            else:
+                field = next((f for f in fields if f["name"] == "cst5"), None)
+                out.append("Cst5Hi" if field and field["lo"] == 18 else "Cst5")
         elif base == "csta":
             out.append("Csta")
         elif base == "cstb":
@@ -133,7 +148,8 @@ def main():
     w("#  Produced by tools/gen_decode.py from the SPRUFE8B section 3.12 opcode")
     w("#  tables (see tools/build_encodings.py and NOTICE.md).")
     w("#")
-    w("#  One constructor per documented opcode.  Patterns carry the exact")
+    w("#  Constructors cover documented opcodes and legal short-memory modes.")
+    w("#  Patterns carry the exact")
     w("#  constant bits of the opcode map; `c_is16=0` restricts them to")
     w("#  non-compact instruction slots.")
     w("")
@@ -154,20 +170,35 @@ def main():
             heading = u["heading"]
             unit_syn = rec.get("unit_syntax", "")
             ul = unit_letter(heading) or unit_letter(unit_syn)
-            has_s = any(f["name"] == "i1" or (f["name"] == "1" and f["lo"] == 1)
-                        for f in fields) or any(
-                f["const"] is None and f["name"] == "s" for f in fields)
-            # The unit side comes from `s` (bit 1) on .L/.S/.M and from `y`
-            # (bit 7) on the .D load/store formats.  Some .D opcode maps fold
-            # the Y bit into the opfield (SPRUFE8B figure C-1), in which case
-            # the opfield value already fixes the side.
-            dyn_side = any(f["name"] == ("y" if ul == "D" else "s")
-                           for f in fields)
+            names = {f["name"] for f in fields}
+            if "baseR" in names and not name.startswith(("LD", "ST")):
+                raise ValueError(
+                    f"{name}: memory opcode diagram attached to a nonmemory "
+                    "instruction; check grouped headings in build_encodings.py")
+            memory = name.startswith(("LD", "ST")) and ul == "D"
+            short_memory = memory and "baseR" in names
+            long_memory = memory and ("ucst15" in names or "off15" in names)
+            # Short .D memory instructions use y for the unit and s for the
+            # data register file. Long memory instructions execute on .D2;
+            # their y bit chooses B14 or B15. .D arithmetic uses s for the
+            # unit side (SPRUFE8B Table C-2 and the instruction formats).
+            side_name = "y" if short_memory else "s"
+            dyn_side = any(f["name"] == side_name for f in fields)
 
             opf = [f for f in fields if f["name"] == "op"]
+            if opf and not u["opcodes"]:
+                raise ValueError(
+                    f"{name}: unconstrained op field would decode reserved "
+                    "opcodes as valid instructions")
             variants = [None]
             if u["opcodes"] and opf:
                 variants = [o["opfield"] for o in u["opcodes"]]
+            if short_memory:
+                variants = [(v, mode) for v in variants for mode in
+                            (0x0, 0x1, 0x4, 0x5, 0x8, 0x9,
+                             0xA, 0xB, 0xC, 0xD, 0xE, 0xF)]
+            else:
+                variants = [(v, None) for v in variants]
 
             # operand list from the primary syntax line
             syntax = None
@@ -184,12 +215,15 @@ def main():
             else:
                 mnem = re.split(r"[(\s]", syntax)[0]
                 ops = operands_for(syntax, fields, mnem)
+            if name in {"CLR", "EXT", "EXTU", "SET"} and "src1" in names:
+                # The primary syntax line is the immediate form; the sibling
+                # opcode diagram uses a packed register instead of csta/cstb.
+                ops = ["Src2", "Src1", "Dst"]
             if ops is None:
                 names = {f["name"] for f in fields}
                 if "baseR" in names:
-                    mem = "MemLong" if ("off15" in names or "ucst15" in names) \
-                        else "MemReg"
-                    reg = "Dst" if "dst" in names else "Src"
+                    mem = memory_operand(mnem, fields)
+                    reg = "Dst" if "dst" in names else "StoreSrc"
                     ops = [mem, reg] if mnem.startswith("LD") else [reg, mem]
                 elif syntax is None:
                     skipped.append((name, heading, "no-syntax"))
@@ -197,35 +231,36 @@ def main():
                 else:
                     skipped.append((name, heading, "operand-map"))
                     continue
+            if mnem in {"LDDW", "STDW", "LDNDW", "STNDW"} and "baseR" in names:
+                pair = ("DstPair" if mnem.startswith("LD") else "StoreSrcPair")
+                if mnem in {"LDNDW", "STNDW"}:
+                    pair += "N"
+                mem = memory_operand(mnem, fields)
+                ops = [mem, pair] if mnem.startswith("LD") else [pair, mem]
+            if mnem == "ADDKPC":
+                ops = ["AKPCDisp", "Dst", "AKPCNop"]
+            if mnem in {"ADDAB", "ADDAH", "ADDAW"} and "ucst15" in names:
+                ops = ["BaseLong", "UCst15", "Dst"]
 
-            for v in variants:
+            for v, mem_mode in variants:
                 base = pattern_of(fields, v)
                 if base is None:
                     continue
+                if short_memory:
+                    base.append("mode=0x%x" % mem_mode)
                 # Only use the predicate field when creg/z are真 fields.
                 b2831 = [f for f in fields if f["lo"] is not None and 28 <= f["lo"] <= 31]
                 fixed_pred = all(f["const"] is not None for f in b2831) if b2831 else False
-                # The unit side bit is s (bit 1) for .L/.S/.M and y (bit 7) for
-                # .D.  When it is a field, emit one constructor per side so the
-                # mnemonic can carry the resolved unit suffix.
-                if ul and dyn_side:
-                    sidefield = "i7" if ul == "D" else "i1"
-                    sides = [("0", ".1"), ("1", ".2")]
-                elif ul and ul == "D" and any(
-                        f["name"] == "op" and f["lo"] <= 7 <= f["hi"] for f in fields):
-                    # side is encoded inside the opfield
+                if long_memory:
                     sidefield = None
-                    bit7 = [(f["lo"], f["hi"]) for f in fields
-                            if f["name"] == "op" and f["lo"] <= 7 <= f["hi"]][0]
-                    if v is not None:
-                        pos = bit7[1] - 7
-                        sides = [(None, ".2" if v[pos] == "1" else ".1")]
-                    else:
-                        sides = [(None, ".1")]
+                    sides = [(None, ".2")]
+                elif ul and dyn_side:
+                    sidefield = "i7" if short_memory else "i1"
+                    sides = [("0", ".1"), ("1", ".2")]
                 elif ul:
                     b1 = [f for f in fields if f["lo"] == 1]
                     fixed = ".2" if (b1 and b1[0]["const"] == "1") else ".1"
-                    if ul == "D":
+                    if short_memory:
                         yb = [f for f in fields if f["lo"] == 7]
                         if yb and yb[0]["const"] == "1":
                             fixed = ".2"
@@ -236,6 +271,9 @@ def main():
                 else:
                     sidefield = None
                     sides = [(None, "")]
+                if mnem == "ADDKPC":
+                    sidefield = "i1"
+                    sides = [("1", ".2")]
                 for sideval, suffix in sides:
                     pat = list(base)
                     if sidefield is not None:
@@ -243,23 +281,53 @@ def main():
                     pat.append("c_is16=0")
                     if not fixed_pred:
                         pat.append("Cond")
+                        # The predication table reserves creg=7. If the
+                        # root opcode still matches those bits, SLEIGH may
+                        # select it before CPKT and then fail inside Cond,
+                        # instead of trying the packet-header constructor.
+                        pat.append("creg!=7")
                     # SLEIGH links a display operand to its family symbol only
                     # when the symbol also occurs in the bit pattern.
                     for op in ops or []:
                         if not op.startswith('"'):
                             pat.append(op)
+                    if short_memory and mem_mode >= 0x8:
+                        # The operand computes an update candidate; commit it
+                        # after the transfer so src == baseR reads the old
+                        # value.  Post modes use the old base as the address.
+                        pat.append("BaseReg")
                     disp = mnem + (("." + ul + suffix[1:]) if ul else "")
                     if ops:
                         disp += " " + ", ".join(ops)
                     if mnem in SEMANTIC_MNEMONICS:
                         args = ", ".join(o for o in (ops or []) if not o.startswith(chr(34)))
                         macro = "c6000_sem_%s" % mnem.lower()
+                        if mnem in {"CLR", "EXT", "EXTU", "SET"} and "src1" in names:
+                            macro += "_r"
                         if mnem == "B" and ops and ops[0] != "BranchTarget":
                             macro = "c6000_sem_b_ind"
                         sem = "%s(%s);" % (macro, args)
+                        # A branch hidden inside a macro is emitted as a
+                        # computed jump by SLEIGH. Keep direct targets in
+                        # the constructor so Ghidra records branch flow.
+                        if mnem == "B" and ops and ops[0] == "BranchTarget":
+                            sem = "goto BranchTarget;"
+                        elif mnem == "CALLP" and ops and ops[0] == "BranchTarget":
+                            sem = "B3 = inst_start + 24; call BranchTarget;"
+                        elif mnem == "MVK" and ops:
+                            width = "5" if ops[0] == "Cst5" else "16"
+                            sem = "c6000_sem_mvk%s(%s);" % (width, args)
                     else:
                         sem = "c6000_unimpl_%s();" % mnem.lower()
                         placeholder_mnemonics.add(mnem)
+                    if short_memory:
+                        mem = memory_operand(mnem, fields)
+                        if mem_mode in (0xA, 0xB, 0xE, 0xF):
+                            sem = sem.replace(mem, "BaseReg")
+                        if mem_mode >= 0x8:
+                            sem += f" BaseReg = {mem};"
+                    if not fixed_pred:
+                        sem = "if (Cond == 0) goto <skip>; %s <skip>" % sem
                     key = tuple(sorted(pat))
                     if key in seen_patterns and seen_patterns[key] != mnem:
                         # Same encoding documented for two mnemonics; the

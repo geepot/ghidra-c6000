@@ -6,8 +6,8 @@
 // Linearly decodes a C6000 image and reports:
 //   * the number of instructions, their total byte length and the mnemonic
 //     histogram,
-//   * the fraction of words that fall back to an unimplemented-op placeholder
-//     (`c6000_unimpl_*`), which is the module's honesty metric,
+//   * the number of decoded instructions whose p-code contains an explicit
+//     unimplemented-operation userop,
 //   * per-instruction "address length mnemonic" listings that
 //     tools/oracle_compare.py diffs against the GNU tic6x disassembler.
 //
@@ -31,8 +31,9 @@ import ghidra.app.cmd.disassemble.DisassembleCommand;
 import ghidra.app.script.GhidraScript;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.address.AddressSet;
-import ghidra.program.model.lang.Register;
 import ghidra.program.model.listing.Instruction;
+import ghidra.program.model.pcode.PcodeOp;
+import ghidra.program.model.pcode.Varnode;
 
 public class C6000CorpusTest extends GhidraScript {
 
@@ -52,7 +53,7 @@ public class C6000CorpusTest extends GhidraScript {
 			checkImage("stage2", STAGE2_BASE, 0L, 0x20000L);
 		}
 		if (mode.equals("image")) {
-			if (args.length < 6) {
+			if (args.length != 5) {
 				throw new IllegalArgumentException(
 					"image mode needs <path> <base> <startOffset> <length>");
 			}
@@ -68,6 +69,10 @@ public class C6000CorpusTest extends GhidraScript {
 		if (mode.equals("all")) {
 			println("C6000_CORPUS_OK");
 		}
+		if (!mode.equals("stage1") && !mode.equals("stage2") &&
+			!mode.equals("all") && !mode.equals("image")) {
+			throw new IllegalArgumentException("unknown corpus mode: " + mode);
+		}
 	}
 
 	/**
@@ -80,7 +85,14 @@ public class C6000CorpusTest extends GhidraScript {
 		println("C6000_PACKETS image=" + label + " compactPackets=" + packets);
 
 		Address start = toAddr(base + startOffset);
+		if (startOffset < 0 || length <= 0) {
+			throw new IllegalArgumentException("offset must be nonnegative and length positive");
+		}
 		Address end = start.add(length - 1);
+		if (currentProgram.getMemory().getBlock(start) == null ||
+			!currentProgram.getMemory().getBlock(start).contains(end)) {
+			throw new IllegalArgumentException("corpus window exceeds the loaded image");
+		}
 		AddressSet corpus = new AddressSet(start, end);
 
 		Map<String, Integer> mnemonics = new TreeMap<>();
@@ -92,6 +104,8 @@ public class C6000CorpusTest extends GhidraScript {
 		int branches = 0;
 		int calls = 0;
 		int undecoded = 0;
+		int undecodedBytes = 0;
+		int invalidPcode = 0;
 
 		String outPath = System.getenv("C6000_LISTING");
 		PrintWriter listing = null;
@@ -106,47 +120,61 @@ public class C6000CorpusTest extends GhidraScript {
 			}
 			Instruction insn = currentProgram.getListing().getInstructionAt(cursor);
 			if (insn == null) {
-				new DisassembleCommand(cursor, corpus, false)
-					.applyTo(currentProgram, monitor);
+				DisassembleCommand command = new DisassembleCommand(cursor, corpus, false);
+				command.applyTo(currentProgram, monitor);
 				insn = currentProgram.getListing().getInstructionAt(cursor);
 			}
+			// Ghidra may materialize an invalid pattern as a one-byte
+			// BAD-Instruction.  It is not a decoded C6000 instruction and must
+			// be counted using the slot width, just like a null decode.
+			if (insn != null && insn.getMnemonicString().equals("BAD-Instruction")) {
+				insn = null;
+			}
 			if (insn == null) {
-				// A word that neither a documented constructor nor the
-				// fallback could claim. Record it, step four bytes to stay
-				// synchronised and carry on: the count is the honest metric.
+				// Keep the packet cadence after an unknown compact opcode.
+				// Advancing four bytes here would skip its 16-bit neighbor and
+				// make the following header look undecodable too.
+				BigInteger is16 = currentProgram.getProgramContext().getValue(
+					currentProgram.getRegister("c_is16"), cursor, false);
+				int step = BigInteger.ONE.equals(is16) ? 2 : 4;
 				undecoded++;
+				undecodedBytes += step;
 				if (undecoded <= 8) {
-					println("C6000_UNDECODED " + cursor + " word=0x" +
-						Integer.toHexString(currentProgram.getMemory()
-							.getInt(cursor)) + " ctx=" + currentProgram
-								.getProgramContext().getValue(currentProgram
-									.getProgramContext().getBaseContextRegister(),
-									cursor, false));
+					String raw = step == 2
+						? Integer.toHexString(currentProgram.getMemory().getShort(cursor) & 0xffff)
+						: Integer.toHexString(currentProgram.getMemory().getInt(cursor));
+					println("C6000_UNDECODED " + cursor + " bytes=" + step + " word=0x" +
+						raw);
 				}
-				cursor = cursor.add(4);
+				cursor = cursor.add(step);
 				continue;
 			}
 			String mnemonic = insn.getMnemonicString();
 			mnemonics.merge(mnemonic, 1, Integer::sum);
-			if (mnemonic.startsWith("c6000_unimpl_")) {
-				placeholders++;
+			boolean hasPlaceholder = false;
+			boolean hasZeroWidth = false;
+			for (PcodeOp op : insn.getPcode()) {
+				if (op.getOpcode() == PcodeOp.CALLOTHER) {
+					hasPlaceholder = true;
+				}
+				hasZeroWidth |= op.getOutput() != null && op.getOutput().getSize() == 0;
+				for (Varnode input : op.getInputs()) {
+					hasZeroWidth |= input.getSize() == 0;
+				}
 			}
+			if (hasPlaceholder) placeholders++;
+			if (hasZeroWidth) invalidPcode++;
 			if (mnemonic.equals("CPKT")) {
 				headerWords++;
 			}
 			if (insn.getLength() == 2) {
 				compact++;
 			}
-			// Delay-slot aware control flow is checked by whether Ghidra
-			// recorded a flow reference, not by operand text.
-			for (ghidra.program.model.symbol.Reference r : insn
-				.getReferencesFrom()) {
-				if (r.getReferenceType().isCall()) {
-					calls++;
-				}
-				else if (r.getReferenceType().isJump()) {
-					branches++;
-				}
+			if (insn.getFlowType().isCall()) {
+				calls++;
+			}
+			else if (insn.getFlowType().isJump()) {
+				branches++;
 			}
 			if (listing != null) {
 				listing.printf("%08x %d %s%n", cursor.getOffset(),
@@ -165,7 +193,12 @@ public class C6000CorpusTest extends GhidraScript {
 			" bytes=" + bytes + " compact16=" + compact + " headerWords=" +
 			headerWords + " placeholders=" + placeholders + " (" + pct +
 			"%) branches=" + branches + " calls=" + calls +
-			" undecoded=" + undecoded);
+			" undecoded=" + undecoded + " undecodedBytes=" + undecodedBytes);
+		if (invalidPcode != 0) {
+			throw new IllegalStateException(invalidPcode +
+				" decoded instructions contain zero-width p-code operands");
+		}
+		println("C6000_PCODE_OK image=" + label);
 		if (instructions > 0) {
 			println("C6000_MNEMONICS image=" + label + " " + mnemonics);
 		}

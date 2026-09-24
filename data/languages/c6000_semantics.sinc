@@ -50,15 +50,114 @@ macro c6000_sem_zero(d) { d = 0; }
 # ---------------------------------------------------------------------------
 
 # SEM: ADDK
-macro c6000_sem_addk(v, d) { d = d + v; }
+macro c6000_sem_addk(v, d) { d = d + ((v << 16) s>> 16); }
 # SEM: MVK
-macro c6000_sem_mvk(v, d) { d = zext(v); }
+macro c6000_sem_mvk5(v, d) { d = (v << 27) s>> 27; }
+macro c6000_sem_mvk16(v, d) { d = (v << 16) s>> 16; }
 # SEM: MVKL
-macro c6000_sem_mvkl(v, d) { d = zext(v); }
+macro c6000_sem_mvkl(v, d) { d = (v << 16) s>> 16; }
 # SEM: MVKH
 macro c6000_sem_mvkh(v, d) { d = (d & 0xffff) | (zext(v) << 16); }
 # SEM: ADDKPC
-macro c6000_sem_addkpc(v, d, n) { d = (inst_start & 0xffffffe0) + (sext(v) << 2); }
+macro c6000_sem_addkpc(v, d, n) { d = (inst_start & 0xffffffe0) + (v << 2); }
+
+# .D-unit address arithmetic in linear mode - SPRUFE8B section 3.9.3 and
+# the ADDAB/ADDAH/ADDAW/ADDAD and SUBAB/SUBAH/SUBAW execution blocks.
+# Circular AMR addressing for A4-A7/B4-B7 is not yet modelled.
+# SEM: ADDAB
+macro c6000_sem_addab(b, a, d) { d = b + a; }
+# SEM: ADDAH
+macro c6000_sem_addah(b, a, d) { d = b + (a << 1); }
+# SEM: ADDAW
+macro c6000_sem_addaw(b, a, d) { d = b + (a << 2); }
+# SEM: ADDAD
+macro c6000_sem_addad(b, a, d) { d = b + (a << 3); }
+# SEM: SUBAB
+macro c6000_sem_subab(b, a, d) { d = b - a; }
+# SEM: SUBAH
+macro c6000_sem_subah(b, a, d) { d = b - (a << 1); }
+# SEM: SUBAW
+macro c6000_sem_subaw(b, a, d) { d = b - (a << 2); }
+
+# ---------------------------------------------------------------------------
+# Bit-field operations - SPRUFE8B CLR, EXT, EXTU and SET descriptions.
+# The register forms pack csta in src1[9:5] and cstb in src1[4:0].
+# The manual declares register-form results invalid when src1[31:10] != 0;
+# p-code uses the specified low ten bits in that case.
+# ---------------------------------------------------------------------------
+
+# SEM: CLR
+macro c6000_sem_clr(s, a, b, d) {
+  if (b < a) goto <copy>;
+  local mask:4 = (0xffffffff >> (31 - (b - a))) << a;
+  d = s & (~mask);
+  goto <done>;
+  <copy> d = s;
+  <done>
+}
+macro c6000_sem_clr_r(s, v, d) {
+  local a:4 = (v >> 5) & 31;
+  local b:4 = v & 31;
+  c6000_sem_clr(s, a, b, d);
+}
+
+# SEM: EXT
+macro c6000_sem_ext(s, a, b, d) { d = (s << a) s>> b; }
+macro c6000_sem_ext_r(s, v, d) {
+  local a:4 = (v >> 5) & 31;
+  local b:4 = v & 31;
+  c6000_sem_ext(s, a, b, d);
+}
+
+# SEM: EXTU
+macro c6000_sem_extu(s, a, b, d) { d = (s << a) >> b; }
+macro c6000_sem_extu_r(s, v, d) {
+  local a:4 = (v >> 5) & 31;
+  local b:4 = v & 31;
+  c6000_sem_extu(s, a, b, d);
+}
+
+# SEM: SET
+macro c6000_sem_set(s, a, b, d) {
+  if (b < a) goto <copy>;
+  local mask:4 = (0xffffffff >> (31 - (b - a))) << a;
+  d = s | mask;
+  goto <done>;
+  <copy> d = s;
+  <done>
+}
+macro c6000_sem_set_r(s, v, d) {
+  local a:4 = (v >> 5) & 31;
+  local b:4 = v & 31;
+  c6000_sem_set(s, a, b, d);
+}
+
+# ---------------------------------------------------------------------------
+# Single-precision floating point and integer conversions - SPRUFE8B
+# section 3.12. These operate on one 32-bit register per operand. Double-
+# precision instructions use register pairs and remain explicit placeholders.
+# ---------------------------------------------------------------------------
+
+# SEM: ABSSP
+macro c6000_sem_abssp(a, d) { d = abs(a); }
+# SEM: ADDSP
+macro c6000_sem_addsp(a, b, d) { d = a f+ b; }
+# SEM: SUBSP
+macro c6000_sem_subsp(a, b, d) { d = a f- b; }
+# SEM: MPYSP
+macro c6000_sem_mpysp(a, b, d) { d = a f* b; }
+# SEM: INTSP
+macro c6000_sem_intsp(a, d) { d = int2float(a); }
+# SEM: INTSPU
+macro c6000_sem_intspu(a, d) { local unsigned:8 = zext(a); d = int2float(unsigned); }
+# SEM: SPTRUNC
+macro c6000_sem_sptrunc(a, d) { d = trunc(a); }
+# SEM: CMPEQSP
+macro c6000_sem_cmpeqsp(a, b, d) { d = zext(a f== b); }
+# SEM: CMPGTSP
+macro c6000_sem_cmpgtsp(a, b, d) { d = zext(a f> b); }
+# SEM: CMPLTSP
+macro c6000_sem_cmpltsp(a, b, d) { d = zext(a f< b); }
 
 # ---------------------------------------------------------------------------
 # Shifts - SPRUFE8B section 3.12, SHL / SHR / SHRU / SSHL.
@@ -97,12 +196,6 @@ macro c6000_sem_cmpgtu(a, b, d) { local t = (a > b); if (t) goto <y>; d = 0; got
 
 # SEM: LDW
 macro c6000_sem_ldw(a, d) { d = *[ram]:4 a; }
-# SEM: LDNW
-macro c6000_sem_ldnw(a, d) { d = *[ram]:4 a; }
-# SEM: LDDW
-macro c6000_sem_lddw(a, d) { d = *[ram]:4 a; }
-# SEM: LDNDW
-macro c6000_sem_ldndw(a, d) { d = *[ram]:4 a; }
 # SEM: LDB
 macro c6000_sem_ldb(a, d) { d = sext(*[ram]:1 a); }
 # SEM: LDBU
@@ -114,12 +207,6 @@ macro c6000_sem_ldhu(a, d) { d = zext(*[ram]:2 a); }
 
 # SEM: STW
 macro c6000_sem_stw(s, a) { *[ram]:4 a = s; }
-# SEM: STNW
-macro c6000_sem_stnw(s, a) { *[ram]:4 a = s; }
-# SEM: STDW
-macro c6000_sem_stdw(s, a) { *[ram]:4 a = s; }
-# SEM: STNDW
-macro c6000_sem_stndw(s, a) { *[ram]:4 a = s; }
 # SEM: STB
 macro c6000_sem_stb(s, a) { *[ram]:1 a = s; }
 # SEM: STH
