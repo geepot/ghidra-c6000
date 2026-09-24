@@ -12,6 +12,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import c6000.C6000LoopBuffer;
 import c6000.C6000LoopBuffer.Cycle;
 import c6000.C6000LoopBuffer.Operation;
+import c6000.C6000LoopBuffer.ReplayResult;
 import ghidra.app.script.GhidraScript;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.listing.Instruction;
@@ -40,15 +41,19 @@ public class C6000LoopReplay extends GhidraScript {
 		println("C6000_REPLAY " + address + " " + buffer.kind() + " ii=" +
 			buffer.initiationInterval() + " dynlen=" + buffer.dynamicLength() +
 			" packets=" + buffer.sourcePackets());
+		ReplayResult result;
 		if (buffer.kind() == C6000LoopBuffer.Kind.SPLOOPW) {
 			AtomicInteger samples = new AtomicInteger();
 			long initialIlc = args.length > 3 ? Long.decode(args[3]) : 0;
-			buffer.replayWhile(initialIlc, limit, this::showCycle,
+			result = buffer.replayWhileDetailed(initialIlc, limit, this::showCycle,
 				() -> samples.getAndIncrement() < count);
 		}
 		else {
-			buffer.replayCounted(Integer.toUnsignedLong(count), limit, this::showCycle);
+			result = buffer.replayCountedDetailed(Integer.toUnsignedLong(count),
+				limit, this::showCycle);
 		}
+		println("C6000_REPLAY_END cycles=" + result.cycles +
+			" postBodyFetch=" + result.firstPostBodyCycle);
 	}
 
 	private void showCycle(Cycle cycle) {
@@ -57,6 +62,9 @@ public class C6000LoopReplay extends GhidraScript {
 			.append(cycle.ilcBefore).append("->").append(cycle.ilcAfter);
 		if (cycle.stageBoundary) line.append(" boundary");
 		if (cycle.terminatingBoundary) line.append(" terminate");
+		if (cycle.postBodyFetchEnabled) {
+			line.append(" postFetch#").append(cycle.postBodyCycle);
+		}
 		for (Operation op : cycle.operations) {
 			line.append(" | ").append(op.origin).append("#")
 				.append(op.iteration).append("@")

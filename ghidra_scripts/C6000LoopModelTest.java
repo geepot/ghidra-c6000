@@ -7,6 +7,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.HexFormat;
 
 import c6000.C6000LoopBuffer;
+import c6000.C6000LoopBuffer.ReplayResult;
 import ghidra.app.script.GhidraScript;
 import ghidra.program.model.listing.Instruction;
 import ghidra.program.model.listing.InstructionIterator;
@@ -40,16 +41,19 @@ public class C6000LoopModelTest extends GhidraScript {
 				int dynlen = buffer.dynamicLength();
 				if (buffer.kind() == C6000LoopBuffer.Kind.SPLOOPW) {
 					AtomicInteger samples = new AtomicInteger();
-					int cycles = buffer.replayWhile(5, 512, cycle -> {
+					ReplayResult result = buffer.replayWhileDetailed(5, 512, cycle -> {
 						long expectedBefore = (5L - cycle.number / ii) & 0xffffffffL;
 						long expectedAfter = (expectedBefore - (cycle.stageBoundary ? 1 : 0)) &
 							0xffffffffL;
-						if (cycle.lbc != cycle.number % ii ||
+						if (cycle.postBodyFetchEnabled ||
+							cycle.lbc != cycle.number % ii ||
 							cycle.ilcBefore != expectedBefore || cycle.ilcAfter != expectedAfter) {
 							throw new AssertionError("bad SPLOOPW cycle at " + start.getMinAddress());
 						}
 					}, () -> samples.getAndIncrement() < 2 * ii);
-					if (cycles < ii) throw new AssertionError("SPLOOPW exited too early");
+					if (result.cycles < ii || result.firstPostBodyCycle != result.cycles) {
+						throw new AssertionError("bad SPLOOPW exit");
+					}
 				}
 				else {
 					int first = buffer.kind() == C6000LoopBuffer.Kind.SPLOOP ? 2 :
@@ -57,14 +61,36 @@ public class C6000LoopModelTest extends GhidraScript {
 					// If SPKERNEL precedes a stage boundary, the buffer
 					// emits NOP cycles through that boundary before exit.
 					int expected = Math.max(dynlen, ii) + (first - 1) * ii;
-					int cycles = buffer.replayCounted(2, 512, cycle -> {
+					AtomicInteger firstFetch = new AtomicInteger(-1);
+					ReplayResult result = buffer.replayCountedDetailed(2, 512, cycle -> {
 						if (cycle.lbc != cycle.number % ii || cycle.ilcAfter > cycle.ilcBefore) {
 							throw new AssertionError("bad ILC/LBC at " + start.getMinAddress());
 						}
+						if (cycle.postBodyFetchEnabled) {
+							firstFetch.compareAndSet(-1, cycle.number);
+							if (cycle.postBodyCycle != cycle.number - firstFetch.get()) {
+								throw new AssertionError("bad post-body fetch index");
+							}
+						}
 					});
-					if (cycles != expected) {
+					if (result.cycles != expected) {
 						throw new AssertionError("bad duration at " + start.getMinAddress() +
-							": " + cycles + " != " + expected);
+							": " + result.cycles + " != " + expected);
+					}
+					if (result.firstPostBodyCycle < dynlen ||
+						result.firstPostBodyCycle > result.cycles ||
+						(firstFetch.get() == -1 ? result.firstPostBodyCycle != result.cycles :
+							firstFetch.get() != result.firstPostBodyCycle)) {
+						throw new AssertionError("bad post-body fetch at " +
+							start.getMinAddress());
+					}
+					// This firmware loop has SPKERNEL delay=(4 stages, 0 cycles),
+					// ii=2 and dynlen=17: fetch resumes at cycle 18 during epilog.
+					if (currentProgram.getName().equals("dsp.stage2.payload.bin") &&
+						start.getMinAddress().getOffset() == 0xc0003362L &&
+						(buffer.fetchDelayCycles() != 8 ||
+							result.firstPostBodyCycle != 18 || result.cycles != 23)) {
+						throw new AssertionError("bad stage 2 epilog fetch timing");
 					}
 					int lastLoadingBoundary = ((dynlen + ii - 1) / ii) * ii;
 					int zeroExpected = buffer.kind() == C6000LoopBuffer.Kind.SPLOOP ?

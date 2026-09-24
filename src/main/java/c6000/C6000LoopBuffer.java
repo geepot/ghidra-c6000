@@ -59,17 +59,32 @@ public final class C6000LoopBuffer {
 		public final long ilcAfter;
 		public final boolean stageBoundary;
 		public final boolean terminatingBoundary;
+		public final boolean postBodyFetchEnabled;
+		public final int postBodyCycle;
 		public final List<Operation> operations;
 
 		private Cycle(int number, int ii, long before, long after,
-				boolean terminating, List<Operation> operations) {
+				boolean terminating, int firstPostBodyCycle, List<Operation> operations) {
 			this.number = number;
 			this.lbc = number % ii;
 			this.ilcBefore = before;
 			this.ilcAfter = after;
 			this.stageBoundary = this.lbc == ii - 1;
 			this.terminatingBoundary = terminating;
+			this.postBodyFetchEnabled = number >= firstPostBodyCycle;
+			this.postBodyCycle = postBodyFetchEnabled ? number - firstPostBodyCycle : -1;
 			this.operations = Collections.unmodifiableList(operations);
+		}
+	}
+
+	/** Completion time and the first cycle that may fetch after SPKERNEL. */
+	public static final class ReplayResult {
+		public final int cycles;
+		public final int firstPostBodyCycle;
+
+		private ReplayResult(int cycles, int firstPostBodyCycle) {
+			this.cycles = cycles;
+			this.firstPostBodyCycle = firstPostBodyCycle;
 		}
 	}
 
@@ -91,15 +106,18 @@ public final class C6000LoopBuffer {
 	private final int sourcePackets;
 	private final List<SourceCycle> source;
 	private final boolean reloadable;
+	private final int fetchDelay;
 
 	private C6000LoopBuffer(Kind kind, int ii, Address bodyStart,
-			int sourcePackets, List<SourceCycle> source, boolean reloadable) {
+			int sourcePackets, List<SourceCycle> source, boolean reloadable,
+			int fetchDelay) {
 		this.kind = kind;
 		this.ii = ii;
 		this.bodyStart = bodyStart;
 		this.sourcePackets = sourcePackets;
 		this.source = source;
 		this.reloadable = reloadable;
+		this.fetchDelay = fetchDelay;
 	}
 
 	public Kind kind() { return kind; }
@@ -108,6 +126,7 @@ public final class C6000LoopBuffer {
 	public int sourcePackets() { return sourcePackets; }
 	public Address bodyStart() { return bodyStart; }
 	public boolean reloadable() { return reloadable; }
+	public int fetchDelayCycles() { return fetchDelay; }
 
 	/** Decode complete source execute packets from the instruction after SPLOOP through SPKERNEL. */
 	public static C6000LoopBuffer fromProgram(Program program, Instruction start,
@@ -188,7 +207,18 @@ public final class C6000LoopBuffer {
 		boolean reloadable = kind != Kind.SPLOOPW &&
 			(name.startsWith("[") || kernel.getMnemonicString().contains("SPKERNELR"));
 		return new C6000LoopBuffer(kind, ii, bodyStart, packets, List.copyOf(cycles),
-			reloadable);
+			reloadable, kernel.getMnemonicString().contains("SPKERNELR") ? 0 :
+			fetchDelay(ii, scalar(kernel)));
+	}
+
+	private static int fetchDelay(int ii, int encoded) {
+		int cycleBits = ii == 1 ? 0 : ii == 2 ? 1 : ii <= 4 ? 2 : ii <= 8 ? 3 : 4;
+		int cycle = encoded & ((1 << cycleBits) - 1);
+		int stage = 0;
+		for (int bit = 0; bit < 6 - cycleBits; bit++) {
+			stage |= ((encoded >>> (5 - bit)) & 1) << bit;
+		}
+		return stage * ii + cycle;
 	}
 
 	/**
@@ -197,6 +227,11 @@ public final class C6000LoopBuffer {
 	 * pass the value before its initial decrement, which is applied here.
 	 */
 	public int replayCounted(long initialIlc, int maxCycles, Consumer<Cycle> sink) {
+		return replayCountedDetailed(initialIlc, maxCycles, sink).cycles;
+	}
+
+	public ReplayResult replayCountedDetailed(long initialIlc, int maxCycles,
+			Consumer<Cycle> sink) {
 		if (kind == Kind.SPLOOPW) throw new IllegalStateException("SPLOOPW uses a predicate");
 		if (reloadable) throw new UnsupportedOperationException("nested reload needs RILC and an outer-loop predicate");
 		if (initialIlc < 0 || initialIlc > 0xffffffffL || maxCycles < 1) {
@@ -208,6 +243,8 @@ public final class C6000LoopBuffer {
 		int finalIteration = initiallyZero ? -1 : Integer.MAX_VALUE;
 		int lastLoadingBoundary = ((source.size() + ii - 1) / ii) * ii - 1;
 		int drainEnd = initiallyZero ? lastLoadingBoundary : Integer.MAX_VALUE;
+		int firstPostBodyCycle = initiallyZero ? lastLoadingBoundary + 1 :
+			Integer.MAX_VALUE;
 		for (int t = 0; t < maxCycles; t++) {
 			int iteration = t / ii;
 			List<Operation> ops = operationsAt(t, finalIteration, initiallyZero);
@@ -224,12 +261,18 @@ public final class C6000LoopBuffer {
 						// buffer remains active through its last loading boundary.
 						if (iteration == 0) drainEnd = Math.max(drainEnd,
 							lastLoadingBoundary);
+						// The fetch delay counts from the start of draining,
+						// but fetching also waits for the last kernel boundary.
+						firstPostBodyCycle = Math.min(drainEnd + 1,
+							Math.max(lastLoadingBoundary + 1, t + 1 + fetchDelay));
 					}
 					else ilc--;
 				}
 			}
-			sink.accept(new Cycle(t, ii, before, ilc, terminate, ops));
-			if (t >= drainEnd) return t + 1;
+			sink.accept(new Cycle(t, ii, before, ilc, terminate,
+				firstPostBodyCycle, ops));
+			if (t >= drainEnd) return new ReplayResult(t + 1,
+				firstPostBodyCycle);
 		}
 		throw new IllegalStateException("loop trace exceeds " + maxCycles + " cycles");
 	}
@@ -243,6 +286,12 @@ public final class C6000LoopBuffer {
 	 */
 	public int replayWhile(long initialIlc, int maxCycles, Consumer<Cycle> sink,
 			BooleanSupplier continuePredicate) {
+		return replayWhileDetailed(initialIlc, maxCycles, sink,
+			continuePredicate).cycles;
+	}
+
+	public ReplayResult replayWhileDetailed(long initialIlc, int maxCycles,
+			Consumer<Cycle> sink, BooleanSupplier continuePredicate) {
 		if (kind != Kind.SPLOOPW) throw new IllegalStateException("not SPLOOPW");
 		if (initialIlc < 0 || initialIlc > 0xffffffffL || maxCycles < 1) {
 			throw new IllegalArgumentException();
@@ -255,8 +304,9 @@ public final class C6000LoopBuffer {
 			boolean terminate = boundary && t >= 3 && !delayed[(t - 3) % 3];
 			long before = ilc;
 			if (boundary) ilc = (ilc - 1) & 0xffffffffL;
-			sink.accept(new Cycle(t, ii, before, ilc, terminate, ops));
-			if (terminate) return t + 1;
+			sink.accept(new Cycle(t, ii, before, ilc, terminate,
+				Integer.MAX_VALUE, ops));
+			if (terminate) return new ReplayResult(t + 1, t + 1);
 			// The first three cycles cannot terminate, but their predicate
 			// samples may be used at the first eligible boundary.
 			delayed[t % 3] = continuePredicate.getAsBoolean();

@@ -306,7 +306,9 @@ it produces.
   using it to decide termination. The callback exposes each cycle's operations
   and `ILC` before and after stage boundaries. Zero- and one-iteration loops
   issue idle cycles through the last loading-stage boundary when the body ends
-  partway through a stage. In Ghidra's Script Manager, run
+  partway through a stage. The detailed replay result gives the first cycle
+  of post-body program-memory fetch; each overlapping epilog cycle marks its
+  post-body fetch index. In Ghidra's Script Manager, run
   `C6000LoopReplay.java` on a selected `SPLOOP`, or pass its address, initial
   `ILC` (for counted loops) or number of true predicate samples (for
   `SPLOOPW`), and a cycle limit as arguments. A fourth argument supplies the
@@ -317,7 +319,8 @@ it produces.
 
   The scheduler reports operation order and loop-control state; it does not
   execute each instruction's p-code or model instruction latency, interrupts,
-  nested reload, or post-body program-memory `SPMASK` overlays. Native Ghidra
+  nested reload, or the post-body program-memory instructions and `SPMASK`
+  overlays themselves. Native Ghidra
   decompilation still displays the loop-control userops, because the hardware
   buffer does not correspond to an ordinary control-flow edge.
 * **Predication** is decoded, displayed and guards the modelled 32-bit p-code.
