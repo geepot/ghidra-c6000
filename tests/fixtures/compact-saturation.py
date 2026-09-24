@@ -45,7 +45,7 @@ def sh5(op, count):
     return ((count & 7) << 13) | ((count >> 3) << 11) | (1 << 10) | (2 << 7) | (op << 5) | 2
 
 
-# name, opcode, SAT, A1, A2, destination, expected result, CSR.SAT
+# name, opcode, SAT, A1, A2, destination, expected result, CSR.SAT, optional BR
 CASES = [
     ("SADD-positive", l3(0), 1, 0x7fffffff, 1, "A3", 0x7fffffff, 1),
     ("SADD-normal", l3(0), 1, 0xfffffffc, 3, "A3", 0xffffffff, 0),
@@ -66,6 +66,14 @@ CASES = [
     ("ADD-immediate-sat-ignored", l3i(), 1, 0, 2, "A3", 10, 0),
     ("SHL-immediate-sat-ignored", s3i(), 1, 0, 2, "A3", 0x20000, 0),
     ("SHL-sh5-sat-ignored", sh5(0, 1), 1, 0, 0x40000000, "A2", 0x80000000, 0),
+    # F-25..F-28 have no BR column in their opcode maps.  The firmware uses
+    # these formats in packets whose BR expansion bit is set.
+    ("SHL-br", sh5(0, 1), 0, 0, 0x40000000, "A2", 0x80000000, 0, 1),
+    ("SSHL-br", sshl_imm(1), 1, 0, 0x40000000, "A2", 0x7fffffff, 1, 1),
+    ("SET-br", (1 << 13) | (2 << 7) | (1 << 5) | 2, 0,
+     0, 0, "A2", 2, 0, 1),
+    ("EXT-br", (1 << 13) | (2 << 7) | 0x62, 0,
+     0, 0x1234ffff, "A1", 0xffffffff, 0, 1),
 ]
 
 
@@ -75,8 +83,9 @@ def main():
     endian = ">" if len(sys.argv) > 3 and sys.argv[3] == "be" else "<"
     image.parent.mkdir(parents=True, exist_ok=True)
     with image.open("wb") as output, manifest.open("w") as cases:
-        for index, (name, opcode, sat, a1, a2, dst, expected, csr_sat) in enumerate(CASES):
-            header = 0xe0000000 | (1 << 21) | (sat << 14)
+        for index, (name, opcode, sat, a1, a2, dst, expected, csr_sat, *rest) in enumerate(CASES):
+            br = rest[0] if rest else 0
+            header = 0xe0000000 | (1 << 21) | (br << 15) | (sat << 14)
             output.write(struct.pack(endian + "H", opcode))
             output.write(bytes(26))
             output.write(struct.pack(endian + "I", header))

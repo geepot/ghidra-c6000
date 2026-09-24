@@ -960,7 +960,8 @@ con("MVK^CUnitS Cucst8f24, RA97",
 w("")
 
 w("# ---------------------------------------------------------------------------")
-w("# Figure F-25. Ssh5 - SPRUFE8B appendix F.4.  Only SHRU is changed")
+w("# Figure F-25. Ssh5 - SPRUFE8B appendix F.4.  This format has no BR")
+w("# constraint.  Only SHRU is changed")
 w("# into SSHL by the SAT header bit (figure opcode table).")
 w("# ---------------------------------------------------------------------------")
 w("")
@@ -973,7 +974,7 @@ for sat in (0, 1):
             mn = "SSHL"
         sem = ("c6000_sem_sshl32(RA97, Cucst5f23, RB97);" if mn == "SSHL"
                else "RB97 = RA97 %s Cucst5f23;" % shift)
-        pat = ["j10=1", "j4=0", "j3=0", "j2=0", "j1=1", "c_br=0",
+        pat = ["j10=1", "j4=0", "j3=0", "j2=0", "j1=1",
                "j6=%d" % ((op >> 1) & 1), "j5=%d" % (op & 1),
                "RA97", "Cucst5f23", "RB97"]
         if op == 2:
@@ -991,7 +992,7 @@ for op, mn, shift in ((0, "SHL", "<<"), (1, "SHR", "s>>"),
                       (2, "SHRU", ">>"), (3, "SSHL", None)):
     sem = ("c6000_sem_sshl32(RA97, RA15, RB97);" if shift is None
            else "RB97 = RA97 %s (RA15 & 63);" % shift)
-    pat = ["j10=1", "j6=1", "j5=1", "j4=0", "j3=0", "j2=0", "j1=1", "c_br=0",
+    pat = ["j10=1", "j6=1", "j5=1", "j4=0", "j3=0", "j2=0", "j1=1",
            "j12=%d" % ((op >> 1) & 1), "j11=%d" % (op & 1),
            "RA97", "RA15", "RB97"]
     con("%s^CUnitS RA97, RA15, RB97" % mn, pat, sem)
@@ -1003,15 +1004,15 @@ w("# (Figure F-28).  SET/CLR take csta = cstb = ucst5, i.e. a single bit.")
 w("# ---------------------------------------------------------------------------")
 w("")
 con("EXTU^CUnitS RA97, Cucst5f23, 31, CAcc",
-    ["j10=0", "j4=0", "j3=0", "j2=0", "j1=1", "c_br=0", "j6=0", "j5=0",
+    ["j10=0", "j4=0", "j3=0", "j2=0", "j1=1", "j6=0", "j5=0",
      "RA97", "Cucst5f23", "CAcc"],
     "CAcc = (RA97 << Cucst5f23) >> 31;")
 con("SET^CUnitS RA97, Cucst5d, Cucst5f23, RB97",
-    ["j10=0", "j4=0", "j3=0", "j2=0", "j1=1", "c_br=0", "j6=0", "j5=1",
+    ["j10=0", "j4=0", "j3=0", "j2=0", "j1=1", "j6=0", "j5=1",
      "RA97", "Cucst5d", "Cucst5f23", "RB97"],
     "local b = 1; b = b << Cucst5d; RB97 = RA97 | b;")
 con("CLR^CUnitS RA97, Cucst5d, Cucst5f23, RB97",
-    ["j10=0", "j4=0", "j3=0", "j2=0", "j1=1", "c_br=0", "j6=1", "j5=0",
+    ["j10=0", "j4=0", "j3=0", "j2=0", "j1=1", "j6=1", "j5=0",
      "RA97", "Cucst5d", "Cucst5f23", "RB97"],
     "local b = 1; b = b << Cucst5d; RB97 = RA97 & ~b;")
 w("")
@@ -1024,7 +1025,7 @@ for op, mn, a, b in ((0, "EXT", 16, 16), (1, "EXT", 24, 24),
                      (2, "EXTU", 16, 16), (3, "EXTU", 24, 24)):
     shift = "s>>" if mn == "EXT" else ">>"
     con("%s^CUnitS RA97, %d, %d, RA15" % (mn, a, b),
-        ["j10=0", "j6=1", "j5=1", "j4=0", "j3=0", "j2=0", "j1=1", "c_br=0",
+        ["j10=0", "j6=1", "j5=1", "j4=0", "j3=0", "j2=0", "j1=1",
          "j12=%d" % ((op >> 1) & 1), "j11=%d" % (op & 1), "RA97", "RA15"],
         "RA15 = (RA97 << %d) %s %d;" % (a, shift, b))
 w("")
@@ -1035,7 +1036,7 @@ w("# ---------------------------------------------------------------------------
 w("")
 for op, mn, sem in ((0, "ADD", "RB15 = RA15 + RX97;"), (1, "SUB", "RB15 = RA15 - RX97;")):
     con("%s^CUnitS RA15, RX97, RB15" % mn,
-        ["j10=0", "j6=0", "j5=1", "j4=0", "j3=1", "j2=1", "j1=1", "c_br=0",
+        ["j10=0", "j6=0", "j5=1", "j4=0", "j3=1", "j2=1", "j1=1",
          "j11=%d" % op, "RA15", "RX97", "RB15"], sem)
 w("")
 
@@ -1058,10 +1059,10 @@ w("# ---------------------------------------------------------------------------
 w("")
 con('SUB^CUnitS^" 0, "^RA97^", "^RB97',
     ["j12=1", "j11=1", "j10=0", "j6=1", "j5=1", "j4=0", "j3=1", "j2=1", "j1=1",
-     "c_br=0", "j15=0", "j14=1", "j13=0", "RA97", "RB97"], "RB97 = 0 - RA97;")
+     "j15=0", "j14=1", "j13=0", "RA97", "RB97"], "RB97 = 0 - RA97;")
 con('ADD^CUnitS^" -1, "^RA97^", "^RB97',
     ["j12=1", "j11=1", "j10=0", "j6=1", "j5=1", "j4=0", "j3=1", "j2=1", "j1=1",
-     "c_br=0", "j15=0", "j14=1", "j13=1", "RA97", "RB97"], "RB97 = RA97 - 1;")
+     "j15=0", "j14=1", "j13=1", "RA97", "RB97"], "RB97 = RA97 - 1;")
 con('MVC^CUnitS RA97^", ILC"',
     ["j12=1", "j11=1", "j10=0", "j6=1", "j5=1", "j4=0", "j3=1", "j2=1", "j1=1",
      "j15=1", "j14=1", "j13=0", "q_s=1", "RA97"], "ILC = RA97;")
