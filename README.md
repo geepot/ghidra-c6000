@@ -27,7 +27,7 @@ below show both the decoded instructions and the remaining gaps.
 | P-code semantics | integer ALU and common multiplies, immediates, bit-field operations, linear address arithmetic, scalar and doubleword loads/stores, single-precision arithmetic and conversions, selected double-precision arithmetic and conversions, compares, shifts, branches/calls, `MVC` |
 | Other decoded instructions | lift to `c6000_unimpl_<mnemonic>` (32-bit) or `c6000_unimplemented` (compact) |
 | Function ID | generation script shipped; database not shipped (TI licence) |
-| Software loop controls | decoded and annotated; a separate cycle scheduler replays buffered packets and stage-boundary `ILC` changes |
+| Software loop controls | decoded and annotated; a separate cycle scheduler replays buffered packets and stage-boundary `ILC` changes, including predicate-driven `SPLOOPW` |
 | Remaining double-precision floating point, advanced integer `.M` multiply, packed 8/16-bit arithmetic, Galois | decode only |
 
 Unimplemented instructions are **explicit, greppable placeholders**, not
@@ -44,21 +44,20 @@ C6000CorpusTest.java stage1   # or stage2
 
 | Corpus (first 12,288 / 131,072 bytes) | Bytes decoded | Instructions | Compact 16-bit | Headers | Unimplemented p-code | Undecoded slots | Byte coverage |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| CDJ-2000NXS stage 1, base `0x11801da0` | 11,318 | 3,175 | 691 | 161 | 4 (<1%) | 244 | **92.1%** |
-| CDJ-2000NXS stage 2, base `0xC0000000` | 130,802 | 36,510 | 7,619 | 2,209 | 11 (<1%) | 95 | **99.8%** |
+| CDJ-2000NXS stage 1, base `0x11801da0` | 11,324 | 3,177 | 692 | 162 | 4 (<1%) | 242 | **92.2%** |
+| CDJ-2000NXS stage 2, base `0xC0000000` | 131,012 | 36,580 | 7,654 | 2,214 | 11 (<1%) | 25 | **99.95%** |
 
 Full-payload linear sweeps also completed with no zero-width p-code operands:
 
 | Corpus | Payload bytes | Bytes decoded | Instructions | Unimplemented p-code | Undecoded slots | Byte coverage |
 |---|---:|---:|---:|---:|---:|---:|
-| Stage 1 | 55,120 | 40,402 | 10,459 | 862 (8%) | 3,684 | **73.3%** |
-| Stage 2 | 361,248 | 335,562 | 91,317 | 32 (<1%) | 6,484 | **92.9%** |
+| Stage 1 | 55,120 | 40,344 | 10,455 | 871 (8%) | 3,695 | **73.2%** |
+| Stage 2 | 361,248 | 335,884 | 91,440 | 32 (<1%) | 6,361 | **93.0%** |
 
 The sweeps found 24 paired software loops and 43 buffer masks in stage 1,
 and 224 paired loops and 470 buffer masks in stage 2. No detected loop
 boundary was left unmatched. The loop schedule parsed and replayed all 24
-stage 1 loops and 206 stage 2 loops; 18 stage 2 bodies contain undecoded
-instruction gaps, so the scheduler declines to invent their missing cycles.
+stage 1 loops and all 224 stage 2 loops, with no body decode gaps.
 The loop-control userops are counted separately from unimplemented instruction
 placeholders.
 
@@ -67,7 +66,9 @@ stage 1 window is mostly `0xffffffff` fill/data, with a few unknown compact
 halfwords and an unresolved 32-bit word. The stage 2 window
 contains unknown compact halfwords and some 32-bit gaps. Byte coverage is a
 linear sweep of the stated windows or payloads, not a claim that every byte is
-code. The full stage 1 image in particular contains substantial fill/data.
+code. The full stage 1 image in particular contains substantial fill/data;
+some repeating table bytes resemble compact instructions, so full-image
+instruction counts are not a measure of executable-code coverage.
 The full-payload sweeps used `-noanalysis`; normal Ghidra autoanalysis completed
 on the stage 2 code window. Running autoanalysis after a full stage 2 linear
 sweep exceeded the available Ghidra 12.1.3 heap, so the full-payload numbers
@@ -301,11 +302,13 @@ it produces.
   adding a false PC branch. It handles initiation interval overlap, source
   `SPMASK` filtering, counted `SPLOOP`/`SPLOOPD` termination, the first-three-
   cycle `SPLOOPD` grace period, and the three-cycle delayed `SPLOOPW`
-  predicate. The callback exposes each cycle's operations and `ILC` before
-  and after stage boundaries. In Ghidra's Script Manager, run
+  predicate. `SPLOOPW` also decrements `ILC` at every stage boundary without
+  using it to decide termination. The callback exposes each cycle's operations
+  and `ILC` before and after stage boundaries. In Ghidra's Script Manager, run
   `C6000LoopReplay.java` on a selected `SPLOOP`, or pass its address, initial
   `ILC` (for counted loops) or number of true predicate samples (for
-  `SPLOOPW`), and a cycle limit as arguments. For example,
+  `SPLOOPW`), and a cycle limit as arguments. A fourth argument supplies the
+  initial `ILC` for a `SPLOOPW` trace. For example,
   `C6000LoopReplay.java 0xC00036A4 2 128` traces 48 cycles of the stage 2
   loop at that address. `C6000LoopModelTest.java` checks all decoded loop
   bodies in an imported image.

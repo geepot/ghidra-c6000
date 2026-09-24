@@ -328,6 +328,39 @@ Src2Pair: "A27:A26" is src2_pair_index=13 & i18=0 & i1=1 & i12=1 { export A27_A2
 Src2Pair: "A29:A28" is src2_pair_index=14 & i18=0 & i1=1 & i12=1 { export A29_A28; }
 Src2Pair: "A31:A30" is src2_pair_index=15 & i18=0 & i1=1 & i12=1 { export A31_A30; }
 
+Src2PairDpsp: "A1:A0" is src2_pair_index=0 & i18=1 & src1_pair_index=0 & i13=0 & i1=0 & i12=0 { export A1_A0; }
+Src2PairDpsp: "A3:A2" is src2_pair_index=1 & i18=1 & src1_pair_index=1 & i13=0 & i1=0 & i12=0 { export A3_A2; }
+Src2PairDpsp: "A5:A4" is src2_pair_index=2 & i18=1 & src1_pair_index=2 & i13=0 & i1=0 & i12=0 { export A5_A4; }
+Src2PairDpsp: "A7:A6" is src2_pair_index=3 & i18=1 & src1_pair_index=3 & i13=0 & i1=0 & i12=0 { export A7_A6; }
+Src2PairDpsp: "A9:A8" is src2_pair_index=4 & i18=1 & src1_pair_index=4 & i13=0 & i1=0 & i12=0 { export A9_A8; }
+Src2PairDpsp: "A11:A10" is src2_pair_index=5 & i18=1 & src1_pair_index=5 & i13=0 & i1=0 & i12=0 { export A11_A10; }
+Src2PairDpsp: "A13:A12" is src2_pair_index=6 & i18=1 & src1_pair_index=6 & i13=0 & i1=0 & i12=0 { export A13_A12; }
+Src2PairDpsp: "A15:A14" is src2_pair_index=7 & i18=1 & src1_pair_index=7 & i13=0 & i1=0 & i12=0 { export A15_A14; }
+Src2PairDpsp: "A17:A16" is src2_pair_index=8 & i18=1 & src1_pair_index=8 & i13=0 & i1=0 & i12=0 { export A17_A16; }
+Src2PairDpsp: "A19:A18" is src2_pair_index=9 & i18=1 & src1_pair_index=9 & i13=0 & i1=0 & i12=0 { export A19_A18; }
+Src2PairDpsp: "A21:A20" is src2_pair_index=10 & i18=1 & src1_pair_index=10 & i13=0 & i1=0 & i12=0 { export A21_A20; }
+Src2PairDpsp: "A23:A22" is src2_pair_index=11 & i18=1 & src1_pair_index=11 & i13=0 & i1=0 & i12=0 { export A23_A22; }
+Src2PairDpsp: "A25:A24" is src2_pair_index=12 & i18=1 & src1_pair_index=12 & i13=0 & i1=0 & i12=0 { export A25_A24; }
+Src2PairDpsp: "A27:A26" is src2_pair_index=13 & i18=1 & src1_pair_index=13 & i13=0 & i1=0 & i12=0 { export A27_A26; }
+Src2PairDpsp: "A29:A28" is src2_pair_index=14 & i18=1 & src1_pair_index=14 & i13=0 & i1=0 & i12=0 { export A29_A28; }
+Src2PairDpsp: "A31:A30" is src2_pair_index=15 & i18=1 & src1_pair_index=15 & i13=0 & i1=0 & i12=0 { export A31_A30; }
+Src2PairDpsp: "B1:B0" is src2_pair_index=0 & i18=1 & src1_pair_index=0 & i13=0 & i1=1 & i12=0 { export B1_B0; }
+Src2PairDpsp: "B3:B2" is src2_pair_index=1 & i18=1 & src1_pair_index=1 & i13=0 & i1=1 & i12=0 { export B3_B2; }
+Src2PairDpsp: "B5:B4" is src2_pair_index=2 & i18=1 & src1_pair_index=2 & i13=0 & i1=1 & i12=0 { export B5_B4; }
+Src2PairDpsp: "B7:B6" is src2_pair_index=3 & i18=1 & src1_pair_index=3 & i13=0 & i1=1 & i12=0 { export B7_B6; }
+Src2PairDpsp: "B9:B8" is src2_pair_index=4 & i18=1 & src1_pair_index=4 & i13=0 & i1=1 & i12=0 { export B9_B8; }
+Src2PairDpsp: "B11:B10" is src2_pair_index=5 & i18=1 & src1_pair_index=5 & i13=0 & i1=1 & i12=0 { export B11_B10; }
+Src2PairDpsp: "B13:B12" is src2_pair_index=6 & i18=1 & src1_pair_index=6 & i13=0 & i1=1 & i12=0 { export B13_B12; }
+Src2PairDpsp: "B15:B14" is src2_pair_index=7 & i18=1 & src1_pair_index=7 & i13=0 & i1=1 & i12=0 { export B15_B14; }
+Src2PairDpsp: "B17:B16" is src2_pair_index=8 & i18=1 & src1_pair_index=8 & i13=0 & i1=1 & i12=0 { export B17_B16; }
+Src2PairDpsp: "B19:B18" is src2_pair_index=9 & i18=1 & src1_pair_index=9 & i13=0 & i1=1 & i12=0 { export B19_B18; }
+Src2PairDpsp: "B21:B20" is src2_pair_index=10 & i18=1 & src1_pair_index=10 & i13=0 & i1=1 & i12=0 { export B21_B20; }
+Src2PairDpsp: "B23:B22" is src2_pair_index=11 & i18=1 & src1_pair_index=11 & i13=0 & i1=1 & i12=0 { export B23_B22; }
+Src2PairDpsp: "B25:B24" is src2_pair_index=12 & i18=1 & src1_pair_index=12 & i13=0 & i1=1 & i12=0 { export B25_B24; }
+Src2PairDpsp: "B27:B26" is src2_pair_index=13 & i18=1 & src1_pair_index=13 & i13=0 & i1=1 & i12=0 { export B27_B26; }
+Src2PairDpsp: "B29:B28" is src2_pair_index=14 & i18=1 & src1_pair_index=14 & i13=0 & i1=1 & i12=0 { export B29_B28; }
+Src2PairDpsp: "B31:B30" is src2_pair_index=15 & i18=1 & src1_pair_index=15 & i13=0 & i1=1 & i12=0 { export B31_B30; }
+
 MemRegB: "*-" ^ BaseReg ^ "[" ^ UCst5 ^ "]" is mode=0x0 & ucst5 & BaseReg & UCst5 { local a:4 = BaseReg - UCst5; export a; }
 MemRegB: "*+" ^ BaseReg ^ "[" ^ UCst5 ^ "]" is mode=0x1 & ucst5 & BaseReg & UCst5 { local a:4 = BaseReg + UCst5; export a; }
 MemRegB: "*-" ^ BaseReg ^ "[" ^ OffReg ^ "]" is mode=0x4 & offr & BaseReg & OffReg { local a:4 = BaseReg - OffReg; export a; }

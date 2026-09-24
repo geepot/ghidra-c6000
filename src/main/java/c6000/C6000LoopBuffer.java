@@ -230,21 +230,27 @@ public final class C6000LoopBuffer {
 	}
 
 	/**
-	 * Replay a predicate-terminated SPLOOPW. The predicate is sampled after the
+	 * Replay a predicate-terminated SPLOOPW. ILC decrements at every stage
+	 * boundary but does not decide termination. The predicate is sampled after the
 	 * cycle's operations, three cycles before the corresponding stage boundary.
 	 * It must return true while the loop is to continue. SPLOOPW stops without
 	 * an epilog when that delayed condition becomes false.
 	 */
-	public int replayWhile(int maxCycles, Consumer<Cycle> sink,
+	public int replayWhile(long initialIlc, int maxCycles, Consumer<Cycle> sink,
 			BooleanSupplier continuePredicate) {
 		if (kind != Kind.SPLOOPW) throw new IllegalStateException("not SPLOOPW");
-		if (maxCycles < 1) throw new IllegalArgumentException();
+		if (initialIlc < 0 || initialIlc > 0xffffffffL || maxCycles < 1) {
+			throw new IllegalArgumentException();
+		}
+		long ilc = initialIlc;
 		boolean[] delayed = new boolean[3];
 		for (int t = 0; t < maxCycles; t++) {
 			List<Operation> ops = operationsAt(t, Integer.MAX_VALUE, false);
 			boolean boundary = (t + 1) % ii == 0;
 			boolean terminate = boundary && t >= 3 && !delayed[(t - 3) % 3];
-			sink.accept(new Cycle(t, ii, 0, 0, terminate, ops));
+			long before = ilc;
+			if (boundary) ilc = (ilc - 1) & 0xffffffffL;
+			sink.accept(new Cycle(t, ii, before, ilc, terminate, ops));
 			if (terminate) return t + 1;
 			// The first three cycles cannot terminate, but their predicate
 			// samples may be used at the first eligible boundary.

@@ -4,7 +4,8 @@
 // Trace the loop containing the cursor, or pass its SPLOOP address as arg 1.
 // For counted loops arg 2 is the initial ILC value (default 2). For SPLOOPW,
 // arg 2 is the number of predicate samples that remain true (default 2).
-// Arg 3 is the maximum number of cycles (default 512).
+// Arg 3 is the maximum number of cycles (default 512). For SPLOOPW, arg 4
+// is the initial ILC value (default 0), which is traced but does not govern exit.
 
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -41,7 +42,8 @@ public class C6000LoopReplay extends GhidraScript {
 			" packets=" + buffer.sourcePackets());
 		if (buffer.kind() == C6000LoopBuffer.Kind.SPLOOPW) {
 			AtomicInteger samples = new AtomicInteger();
-			buffer.replayWhile(limit, this::showCycle,
+			long initialIlc = args.length > 3 ? Long.decode(args[3]) : 0;
+			buffer.replayWhile(initialIlc, limit, this::showCycle,
 				() -> samples.getAndIncrement() < count);
 		}
 		else {

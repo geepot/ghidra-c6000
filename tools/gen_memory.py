@@ -81,6 +81,20 @@ for unit_side in (0, 1):
             )
 lines.append("")
 
+# DPSP's 1_or_2_src format encodes the odd/high word in src2 and the
+# even/low word in src1. Both fields must name the same register pair.
+# The format has no cross-path variant (binutils tic6x opcode table).
+for side, file in ((0, "A"), (1, "B")):
+    for pair in range(16):
+        even = pair * 2
+        lines.append(
+            f'Src2PairDpsp: "{file}{even + 1}:{file}{even}" is '
+            f'src2_pair_index={pair} & i18=1 & src1_pair_index={pair} & '
+            f'i13=0 & i1={side} & i12=0 '
+            f'{{ export {file}{even + 1}_{file}{even}; }}'
+        )
+lines.append("")
+
 
 def offset(name, shift):
     return name if shift == 0 else f"({name} << {shift})"

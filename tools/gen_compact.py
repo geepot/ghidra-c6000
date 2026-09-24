@@ -965,7 +965,8 @@ w("# Figure F-24. Smvk8 - SPRUFE8B appendix F.4.")
 w("# ---------------------------------------------------------------------------")
 w("")
 con("MVK^CUnitS Cucst8f24, RA97",
-    ["j4=1", "j3=0", "j2=0", "j1=1", "c_br=0", "Cucst8f24", "RA97"], "RA97 = Cucst8f24;")
+    # Figure F-24 is distinct from the branch forms even when BR is set.
+    ["j4=1", "j3=0", "j2=0", "j1=1", "Cucst8f24", "RA97"], "RA97 = Cucst8f24;")
 w("")
 
 w("# ---------------------------------------------------------------------------")
@@ -1051,17 +1052,19 @@ w("")
 
 w("# ---------------------------------------------------------------------------")
 w("# Figure F-30. Sx5 (ADDK) - SPRUFE8B appendix F.4.")
+w("# This opcode also has no branch-form collision when header BR is set.")
 w("# ---------------------------------------------------------------------------")
 w("")
 con("ADDK^CUnitS Cucst5d, RA97",
-    ["j10=1", "j6=0", "j5=1", "j4=0", "j3=1", "j2=1", "j1=1", "c_br=0",
+    ["j10=1", "j6=0", "j5=1", "j4=0", "j3=1", "j2=1", "j1=1",
      "Cucst5d", "RA97"], "RA97 = RA97 + Cucst5d;")
 w("")
 
 w("# ---------------------------------------------------------------------------")
 w("# Figure F-31. Sx1 - SPRUFE8B appendix F.4.  op = 100 is reserved;")
 w("# op = 000/001/101/111 are LSDx1 (Figure G-4); op = 110 is MVC src, ILC")
-w("# and is only defined for s = 1.")
+w("# and is only defined for s = 1.  The MVC sub-opcode does not overlap")
+w("# a branch form, so it is valid with either compact-header BR value.")
 w("# ---------------------------------------------------------------------------")
 w("")
 con('SUB^CUnitS^" 0, "^RA97^", "^RB97',
@@ -1072,7 +1075,7 @@ con('ADD^CUnitS^" -1, "^RA97^", "^RB97',
      "c_br=0", "j15=0", "j14=1", "j13=1", "RA97", "RB97"], "RB97 = RA97 - 1;")
 con('MVC^CUnitS RA97^", ILC"',
     ["j12=1", "j11=1", "j10=0", "j6=1", "j5=1", "j4=0", "j3=1", "j2=1", "j1=1",
-     "c_br=0", "j15=1", "j14=1", "j13=0", "q_s=1", "RA97"], "ILC = RA97;")
+     "j15=1", "j14=1", "j13=0", "q_s=1", "RA97"], "ILC = RA97;")
 w("")
 
 w("# ---------------------------------------------------------------------------")

@@ -4,6 +4,7 @@
 // Validate loop source extraction and cycle scheduling over an imported image.
 
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.HexFormat;
 
 import c6000.C6000LoopBuffer;
 import ghidra.app.script.GhidraScript;
@@ -39,8 +40,12 @@ public class C6000LoopModelTest extends GhidraScript {
 				int dynlen = buffer.dynamicLength();
 				if (buffer.kind() == C6000LoopBuffer.Kind.SPLOOPW) {
 					AtomicInteger samples = new AtomicInteger();
-					int cycles = buffer.replayWhile(512, cycle -> {
-						if (cycle.lbc != cycle.number % ii || cycle.ilcAfter != 0) {
+					int cycles = buffer.replayWhile(5, 512, cycle -> {
+						long expectedBefore = (5L - cycle.number / ii) & 0xffffffffL;
+						long expectedAfter = (expectedBefore - (cycle.stageBoundary ? 1 : 0)) &
+							0xffffffffL;
+						if (cycle.lbc != cycle.number % ii ||
+							cycle.ilcBefore != expectedBefore || cycle.ilcAfter != expectedAfter) {
 							throw new AssertionError("bad SPLOOPW cycle at " + start.getMinAddress());
 						}
 					}, () -> samples.getAndIncrement() < 2 * ii);
@@ -82,8 +87,8 @@ public class C6000LoopModelTest extends GhidraScript {
 			}
 			catch (IllegalArgumentException e) {
 				// The listing can contain a partially decoded source packet.
-				if (skipped++ < 8) println("C6000_MODEL_SKIP " + start.getMinAddress() +
-					" " + e.getMessage());
+				if (skipped++ < 32) println("C6000_MODEL_SKIP " + start.getMinAddress() +
+					" " + e.getMessage() + gapDetail(e.getMessage()));
 			}
 			catch (UnsupportedOperationException e) {
 				if (unsupported++ < 8) println("C6000_MODEL_UNSUPPORTED " +
@@ -92,5 +97,21 @@ public class C6000LoopModelTest extends GhidraScript {
 		}
 		println("C6000_MODEL parsed=" + parsed + " replayed=" + replayed +
 			" skipped=" + skipped + " unsupported=" + unsupported);
+	}
+
+	private String gapDetail(String message) throws Exception {
+		String prefix = "undecoded bytes after ";
+		if (!message.startsWith(prefix)) return "";
+		Instruction previous = currentProgram.getListing().getInstructionAt(
+			currentProgram.getAddressFactory().getAddress(message.substring(prefix.length())));
+		if (previous == null) return "";
+		Instruction next = currentProgram.getListing().getInstructionAfter(previous.getMinAddress());
+		if (next == null) return "";
+		int gap = (int) next.getMinAddress().subtract(previous.getMaxAddress()) - 1;
+		byte[] bytes = new byte[Math.min(gap, 16)];
+		if (bytes.length > 0) currentProgram.getMemory().getBytes(
+			previous.getMaxAddress().next(), bytes);
+		return " gap=" + gap + " bytes=" + HexFormat.of().formatHex(bytes) +
+			" next=" + next;
 	}
 }

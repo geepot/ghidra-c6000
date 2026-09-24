@@ -230,7 +230,7 @@ def main():
             if mnem in {"INTDP", "INTDPU", "SPDP"}:
                 ops = ["Src2", "DstPair"]
             if mnem == "DPSP":
-                ops = ["Src2Pair", "Dst"]
+                ops = ["Src2PairDpsp", "Dst"]
             if mnem in {"ADDDP", "MPYDP"}:
                 ops = ["Src1Pair", "Src2Pair", "DstPair"]
             if mnem == "SUBDP":
@@ -276,6 +276,13 @@ def main():
                 base = pattern_of(fields, v)
                 if base is None:
                     continue
+                if mnem == "DPSP":
+                    # SPRUFE8B's printed opcode diagram shows zeros in
+                    # bits 17..13, but its execution text uses both source
+                    # ports. The 1_or_2_src encoding stores the low word of
+                    # the double in src1. Src2PairDpsp checks both fields.
+                    base = [bit for bit in base if not any(
+                        bit.startswith(f"i{i}=") for i in range(13, 18))]
                 if short_memory:
                     base.append("mode=0x%x" % mem_mode)
                 # Only use the predicate field when creg/z are真 fields.

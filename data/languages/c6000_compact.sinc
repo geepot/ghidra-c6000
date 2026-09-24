@@ -763,7 +763,7 @@ CTgt10: reloc is cq_scst10 [ reloc = (inst_start & 0xffffffe0) + (cq_scst10 << 1
 # Figure F-24. Smvk8 - SPRUFE8B appendix F.4.
 # ---------------------------------------------------------------------------
 
-:MVK^CUnitS Cucst8f24, RA97 is c_is16=1 & CUnitS & j4=1 & j3=0 & j2=0 & j1=1 & c_br=0 & Cucst8f24 & RA97 { RA97 = Cucst8f24; }
+:MVK^CUnitS Cucst8f24, RA97 is c_is16=1 & CUnitS & j4=1 & j3=0 & j2=0 & j1=1 & Cucst8f24 & RA97 { RA97 = Cucst8f24; }
 
 # ---------------------------------------------------------------------------
 # Figure F-25. Ssh5 - SPRUFE8B appendix F.4.  The SAT header bit turns SHL
@@ -815,19 +815,21 @@ CTgt10: reloc is cq_scst10 [ reloc = (inst_start & 0xffffffe0) + (cq_scst10 << 1
 
 # ---------------------------------------------------------------------------
 # Figure F-30. Sx5 (ADDK) - SPRUFE8B appendix F.4.
+# This opcode also has no branch-form collision when header BR is set.
 # ---------------------------------------------------------------------------
 
-:ADDK^CUnitS Cucst5d, RA97 is c_is16=1 & CUnitS & j10=1 & j6=0 & j5=1 & j4=0 & j3=1 & j2=1 & j1=1 & c_br=0 & Cucst5d & RA97 { RA97 = RA97 + Cucst5d; }
+:ADDK^CUnitS Cucst5d, RA97 is c_is16=1 & CUnitS & j10=1 & j6=0 & j5=1 & j4=0 & j3=1 & j2=1 & j1=1 & Cucst5d & RA97 { RA97 = RA97 + Cucst5d; }
 
 # ---------------------------------------------------------------------------
 # Figure F-31. Sx1 - SPRUFE8B appendix F.4.  op = 100 is reserved;
 # op = 000/001/101/111 are LSDx1 (Figure G-4); op = 110 is MVC src, ILC
-# and is only defined for s = 1.
+# and is only defined for s = 1.  The MVC sub-opcode does not overlap
+# a branch form, so it is valid with either compact-header BR value.
 # ---------------------------------------------------------------------------
 
 :SUB^CUnitS^" 0, "^RA97^", "^RB97 is c_is16=1 & CUnitS & j12=1 & j11=1 & j10=0 & j6=1 & j5=1 & j4=0 & j3=1 & j2=1 & j1=1 & c_br=0 & j15=0 & j14=1 & j13=0 & RA97 & RB97 { RB97 = 0 - RA97; }
 :ADD^CUnitS^" -1, "^RA97^", "^RB97 is c_is16=1 & CUnitS & j12=1 & j11=1 & j10=0 & j6=1 & j5=1 & j4=0 & j3=1 & j2=1 & j1=1 & c_br=0 & j15=0 & j14=1 & j13=1 & RA97 & RB97 { RB97 = RA97 - 1; }
-:MVC^CUnitS RA97^", ILC" is c_is16=1 & CUnitS & j12=1 & j11=1 & j10=0 & j6=1 & j5=1 & j4=0 & j3=1 & j2=1 & j1=1 & c_br=0 & j15=1 & j14=1 & j13=0 & q_s=1 & RA97 { ILC = RA97; }
+:MVC^CUnitS RA97^", ILC" is c_is16=1 & CUnitS & j12=1 & j11=1 & j10=0 & j6=1 & j5=1 & j4=0 & j3=1 & j2=1 & j1=1 & j15=1 & j14=1 & j13=0 & q_s=1 & RA97 { ILC = RA97; }
 
 # ---------------------------------------------------------------------------
 # Figure F-32. Sx1b (BNOP register form) - SPRUFE8B appendix F.4.  src2 is
