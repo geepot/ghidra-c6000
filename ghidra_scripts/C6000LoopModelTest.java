@@ -9,6 +9,7 @@ import java.util.List;
 
 import c6000.C6000LoopBuffer;
 import c6000.C6000LoopBuffer.ReplayResult;
+import c6000.C6000LoopBuffer.Outcome;
 import ghidra.app.script.GhidraScript;
 import ghidra.program.model.listing.Instruction;
 import ghidra.program.model.listing.InstructionIterator;
@@ -65,7 +66,8 @@ public class C6000LoopModelTest extends GhidraScript {
 							throw new AssertionError("bad SPLOOPW cycle at " + start.getMinAddress());
 						}
 					}, () -> samples.getAndIncrement() < 2 * ii);
-					if (result.cycles < ii || result.firstPostBodyCycle != result.cycles) {
+					if (result.outcome != Outcome.COMPLETE || result.cycles < ii ||
+						result.firstPostBodyCycle != result.cycles) {
 						throw new AssertionError("bad SPLOOPW exit");
 					}
 				}
@@ -103,7 +105,7 @@ public class C6000LoopModelTest extends GhidraScript {
 							}
 						}
 					});
-					if (result.cycles != expected) {
+					if (result.outcome != Outcome.COMPLETE || result.cycles != expected) {
 						throw new AssertionError("bad duration at " + start.getMinAddress() +
 							": " + result.cycles + " != " + expected);
 					}
@@ -147,6 +149,40 @@ public class C6000LoopModelTest extends GhidraScript {
 								start.getMinAddress() + ": " + oneCycles + " != " +
 								lastLoadingBoundary);
 						}
+					}
+					AtomicInteger interruptAt = new AtomicInteger(-1);
+					long[] savedIlc = { -1 };
+					ReplayResult drained = buffer.replayCountedDetailed(256, 512, cycle -> {
+						if (cycle.interruptBoundary) {
+							if (!interruptAt.compareAndSet(-1, cycle.number) ||
+								cycle.terminatingBoundary || !cycle.stageBoundary ||
+								cycle.number < lastLoadingBoundary - 1 ||
+								cycle.ilcBefore < (dynlen + ii - 1) / ii) {
+								throw new AssertionError("bad interrupt boundary");
+							}
+							savedIlc[0] = cycle.ilcAfter;
+						}
+						if (cycle.postBodyFetchEnabled ||
+							(interruptAt.get() >= 0 && cycle.ilcAfter != savedIlc[0])) {
+							throw new AssertionError("bad interrupt drain at " +
+								start.getMinAddress());
+						}
+					}, cycle -> true);
+					if (drained.outcome != Outcome.INTERRUPT_DRAINED ||
+						interruptAt.get() < 0 || drained.firstPostBodyCycle != -1 ||
+						drained.remainingIlc != savedIlc[0]) {
+						throw new AssertionError("bad interrupt result at " +
+							start.getMinAddress());
+					}
+					ReplayResult tooShortToInterrupt = buffer.replayCountedDetailed(
+						1, 512, cycle -> {
+							if (cycle.interruptBoundary) {
+								throw new AssertionError("early interrupt at " +
+									start.getMinAddress());
+							}
+						}, cycle -> true);
+					if (tooShortToInterrupt.outcome != Outcome.COMPLETE) {
+						throw new AssertionError("short loop was interrupted");
 					}
 				}
 				replayed++;

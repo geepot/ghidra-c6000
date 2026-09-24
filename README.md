@@ -310,18 +310,24 @@ it produces.
   of post-body program-memory fetch; each overlapping epilog cycle marks its
   post-body fetch index. Given a caller-selected post-body execute packet,
   `overlayPostBody` applies its `SPMASK` to buffered operations in that cycle.
+  For counted loops, a caller-supplied pending, unblocked interrupt signal can
+  start draining at an eligible stage boundary; the result preserves `ILC` and
+  keeps post-body fetch disabled. The result stops when the loop buffer finishes
+  draining, before pending pipeline writes and handler entry.
   In Ghidra's Script Manager, run
   `C6000LoopReplay.java` on a selected `SPLOOP`, or pass its address, initial
   `ILC` (for counted loops) or number of true predicate samples (for
   `SPLOOPW`), and a cycle limit as arguments. A fourth argument supplies the
-  initial `ILC` for a `SPLOOPW` trace. For example,
+  initial `ILC` for a `SPLOOPW` trace or the first pending-interrupt cycle for a
+  counted trace. For example,
   `C6000LoopReplay.java 0xC00036A4 2 128` traces 48 cycles of the stage 2
   loop at that address. `C6000LoopModelTest.java` checks all decoded loop
   bodies in an imported image.
 
   The scheduler reports operation order and loop-control state; it does not
-  execute each instruction's p-code or model instruction latency, interrupts,
-  nested reload, or choose the post-body program-memory packet after branches.
+  execute each instruction's p-code or model instruction latency, interrupt
+  handler entry and restart, nested reload, or choose the post-body
+  program-memory packet after branches.
   [The loop conformance notes](docs/software-loop-conformance.md) specify
   the remaining emulator state. Native Ghidra decompilation still displays
   the loop-control userops, because the hardware buffer does not correspond

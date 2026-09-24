@@ -6,6 +6,7 @@
 // arg 2 is the number of predicate samples that remain true (default 2).
 // Arg 3 is the maximum number of cycles (default 512). For SPLOOPW, arg 4
 // is the initial ILC value (default 0), which is traced but does not govern exit.
+// For counted loops, arg 4 is the first cycle with a pending unblocked interrupt.
 
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -49,10 +50,13 @@ public class C6000LoopReplay extends GhidraScript {
 				() -> samples.getAndIncrement() < count);
 		}
 		else {
+			int interruptAt = args.length > 3 ? Integer.decode(args[3]) :
+				Integer.MAX_VALUE;
 			result = buffer.replayCountedDetailed(Integer.toUnsignedLong(count),
-				limit, this::showCycle);
+				limit, this::showCycle, cycle -> cycle >= interruptAt);
 		}
 		println("C6000_REPLAY_END cycles=" + result.cycles +
+			" outcome=" + result.outcome + " ILC=" + result.remainingIlc +
 			" postBodyFetch=" + result.firstPostBodyCycle);
 	}
 
@@ -62,6 +66,7 @@ public class C6000LoopReplay extends GhidraScript {
 			.append(cycle.ilcBefore).append("->").append(cycle.ilcAfter);
 		if (cycle.stageBoundary) line.append(" boundary");
 		if (cycle.terminatingBoundary) line.append(" terminate");
+		if (cycle.interruptBoundary) line.append(" interrupt-drain");
 		if (cycle.postBodyFetchEnabled) {
 			line.append(" postFetch#").append(cycle.postBodyCycle);
 		}

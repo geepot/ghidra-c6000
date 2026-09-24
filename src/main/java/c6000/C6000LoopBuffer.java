@@ -14,6 +14,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
+import java.util.function.IntPredicate;
 
 import ghidra.program.model.address.Address;
 import ghidra.program.model.listing.Instruction;
@@ -29,13 +30,14 @@ import ghidra.program.model.scalar.Scalar;
  * unmasked instructions execute from the loop buffer at the same offset within
  * the initiation interval. A consumer can execute each cycle's operations in
  * an emulator, or inspect the schedule without supplying register/memory state.
- * This models normal load, fetch and drain; interrupt and nested reload are
- * separate loop-buffer operations and are not accepted here.
+ * This models normal load, fetch and drain, plus counted-loop interrupt drain.
+ * Restart and nested reload require additional architectural state.
  */
 public final class C6000LoopBuffer {
 
 	public enum Kind { SPLOOP, SPLOOPD, SPLOOPW }
 	public enum Origin { PROGRAM, BUFFER }
+	public enum Outcome { COMPLETE, INTERRUPT_DRAINED }
 
 	public static final class Operation {
 		public final Instruction instruction;
@@ -59,19 +61,23 @@ public final class C6000LoopBuffer {
 		public final long ilcAfter;
 		public final boolean stageBoundary;
 		public final boolean terminatingBoundary;
+		public final boolean interruptBoundary;
 		public final boolean postBodyFetchEnabled;
 		public final int postBodyCycle;
 		public final List<Operation> operations;
 
 		private Cycle(int number, int ii, long before, long after,
-				boolean terminating, int firstPostBodyCycle, List<Operation> operations) {
+				boolean terminating, boolean interrupt, int firstPostBodyCycle,
+				List<Operation> operations) {
 			this.number = number;
 			this.lbc = number % ii;
 			this.ilcBefore = before;
 			this.ilcAfter = after;
 			this.stageBoundary = this.lbc == ii - 1;
 			this.terminatingBoundary = terminating;
-			this.postBodyFetchEnabled = number >= firstPostBodyCycle;
+			this.interruptBoundary = interrupt;
+			this.postBodyFetchEnabled = firstPostBodyCycle >= 0 &&
+				number >= firstPostBodyCycle;
 			this.postBodyCycle = postBodyFetchEnabled ? number - firstPostBodyCycle : -1;
 			this.operations = Collections.unmodifiableList(operations);
 		}
@@ -110,14 +116,20 @@ public final class C6000LoopBuffer {
 		}
 	}
 
-	/** Completion time and the first cycle that may fetch after SPKERNEL. */
+	/** Loop-buffer completion state; handler entry may await pending register writes. */
 	public static final class ReplayResult {
 		public final int cycles;
+		public final Outcome outcome;
+		public final long remainingIlc;
+		/** -1 for interrupt drain, when post-body program fetch stays disabled. */
 		public final int firstPostBodyCycle;
 
-		private ReplayResult(int cycles, int firstPostBodyCycle) {
+		private ReplayResult(int cycles, int firstPostBodyCycle,
+				Outcome outcome, long remainingIlc) {
 			this.cycles = cycles;
 			this.firstPostBodyCycle = firstPostBodyCycle;
+			this.outcome = outcome;
+			this.remainingIlc = remainingIlc;
 		}
 	}
 
@@ -265,6 +277,17 @@ public final class C6000LoopBuffer {
 
 	public ReplayResult replayCountedDetailed(long initialIlc, int maxCycles,
 			Consumer<Cycle> sink) {
+		return replayCountedDetailed(initialIlc, maxCycles, sink, cycle -> false);
+	}
+
+	/**
+	 * Replay an ILC-counted loop with an enabled, architecturally unblocked
+	 * pending-interrupt signal. Interrupt detection is at a stage boundary;
+	 * the result ends when buffer draining finishes, before pipeline writeback
+	 * and handler entry. Nested reload and restart use a different state path.
+	 */
+	public ReplayResult replayCountedDetailed(long initialIlc, int maxCycles,
+			Consumer<Cycle> sink, IntPredicate pendingInterruptAtCycle) {
 		if (kind == Kind.SPLOOPW) throw new IllegalStateException("SPLOOPW uses a predicate");
 		if (reloadable) throw new UnsupportedOperationException("nested reload needs RILC and an outer-loop predicate");
 		if (initialIlc < 0 || initialIlc > 0xffffffffL || maxCycles < 1) {
@@ -278,15 +301,26 @@ public final class C6000LoopBuffer {
 		int drainEnd = initiallyZero ? lastLoadingBoundary : Integer.MAX_VALUE;
 		int firstPostBodyCycle = initiallyZero ? lastLoadingBoundary + 1 :
 			Integer.MAX_VALUE;
+		boolean interrupted = false;
+		int loadingStages = (source.size() + ii - 1) / ii;
 		for (int t = 0; t < maxCycles; t++) {
 			int iteration = t / ii;
 			List<Operation> ops = operationsAt(t, finalIteration, initiallyZero);
 			long before = ilc;
 			boolean terminate = false;
+			boolean interrupt = false;
 			if ((t + 1) % ii == 0 && !initiallyZero && finalIteration == Integer.MAX_VALUE) {
 				// SPLOOPD suppresses the test and decrement for cycles 0..2.
 				if (kind != Kind.SPLOOPD || t >= 3) {
-					if (ilc == 0) {
+					if (ilc != 0 && t >= lastLoadingBoundary &&
+						ilc >= loadingStages && pendingInterruptAtCycle.test(t)) {
+						interrupt = true;
+						interrupted = true;
+						finalIteration = iteration;
+						drainEnd = Math.max(t, iteration * ii + source.size() - 1);
+						firstPostBodyCycle = -1;
+					}
+					else if (ilc == 0) {
 						terminate = true;
 						finalIteration = iteration;
 						drainEnd = Math.max(t, iteration * ii + source.size() - 1);
@@ -302,10 +336,11 @@ public final class C6000LoopBuffer {
 					else ilc--;
 				}
 			}
-			sink.accept(new Cycle(t, ii, before, ilc, terminate,
+			sink.accept(new Cycle(t, ii, before, ilc, terminate, interrupt,
 				firstPostBodyCycle, ops));
 			if (t >= drainEnd) return new ReplayResult(t + 1,
-				firstPostBodyCycle);
+				firstPostBodyCycle,
+				interrupted ? Outcome.INTERRUPT_DRAINED : Outcome.COMPLETE, ilc);
 		}
 		throw new IllegalStateException("loop trace exceeds " + maxCycles + " cycles");
 	}
@@ -337,9 +372,10 @@ public final class C6000LoopBuffer {
 			boolean terminate = boundary && t >= 3 && !delayed[(t - 3) % 3];
 			long before = ilc;
 			if (boundary) ilc = (ilc - 1) & 0xffffffffL;
-			sink.accept(new Cycle(t, ii, before, ilc, terminate,
+			sink.accept(new Cycle(t, ii, before, ilc, terminate, false,
 				Integer.MAX_VALUE, ops));
-			if (terminate) return new ReplayResult(t + 1, t + 1);
+			if (terminate) return new ReplayResult(t + 1, t + 1,
+				Outcome.COMPLETE, ilc);
 			// The first three cycles cannot terminate, but their predicate
 			// samples may be used at the first eligible boundary.
 			delayed[t % 3] = continuePredicate.getAsBoolean();
