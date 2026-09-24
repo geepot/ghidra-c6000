@@ -27,7 +27,8 @@ below show both the decoded instructions and the remaining gaps.
 | P-code semantics | integer ALU and common multiplies, immediates, bit-field operations, linear address arithmetic, scalar and doubleword loads/stores, single-precision arithmetic and conversions, selected double-precision arithmetic and conversions, compares, shifts, branches/calls, `MVC` |
 | Other decoded instructions | lift to `c6000_unimpl_<mnemonic>` (32-bit) or `c6000_unimplemented` (compact) |
 | Function ID | generation script shipped; database not shipped (TI licence) |
-| Remaining double-precision floating point, advanced integer `.M` multiply, packed 8/16-bit arithmetic, Galois, SPLOOP buffer internals | decode only |
+| Software loop controls | decoded, lifted as loop-buffer userops, and paired/annotated after disassembly; repeated buffer execution remains unmodelled |
+| Remaining double-precision floating point, advanced integer `.M` multiply, packed 8/16-bit arithmetic, Galois | decode only |
 
 Unimplemented instructions are **explicit, greppable placeholders**, not
 silently wrong data flow. `C6000CorpusTest.java` counts how often each is
@@ -43,15 +44,20 @@ C6000CorpusTest.java stage1   # or stage2
 
 | Corpus (first 12,288 / 131,072 bytes) | Bytes decoded | Instructions | Compact 16-bit | Headers | Unimplemented p-code | Undecoded slots | Byte coverage |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| CDJ-2000NXS stage 1, base `0x11801da0` | 11,318 | 3,175 | 691 | 161 | 85 (2%) | 244 | **92.1%** |
-| CDJ-2000NXS stage 2, base `0xC0000000` | 130,802 | 36,510 | 7,619 | 2,209 | 676 (1%) | 95 | **99.8%** |
+| CDJ-2000NXS stage 1, base `0x11801da0` | 11,318 | 3,175 | 691 | 161 | 4 (<1%) | 244 | **92.1%** |
+| CDJ-2000NXS stage 2, base `0xC0000000` | 130,802 | 36,510 | 7,619 | 2,209 | 11 (<1%) | 95 | **99.8%** |
 
 Full-payload linear sweeps also completed with no zero-width p-code operands:
 
 | Corpus | Payload bytes | Bytes decoded | Instructions | Unimplemented p-code | Undecoded slots | Byte coverage |
 |---|---:|---:|---:|---:|---:|---:|
-| Stage 1 | 55,120 | 40,402 | 10,459 | 953 (9%) | 3,684 | **73.3%** |
-| Stage 2 | 361,248 | 335,562 | 91,317 | 950 (1%) | 6,484 | **92.9%** |
+| Stage 1 | 55,120 | 40,402 | 10,459 | 862 (8%) | 3,684 | **73.3%** |
+| Stage 2 | 361,248 | 335,562 | 91,317 | 32 (<1%) | 6,484 | **92.9%** |
+
+The sweeps found 24 paired software loops and 43 buffer masks in stage 1,
+and 224 paired loops and 470 buffer masks in stage 2. No detected loop
+boundary was left unmatched. The loop-control userops are counted separately
+from unimplemented instruction placeholders.
 
 `CPKT` headers now decode as named 4-byte rows. Undecoded slots remain: the
 stage 1 window is mostly `0xffffffff` fill/data, with a few unknown compact
@@ -270,9 +276,21 @@ it produces.
   views; floating-point status register side effects remain unmodelled. `MVC` uses
   distinct control registers in its 32-bit forms; the compact `MVC` to `ILC`
   is also modelled.
-* **`SPLOOP` buffer execution** is not modelled: the loop buffer is a
-  microarchitectural structure with no program-counter effect, so the SPLOOP
-  control instructions lift to placeholders rather than to a branch.
+* **Software loops:** `SPLOOP`, `SPLOOPD`, `SPLOOPW`, `SPKERNEL`,
+  `SPKERNELR`, `SPMASK`, and `SPMASKR` lift to named p-code userops with their
+  interval, encoded predicate selector, delay field, or unit mask. The selector
+  preserves which register the buffer evaluates at later stage boundaries.
+  The unconditional `SPLOOP`
+  also performs its initial nonzero `ILC` decrement. Both 16-bit and 32-bit
+  initiation intervals display their actual value (encoded value plus one).
+  `C6000SoftwareLoopAnalyzer` matches each disassembled loop start with its
+  kernel boundary and adds Info bookmarks at both addresses. The bookmarks
+  resolve the six-bit `SPKERNEL` field to stage/cycle delay using the loop's
+  initiation interval; `SPMASK` bookmarks list the affected functional units.
+  If an undecoded slot lies in the body, its byte count appears in the bookmark.
+  The hardware's repeated execute-packet schedule and stage-boundary `ILC`
+  updates still require loop-buffer emulation. They are not ordinary PC branches
+  and are not reproduced by the decompiler's control-flow graph.
 * **Predication** is decoded, displayed and guards the modelled 32-bit p-code.
   Compact predication and packet-wide parallel effects need further work.
 * The generic corpus is assembled from GNU binutils, whose tic6x assembler
@@ -287,8 +305,9 @@ data/languages/          c6000.sinc (framework), c6000_decode.sinc (generated),
                          c6000_manual.sinc, c6000_compact.sinc, c6000_memory.sinc,
                          c6000_semantics.sinc,
                          c6000_placeholders.sinc (generated), ldefs/pspec/cspec/opinion
-ghidra_scripts/          C6000CorpusTest.java
-src/main/java/c6000/     C6000PacketContext.java, C6000PacketAnalyzer.java
+ghidra_scripts/          C6000CorpusTest.java, C6000SoftwareLoopTest.java
+src/main/java/c6000/     C6000PacketContext.java, C6000PacketAnalyzer.java,
+                         C6000SoftwareLoops.java, C6000SoftwareLoopAnalyzer.java
 tools/                   build.sh, gen_decode.py, gen_memory.py, build_encodings.py,
                          oracle_compare.py, gen_fid.py
 .github/workflows/       build.yml

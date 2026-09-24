@@ -404,5 +404,12 @@ OffReg: rb_off is rb_off & i7=1 { export rb_off; }
 @include "c6000_placeholders.sinc"
 @include "c6000_semantics.sinc"
 @include "c6000_decode.sinc"
+define pcodeop c6000_sploop;
+define pcodeop c6000_sploopd;
+define pcodeop c6000_sploopw;
+define pcodeop c6000_spkernel;
+define pcodeop c6000_spkernelr;
+define pcodeop c6000_spmask;
+define pcodeop c6000_spmaskr;
 @include "c6000_compact.sinc"
 @include "c6000_manual.sinc"

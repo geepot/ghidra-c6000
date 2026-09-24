@@ -220,7 +220,7 @@ Cucst1f: q_uc2 is q_uc2 { export *[const]:4 q_uc2; }
 
 CN3: q_r3 is q_r3 { export *[const]:4 q_r3; }
 
-Cii: Ciiv is cq_ii3 & q_r3b [ Ciiv = (cq_ii3 << 3) | q_r3b; ] { export *[const]:4 Ciiv; }
+Cii: Ciiv is cq_ii3 & q_r3b [ Ciiv = ((cq_ii3 << 3) | q_r3b) + 1; ] { export *[const]:4 Ciiv; }
 
 Cspk: Cspkv is cq_spk43 & q_r3b & j0 [ Cspkv = (cq_spk43 << 3) | q_r3b | (j0 << 5); ] { export *[const]:4 Cspkv; }
 
@@ -868,20 +868,20 @@ CTgt10: reloc is cq_scst10 [ reloc = (inst_start & 0xffffffe0) + (cq_scst10 << 1
 :XOR^CUnitLSD^" 1, "^RB97 is c_is16=1 & CUnitLSD & j12=1 & j11=1 & j10=0 & j6=1 & j5=1 & j2=1 & j1=1 & j15=1 & j14=1 & j13=1 & RA97 & RB97 { RB97 = RA97 ^ 1; }
 
 # ---------------------------------------------------------------------------
-# Figures H-5/H-6. Uspl / Uspldr (SPLOOP / SPLOOPD) - appendix H.4.  The ii
-# field is printed as encoded; the figure note 'ii = real ii - 1'.
+# Figures H-5/H-6. Uspl / Uspldr (SPLOOP / SPLOOPD) - appendix H.4.
+# Cii displays the actual initiation interval, one more than the field.
 # ---------------------------------------------------------------------------
 
-:SPLOOP Cii is c_is16=1 & j15=0 & j13=0 & j12=0 & j11=1 & j10=1 & j6=1 & j5=1 & j4=0 & j3=0 & j2=1 & j1=1 & j0=0 & Cii { c6000_unimplemented(); }
-:SPLOOPD Cii is c_is16=1 & j15=0 & j13=0 & j12=0 & j11=1 & j10=1 & j6=1 & j5=1 & j4=0 & j3=0 & j2=1 & j1=1 & j0=1 & Cii { c6000_unimplemented(); }
-:CPred20^"SPLOOPD" " " Cii is c_is16=1 & CPred20 & j15=1 & j13=0 & j12=0 & j11=1 & j10=1 & j6=1 & j5=1 & j4=0 & j3=0 & j2=1 & j1=1 & j0=0 & Cii { c6000_unimplemented(); }
-:CPred20^"SPLOOPD" " " Cii is c_is16=1 & CPred20 & j15=1 & j13=0 & j12=0 & j11=1 & j10=1 & j6=1 & j5=1 & j4=0 & j3=0 & j2=1 & j1=1 & j0=1 & Cii { c6000_unimplemented(); }
+:SPLOOP Cii is c_is16=1 & j15=0 & j13=0 & j12=0 & j11=1 & j10=1 & j6=1 & j5=1 & j4=0 & j3=0 & j2=1 & j1=1 & j0=0 & Cii { c6000_sploop(Cii, 0:4); if (ILC == 0) goto <done>; ILC = ILC - 1; <done> }
+:SPLOOPD Cii is c_is16=1 & j15=0 & j13=0 & j12=0 & j11=1 & j10=1 & j6=1 & j5=1 & j4=0 & j3=0 & j2=1 & j1=1 & j0=1 & Cii { c6000_sploopd(Cii, 0:4); }
+:"[A0]"^"SPLOOPD" Cii is c_is16=1 & j15=1 & j13=0 & j12=0 & j11=1 & j10=1 & j6=1 & j5=1 & j4=0 & j3=0 & j2=1 & j1=1 & j0=0 & Cii { c6000_sploopd(Cii, 12:4); }
+:"[B0]"^"SPLOOPD" Cii is c_is16=1 & j15=1 & j13=0 & j12=0 & j11=1 & j10=1 & j6=1 & j5=1 & j4=0 & j3=0 & j2=1 & j1=1 & j0=1 & Cii { c6000_sploopd(Cii, 2:4); }
 
 # ---------------------------------------------------------------------------
 # Figure H-7. Uspk (SPKERNEL) - SPRUFE8B appendix H.4.
 # ---------------------------------------------------------------------------
 
-:SPKERNEL Cspk is c_is16=1 & j13=0 & j12=1 & j11=1 & j10=1 & j6=1 & j5=1 & j4=0 & j3=0 & j2=1 & j1=1 & Cspk { c6000_unimplemented(); }
+:SPKERNEL Cspk is c_is16=1 & j13=0 & j12=1 & j11=1 & j10=1 & j6=1 & j5=1 & j4=0 & j3=0 & j2=1 & j1=1 & Cspk { c6000_spkernel(Cspk); }
 
 # ---------------------------------------------------------------------------
 # Figure H-8. Uspm (SPMASK / SPMASKR) - SPRUFE8B appendix H.4.  The
@@ -889,8 +889,8 @@ CTgt10: reloc is cq_scst10 [ reloc = (inst_start & 0xffffffe0) + (cq_scst10 << 1
 # placed in bits 5..0 in that order.
 # ---------------------------------------------------------------------------
 
-:SPMASK Cmask is c_is16=1 & j13=1 & j12=0 & j11=1 & j10=1 & j6=1 & j5=1 & j4=0 & j3=0 & j2=1 & j1=1 & Cmask { c6000_unimplemented(); }
-:SPMASKR Cmask is c_is16=1 & j13=1 & j12=1 & j11=1 & j10=1 & j6=1 & j5=1 & j4=0 & j3=0 & j2=1 & j1=1 & Cmask { c6000_unimplemented(); }
+:SPMASK Cmask is c_is16=1 & j13=1 & j12=0 & j11=1 & j10=1 & j6=1 & j5=1 & j4=0 & j3=0 & j2=1 & j1=1 & Cmask { c6000_spmask(Cmask); }
+:SPMASKR Cmask is c_is16=1 & j13=1 & j12=1 & j11=1 & j10=1 & j6=1 & j5=1 & j4=0 & j3=0 & j2=1 & j1=1 & Cmask { c6000_spmaskr(Cmask, ILC, RILC); }
 
 # ---------------------------------------------------------------------------
 # Figure H-9. Unop (NOP) - SPRUFE8B appendix H.4.  A NOP has no

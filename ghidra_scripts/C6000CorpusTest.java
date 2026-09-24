@@ -6,8 +6,8 @@
 // Linearly decodes a C6000 image and reports:
 //   * the number of instructions, their total byte length and the mnemonic
 //     histogram,
-//   * the number of decoded instructions whose p-code contains an explicit
-//     unimplemented-operation userop,
+//   * decoded instructions with an unimplemented-operation userop and
+//     software-loop control userops, counted separately,
 //   * per-instruction "address length mnemonic" listings that
 //     tools/oracle_compare.py diffs against the GNU tic6x disassembler.
 //
@@ -99,6 +99,7 @@ public class C6000CorpusTest extends GhidraScript {
 		int instructions = 0;
 		int bytes = 0;
 		int placeholders = 0;
+		int loopCommands = 0;
 		int compact = 0;
 		int headerWords = 0;
 		int branches = 0;
@@ -152,10 +153,15 @@ public class C6000CorpusTest extends GhidraScript {
 			String mnemonic = insn.getMnemonicString();
 			mnemonics.merge(mnemonic, 1, Integer::sum);
 			boolean hasPlaceholder = false;
+			boolean hasLoopCommand = false;
 			boolean hasZeroWidth = false;
 			for (PcodeOp op : insn.getPcode()) {
 				if (op.getOpcode() == PcodeOp.CALLOTHER) {
-					hasPlaceholder = true;
+					int id = (int) op.getInput(0).getOffset();
+					String userop = currentProgram.getLanguage().getUserDefinedOpName(id);
+					hasPlaceholder |= userop.startsWith("c6000_unimpl") ||
+						userop.equals("c6000_unimplemented");
+					hasLoopCommand |= userop.startsWith("c6000_sp");
 				}
 				hasZeroWidth |= op.getOutput() != null && op.getOutput().getSize() == 0;
 				for (Varnode input : op.getInputs()) {
@@ -163,6 +169,7 @@ public class C6000CorpusTest extends GhidraScript {
 				}
 			}
 			if (hasPlaceholder) placeholders++;
+			if (hasLoopCommand) loopCommands++;
 			if (hasZeroWidth) invalidPcode++;
 			if (mnemonic.equals("CPKT")) {
 				headerWords++;
@@ -192,7 +199,7 @@ public class C6000CorpusTest extends GhidraScript {
 		println("C6000_COVERAGE image=" + label + " instructions=" + instructions +
 			" bytes=" + bytes + " compact16=" + compact + " headerWords=" +
 			headerWords + " placeholders=" + placeholders + " (" + pct +
-			"%) branches=" + branches + " calls=" + calls +
+			"%) loopCommands=" + loopCommands + " branches=" + branches + " calls=" + calls +
 			" undecoded=" + undecoded + " undecodedBytes=" + undecodedBytes);
 		if (invalidPcode != 0) {
 			throw new IllegalStateException(invalidPcode +

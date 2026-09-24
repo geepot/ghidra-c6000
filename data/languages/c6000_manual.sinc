@@ -1,11 +1,3 @@
-define pcodeop c6000_unimpl_sploop;
-define pcodeop c6000_unimpl_sploopd;
-define pcodeop c6000_unimpl_sploopw;
-define pcodeop c6000_unimpl_spkernel;
-define pcodeop c6000_unimpl_spkernelr;
-define pcodeop c6000_unimpl_spmask;
-define pcodeop c6000_unimpl_spmaskr;
-
 #  Hand-written C6000 instructions whose encoding is not a simple opcode-map
 #  entry, plus the software-pipelined-loop control instructions.
 #  Apache-2.0; encodings from TI SPRUFE8B (see NOTICE.md).
@@ -62,54 +54,75 @@ define pcodeop c6000_unimpl_spmaskr;
 # figures H-3/H-4; the opcode values below are the ones printed in the
 # instruction descriptions of section 3.12.
 #
-# These instructions control the loop buffer.  They are lifted as explicit
-# placeholder operations: the buffer is a microarchitectural structure that
-# ghidra-c6000 does not model, and modelling it as a branch would be wrong
-# because it does not change the program counter.
+# These userops preserve the loop-buffer command and its operands for emulators
+# and analysis. The buffer executes without changing the architectural PC;
+# an ordinary p-code branch at SPKERNEL would execute the wrong schedule.
 # ---------------------------------------------------------------------------
 
-:^Cond^"SPLOOP" ii is c_is16=0 & Cond & ii
+LoopII: value is ii [ value = ii + 1; ] { export *[const]:4 value; }
+
+:^Cond^"SPLOOP" LoopII is c_is16=0 & Cond & creg & z & LoopII
   & i22=0 & i21=0 & i20=0 & i19=0 & i18=0 & i17=1
   & i16=1 & i15=1 & i14=0 & i13=0
   & i12=0 & i11=0 & i10=0 & i9=0 & i8=0 & i7=0 & i6=0 & i5=0 & i4=0 & i3=0 & i2=0
-{ c6000_unimpl_sploop(); }
+{
+  local predicateEncoding:4 = creg;
+  local negate:4 = z;
+  local selector:4 = (predicateEncoding << 1) | negate;
+  c6000_sploop(LoopII, selector);
+  # Only an unconditional SPLOOP performs the initial ILC decrement.
+  if (predicateEncoding != 0) goto <done>;
+  if (ILC == 0) goto <done>;
+  ILC = ILC - 1;
+  <done>
+}
 
-:^Cond^"SPLOOPD" ii is c_is16=0 & Cond & ii
+:^Cond^"SPLOOPD" LoopII is c_is16=0 & Cond & creg & z & LoopII
   & i22=0 & i21=0 & i20=0 & i19=0 & i18=0 & i17=1
   & i16=1 & i15=1 & i14=0 & i13=1
   & i12=0 & i11=0 & i10=0 & i9=0 & i8=0 & i7=0 & i6=0 & i5=0 & i4=0 & i3=0 & i2=0
-{ c6000_unimpl_sploopd(); }
+{
+  local regcode:4 = creg;
+  local negate:4 = z;
+  local selector:4 = (regcode << 1) | negate;
+  c6000_sploopd(LoopII, selector);
+}
 
-:^Cond^"SPLOOPW" ii is c_is16=0 & Cond & ii
+:^Cond^"SPLOOPW" LoopII is c_is16=0 & Cond & creg!=0 & creg & z & LoopII
   & i22=0 & i21=0 & i20=0 & i19=0 & i18=0 & i17=1
   & i16=1 & i15=1 & i14=1 & i13=1
   & i12=0 & i11=0 & i10=0 & i9=0 & i8=0 & i7=0 & i6=0 & i5=0 & i4=0 & i3=0 & i2=0
-{ c6000_unimpl_sploopw(); }
+{
+  local regcode:4 = creg;
+  local negate:4 = z;
+  local selector:4 = (regcode << 1) | negate;
+  c6000_sploopw(LoopII, selector);
+}
 
-:SPKERNEL "(fstg,fcyc)" is c_is16=0 & kfstg
+:SPKERNEL kfstg is c_is16=0 & kfstg
   & i31=0 & i30=0 & i29=0 & i28=0 & i21=0 & i20=0 & i19=0 & i18=0 & i17=1
   & i16=1 & i15=0 & i14=1 & i13=0
   & i12=0 & i11=0 & i10=0 & i9=0 & i8=0 & i7=0 & i6=0 & i5=0 & i4=0 & i3=0 & i2=0
-{ c6000_unimpl_spkernel(); }
+{ local delay:4 = kfstg; c6000_spkernel(delay); }
 
 :SPKERNELR is c_is16=0
   & i31=0 & i30=0 & i29=0 & i28=0 & i27=0 & i26=0 & i25=0 & i24=0 & i23=0
   & i22=0 & i21=0 & i20=0 & i19=0 & i18=0 & i17=1
   & i16=1 & i15=0 & i14=1 & i13=1
   & i12=0 & i11=0 & i10=0 & i9=0 & i8=0 & i7=0 & i6=0 & i5=0 & i4=0 & i3=0 & i2=0
-{ c6000_unimpl_spkernelr(); }
+{ c6000_spkernelr(ILC, RILC); }
 
 :SPMASK spmask is c_is16=0 & spmask
   & i31=0 & i30=0 & i29=0 & i28=0 & i27=0 & i26=0 & i17=1
   & i16=1 & i15=0 & i14=0 & i13=0
   & i12=0 & i11=0 & i10=0 & i9=0 & i8=0 & i7=0 & i6=0 & i5=0 & i4=0 & i3=0 & i2=0
-{ c6000_unimpl_spmask(); }
+{ local mask:4 = spmask; c6000_spmask(mask); }
 
 :SPMASKR spmask is c_is16=0 & spmask
   & i31=0 & i30=0 & i29=0 & i28=0 & i27=0 & i26=0 & i17=1
   & i16=1 & i15=0 & i14=0 & i13=1
   & i12=0 & i11=0 & i10=0 & i9=0 & i8=0 & i7=0 & i6=0 & i5=0 & i4=0 & i3=0 & i2=0
-{ c6000_unimpl_spmaskr(); }
+{ local mask:4 = spmask; c6000_spmaskr(mask, ILC, RILC); }
 
 # ---------------------------------------------------------------------------
 # Compact fetch-packet header word (SPRUFE8B section 3.10.2, figures 3-5..3-8).
