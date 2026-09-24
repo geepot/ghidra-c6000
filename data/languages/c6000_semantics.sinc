@@ -1,0 +1,156 @@
+#  Hand-written p-code semantics for the C6000 instructions that are modelled.
+#
+#  Apache-2.0.  Every macro below is traceable to the "Execution" block of the
+#  matching instruction description in TI SPRUFE8B; the section is named in
+#  the comment above each group.
+#
+#  tools/gen_decode.py scans this file for `# SEM: MNEMONIC` markers and emits
+#  a call to `c6000_sem_<mnemonic>(<operands>)` for those instructions.  The
+#  argument order is the operand order of the generated constructor, which
+#  follows the manual's syntax line.
+
+# ---------------------------------------------------------------------------
+# Integer arithmetic and logic - SPRUFE8B section 3.12, ADD/SUB/AND/OR/XOR/
+# ANDN/ADDU.
+# ---------------------------------------------------------------------------
+
+# SEM: ADD
+macro c6000_sem_add(a, b, d) { d = a + b; }
+# SEM: ADDU
+macro c6000_sem_addu(a, b, d) { d = a + b; }
+# SEM: SUB
+macro c6000_sem_sub(a, b, d) { d = a - b; }
+# SEM: AND
+macro c6000_sem_and(a, b, d) { d = a & b; }
+# SEM: OR
+macro c6000_sem_or(a, b, d) { d = a | b; }
+# SEM: XOR
+macro c6000_sem_xor(a, b, d) { d = a ^ b; }
+# SEM: ANDN
+macro c6000_sem_andn(a, b, d) { d = a & (~b); }
+
+# SEM: NOT
+macro c6000_sem_not(a, d) { d = ~a; }
+# SEM: NEG
+macro c6000_sem_neg(a, d) { d = -a; }
+# SEM: ABS
+macro c6000_sem_abs(a, d) { local s = (a s< 0); if (s) goto <neg>; d = a; goto <end>; <neg> d = -a; <end> }
+
+# SEM: MV
+macro c6000_sem_mv(a, d) { d = a; }
+# SEM: ZERO
+macro c6000_sem_zero(d) { d = 0; }
+
+# ---------------------------------------------------------------------------
+# Immediates - SPRUFE8B section 3.12, ADDK / MVK / MVKL / MVKH / ADDKPC.
+#
+# MVKH writes the high half; MVK/MVKL write the low half.  ADDKPC adds a
+# 7-bit signed constant, shifted left by two, to PCE1 (the address of the
+# first instruction of the containing fetch packet).
+# ---------------------------------------------------------------------------
+
+# SEM: ADDK
+macro c6000_sem_addk(v, d) { d = d + v; }
+# SEM: MVK
+macro c6000_sem_mvk(v, d) { d = zext(v); }
+# SEM: MVKL
+macro c6000_sem_mvkl(v, d) { d = zext(v); }
+# SEM: MVKH
+macro c6000_sem_mvkh(v, d) { d = (d & 0xffff) | (zext(v) << 16); }
+# SEM: ADDKPC
+macro c6000_sem_addkpc(v, d, n) { d = (inst_start & 0xffffffe0) + (sext(v) << 2); }
+
+# ---------------------------------------------------------------------------
+# Shifts - SPRUFE8B section 3.12, SHL / SHR / SHRU / SSHL.
+# ---------------------------------------------------------------------------
+
+# SEM: SHL
+macro c6000_sem_shl(v, c, d) { d = v << c; }
+# SEM: SHR
+macro c6000_sem_shr(v, c, d) { d = v s>> c; }
+# SEM: SHRU
+macro c6000_sem_shru(v, c, d) { d = v >> c; }
+# SEM: SSHL
+macro c6000_sem_sshl(v, c, d) { local neg = (c s< 0); if (neg) goto <r>; d = v << c; goto <e>; <r> d = v s>> (-c); <e> }
+
+# ---------------------------------------------------------------------------
+# Comparisons - SPRUFE8B section 3.12, CMPEQ / CMPLT / CMPGT / CMPLTU /
+# CMPGTU.  These write 0 or 1.
+# ---------------------------------------------------------------------------
+
+# SEM: CMPEQ
+macro c6000_sem_cmpeq(a, b, d) { local t = (a == b); if (t) goto <y>; d = 0; goto <e>; <y> d = 1; <e> }
+# SEM: CMPLT
+macro c6000_sem_cmplt(a, b, d) { local t = (a s< b); if (t) goto <y>; d = 0; goto <e>; <y> d = 1; <e> }
+# SEM: CMPGT
+macro c6000_sem_cmpgt(a, b, d) { local t = (a s> b); if (t) goto <y>; d = 0; goto <e>; <y> d = 1; <e> }
+# SEM: CMPLTU
+macro c6000_sem_cmpltu(a, b, d) { local t = (a < b); if (t) goto <y>; d = 0; goto <e>; <y> d = 1; <e> }
+# SEM: CMPGTU
+macro c6000_sem_cmpgtu(a, b, d) { local t = (a > b); if (t) goto <y>; d = 0; goto <e>; <y> d = 1; <e> }
+
+# ---------------------------------------------------------------------------
+# Loads and stores - SPRUFE8B section 3.12 and Table 3-11.  The memory
+# operand in the decode table evaluates to the effective address, so the
+# access size and sign extension are applied here.
+# ---------------------------------------------------------------------------
+
+# SEM: LDW
+macro c6000_sem_ldw(a, d) { d = *[ram]:4 a; }
+# SEM: LDNW
+macro c6000_sem_ldnw(a, d) { d = *[ram]:4 a; }
+# SEM: LDDW
+macro c6000_sem_lddw(a, d) { d = *[ram]:4 a; }
+# SEM: LDNDW
+macro c6000_sem_ldndw(a, d) { d = *[ram]:4 a; }
+# SEM: LDB
+macro c6000_sem_ldb(a, d) { d = sext(*[ram]:1 a); }
+# SEM: LDBU
+macro c6000_sem_ldbu(a, d) { d = zext(*[ram]:1 a); }
+# SEM: LDH
+macro c6000_sem_ldh(a, d) { d = sext(*[ram]:2 a); }
+# SEM: LDHU
+macro c6000_sem_ldhu(a, d) { d = zext(*[ram]:2 a); }
+
+# SEM: STW
+macro c6000_sem_stw(s, a) { *[ram]:4 a = s; }
+# SEM: STNW
+macro c6000_sem_stnw(s, a) { *[ram]:4 a = s; }
+# SEM: STDW
+macro c6000_sem_stdw(s, a) { *[ram]:4 a = s; }
+# SEM: STNDW
+macro c6000_sem_stndw(s, a) { *[ram]:4 a = s; }
+# SEM: STB
+macro c6000_sem_stb(s, a) { *[ram]:1 a = s; }
+# SEM: STH
+macro c6000_sem_sth(s, a) { *[ram]:2 a = s; }
+
+# ---------------------------------------------------------------------------
+# Branches - SPRUFE8B section 3.12, B / CALLP, and section 3.4 for the delay
+# slots.  The target operand already carries the PCE1-relative address (see
+# the BranchTarget / BnopTgt tables in c6000.sinc and c6000_manual.sinc).
+#
+# C6000 branches have five delay slots, so the return address a CALLP leaves
+# in A3/B3 is the instruction after the five delay slots: inst_start + 4 + 20.
+# ---------------------------------------------------------------------------
+
+# SEM: B
+macro c6000_sem_b(t) { goto t; }
+# SEM: CALLP
+macro c6000_sem_callp(t) { B3 = inst_start + 24; call t; }
+
+# Indirect branches through a register (B .S2 src2, B IRP, B NRP).
+macro c6000_sem_b_ind(t) { goto [t]; }
+
+# ---------------------------------------------------------------------------
+# Miscellaneous - SPRUFE8B section 3.12.
+# ---------------------------------------------------------------------------
+
+# SEM: NOP
+macro c6000_sem_nop(n) { }
+# SEM: IDLE
+macro c6000_sem_idle() { }
+# SEM: DINT
+macro c6000_sem_dint() { }
+# SEM: RINT
+macro c6000_sem_rint() { }

@@ -1,0 +1,127 @@
+define pcodeop c6000_unimpl_sploop;
+define pcodeop c6000_unimpl_sploopd;
+define pcodeop c6000_unimpl_sploopw;
+define pcodeop c6000_unimpl_spkernel;
+define pcodeop c6000_unimpl_spkernelr;
+define pcodeop c6000_unimpl_spmask;
+define pcodeop c6000_unimpl_spmaskr;
+
+#  Hand-written C6000 instructions whose encoding is not a simple opcode-map
+#  entry, plus the software-pipelined-loop control instructions.
+#  Apache-2.0; encodings from TI SPRUFE8B (see NOTICE.md).
+#
+#  Every constructor here names the figure or section it implements.
+
+# ---------------------------------------------------------------------------
+# BNOP - Branch Using a Displacement with NOP, and Branch Using a Register
+# with NOP.  SPRUFE8B figures F-10 and F-11.
+#
+# The displacement form carries a 12-bit signed displacement in src2 (shifted
+# left by two) and a 3-bit NOP count in src1.  The target is relative to PCE1,
+# the address of the first instruction of the fetch packet that contains the
+# branch - SPRUFE8B BNOP execution block.  The register form branches to an
+# address held in a register.
+# ---------------------------------------------------------------------------
+
+:^Cond^"BNOP.S1" BnopTgt, bnopc is c_is16=0 & Cond & BnopTgt & bnopc
+  & i1=0 & i12=0 & i11=0 & i10=0 & i9=0 & i8=1 & i7=0 & i6=0 & i5=1 & i4=0 & i3=0 & i2=0
+{
+  goto BnopTgt;
+}
+:^Cond^"BNOP.S2" BnopTgt, bnopc is c_is16=0 & Cond & BnopTgt & bnopc
+  & i1=1 & i12=0 & i11=0 & i10=0 & i9=0 & i8=1 & i7=0 & i6=0 & i5=1 & i4=0 & i3=0 & i2=0
+{
+  goto BnopTgt;
+}
+
+:^Cond^"BNOP.S2" Src2, bnopc is c_is16=0 & Cond & Src2 & bnopc
+  & i27=0 & i26=0 & i25=0 & i24=0 & i23=1 & i17=0 & i16=0
+  & i11=0 & i10=0 & i9=1 & i8=1 & i7=0 & i6=1 & i5=1 & i4=0 & i3=0 & i2=0 & i1=1
+{
+  goto [Src2];
+}
+
+# ---------------------------------------------------------------------------
+# Software pipelined loop (SPLOOP) buffer control.  SPRUFE8B chapter 7 and
+# figures H-3/H-4; the opcode values below are the ones printed in the
+# instruction descriptions of section 3.12.
+#
+# These instructions control the loop buffer.  They are lifted as explicit
+# placeholder operations: the buffer is a microarchitectural structure that
+# ghidra-c6000 does not model, and modelling it as a branch would be wrong
+# because it does not change the program counter.
+# ---------------------------------------------------------------------------
+
+:^Cond^"SPLOOP" ii is c_is16=0 & Cond & ii
+  & i22=0 & i21=0 & i20=0 & i19=0 & i18=0 & i17=1
+  & i16=1 & i15=1 & i14=0 & i13=0
+  & i12=0 & i11=0 & i10=0 & i9=0 & i8=0 & i7=0 & i6=0 & i5=0 & i4=0 & i3=0 & i2=0
+{ c6000_unimpl_sploop(); }
+
+:^Cond^"SPLOOPD" ii is c_is16=0 & Cond & ii
+  & i22=0 & i21=0 & i20=0 & i19=0 & i18=0 & i17=1
+  & i16=1 & i15=1 & i14=0 & i13=1
+  & i12=0 & i11=0 & i10=0 & i9=0 & i8=0 & i7=0 & i6=0 & i5=0 & i4=0 & i3=0 & i2=0
+{ c6000_unimpl_sploopd(); }
+
+:^Cond^"SPLOOPW" ii is c_is16=0 & Cond & ii
+  & i22=0 & i21=0 & i20=0 & i19=0 & i18=0 & i17=1
+  & i16=1 & i15=1 & i14=1 & i13=1
+  & i12=0 & i11=0 & i10=0 & i9=0 & i8=0 & i7=0 & i6=0 & i5=0 & i4=0 & i3=0 & i2=0
+{ c6000_unimpl_sploopw(); }
+
+:SPKERNEL "(fstg,fcyc)" is c_is16=0 & kfstg
+  & i31=0 & i30=0 & i29=0 & i28=0 & i21=0 & i20=0 & i19=0 & i18=0 & i17=1
+  & i16=1 & i15=0 & i14=1 & i13=0
+  & i12=0 & i11=0 & i10=0 & i9=0 & i8=0 & i7=0 & i6=0 & i5=0 & i4=0 & i3=0 & i2=0
+{ c6000_unimpl_spkernel(); }
+
+:SPKERNELR is c_is16=0
+  & i31=0 & i30=0 & i29=0 & i28=0 & i27=0 & i26=0 & i25=0 & i24=0 & i23=0
+  & i22=0 & i21=0 & i20=0 & i19=0 & i18=0 & i17=1
+  & i16=1 & i15=0 & i14=1 & i13=1
+  & i12=0 & i11=0 & i10=0 & i9=0 & i8=0 & i7=0 & i6=0 & i5=0 & i4=0 & i3=0 & i2=0
+{ c6000_unimpl_spkernelr(); }
+
+:SPMASK spmask is c_is16=0 & spmask
+  & i31=0 & i30=0 & i29=0 & i28=0 & i27=0 & i26=0 & i17=1
+  & i16=1 & i15=0 & i14=0 & i13=0
+  & i12=0 & i11=0 & i10=0 & i9=0 & i8=0 & i7=0 & i6=0 & i5=0 & i4=0 & i3=0 & i2=0
+{ c6000_unimpl_spmask(); }
+
+:SPMASKR spmask is c_is16=0 & spmask
+  & i31=0 & i30=0 & i29=0 & i28=0 & i27=0 & i26=0 & i17=1
+  & i16=1 & i15=0 & i14=0 & i13=1
+  & i12=0 & i11=0 & i10=0 & i9=0 & i8=0 & i7=0 & i6=0 & i5=0 & i4=0 & i3=0 & i2=0
+{ c6000_unimpl_spmaskr(); }
+
+# ---------------------------------------------------------------------------
+# Fallback for 32-bit words that match no documented opcode.
+#
+# Every documented encoding in SPRUFE8B section 3.12 has its own constructor,
+# so this only fires on (a) encodings the transcription missed, (b) reserved
+# opcode space, or (c) data interpreted as code.  It keeps the linear sweep
+# synchronised - a wrong 4-byte step would desynchronise everything after it -
+# and the corpus test counts these words so the gap stays visible instead of
+# being silently swallowed.
+# ---------------------------------------------------------------------------
+
+:UNKNOWN32 is i0 & c_is16=0 { c6000_unimpl_unknown(); }
+
+# Same fallback for a 16-bit compact slot that matches no implemented compact
+# opcode.  Two bytes, so the fetch-packet cadence is preserved.
+:UNKNOWN16 is j0 & c_is16=1 { c6000_unimpl_compact16(); }
+
+
+
+# ---------------------------------------------------------------------------
+# Compact fetch-packet header word (SPRUFE8B section 3.10.2, figures 3-5..3-8).
+#
+# A fetch packet is a header-based (compact) packet exactly when bits 31..28
+# of its eighth word are 1110.  That combination is the reserved predication
+# encoding creg=7, z=0 (SPRUFE8B Table 3-9), so no valid 32-bit instruction
+# matches it.  The header has no architectural effect of its own beyond what
+# the packet analyzer has already folded into the context register.
+# ---------------------------------------------------------------------------
+
+:CPKT hdr_layout, hdr_exp, hdr_pbits is i31=1 & i30=1 & i29=1 & i28=0 & c_is16=0 & hdr_layout & hdr_exp & hdr_pbits { }

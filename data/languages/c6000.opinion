@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Loader opinion for the TI C6000 family.
+
+  ELF: e_machine 140 (EM_TI_C6000) selects this language.  The endianness
+  comes from the ELF header, so the opinion does not have to guess.
+-->
+<opinions>
+  <constraint loader="ghidra.app.util.opinion.ElfLoader"
+              compilerSpecID="default">
+    <constraint primary="140"
+                processor="C6000"
+                endian="little"
+                size="32"
+                variant="default"/>
+  </constraint>
+</opinions>

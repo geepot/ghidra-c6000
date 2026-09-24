@@ -1,0 +1,858 @@
+#  GENERATED FILE - do not edit by hand.
+#  Produced by tools/gen_decode.py from the SPRUFE8B section 3.12 opcode
+#  tables (see tools/build_encodings.py and NOTICE.md).
+#
+#  One constructor per documented opcode.  Patterns carry the exact
+#  constant bits of the opcode map; `c_is16=0` restricts them to
+#  non-compact instruction slots.
+
+:ABS.L1 Src2, Dst is i2=0 & i3=1 & i4=1 & i11=0 & i10=0 & i9=1 & i8=1 & i7=0 & i6=1 & i5=0 & i13=0 & i14=0 & i15=0 & i16=0 & i17=0 & i1=0 & c_is16=0 & Cond & Src2 & Dst { c6000_sem_abs(Src2, Dst); }
+:ABS.L2 Src2, Dst is i2=0 & i3=1 & i4=1 & i11=0 & i10=0 & i9=1 & i8=1 & i7=0 & i6=1 & i5=0 & i13=0 & i14=0 & i15=0 & i16=0 & i17=0 & i1=1 & c_is16=0 & Cond & Src2 & Dst { c6000_sem_abs(Src2, Dst); }
+:ABS.L1 Src2, Dst is i2=0 & i3=1 & i4=1 & i11=0 & i10=1 & i9=1 & i8=1 & i7=0 & i6=0 & i5=0 & i13=0 & i14=0 & i15=0 & i16=0 & i17=0 & i1=0 & c_is16=0 & Cond & Src2 & Dst { c6000_sem_abs(Src2, Dst); }
+:ABS.L2 Src2, Dst is i2=0 & i3=1 & i4=1 & i11=0 & i10=1 & i9=1 & i8=1 & i7=0 & i6=0 & i5=0 & i13=0 & i14=0 & i15=0 & i16=0 & i17=0 & i1=1 & c_is16=0 & Cond & Src2 & Dst { c6000_sem_abs(Src2, Dst); }
+
+:ABS2.L1 Src2, Dst is i2=0 & i3=1 & i4=1 & i5=0 & i6=1 & i7=0 & i8=1 & i9=1 & i10=0 & i11=0 & i13=0 & i14=0 & i15=1 & i16=0 & i17=0 & i1=0 & c_is16=0 & Cond & Src2 & Dst { c6000_unimpl_abs2(); }
+:ABS2.L2 Src2, Dst is i2=0 & i3=1 & i4=1 & i5=0 & i6=1 & i7=0 & i8=1 & i9=1 & i10=0 & i11=0 & i13=0 & i14=0 & i15=1 & i16=0 & i17=0 & i1=1 & c_is16=0 & Cond & Src2 & Dst { c6000_unimpl_abs2(); }
+
+:ABSDP.S1 Src2, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i6=0 & i7=0 & i8=1 & i9=1 & i10=0 & i11=1 & i13=0 & i14=0 & i15=0 & i16=0 & i17=0 & i1=0 & c_is16=0 & Cond & Src2 & Dst { c6000_unimpl_absdp(); }
+:ABSDP.S2 Src2, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i6=0 & i7=0 & i8=1 & i9=1 & i10=0 & i11=1 & i13=0 & i14=0 & i15=0 & i16=0 & i17=0 & i1=1 & c_is16=0 & Cond & Src2 & Dst { c6000_unimpl_absdp(); }
+
+:ABSSP.S1 Src2, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i6=0 & i7=0 & i8=1 & i9=1 & i10=1 & i11=1 & i13=0 & i14=0 & i15=0 & i16=0 & i17=0 & i1=0 & c_is16=0 & Cond & Src2 & Dst { c6000_unimpl_abssp(); }
+:ABSSP.S2 Src2, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i6=0 & i7=0 & i8=1 & i9=1 & i10=1 & i11=1 & i13=0 & i14=0 & i15=0 & i16=0 & i17=0 & i1=1 & c_is16=0 & Cond & Src2 & Dst { c6000_unimpl_abssp(); }
+
+:ADD.L1 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=0 & i10=0 & i9=0 & i8=0 & i7=0 & i6=1 & i5=1 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_sem_add(Src1, Src2, Dst); }
+:ADD.L2 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=0 & i10=0 & i9=0 & i8=0 & i7=0 & i6=1 & i5=1 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_sem_add(Src1, Src2, Dst); }
+:ADD.L1 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=0 & i10=1 & i9=0 & i8=0 & i7=0 & i6=1 & i5=1 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_sem_add(Src1, Src2, Dst); }
+:ADD.L2 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=0 & i10=1 & i9=0 & i8=0 & i7=0 & i6=1 & i5=1 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_sem_add(Src1, Src2, Dst); }
+:ADD.L1 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=0 & i10=1 & i9=0 & i8=0 & i7=0 & i6=0 & i5=1 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_sem_add(Src1, Src2, Dst); }
+:ADD.L2 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=0 & i10=1 & i9=0 & i8=0 & i7=0 & i6=0 & i5=1 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_sem_add(Src1, Src2, Dst); }
+:ADD.L1 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=0 & i10=0 & i9=0 & i8=0 & i7=0 & i6=1 & i5=0 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_sem_add(Src1, Src2, Dst); }
+:ADD.L2 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=0 & i10=0 & i9=0 & i8=0 & i7=0 & i6=1 & i5=0 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_sem_add(Src1, Src2, Dst); }
+:ADD.L1 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=0 & i10=1 & i9=0 & i8=0 & i7=0 & i6=0 & i5=0 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_sem_add(Src1, Src2, Dst); }
+:ADD.L2 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=0 & i10=1 & i9=0 & i8=0 & i7=0 & i6=0 & i5=0 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_sem_add(Src1, Src2, Dst); }
+:ADD.S1 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i11=0 & i10=0 & i9=0 & i8=1 & i7=1 & i6=1 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_sem_add(Src1, Src2, Dst); }
+:ADD.S2 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i11=0 & i10=0 & i9=0 & i8=1 & i7=1 & i6=1 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_sem_add(Src1, Src2, Dst); }
+:ADD.S1 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i11=0 & i10=0 & i9=0 & i8=1 & i7=1 & i6=0 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_sem_add(Src1, Src2, Dst); }
+:ADD.S2 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i11=0 & i10=0 & i9=0 & i8=1 & i7=1 & i6=0 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_sem_add(Src1, Src2, Dst); }
+:ADD.D1 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=0 & i6=1 & i12=0 & i11=1 & i10=0 & i9=0 & i8=0 & i7=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_sem_add(Src1, Src2, Dst); }
+:ADD.D1 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=0 & i6=1 & i12=0 & i11=1 & i10=0 & i9=0 & i8=1 & i7=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_sem_add(Src1, Src2, Dst); }
+:ADD.D2 Src1, Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=0 & i7=1 & i8=0 & i9=1 & i10=0 & i11=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_sem_add(Src1, Src2, Dst); }
+:ADD.D2 Src1, Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=1 & i7=1 & i8=0 & i9=1 & i10=0 & i11=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_sem_add(Src1, Src2, Dst); }
+
+:ADDAB.D1 Src2, Src1, Dst is i2=0 & i3=0 & i4=0 & i5=0 & i6=1 & i12=1 & i11=1 & i10=0 & i9=0 & i8=0 & i7=0 & c_is16=0 & Cond & Src2 & Src1 & Dst { c6000_unimpl_addab(); }
+:ADDAB.D1 Src2, Src1, Dst is i2=0 & i3=0 & i4=0 & i5=0 & i6=1 & i12=1 & i11=1 & i10=0 & i9=0 & i8=1 & i7=0 & c_is16=0 & Cond & Src2 & Src1 & Dst { c6000_unimpl_addab(); }
+:ADDAB.D1 Src2, Src1, Dst is i2=1 & i3=1 & i4=1 & i5=1 & i6=0 & i28=1 & i29=0 & i30=0 & i31=0 & i7=0 & c_is16=0 & Src2 & Src1 & Dst { c6000_unimpl_addab(); }
+:ADDAB.D2 Src2, Src1, Dst is i2=1 & i3=1 & i4=1 & i5=1 & i6=0 & i28=1 & i29=0 & i30=0 & i31=0 & i7=1 & c_is16=0 & Src2 & Src1 & Dst { c6000_unimpl_addab(); }
+
+:ADDAD.D1 Src2, Src1, Dst is i2=0 & i3=0 & i4=0 & i5=0 & i6=1 & i12=1 & i11=1 & i10=1 & i9=1 & i8=0 & i7=0 & c_is16=0 & Cond & Src2 & Src1 & Dst { c6000_unimpl_addad(); }
+:ADDAD.D2 Src2, Src1, Dst is i2=0 & i3=0 & i4=0 & i5=0 & i6=1 & i12=1 & i11=1 & i10=1 & i9=1 & i8=0 & i7=1 & c_is16=0 & Cond & Src2 & Src1 & Dst { c6000_unimpl_addad(); }
+
+:ADDAH.D1 Src2, Src1, Dst is i2=0 & i3=0 & i4=0 & i5=0 & i6=1 & i12=1 & i11=1 & i10=0 & i9=1 & i8=0 & i7=0 & c_is16=0 & Cond & Src2 & Src1 & Dst { c6000_unimpl_addah(); }
+:ADDAH.D1 Src2, Src1, Dst is i2=0 & i3=0 & i4=0 & i5=0 & i6=1 & i12=1 & i11=1 & i10=0 & i9=1 & i8=1 & i7=0 & c_is16=0 & Cond & Src2 & Src1 & Dst { c6000_unimpl_addah(); }
+:ADDAH.D1 Src2, Src1, Dst is i2=1 & i3=1 & i4=1 & i5=0 & i6=1 & i28=1 & i29=0 & i30=0 & i31=0 & i7=0 & c_is16=0 & Src2 & Src1 & Dst { c6000_unimpl_addah(); }
+:ADDAH.D2 Src2, Src1, Dst is i2=1 & i3=1 & i4=1 & i5=0 & i6=1 & i28=1 & i29=0 & i30=0 & i31=0 & i7=1 & c_is16=0 & Src2 & Src1 & Dst { c6000_unimpl_addah(); }
+
+:ADDAW.D1 Src2, Src1, Dst is i2=0 & i3=0 & i4=0 & i5=0 & i6=1 & i12=1 & i11=1 & i10=1 & i9=0 & i8=0 & i7=0 & c_is16=0 & Cond & Src2 & Src1 & Dst { c6000_unimpl_addaw(); }
+:ADDAW.D1 Src2, Src1, Dst is i2=0 & i3=0 & i4=0 & i5=0 & i6=1 & i12=1 & i11=1 & i10=1 & i9=0 & i8=1 & i7=0 & c_is16=0 & Cond & Src2 & Src1 & Dst { c6000_unimpl_addaw(); }
+:ADDAW.D1 Src2, Src1, Dst is i2=1 & i3=1 & i4=1 & i5=1 & i6=1 & i28=1 & i29=0 & i30=0 & i31=0 & i7=0 & c_is16=0 & Src2 & Src1 & Dst { c6000_unimpl_addaw(); }
+:ADDAW.D2 Src2, Src1, Dst is i2=1 & i3=1 & i4=1 & i5=1 & i6=1 & i28=1 & i29=0 & i30=0 & i31=0 & i7=1 & c_is16=0 & Src2 & Src1 & Dst { c6000_unimpl_addaw(); }
+
+:ADDDP.L1 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=0 & i10=0 & i9=1 & i8=1 & i7=0 & i6=0 & i5=0 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_adddp(); }
+:ADDDP.L2 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=0 & i10=0 & i9=1 & i8=1 & i7=0 & i6=0 & i5=0 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_adddp(); }
+:ADDDP.L1 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=1 & i10=1 & i9=1 & i8=0 & i7=0 & i6=1 & i5=0 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_adddp(); }
+:ADDDP.L2 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=1 & i10=1 & i9=1 & i8=0 & i7=0 & i6=1 & i5=0 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_adddp(); }
+
+:ADDK.S1 Cst16, Dst is i2=0 & i3=0 & i4=1 & i5=0 & i6=1 & i1=0 & c_is16=0 & Cond & Cst16 & Dst { c6000_sem_addk(Cst16, Dst); }
+:ADDK.S2 Cst16, Dst is i2=0 & i3=0 & i4=1 & i5=0 & i6=1 & i1=1 & c_is16=0 & Cond & Cst16 & Dst { c6000_sem_addk(Cst16, Dst); }
+
+:ADDKPC.S1 Src1, Dst, Src2 is i2=0 & i3=0 & i4=0 & i5=1 & i6=1 & i7=0 & i8=1 & i9=0 & i10=0 & i11=0 & i12=0 & i1=0 & c_is16=0 & Cond & Src1 & Dst & Src2 { c6000_sem_addkpc(Src1, Dst, Src2); }
+:ADDKPC.S2 Src1, Dst, Src2 is i2=0 & i3=0 & i4=0 & i5=1 & i6=1 & i7=0 & i8=1 & i9=0 & i10=0 & i11=0 & i12=0 & i1=1 & c_is16=0 & Cond & Src1 & Dst & Src2 { c6000_sem_addkpc(Src1, Dst, Src2); }
+
+:ADDSP.L1 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=0 & i10=0 & i9=1 & i8=0 & i7=0 & i6=0 & i5=0 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_addsp(); }
+:ADDSP.L2 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=0 & i10=0 & i9=1 & i8=0 & i7=0 & i6=0 & i5=0 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_addsp(); }
+:ADDSP.L1 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=1 & i10=1 & i9=1 & i8=0 & i7=0 & i6=0 & i5=0 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_addsp(); }
+:ADDSP.L2 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=1 & i10=1 & i9=1 & i8=0 & i7=0 & i6=0 & i5=0 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_addsp(); }
+
+:ADDSUB.L1 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i5=0 & i6=0 & i7=1 & i8=1 & i9=0 & i10=0 & i11=0 & i23=0 & i28=1 & i29=0 & i30=0 & i31=0 & i1=0 & c_is16=0 & Src1 & Src2 & Dst { c6000_unimpl_addsub(); }
+:ADDSUB.L2 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i5=0 & i6=0 & i7=1 & i8=1 & i9=0 & i10=0 & i11=0 & i23=0 & i28=1 & i29=0 & i30=0 & i31=0 & i1=1 & c_is16=0 & Src1 & Src2 & Dst { c6000_unimpl_addsub(); }
+
+:ADDSUB2.L1 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i5=1 & i6=0 & i7=1 & i8=1 & i9=0 & i10=0 & i11=0 & i23=0 & i28=1 & i29=0 & i30=0 & i31=0 & i1=0 & c_is16=0 & Src1 & Src2 & Dst { c6000_unimpl_addsub2(); }
+:ADDSUB2.L2 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i5=1 & i6=0 & i7=1 & i8=1 & i9=0 & i10=0 & i11=0 & i23=0 & i28=1 & i29=0 & i30=0 & i31=0 & i1=1 & c_is16=0 & Src1 & Src2 & Dst { c6000_unimpl_addsub2(); }
+
+:ADDU.L1 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=0 & i10=1 & i9=0 & i8=1 & i7=0 & i6=1 & i5=1 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_sem_addu(Src1, Src2, Dst); }
+:ADDU.L2 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=0 & i10=1 & i9=0 & i8=1 & i7=0 & i6=1 & i5=1 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_sem_addu(Src1, Src2, Dst); }
+:ADDU.L1 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=0 & i10=1 & i9=0 & i8=1 & i7=0 & i6=0 & i5=1 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_sem_addu(Src1, Src2, Dst); }
+:ADDU.L2 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=0 & i10=1 & i9=0 & i8=1 & i7=0 & i6=0 & i5=1 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_sem_addu(Src1, Src2, Dst); }
+
+:ADD2.S1 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i6=1 & i7=0 & i8=0 & i9=0 & i10=0 & i11=0 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_add2(); }
+:ADD2.S2 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i6=1 & i7=0 & i8=0 & i9=0 & i10=0 & i11=0 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_add2(); }
+:ADD2.L1 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i5=1 & i6=0 & i7=1 & i8=0 & i9=0 & i10=0 & i11=0 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_add2(); }
+:ADD2.L2 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i5=1 & i6=0 & i7=1 & i8=0 & i9=0 & i10=0 & i11=0 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_add2(); }
+:ADD2.D1 Src1, Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=0 & i7=0 & i8=1 & i9=0 & i10=0 & i11=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_add2(); }
+
+:ADD4.L1 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i5=1 & i6=0 & i7=1 & i8=0 & i9=0 & i10=1 & i11=1 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_add4(); }
+:ADD4.L2 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i5=1 & i6=0 & i7=1 & i8=0 & i9=0 & i10=1 & i11=1 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_add4(); }
+
+:AND.L1 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=1 & i10=1 & i9=1 & i8=1 & i7=0 & i6=1 & i5=1 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_sem_and(Src1, Src2, Dst); }
+:AND.L2 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=1 & i10=1 & i9=1 & i8=1 & i7=0 & i6=1 & i5=1 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_sem_and(Src1, Src2, Dst); }
+:AND.L1 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=1 & i10=1 & i9=1 & i8=1 & i7=0 & i6=1 & i5=0 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_sem_and(Src1, Src2, Dst); }
+:AND.L2 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=1 & i10=1 & i9=1 & i8=1 & i7=0 & i6=1 & i5=0 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_sem_and(Src1, Src2, Dst); }
+:AND.S1 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i11=0 & i10=1 & i9=1 & i8=1 & i7=1 & i6=1 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_sem_and(Src1, Src2, Dst); }
+:AND.S2 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i11=0 & i10=1 & i9=1 & i8=1 & i7=1 & i6=1 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_sem_and(Src1, Src2, Dst); }
+:AND.S1 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i11=0 & i10=1 & i9=1 & i8=1 & i7=1 & i6=0 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_sem_and(Src1, Src2, Dst); }
+:AND.S2 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i11=0 & i10=1 & i9=1 & i8=1 & i7=1 & i6=0 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_sem_and(Src1, Src2, Dst); }
+:AND.D2 Src1, Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i9=0 & i8=1 & i7=1 & i6=0 & i10=0 & i11=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_sem_and(Src1, Src2, Dst); }
+:AND.D2 Src1, Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i9=0 & i8=1 & i7=1 & i6=1 & i10=0 & i11=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_sem_and(Src1, Src2, Dst); }
+
+:ANDN.L1 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i5=0 & i6=0 & i7=1 & i8=1 & i9=1 & i10=1 & i11=1 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_sem_andn(Src1, Src2, Dst); }
+:ANDN.L2 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i5=0 & i6=0 & i7=1 & i8=1 & i9=1 & i10=1 & i11=1 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_sem_andn(Src1, Src2, Dst); }
+:ANDN.S1 Src1, Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=0 & i7=1 & i8=1 & i9=0 & i10=1 & i11=1 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_sem_andn(Src1, Src2, Dst); }
+:ANDN.S2 Src1, Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=0 & i7=1 & i8=1 & i9=0 & i10=1 & i11=1 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_sem_andn(Src1, Src2, Dst); }
+:ANDN.D1 Src1, Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=0 & i7=0 & i8=0 & i9=0 & i10=0 & i11=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_sem_andn(Src1, Src2, Dst); }
+
+:AVG2.M1 Src1, Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=1 & i7=1 & i8=0 & i9=0 & i10=1 & i11=0 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_avg2(); }
+:AVG2.M2 Src1, Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=1 & i7=1 & i8=0 & i9=0 & i10=1 & i11=0 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_avg2(); }
+
+:AVGU4.M1 Src1, Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=0 & i7=1 & i8=0 & i9=0 & i10=1 & i11=0 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_avgu4(); }
+:AVGU4.M2 Src1, Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=0 & i7=1 & i8=0 & i9=0 & i10=1 & i11=0 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_avgu4(); }
+
+:B.S1 BranchTarget is i2=0 & i3=0 & i4=1 & i5=0 & i6=0 & i1=0 & c_is16=0 & Cond & BranchTarget { c6000_sem_b(BranchTarget); }
+:B.S2 BranchTarget is i2=0 & i3=0 & i4=1 & i5=0 & i6=0 & i1=1 & c_is16=0 & Cond & BranchTarget { c6000_sem_b(BranchTarget); }
+
+:B.S2 Src2 is i1=1 & i2=0 & i3=0 & i4=0 & i5=1 & i6=1 & i7=0 & i8=1 & i9=1 & i10=0 & i11=0 & i13=0 & i14=0 & i15=0 & i16=0 & i17=0 & i23=0 & i24=0 & i25=0 & i26=0 & i27=0 & c_is16=0 & Cond & Src2 { c6000_sem_b_ind(Src2); }
+:B.S2 Src2 is i1=1 & i2=0 & i3=0 & i4=0 & i5=1 & i6=1 & i7=1 & i8=0 & i9=0 & i10=0 & i11=0 & i12=0 & i13=0 & i14=0 & i15=0 & i16=0 & i17=0 & i18=0 & i19=1 & i20=1 & i21=0 & i22=0 & i23=0 & i24=0 & i25=0 & i26=0 & i27=0 & c_is16=0 & Cond & Src2 { c6000_sem_b_ind(Src2); }
+:B.S2 Src2 is i1=1 & i2=0 & i3=0 & i4=0 & i5=1 & i6=1 & i7=1 & i8=0 & i9=0 & i10=0 & i11=0 & i12=0 & i13=0 & i14=0 & i15=0 & i16=0 & i17=0 & i18=1 & i19=1 & i20=1 & i21=0 & i22=0 & i23=0 & i24=0 & i25=0 & i26=0 & i27=0 & c_is16=0 & Cond & Src2 { c6000_sem_b_ind(Src2); }
+
+:BDEC.S1 Src, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i6=0 & i7=0 & i8=0 & i9=0 & i10=0 & i11=0 & i12=1 & i1=0 & c_is16=0 & Cond & Src & Dst { c6000_unimpl_bdec(); }
+:BDEC.S2 Src, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i6=0 & i7=0 & i8=0 & i9=0 & i10=0 & i11=0 & i12=1 & i1=1 & c_is16=0 & Cond & Src & Dst { c6000_unimpl_bdec(); }
+
+:BITC4.M1 Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=1 & i7=1 & i8=0 & i9=0 & i10=0 & i11=0 & i13=0 & i14=1 & i15=1 & i16=1 & i17=1 & i1=0 & c_is16=0 & Cond & Src2 & Dst { c6000_unimpl_bitc4(); }
+:BITC4.M2 Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=1 & i7=1 & i8=0 & i9=0 & i10=0 & i11=0 & i13=0 & i14=1 & i15=1 & i16=1 & i17=1 & i1=1 & c_is16=0 & Cond & Src2 & Dst { c6000_unimpl_bitc4(); }
+
+:BITR.M1 Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=1 & i7=1 & i8=0 & i9=0 & i10=0 & i11=0 & i13=1 & i14=1 & i15=1 & i16=1 & i17=1 & i1=0 & c_is16=0 & Cond & Src2 & Dst { c6000_unimpl_bitr(); }
+:BITR.M2 Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=1 & i7=1 & i8=0 & i9=0 & i10=0 & i11=0 & i13=1 & i14=1 & i15=1 & i16=1 & i17=1 & i1=1 & c_is16=0 & Cond & Src2 & Dst { c6000_unimpl_bitr(); }
+
+:BPOS.S1 Src, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i6=0 & i7=0 & i8=0 & i9=0 & i10=0 & i11=0 & i12=0 & i1=0 & c_is16=0 & Cond & Src & Dst { c6000_unimpl_bpos(); }
+:BPOS.S2 Src, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i6=0 & i7=0 & i8=0 & i9=0 & i10=0 & i11=0 & i12=0 & i1=1 & c_is16=0 & Cond & Src & Dst { c6000_unimpl_bpos(); }
+
+:CALLP.S1 BranchTarget, "B3" is i2=0 & i3=0 & i4=1 & i5=0 & i6=0 & i28=1 & i29=0 & i30=0 & i31=0 & i1=0 & c_is16=0 & BranchTarget { c6000_sem_callp(BranchTarget); }
+:CALLP.S2 BranchTarget, "B3" is i2=0 & i3=0 & i4=1 & i5=0 & i6=0 & i28=1 & i29=0 & i30=0 & i31=0 & i1=1 & c_is16=0 & BranchTarget { c6000_sem_callp(BranchTarget); }
+
+:CLR.S1 Src2, Csta, Cstb, Dst is i2=0 & i3=1 & i4=0 & i5=0 & i6=1 & i7=1 & i1=0 & c_is16=0 & Cond & Src2 & Csta & Cstb & Dst { c6000_unimpl_clr(); }
+:CLR.S2 Src2, Csta, Cstb, Dst is i2=0 & i3=1 & i4=0 & i5=0 & i6=1 & i7=1 & i1=1 & c_is16=0 & Cond & Src2 & Csta & Cstb & Dst { c6000_unimpl_clr(); }
+:CLR.S1 Src2, Csta, Cstb, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i6=1 & i7=1 & i8=1 & i9=1 & i10=1 & i11=1 & i1=0 & c_is16=0 & Cond & Src2 & Csta & Cstb & Dst { c6000_unimpl_clr(); }
+:CLR.S2 Src2, Csta, Cstb, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i6=1 & i7=1 & i8=1 & i9=1 & i10=1 & i11=1 & i1=1 & c_is16=0 & Cond & Src2 & Csta & Cstb & Dst { c6000_unimpl_clr(); }
+
+:CMPEQ.L1 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=1 & i10=0 & i9=1 & i8=0 & i7=0 & i6=1 & i5=1 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_sem_cmpeq(Src1, Src2, Dst); }
+:CMPEQ.L2 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=1 & i10=0 & i9=1 & i8=0 & i7=0 & i6=1 & i5=1 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_sem_cmpeq(Src1, Src2, Dst); }
+:CMPEQ.L1 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=1 & i10=0 & i9=1 & i8=0 & i7=0 & i6=1 & i5=0 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_sem_cmpeq(Src1, Src2, Dst); }
+:CMPEQ.L2 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=1 & i10=0 & i9=1 & i8=0 & i7=0 & i6=1 & i5=0 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_sem_cmpeq(Src1, Src2, Dst); }
+:CMPEQ.L1 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=1 & i10=0 & i9=1 & i8=0 & i7=0 & i6=0 & i5=1 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_sem_cmpeq(Src1, Src2, Dst); }
+:CMPEQ.L2 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=1 & i10=0 & i9=1 & i8=0 & i7=0 & i6=0 & i5=1 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_sem_cmpeq(Src1, Src2, Dst); }
+:CMPEQ.L1 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=1 & i10=0 & i9=1 & i8=0 & i7=0 & i6=0 & i5=0 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_sem_cmpeq(Src1, Src2, Dst); }
+:CMPEQ.L2 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=1 & i10=0 & i9=1 & i8=0 & i7=0 & i6=0 & i5=0 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_sem_cmpeq(Src1, Src2, Dst); }
+
+:CMPEQ2.S1 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i6=1 & i7=0 & i8=1 & i9=1 & i10=1 & i11=0 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_cmpeq2(); }
+:CMPEQ2.S2 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i6=1 & i7=0 & i8=1 & i9=1 & i10=1 & i11=0 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_cmpeq2(); }
+
+:CMPEQ4.S1 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i6=0 & i7=0 & i8=1 & i9=1 & i10=1 & i11=0 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_cmpeq4(); }
+:CMPEQ4.S2 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i6=0 & i7=0 & i8=1 & i9=1 & i10=1 & i11=0 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_cmpeq4(); }
+
+:CMPEQDP.S1 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i6=0 & i7=0 & i8=0 & i9=1 & i10=0 & i11=1 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_cmpeqdp(); }
+:CMPEQDP.S2 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i6=0 & i7=0 & i8=0 & i9=1 & i10=0 & i11=1 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_cmpeqdp(); }
+
+:CMPEQSP.S1 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i6=0 & i7=0 & i8=0 & i9=1 & i10=1 & i11=1 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_cmpeqsp(); }
+:CMPEQSP.S2 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i6=0 & i7=0 & i8=0 & i9=1 & i10=1 & i11=1 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_cmpeqsp(); }
+
+:CMPGT.L1 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=1 & i10=0 & i9=0 & i8=0 & i7=1 & i6=1 & i5=1 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_sem_cmpgt(Src1, Src2, Dst); }
+:CMPGT.L2 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=1 & i10=0 & i9=0 & i8=0 & i7=1 & i6=1 & i5=1 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_sem_cmpgt(Src1, Src2, Dst); }
+:CMPGT.L1 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=1 & i10=0 & i9=0 & i8=0 & i7=1 & i6=1 & i5=0 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_sem_cmpgt(Src1, Src2, Dst); }
+:CMPGT.L2 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=1 & i10=0 & i9=0 & i8=0 & i7=1 & i6=1 & i5=0 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_sem_cmpgt(Src1, Src2, Dst); }
+:CMPGT.L1 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=1 & i10=0 & i9=0 & i8=0 & i7=1 & i6=0 & i5=1 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_sem_cmpgt(Src1, Src2, Dst); }
+:CMPGT.L2 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=1 & i10=0 & i9=0 & i8=0 & i7=1 & i6=0 & i5=1 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_sem_cmpgt(Src1, Src2, Dst); }
+:CMPGT.L1 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=1 & i10=0 & i9=0 & i8=0 & i7=1 & i6=0 & i5=0 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_sem_cmpgt(Src1, Src2, Dst); }
+:CMPGT.L2 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=1 & i10=0 & i9=0 & i8=0 & i7=1 & i6=0 & i5=0 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_sem_cmpgt(Src1, Src2, Dst); }
+
+:CMPGT2.S1 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i6=0 & i7=0 & i8=1 & i9=0 & i10=1 & i11=0 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_cmpgt2(); }
+:CMPGT2.S2 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i6=0 & i7=0 & i8=1 & i9=0 & i10=1 & i11=0 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_cmpgt2(); }
+
+:CMPGTDP.S1 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i6=1 & i7=0 & i8=0 & i9=1 & i10=0 & i11=1 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_cmpgtdp(); }
+:CMPGTDP.S2 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i6=1 & i7=0 & i8=0 & i9=1 & i10=0 & i11=1 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_cmpgtdp(); }
+
+:CMPGTSP.S1 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i6=1 & i7=0 & i8=0 & i9=1 & i10=1 & i11=1 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_cmpgtsp(); }
+:CMPGTSP.S2 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i6=1 & i7=0 & i8=0 & i9=1 & i10=1 & i11=1 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_cmpgtsp(); }
+
+:CMPGTU.L1 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=1 & i10=0 & i9=0 & i8=1 & i7=1 & i6=1 & i5=1 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_sem_cmpgtu(Src1, Src2, Dst); }
+:CMPGTU.L2 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=1 & i10=0 & i9=0 & i8=1 & i7=1 & i6=1 & i5=1 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_sem_cmpgtu(Src1, Src2, Dst); }
+:CMPGTU.L1 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=1 & i10=0 & i9=0 & i8=1 & i7=1 & i6=1 & i5=0 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_sem_cmpgtu(Src1, Src2, Dst); }
+:CMPGTU.L2 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=1 & i10=0 & i9=0 & i8=1 & i7=1 & i6=1 & i5=0 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_sem_cmpgtu(Src1, Src2, Dst); }
+:CMPGTU.L1 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=1 & i10=0 & i9=0 & i8=1 & i7=1 & i6=0 & i5=1 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_sem_cmpgtu(Src1, Src2, Dst); }
+:CMPGTU.L2 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=1 & i10=0 & i9=0 & i8=1 & i7=1 & i6=0 & i5=1 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_sem_cmpgtu(Src1, Src2, Dst); }
+:CMPGTU.L1 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=1 & i10=0 & i9=0 & i8=1 & i7=1 & i6=0 & i5=0 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_sem_cmpgtu(Src1, Src2, Dst); }
+:CMPGTU.L2 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=1 & i10=0 & i9=0 & i8=1 & i7=1 & i6=0 & i5=0 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_sem_cmpgtu(Src1, Src2, Dst); }
+
+:CMPGTU4.S1 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i6=1 & i7=0 & i8=1 & i9=0 & i10=1 & i11=0 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_cmpgtu4(); }
+:CMPGTU4.S2 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i6=1 & i7=0 & i8=1 & i9=0 & i10=1 & i11=0 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_cmpgtu4(); }
+
+:CMPLT.L1 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=1 & i10=0 & i9=1 & i8=0 & i7=1 & i6=1 & i5=1 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_sem_cmplt(Src1, Src2, Dst); }
+:CMPLT.L2 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=1 & i10=0 & i9=1 & i8=0 & i7=1 & i6=1 & i5=1 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_sem_cmplt(Src1, Src2, Dst); }
+:CMPLT.L1 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=1 & i10=0 & i9=1 & i8=0 & i7=1 & i6=1 & i5=0 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_sem_cmplt(Src1, Src2, Dst); }
+:CMPLT.L2 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=1 & i10=0 & i9=1 & i8=0 & i7=1 & i6=1 & i5=0 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_sem_cmplt(Src1, Src2, Dst); }
+:CMPLT.L1 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=1 & i10=0 & i9=1 & i8=0 & i7=1 & i6=0 & i5=1 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_sem_cmplt(Src1, Src2, Dst); }
+:CMPLT.L2 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=1 & i10=0 & i9=1 & i8=0 & i7=1 & i6=0 & i5=1 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_sem_cmplt(Src1, Src2, Dst); }
+:CMPLT.L1 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=1 & i10=0 & i9=1 & i8=0 & i7=1 & i6=0 & i5=0 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_sem_cmplt(Src1, Src2, Dst); }
+:CMPLT.L2 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=1 & i10=0 & i9=1 & i8=0 & i7=1 & i6=0 & i5=0 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_sem_cmplt(Src1, Src2, Dst); }
+
+:CMPLTDP.S1 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i6=0 & i7=1 & i8=0 & i9=1 & i10=0 & i11=1 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_cmpltdp(); }
+:CMPLTDP.S2 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i6=0 & i7=1 & i8=0 & i9=1 & i10=0 & i11=1 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_cmpltdp(); }
+
+:CMPLTSP.S1 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i6=0 & i7=1 & i8=0 & i9=1 & i10=1 & i11=1 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_cmpltsp(); }
+:CMPLTSP.S2 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i6=0 & i7=1 & i8=0 & i9=1 & i10=1 & i11=1 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_cmpltsp(); }
+
+:CMPLTU.L1 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=1 & i10=0 & i9=1 & i8=1 & i7=1 & i6=1 & i5=1 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_sem_cmpltu(Src1, Src2, Dst); }
+:CMPLTU.L2 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=1 & i10=0 & i9=1 & i8=1 & i7=1 & i6=1 & i5=1 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_sem_cmpltu(Src1, Src2, Dst); }
+:CMPLTU.L1 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=1 & i10=0 & i9=1 & i8=1 & i7=1 & i6=1 & i5=0 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_sem_cmpltu(Src1, Src2, Dst); }
+:CMPLTU.L2 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=1 & i10=0 & i9=1 & i8=1 & i7=1 & i6=1 & i5=0 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_sem_cmpltu(Src1, Src2, Dst); }
+:CMPLTU.L1 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=1 & i10=0 & i9=1 & i8=1 & i7=1 & i6=0 & i5=1 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_sem_cmpltu(Src1, Src2, Dst); }
+:CMPLTU.L2 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=1 & i10=0 & i9=1 & i8=1 & i7=1 & i6=0 & i5=1 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_sem_cmpltu(Src1, Src2, Dst); }
+:CMPLTU.L1 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=1 & i10=0 & i9=1 & i8=1 & i7=1 & i6=0 & i5=0 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_sem_cmpltu(Src1, Src2, Dst); }
+:CMPLTU.L2 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=1 & i10=0 & i9=1 & i8=1 & i7=1 & i6=0 & i5=0 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_sem_cmpltu(Src1, Src2, Dst); }
+
+:CMPY.M1 Src1, Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=0 & i7=1 & i8=0 & i9=1 & i10=0 & i11=0 & i28=1 & i29=0 & i30=0 & i31=0 & i1=0 & c_is16=0 & Src1 & Src2 & Dst { c6000_unimpl_cmpy(); }
+:CMPY.M2 Src1, Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=0 & i7=1 & i8=0 & i9=1 & i10=0 & i11=0 & i28=1 & i29=0 & i30=0 & i31=0 & i1=1 & c_is16=0 & Src1 & Src2 & Dst { c6000_unimpl_cmpy(); }
+
+:CMPYR.M1 Src1, Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=1 & i7=1 & i8=0 & i9=1 & i10=0 & i11=0 & i28=1 & i29=0 & i30=0 & i31=0 & i1=0 & c_is16=0 & Src1 & Src2 & Dst { c6000_unimpl_cmpyr(); }
+:CMPYR.M2 Src1, Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=1 & i7=1 & i8=0 & i9=1 & i10=0 & i11=0 & i28=1 & i29=0 & i30=0 & i31=0 & i1=1 & c_is16=0 & Src1 & Src2 & Dst { c6000_unimpl_cmpyr(); }
+
+:CMPYR1.M1 Src1, Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=0 & i7=0 & i8=1 & i9=1 & i10=0 & i11=0 & i28=1 & i29=0 & i30=0 & i31=0 & i1=0 & c_is16=0 & Src1 & Src2 & Dst { c6000_unimpl_cmpyr1(); }
+:CMPYR1.M2 Src1, Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=0 & i7=0 & i8=1 & i9=1 & i10=0 & i11=0 & i28=1 & i29=0 & i30=0 & i31=0 & i1=1 & c_is16=0 & Src1 & Src2 & Dst { c6000_unimpl_cmpyr1(); }
+
+:DDOTP4.M1 Src1, Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=0 & i7=0 & i8=0 & i9=1 & i10=1 & i11=0 & i28=1 & i29=0 & i30=0 & i31=0 & i1=0 & c_is16=0 & Src1 & Src2 & Dst { c6000_unimpl_ddotp4(); }
+:DDOTP4.M2 Src1, Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=0 & i7=0 & i8=0 & i9=1 & i10=1 & i11=0 & i28=1 & i29=0 & i30=0 & i31=0 & i1=1 & c_is16=0 & Src1 & Src2 & Dst { c6000_unimpl_ddotp4(); }
+
+:DDOTPH2.M1 Src1, Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=1 & i7=1 & i8=1 & i9=0 & i10=1 & i11=0 & i28=1 & i29=0 & i30=0 & i31=0 & i1=0 & c_is16=0 & Src1 & Src2 & Dst { c6000_unimpl_ddotph2(); }
+:DDOTPH2.M2 Src1, Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=1 & i7=1 & i8=1 & i9=0 & i10=1 & i11=0 & i28=1 & i29=0 & i30=0 & i31=0 & i1=1 & c_is16=0 & Src1 & Src2 & Dst { c6000_unimpl_ddotph2(); }
+
+:DDOTPH2R.M1 Src1, Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=1 & i7=0 & i8=1 & i9=0 & i10=1 & i11=0 & i28=1 & i29=0 & i30=0 & i31=0 & i1=0 & c_is16=0 & Src1 & Src2 & Dst { c6000_unimpl_ddotph2r(); }
+:DDOTPH2R.M2 Src1, Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=1 & i7=0 & i8=1 & i9=0 & i10=1 & i11=0 & i28=1 & i29=0 & i30=0 & i31=0 & i1=1 & c_is16=0 & Src1 & Src2 & Dst { c6000_unimpl_ddotph2r(); }
+
+:DDOTPL2.M1 Src1, Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=0 & i7=1 & i8=1 & i9=0 & i10=1 & i11=0 & i28=1 & i29=0 & i30=0 & i31=0 & i1=0 & c_is16=0 & Src1 & Src2 & Dst { c6000_unimpl_ddotpl2(); }
+:DDOTPL2.M2 Src1, Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=0 & i7=1 & i8=1 & i9=0 & i10=1 & i11=0 & i28=1 & i29=0 & i30=0 & i31=0 & i1=1 & c_is16=0 & Src1 & Src2 & Dst { c6000_unimpl_ddotpl2(); }
+
+:DDOTPL2R.M1 Src1, Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=0 & i7=0 & i8=1 & i9=0 & i10=1 & i11=0 & i28=1 & i29=0 & i30=0 & i31=0 & i1=0 & c_is16=0 & Src1 & Src2 & Dst { c6000_unimpl_ddotpl2r(); }
+:DDOTPL2R.M2 Src1, Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=0 & i7=0 & i8=1 & i9=0 & i10=1 & i11=0 & i28=1 & i29=0 & i30=0 & i31=0 & i1=1 & c_is16=0 & Src1 & Src2 & Dst { c6000_unimpl_ddotpl2r(); }
+
+:DEAL.M1 Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=1 & i7=1 & i8=0 & i9=0 & i10=0 & i11=0 & i13=1 & i14=0 & i15=1 & i16=1 & i17=1 & i1=0 & c_is16=0 & Cond & Src2 & Dst { c6000_unimpl_deal(); }
+:DEAL.M2 Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=1 & i7=1 & i8=0 & i9=0 & i10=0 & i11=0 & i13=1 & i14=0 & i15=1 & i16=1 & i17=1 & i1=1 & c_is16=0 & Cond & Src2 & Dst { c6000_unimpl_deal(); }
+
+:DINT is i1=0 & i2=0 & i3=0 & i4=0 & i5=0 & i6=0 & i7=0 & i8=0 & i9=0 & i10=0 & i11=0 & i12=0 & i13=0 & i14=1 & i15=0 & i16=0 & i17=0 & i18=0 & i19=0 & i20=0 & i21=0 & i22=0 & i23=0 & i24=0 & i25=0 & i26=0 & i27=0 & i28=1 & i29=0 & i30=0 & i31=0 & c_is16=0 { c6000_sem_dint(); }
+
+:DMV.S1 Src1, Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=1 & i7=1 & i8=0 & i9=1 & i10=1 & i11=1 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_dmv(); }
+:DMV.S2 Src1, Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=1 & i7=1 & i8=0 & i9=1 & i10=1 & i11=1 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_dmv(); }
+
+:DOTP2.M1 Src1, Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i10=0 & i9=1 & i8=1 & i7=0 & i6=0 & i11=0 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_dotp2(); }
+:DOTP2.M2 Src1, Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i10=0 & i9=1 & i8=1 & i7=0 & i6=0 & i11=0 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_dotp2(); }
+:DOTP2.M1 Src1, Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i10=0 & i9=1 & i8=0 & i7=1 & i6=1 & i11=0 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_dotp2(); }
+:DOTP2.M2 Src1, Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i10=0 & i9=1 & i8=0 & i7=1 & i6=1 & i11=0 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_dotp2(); }
+
+:DOTPN2.M1 Src1, Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=1 & i7=0 & i8=0 & i9=1 & i10=0 & i11=0 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_dotpn2(); }
+:DOTPN2.M2 Src1, Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=1 & i7=0 & i8=0 & i9=1 & i10=0 & i11=0 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_dotpn2(); }
+
+:DOTPNRSU2.M1 Src1, Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=1 & i7=1 & i8=1 & i9=0 & i10=0 & i11=0 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_dotpnrsu2(); }
+:DOTPNRSU2.M2 Src1, Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=1 & i7=1 & i8=1 & i9=0 & i10=0 & i11=0 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_dotpnrsu2(); }
+
+
+:DOTPRSU2.M1 Src1, Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=1 & i7=0 & i8=1 & i9=1 & i10=0 & i11=0 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_dotprsu2(); }
+:DOTPRSU2.M2 Src1, Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=1 & i7=0 & i8=1 & i9=1 & i10=0 & i11=0 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_dotprsu2(); }
+
+:DOTPSU4.M1 Src1, Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=0 & i7=1 & i8=0 & i9=0 & i10=0 & i11=0 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_dotpsu4(); }
+:DOTPSU4.M2 Src1, Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=0 & i7=1 & i8=0 & i9=0 & i10=0 & i11=0 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_dotpsu4(); }
+
+:DOTPU4.M1 Src1, Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=0 & i7=1 & i8=1 & i9=0 & i10=0 & i11=0 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_dotpu4(); }
+:DOTPU4.M2 Src1, Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=0 & i7=1 & i8=1 & i9=0 & i10=0 & i11=0 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_dotpu4(); }
+
+:DPACK2.L1 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i5=0 & i6=0 & i7=1 & i8=0 & i9=1 & i10=1 & i11=0 & i23=0 & i28=1 & i29=0 & i30=0 & i31=0 & i1=0 & c_is16=0 & Src1 & Src2 & Dst { c6000_unimpl_dpack2(); }
+:DPACK2.L2 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i5=0 & i6=0 & i7=1 & i8=0 & i9=1 & i10=1 & i11=0 & i23=0 & i28=1 & i29=0 & i30=0 & i31=0 & i1=1 & c_is16=0 & Src1 & Src2 & Dst { c6000_unimpl_dpack2(); }
+
+:DPACKX2.L1 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i5=1 & i6=1 & i7=0 & i8=0 & i9=1 & i10=1 & i11=0 & i23=0 & i28=1 & i29=0 & i30=0 & i31=0 & i1=0 & c_is16=0 & Src1 & Src2 & Dst { c6000_unimpl_dpackx2(); }
+:DPACKX2.L2 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i5=1 & i6=1 & i7=0 & i8=0 & i9=1 & i10=1 & i11=0 & i23=0 & i28=1 & i29=0 & i30=0 & i31=0 & i1=1 & c_is16=0 & Src1 & Src2 & Dst { c6000_unimpl_dpackx2(); }
+
+:DPINT.L1 Src2, Dst is i2=0 & i3=1 & i4=1 & i5=0 & i6=0 & i7=0 & i8=1 & i9=0 & i10=0 & i11=0 & i13=0 & i14=0 & i15=0 & i16=0 & i17=0 & i1=0 & c_is16=0 & Cond & Src2 & Dst { c6000_unimpl_dpint(); }
+:DPINT.L2 Src2, Dst is i2=0 & i3=1 & i4=1 & i5=0 & i6=0 & i7=0 & i8=1 & i9=0 & i10=0 & i11=0 & i13=0 & i14=0 & i15=0 & i16=0 & i17=0 & i1=1 & c_is16=0 & Cond & Src2 & Dst { c6000_unimpl_dpint(); }
+
+:DPSP.L1 Src2, Dst is i2=0 & i3=1 & i4=1 & i5=1 & i6=0 & i7=0 & i8=1 & i9=0 & i10=0 & i11=0 & i13=0 & i14=0 & i15=0 & i16=0 & i17=0 & i1=0 & c_is16=0 & Cond & Src2 & Dst { c6000_unimpl_dpsp(); }
+:DPSP.L2 Src2, Dst is i2=0 & i3=1 & i4=1 & i5=1 & i6=0 & i7=0 & i8=1 & i9=0 & i10=0 & i11=0 & i13=0 & i14=0 & i15=0 & i16=0 & i17=0 & i1=1 & c_is16=0 & Cond & Src2 & Dst { c6000_unimpl_dpsp(); }
+
+:DPTRUNC.L1 Src2, Dst is i2=0 & i3=1 & i4=1 & i5=1 & i6=0 & i7=0 & i8=0 & i9=0 & i10=0 & i11=0 & i13=0 & i14=0 & i15=0 & i16=0 & i17=0 & i1=0 & c_is16=0 & Cond & Src2 & Dst { c6000_unimpl_dptrunc(); }
+:DPTRUNC.L2 Src2, Dst is i2=0 & i3=1 & i4=1 & i5=1 & i6=0 & i7=0 & i8=0 & i9=0 & i10=0 & i11=0 & i13=0 & i14=0 & i15=0 & i16=0 & i17=0 & i1=1 & c_is16=0 & Cond & Src2 & Dst { c6000_unimpl_dptrunc(); }
+
+:EXT.S1 Src2, Csta, Cstb, Dst is i2=0 & i3=1 & i4=0 & i5=0 & i6=1 & i7=0 & i1=0 & c_is16=0 & Cond & Src2 & Csta & Cstb & Dst { c6000_unimpl_ext(); }
+:EXT.S2 Src2, Csta, Cstb, Dst is i2=0 & i3=1 & i4=0 & i5=0 & i6=1 & i7=0 & i1=1 & c_is16=0 & Cond & Src2 & Csta & Cstb & Dst { c6000_unimpl_ext(); }
+:EXT.S1 Src2, Csta, Cstb, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i6=1 & i7=1 & i8=1 & i9=1 & i10=0 & i11=1 & i1=0 & c_is16=0 & Cond & Src2 & Csta & Cstb & Dst { c6000_unimpl_ext(); }
+:EXT.S2 Src2, Csta, Cstb, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i6=1 & i7=1 & i8=1 & i9=1 & i10=0 & i11=1 & i1=1 & c_is16=0 & Cond & Src2 & Csta & Cstb & Dst { c6000_unimpl_ext(); }
+
+:EXTU.S1 Src2, Csta, Cstb, Dst is i2=0 & i3=1 & i4=0 & i5=0 & i6=0 & i7=0 & i1=0 & c_is16=0 & Cond & Src2 & Csta & Cstb & Dst { c6000_unimpl_extu(); }
+:EXTU.S2 Src2, Csta, Cstb, Dst is i2=0 & i3=1 & i4=0 & i5=0 & i6=0 & i7=0 & i1=1 & c_is16=0 & Cond & Src2 & Csta & Cstb & Dst { c6000_unimpl_extu(); }
+:EXTU.S1 Src2, Csta, Cstb, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i6=1 & i7=1 & i8=0 & i9=1 & i10=0 & i11=1 & i1=0 & c_is16=0 & Cond & Src2 & Csta & Cstb & Dst { c6000_unimpl_extu(); }
+:EXTU.S2 Src2, Csta, Cstb, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i6=1 & i7=1 & i8=0 & i9=1 & i10=0 & i11=1 & i1=1 & c_is16=0 & Cond & Src2 & Csta & Cstb & Dst { c6000_unimpl_extu(); }
+
+:GMPY.M1 Src1, Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=1 & i7=1 & i8=1 & i9=1 & i10=1 & i11=0 & i28=1 & i29=0 & i30=0 & i31=0 & i1=0 & c_is16=0 & Src1 & Src2 & Dst { c6000_unimpl_gmpy(); }
+:GMPY.M2 Src1, Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=1 & i7=1 & i8=1 & i9=1 & i10=1 & i11=0 & i28=1 & i29=0 & i30=0 & i31=0 & i1=1 & c_is16=0 & Src1 & Src2 & Dst { c6000_unimpl_gmpy(); }
+
+:GMPY4.M1 Src1, Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=1 & i7=0 & i8=0 & i9=0 & i10=1 & i11=0 & i28=1 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_gmpy4(); }
+:GMPY4.M2 Src1, Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=1 & i7=0 & i8=0 & i9=0 & i10=1 & i11=0 & i28=1 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_gmpy4(); }
+
+:IDLE is i1=0 & i2=0 & i3=0 & i4=0 & i5=0 & i6=0 & i7=0 & i8=0 & i9=0 & i10=0 & i11=0 & i12=0 & i13=1 & i14=1 & i15=1 & i16=1 & i17=0 & i18=0 & i19=0 & i20=0 & i21=0 & i22=0 & i23=0 & i24=0 & i25=0 & i26=0 & i27=0 & i28=0 & i29=0 & i30=0 & i31=0 & c_is16=0 { c6000_sem_idle(); }
+
+:INTDP.L1 Src2, Dst is i2=0 & i3=1 & i4=1 & i5=1 & i6=0 & i7=0 & i8=1 & i9=1 & i10=1 & i11=0 & i13=0 & i14=0 & i15=0 & i16=0 & i17=0 & i1=0 & c_is16=0 & Cond & Src2 & Dst { c6000_unimpl_intdp(); }
+:INTDP.L2 Src2, Dst is i2=0 & i3=1 & i4=1 & i5=1 & i6=0 & i7=0 & i8=1 & i9=1 & i10=1 & i11=0 & i13=0 & i14=0 & i15=0 & i16=0 & i17=0 & i1=1 & c_is16=0 & Cond & Src2 & Dst { c6000_unimpl_intdp(); }
+
+:INTDPU.L1 Src2, Dst is i2=0 & i3=1 & i4=1 & i5=1 & i6=1 & i7=0 & i8=1 & i9=1 & i10=1 & i11=0 & i13=0 & i14=0 & i15=0 & i16=0 & i17=0 & i1=0 & c_is16=0 & Cond & Src2 & Dst { c6000_unimpl_intdpu(); }
+:INTDPU.L2 Src2, Dst is i2=0 & i3=1 & i4=1 & i5=1 & i6=1 & i7=0 & i8=1 & i9=1 & i10=1 & i11=0 & i13=0 & i14=0 & i15=0 & i16=0 & i17=0 & i1=1 & c_is16=0 & Cond & Src2 & Dst { c6000_unimpl_intdpu(); }
+
+:INTSP.L1 Src2, Dst is i2=0 & i3=1 & i4=1 & i5=0 & i6=1 & i7=0 & i8=1 & i9=0 & i10=0 & i11=1 & i13=0 & i14=0 & i15=0 & i16=0 & i17=0 & i1=0 & c_is16=0 & Cond & Src2 & Dst { c6000_unimpl_intsp(); }
+:INTSP.L2 Src2, Dst is i2=0 & i3=1 & i4=1 & i5=0 & i6=1 & i7=0 & i8=1 & i9=0 & i10=0 & i11=1 & i13=0 & i14=0 & i15=0 & i16=0 & i17=0 & i1=1 & c_is16=0 & Cond & Src2 & Dst { c6000_unimpl_intsp(); }
+
+:INTSPU.L1 Src2, Dst is i2=0 & i3=1 & i4=1 & i5=1 & i6=0 & i7=0 & i8=1 & i9=0 & i10=0 & i11=1 & i13=0 & i14=0 & i15=0 & i16=0 & i17=0 & i1=0 & c_is16=0 & Cond & Src2 & Dst { c6000_unimpl_intspu(); }
+:INTSPU.L2 Src2, Dst is i2=0 & i3=1 & i4=1 & i5=1 & i6=0 & i7=0 & i8=1 & i9=0 & i10=0 & i11=1 & i13=0 & i14=0 & i15=0 & i16=0 & i17=0 & i1=1 & c_is16=0 & Cond & Src2 & Dst { c6000_unimpl_intspu(); }
+:INTSPU.L1 Dst, MemReg is i2=1 & i3=0 & i8=0 & i1=0 & c_is16=0 & Cond & Dst & MemReg { c6000_unimpl_intspu(); }
+:INTSPU.L2 Dst, MemReg is i2=1 & i3=0 & i8=0 & i1=1 & c_is16=0 & Cond & Dst & MemReg { c6000_unimpl_intspu(); }
+:INTSPU.L1 Src2, Dst is i2=1 & i3=1 & i1=0 & c_is16=0 & Cond & Src2 & Dst { c6000_unimpl_intspu(); }
+:INTSPU.L2 Src2, Dst is i2=1 & i3=1 & i1=1 & c_is16=0 & Cond & Src2 & Dst { c6000_unimpl_intspu(); }
+
+:LDDW.D1 MemReg, Dst is i2=1 & i3=0 & i4=0 & i5=1 & i6=1 & i8=1 & i7=0 & c_is16=0 & Cond & MemReg & Dst { c6000_sem_lddw(MemReg, Dst); }
+:LDDW.D2 MemReg, Dst is i2=1 & i3=0 & i4=0 & i5=1 & i6=1 & i8=1 & i7=1 & c_is16=0 & Cond & MemReg & Dst { c6000_sem_lddw(MemReg, Dst); }
+:LDDW.D1 MemReg, Dst is i2=1 & i3=0 & i8=0 & i7=0 & c_is16=0 & Cond & MemReg & Dst { c6000_sem_lddw(MemReg, Dst); }
+:LDDW.D2 MemReg, Dst is i2=1 & i3=0 & i8=0 & i7=1 & c_is16=0 & Cond & MemReg & Dst { c6000_sem_lddw(MemReg, Dst); }
+
+:LDNDW.D1 MemReg, Dst is i2=1 & i3=0 & i4=0 & i5=1 & i6=0 & i8=1 & i7=0 & c_is16=0 & Cond & MemReg & Dst { c6000_sem_ldndw(MemReg, Dst); }
+:LDNDW.D2 MemReg, Dst is i2=1 & i3=0 & i4=0 & i5=1 & i6=0 & i8=1 & i7=1 & c_is16=0 & Cond & MemReg & Dst { c6000_sem_ldndw(MemReg, Dst); }
+
+:LDNW.D1 MemReg, Dst is i2=1 & i3=0 & i4=1 & i5=1 & i6=0 & i8=1 & i7=0 & c_is16=0 & Cond & MemReg & Dst { c6000_sem_ldnw(MemReg, Dst); }
+:LDNW.D2 MemReg, Dst is i2=1 & i3=0 & i4=1 & i5=1 & i6=0 & i8=1 & i7=1 & c_is16=0 & Cond & MemReg & Dst { c6000_sem_ldnw(MemReg, Dst); }
+
+:LDW.D1 MemReg, Dst is i2=1 & i3=0 & i4=0 & i5=1 & i6=1 & i8=0 & i7=0 & c_is16=0 & Cond & MemReg & Dst { c6000_sem_ldw(MemReg, Dst); }
+:LDW.D2 MemReg, Dst is i2=1 & i3=0 & i4=0 & i5=1 & i6=1 & i8=0 & i7=1 & c_is16=0 & Cond & MemReg & Dst { c6000_sem_ldw(MemReg, Dst); }
+
+:LDW.D1 MemLong, Dst is i2=1 & i3=1 & i4=0 & i5=1 & i6=1 & i7=0 & c_is16=0 & Cond & MemLong & Dst { c6000_sem_ldw(MemLong, Dst); }
+:LDW.D2 MemLong, Dst is i2=1 & i3=1 & i4=0 & i5=1 & i6=1 & i7=1 & c_is16=0 & Cond & MemLong & Dst { c6000_sem_ldw(MemLong, Dst); }
+
+:LMBD.L1 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=1 & i10=1 & i9=0 & i8=1 & i7=0 & i6=1 & i5=1 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_lmbd(); }
+:LMBD.L2 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=1 & i10=1 & i9=0 & i8=1 & i7=0 & i6=1 & i5=1 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_lmbd(); }
+:LMBD.L1 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=1 & i10=1 & i9=0 & i8=1 & i7=0 & i6=1 & i5=0 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_lmbd(); }
+:LMBD.L2 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=1 & i10=1 & i9=0 & i8=1 & i7=0 & i6=1 & i5=0 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_lmbd(); }
+
+:MAX2.L1 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i5=0 & i6=1 & i7=0 & i8=0 & i9=0 & i10=0 & i11=1 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_max2(); }
+:MAX2.L2 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i5=0 & i6=1 & i7=0 & i8=0 & i9=0 & i10=0 & i11=1 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_max2(); }
+:MAX2.S1 Src1, Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=1 & i7=0 & i8=1 & i9=1 & i10=1 & i11=1 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_max2(); }
+:MAX2.S2 Src1, Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=1 & i7=0 & i8=1 & i9=1 & i10=1 & i11=1 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_max2(); }
+
+:MAXU4.L1 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i5=1 & i6=1 & i7=0 & i8=0 & i9=0 & i10=0 & i11=1 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_maxu4(); }
+:MAXU4.L2 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i5=1 & i6=1 & i7=0 & i8=0 & i9=0 & i10=0 & i11=1 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_maxu4(); }
+
+:MIN2.L1 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i5=1 & i6=0 & i7=0 & i8=0 & i9=0 & i10=0 & i11=1 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_min2(); }
+:MIN2.L2 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i5=1 & i6=0 & i7=0 & i8=0 & i9=0 & i10=0 & i11=1 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_min2(); }
+:MIN2.S1 Src1, Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=0 & i7=0 & i8=1 & i9=1 & i10=1 & i11=1 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_min2(); }
+:MIN2.S2 Src1, Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=0 & i7=0 & i8=1 & i9=1 & i10=1 & i11=1 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_min2(); }
+
+:MINU4.L1 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i5=0 & i6=0 & i7=0 & i8=1 & i9=0 & i10=0 & i11=1 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_minu4(); }
+:MINU4.L2 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i5=0 & i6=0 & i7=0 & i8=1 & i9=0 & i10=0 & i11=1 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_minu4(); }
+
+:MPY.M1 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=0 & i6=0 & i11=1 & i10=1 & i9=0 & i8=0 & i7=1 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_mpy(); }
+:MPY.M2 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=0 & i6=0 & i11=1 & i10=1 & i9=0 & i8=0 & i7=1 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_mpy(); }
+:MPY.M1 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=0 & i6=0 & i11=1 & i10=1 & i9=0 & i8=0 & i7=0 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_mpy(); }
+:MPY.M2 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=0 & i6=0 & i11=1 & i10=1 & i9=0 & i8=0 & i7=0 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_mpy(); }
+
+:MPYDP.M1 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=0 & i6=0 & i7=0 & i8=1 & i9=1 & i10=1 & i11=0 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_mpydp(); }
+:MPYDP.M2 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=0 & i6=0 & i7=0 & i8=1 & i9=1 & i10=1 & i11=0 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_mpydp(); }
+
+:MPYH.M1 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=0 & i6=0 & i7=1 & i8=0 & i9=0 & i10=0 & i11=0 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_mpyh(); }
+:MPYH.M2 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=0 & i6=0 & i7=1 & i8=0 & i9=0 & i10=0 & i11=0 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_mpyh(); }
+
+:MPYHI.M1 Src1, Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=0 & i7=0 & i8=1 & i9=0 & i10=1 & i11=0 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_mpyhi(); }
+:MPYHI.M2 Src1, Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=0 & i7=0 & i8=1 & i9=0 & i10=1 & i11=0 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_mpyhi(); }
+
+:MPYHIR.M1 Src1, Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=0 & i7=0 & i8=0 & i9=0 & i10=1 & i11=0 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_mpyhir(); }
+:MPYHIR.M2 Src1, Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=0 & i7=0 & i8=0 & i9=0 & i10=1 & i11=0 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_mpyhir(); }
+
+:MPYHL.M1 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=0 & i6=0 & i7=1 & i8=0 & i9=0 & i10=1 & i11=0 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_mpyhl(); }
+:MPYHL.M2 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=0 & i6=0 & i7=1 & i8=0 & i9=0 & i10=1 & i11=0 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_mpyhl(); }
+
+:MPYHLU.M1 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=0 & i6=0 & i7=1 & i8=1 & i9=1 & i10=1 & i11=0 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_mpyhlu(); }
+:MPYHLU.M2 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=0 & i6=0 & i7=1 & i8=1 & i9=1 & i10=1 & i11=0 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_mpyhlu(); }
+
+:MPYHSLU.M1 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=0 & i6=0 & i7=1 & i8=1 & i9=0 & i10=1 & i11=0 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_mpyhslu(); }
+:MPYHSLU.M2 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=0 & i6=0 & i7=1 & i8=1 & i9=0 & i10=1 & i11=0 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_mpyhslu(); }
+
+:MPYHSU.M1 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=0 & i6=0 & i7=1 & i8=1 & i9=0 & i10=0 & i11=0 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_mpyhsu(); }
+:MPYHSU.M2 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=0 & i6=0 & i7=1 & i8=1 & i9=0 & i10=0 & i11=0 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_mpyhsu(); }
+
+:MPYHU.M1 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=0 & i6=0 & i7=1 & i8=1 & i9=1 & i10=0 & i11=0 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_mpyhu(); }
+:MPYHU.M2 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=0 & i6=0 & i7=1 & i8=1 & i9=1 & i10=0 & i11=0 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_mpyhu(); }
+
+:MPYHULS.M1 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=0 & i6=0 & i7=1 & i8=0 & i9=1 & i10=1 & i11=0 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_mpyhuls(); }
+:MPYHULS.M2 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=0 & i6=0 & i7=1 & i8=0 & i9=1 & i10=1 & i11=0 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_mpyhuls(); }
+
+:MPYHUS.M1 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=0 & i6=0 & i7=1 & i8=0 & i9=1 & i10=0 & i11=0 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_mpyhus(); }
+:MPYHUS.M2 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=0 & i6=0 & i7=1 & i8=0 & i9=1 & i10=0 & i11=0 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_mpyhus(); }
+
+:MPYI.M1 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=0 & i6=0 & i11=0 & i10=0 & i9=1 & i8=0 & i7=0 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_mpyi(); }
+:MPYI.M2 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=0 & i6=0 & i11=0 & i10=0 & i9=1 & i8=0 & i7=0 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_mpyi(); }
+:MPYI.M1 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=0 & i6=0 & i11=0 & i10=0 & i9=1 & i8=1 & i7=0 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_mpyi(); }
+:MPYI.M2 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=0 & i6=0 & i11=0 & i10=0 & i9=1 & i8=1 & i7=0 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_mpyi(); }
+
+:MPYID.M1 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=0 & i6=0 & i11=0 & i10=1 & i9=0 & i8=0 & i7=0 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_mpyid(); }
+:MPYID.M2 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=0 & i6=0 & i11=0 & i10=1 & i9=0 & i8=0 & i7=0 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_mpyid(); }
+:MPYID.M1 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=0 & i6=0 & i11=0 & i10=1 & i9=1 & i8=0 & i7=0 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_mpyid(); }
+:MPYID.M2 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=0 & i6=0 & i11=0 & i10=1 & i9=1 & i8=0 & i7=0 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_mpyid(); }
+
+
+:MPYILR.M1 Src2, Src1, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=0 & i7=1 & i8=1 & i9=1 & i10=0 & i11=0 & i1=0 & c_is16=0 & Cond & Src2 & Src1 & Dst { c6000_unimpl_mpyilr(); }
+:MPYILR.M2 Src2, Src1, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=0 & i7=1 & i8=1 & i9=1 & i10=0 & i11=0 & i1=1 & c_is16=0 & Cond & Src2 & Src1 & Dst { c6000_unimpl_mpyilr(); }
+
+:MPYLH.M1 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=0 & i6=0 & i7=1 & i8=0 & i9=0 & i10=0 & i11=1 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_mpylh(); }
+:MPYLH.M2 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=0 & i6=0 & i7=1 & i8=0 & i9=0 & i10=0 & i11=1 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_mpylh(); }
+
+:MPYLHU.M1 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=0 & i6=0 & i7=1 & i8=1 & i9=1 & i10=0 & i11=1 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_mpylhu(); }
+:MPYLHU.M2 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=0 & i6=0 & i7=1 & i8=1 & i9=1 & i10=0 & i11=1 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_mpylhu(); }
+
+:MPYLI.M1 Src1, Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=1 & i7=0 & i8=1 & i9=0 & i10=1 & i11=0 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_mpyli(); }
+:MPYLI.M2 Src1, Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=1 & i7=0 & i8=1 & i9=0 & i10=1 & i11=0 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_mpyli(); }
+
+
+:MPYLSHU.M1 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=0 & i6=0 & i7=1 & i8=1 & i9=0 & i10=0 & i11=1 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_mpylshu(); }
+:MPYLSHU.M2 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=0 & i6=0 & i7=1 & i8=1 & i9=0 & i10=0 & i11=1 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_mpylshu(); }
+
+:MPYLUHS.M1 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=0 & i6=0 & i7=1 & i8=0 & i9=1 & i10=0 & i11=1 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_mpyluhs(); }
+:MPYLUHS.M2 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=0 & i6=0 & i7=1 & i8=0 & i9=1 & i10=0 & i11=1 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_mpyluhs(); }
+
+:MPYSP.M1 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=0 & i6=0 & i7=0 & i8=0 & i9=1 & i10=1 & i11=1 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_mpysp(); }
+:MPYSP.M2 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=0 & i6=0 & i7=0 & i8=0 & i9=1 & i10=1 & i11=1 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_mpysp(); }
+
+:MPYSPDP.M1 Src1, Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=0 & i7=1 & i8=1 & i9=0 & i10=1 & i11=0 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_mpyspdp(); }
+:MPYSPDP.M2 Src1, Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=0 & i7=1 & i8=1 & i9=0 & i10=1 & i11=0 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_mpyspdp(); }
+
+:MPYSP2DP.M1 Src1, Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=1 & i7=1 & i8=1 & i9=0 & i10=1 & i11=0 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_mpysp2dp(); }
+:MPYSP2DP.M2 Src1, Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=1 & i7=1 & i8=1 & i9=0 & i10=1 & i11=0 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_mpysp2dp(); }
+
+:MPYSU.M1 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=0 & i6=0 & i11=1 & i10=1 & i9=0 & i8=1 & i7=1 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_mpysu(); }
+:MPYSU.M2 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=0 & i6=0 & i11=1 & i10=1 & i9=0 & i8=1 & i7=1 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_mpysu(); }
+:MPYSU.M1 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=0 & i6=0 & i11=1 & i10=1 & i9=1 & i8=1 & i7=0 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_mpysu(); }
+:MPYSU.M2 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=0 & i6=0 & i11=1 & i10=1 & i9=1 & i8=1 & i7=0 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_mpysu(); }
+
+:MPYSU4.M1 Src1, Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=1 & i7=0 & i8=1 & i9=0 & i10=0 & i11=0 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_mpysu4(); }
+:MPYSU4.M2 Src1, Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=1 & i7=0 & i8=1 & i9=0 & i10=0 & i11=0 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_mpysu4(); }
+
+:MPYU.M1 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=0 & i6=0 & i7=1 & i8=1 & i9=1 & i10=1 & i11=1 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_mpyu(); }
+:MPYU.M2 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=0 & i6=0 & i7=1 & i8=1 & i9=1 & i10=1 & i11=1 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_mpyu(); }
+
+:MPYU4.M1 Src1, Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=0 & i7=0 & i8=1 & i9=0 & i10=0 & i11=0 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_mpyu4(); }
+:MPYU4.M2 Src1, Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=0 & i7=0 & i8=1 & i9=0 & i10=0 & i11=0 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_mpyu4(); }
+
+:MPYUS.M1 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=0 & i6=0 & i7=1 & i8=0 & i9=1 & i10=1 & i11=1 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_mpyus(); }
+:MPYUS.M2 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=0 & i6=0 & i7=1 & i8=0 & i9=1 & i10=1 & i11=1 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_mpyus(); }
+
+:MPY2.M1 Src1, Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=0 & i7=0 & i8=0 & i9=0 & i10=0 & i11=0 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_mpy2(); }
+:MPY2.M2 Src1, Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=0 & i7=0 & i8=0 & i9=0 & i10=0 & i11=0 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_mpy2(); }
+
+:MPY2IR.M1 Src1, Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=1 & i7=1 & i8=1 & i9=1 & i10=0 & i11=0 & i28=1 & i29=0 & i30=0 & i31=0 & i1=0 & c_is16=0 & Src1 & Src2 & Dst { c6000_unimpl_mpy2ir(); }
+:MPY2IR.M2 Src1, Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=1 & i7=1 & i8=1 & i9=1 & i10=0 & i11=0 & i28=1 & i29=0 & i30=0 & i31=0 & i1=1 & c_is16=0 & Src1 & Src2 & Dst { c6000_unimpl_mpy2ir(); }
+
+:MPY32.M1 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=0 & i6=0 & i7=0 & i8=0 & i9=0 & i10=0 & i11=1 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_mpy32(); }
+:MPY32.M2 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=0 & i6=0 & i7=0 & i8=0 & i9=0 & i10=0 & i11=1 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_mpy32(); }
+
+:MPY32.M1 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=0 & i6=0 & i7=0 & i8=0 & i9=1 & i10=0 & i11=1 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_mpy32(); }
+:MPY32.M2 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=0 & i6=0 & i7=0 & i8=0 & i9=1 & i10=0 & i11=1 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_mpy32(); }
+
+:MPY32SU.M1 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=0 & i6=0 & i7=0 & i8=1 & i9=1 & i10=0 & i11=1 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_mpy32su(); }
+:MPY32SU.M2 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=0 & i6=0 & i7=0 & i8=1 & i9=1 & i10=0 & i11=1 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_mpy32su(); }
+
+:MPY32U.M1 Src1, Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=0 & i7=0 & i8=0 & i9=1 & i10=1 & i11=0 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_mpy32u(); }
+:MPY32U.M2 Src1, Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=0 & i7=0 & i8=0 & i9=1 & i10=1 & i11=0 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_mpy32u(); }
+
+:MPY32US.M1 Src1, Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=1 & i7=0 & i8=0 & i9=1 & i10=1 & i11=0 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_mpy32us(); }
+:MPY32US.M2 Src1, Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=1 & i7=0 & i8=0 & i9=1 & i10=1 & i11=0 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_mpy32us(); }
+
+:MV.L1 Src2, Dst is i2=0 & i3=1 & i4=1 & i5=0 & i6=0 & i7=0 & i8=0 & i9=0 & i10=1 & i11=0 & i12=0 & i13=0 & i14=0 & i15=0 & i16=0 & i17=0 & i1=0 & c_is16=0 & Cond & Src2 & Dst { c6000_sem_mv(Src2, Dst); }
+:MV.L2 Src2, Dst is i2=0 & i3=1 & i4=1 & i5=0 & i6=0 & i7=0 & i8=0 & i9=0 & i10=1 & i11=0 & i12=0 & i13=0 & i14=0 & i15=0 & i16=0 & i17=0 & i1=1 & c_is16=0 & Cond & Src2 & Dst { c6000_sem_mv(Src2, Dst); }
+:MV.L1 Src2, Dst is i2=0 & i3=1 & i4=1 & i11=0 & i10=0 & i9=0 & i8=0 & i7=0 & i6=1 & i5=0 & i13=0 & i14=0 & i15=0 & i16=0 & i17=0 & i1=0 & c_is16=0 & Cond & Src2 & Dst { c6000_sem_mv(Src2, Dst); }
+:MV.L2 Src2, Dst is i2=0 & i3=1 & i4=1 & i11=0 & i10=0 & i9=0 & i8=0 & i7=0 & i6=1 & i5=0 & i13=0 & i14=0 & i15=0 & i16=0 & i17=0 & i1=1 & c_is16=0 & Cond & Src2 & Dst { c6000_sem_mv(Src2, Dst); }
+:MV.L1 Src2, Dst is i2=0 & i3=1 & i4=1 & i11=1 & i10=1 & i9=1 & i8=1 & i7=1 & i6=1 & i5=0 & i13=0 & i14=0 & i15=0 & i16=0 & i17=0 & i1=0 & c_is16=0 & Cond & Src2 & Dst { c6000_sem_mv(Src2, Dst); }
+:MV.L2 Src2, Dst is i2=0 & i3=1 & i4=1 & i11=1 & i10=1 & i9=1 & i8=1 & i7=1 & i6=1 & i5=0 & i13=0 & i14=0 & i15=0 & i16=0 & i17=0 & i1=1 & c_is16=0 & Cond & Src2 & Dst { c6000_sem_mv(Src2, Dst); }
+:MV.S1 Src2, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i6=0 & i7=1 & i8=1 & i9=0 & i10=0 & i11=0 & i13=0 & i14=0 & i15=0 & i16=0 & i17=0 & i1=0 & c_is16=0 & Cond & Src2 & Dst { c6000_sem_mv(Src2, Dst); }
+:MV.S2 Src2, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i6=0 & i7=1 & i8=1 & i9=0 & i10=0 & i11=0 & i13=0 & i14=0 & i15=0 & i16=0 & i17=0 & i1=1 & c_is16=0 & Cond & Src2 & Dst { c6000_sem_mv(Src2, Dst); }
+:MV.D1 Src2, Dst is i2=0 & i3=0 & i4=0 & i5=0 & i6=1 & i7=0 & i8=1 & i9=0 & i10=0 & i11=1 & i12=0 & i13=0 & i14=0 & i15=0 & i16=0 & i17=0 & c_is16=0 & Cond & Src2 & Dst { c6000_sem_mv(Src2, Dst); }
+:MV.D2 Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=1 & i7=1 & i8=0 & i9=0 & i10=0 & i11=1 & i13=0 & i14=0 & i15=0 & i16=0 & i17=0 & c_is16=0 & Cond & Src2 & Dst { c6000_sem_mv(Src2, Dst); }
+
+:MVC.S2 Src2, Dst is i1=1 & i2=0 & i3=0 & i4=0 & i5=1 & i6=1 & i7=1 & i8=1 & i9=1 & i10=0 & i11=0 & c_is16=0 & Cond & Src2 & Dst { c6000_unimpl_mvc(); }
+
+:MVD.M1 Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=1 & i7=1 & i8=0 & i9=0 & i10=0 & i11=0 & i13=0 & i14=1 & i15=0 & i16=1 & i17=1 & i1=0 & c_is16=0 & Cond & Src2 & Dst { c6000_unimpl_mvd(); }
+:MVD.M2 Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=1 & i7=1 & i8=0 & i9=0 & i10=0 & i11=0 & i13=0 & i14=1 & i15=0 & i16=1 & i17=1 & i1=1 & c_is16=0 & Cond & Src2 & Dst { c6000_unimpl_mvd(); }
+
+:MVK.S1 Cst16, Dst is i2=0 & i3=1 & i4=0 & i5=1 & i6=0 & i1=0 & c_is16=0 & Cond & Cst16 & Dst { c6000_sem_mvk(Cst16, Dst); }
+:MVK.S2 Cst16, Dst is i2=0 & i3=1 & i4=0 & i5=1 & i6=0 & i1=1 & c_is16=0 & Cond & Cst16 & Dst { c6000_sem_mvk(Cst16, Dst); }
+:MVK.L1 Cst5, Dst is i2=0 & i3=1 & i4=1 & i5=0 & i6=1 & i7=0 & i8=1 & i9=1 & i10=0 & i11=0 & i13=1 & i14=0 & i15=1 & i16=0 & i17=0 & i1=0 & c_is16=0 & Cond & Cst5 & Dst { c6000_sem_mvk(Cst5, Dst); }
+:MVK.L2 Cst5, Dst is i2=0 & i3=1 & i4=1 & i5=0 & i6=1 & i7=0 & i8=1 & i9=1 & i10=0 & i11=0 & i13=1 & i14=0 & i15=1 & i16=0 & i17=0 & i1=1 & c_is16=0 & Cond & Cst5 & Dst { c6000_sem_mvk(Cst5, Dst); }
+:MVK.D1 Cst5, Dst is i2=0 & i3=0 & i4=0 & i5=0 & i6=1 & i7=0 & i8=0 & i9=0 & i10=0 & i11=0 & i12=0 & i18=0 & i19=0 & i20=0 & i21=0 & i22=0 & c_is16=0 & Cond & Cst5 & Dst { c6000_sem_mvk(Cst5, Dst); }
+:MVK.L1 Cst16, Dst is i2=0 & i3=1 & i4=0 & i5=1 & i1=0 & c_is16=0 & Cond & Cst16 & Dst { c6000_sem_mvk(Cst16, Dst); }
+:MVK.L2 Cst16, Dst is i2=0 & i3=1 & i4=0 & i5=1 & i1=1 & c_is16=0 & Cond & Cst16 & Dst { c6000_sem_mvk(Cst16, Dst); }
+
+
+:NEG.S1 Src2, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i6=0 & i7=1 & i8=1 & i9=0 & i10=1 & i11=0 & i13=0 & i14=0 & i15=0 & i16=0 & i17=0 & i1=0 & c_is16=0 & Cond & Src2 & Dst { c6000_sem_neg(Src2, Dst); }
+:NEG.S2 Src2, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i6=0 & i7=1 & i8=1 & i9=0 & i10=1 & i11=0 & i13=0 & i14=0 & i15=0 & i16=0 & i17=0 & i1=1 & c_is16=0 & Cond & Src2 & Dst { c6000_sem_neg(Src2, Dst); }
+:NEG.L1 Src2, Dst is i2=0 & i3=1 & i4=1 & i11=0 & i10=0 & i9=0 & i8=0 & i7=1 & i6=1 & i5=0 & i13=0 & i14=0 & i15=0 & i16=0 & i17=0 & i1=0 & c_is16=0 & Cond & Src2 & Dst { c6000_sem_neg(Src2, Dst); }
+:NEG.L2 Src2, Dst is i2=0 & i3=1 & i4=1 & i11=0 & i10=0 & i9=0 & i8=0 & i7=1 & i6=1 & i5=0 & i13=0 & i14=0 & i15=0 & i16=0 & i17=0 & i1=1 & c_is16=0 & Cond & Src2 & Dst { c6000_sem_neg(Src2, Dst); }
+:NEG.L1 Src2, Dst is i2=0 & i3=1 & i4=1 & i11=0 & i10=1 & i9=0 & i8=0 & i7=1 & i6=0 & i5=0 & i13=0 & i14=0 & i15=0 & i16=0 & i17=0 & i1=0 & c_is16=0 & Cond & Src2 & Dst { c6000_sem_neg(Src2, Dst); }
+:NEG.L2 Src2, Dst is i2=0 & i3=1 & i4=1 & i11=0 & i10=1 & i9=0 & i8=0 & i7=1 & i6=0 & i5=0 & i13=0 & i14=0 & i15=0 & i16=0 & i17=0 & i1=1 & c_is16=0 & Cond & Src2 & Dst { c6000_sem_neg(Src2, Dst); }
+
+:NOP Nbit is i1=0 & i2=0 & i3=0 & i4=0 & i5=0 & i6=0 & i7=0 & i8=0 & i9=0 & i10=0 & i11=0 & i12=0 & i17=0 & i18=0 & i19=0 & i20=0 & i21=0 & i22=0 & i23=0 & i24=0 & i25=0 & i26=0 & i27=0 & i28=0 & i29=0 & i30=0 & i31=0 & c_is16=0 & Nbit { c6000_sem_nop(Nbit); }
+
+:NORM.L1 Src2, Dst is i2=0 & i3=1 & i4=1 & i11=1 & i10=1 & i9=0 & i8=0 & i7=0 & i6=1 & i5=1 & i13=0 & i14=0 & i15=0 & i16=0 & i17=0 & i1=0 & c_is16=0 & Cond & Src2 & Dst { c6000_unimpl_norm(); }
+:NORM.L2 Src2, Dst is i2=0 & i3=1 & i4=1 & i11=1 & i10=1 & i9=0 & i8=0 & i7=0 & i6=1 & i5=1 & i13=0 & i14=0 & i15=0 & i16=0 & i17=0 & i1=1 & c_is16=0 & Cond & Src2 & Dst { c6000_unimpl_norm(); }
+:NORM.L1 Src2, Dst is i2=0 & i3=1 & i4=1 & i11=1 & i10=1 & i9=0 & i8=0 & i7=0 & i6=0 & i5=0 & i13=0 & i14=0 & i15=0 & i16=0 & i17=0 & i1=0 & c_is16=0 & Cond & Src2 & Dst { c6000_unimpl_norm(); }
+:NORM.L2 Src2, Dst is i2=0 & i3=1 & i4=1 & i11=1 & i10=1 & i9=0 & i8=0 & i7=0 & i6=0 & i5=0 & i13=0 & i14=0 & i15=0 & i16=0 & i17=0 & i1=1 & c_is16=0 & Cond & Src2 & Dst { c6000_unimpl_norm(); }
+
+:NOT.L1 Src2, Dst is i2=0 & i3=1 & i4=1 & i5=0 & i6=1 & i7=1 & i8=1 & i9=0 & i10=1 & i11=1 & i13=1 & i14=1 & i15=1 & i16=1 & i17=1 & i1=0 & c_is16=0 & Cond & Src2 & Dst { c6000_sem_not(Src2, Dst); }
+:NOT.L2 Src2, Dst is i2=0 & i3=1 & i4=1 & i5=0 & i6=1 & i7=1 & i8=1 & i9=0 & i10=1 & i11=1 & i13=1 & i14=1 & i15=1 & i16=1 & i17=1 & i1=1 & c_is16=0 & Cond & Src2 & Dst { c6000_sem_not(Src2, Dst); }
+:NOT.S1 Src2, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i6=0 & i7=1 & i8=0 & i9=1 & i10=0 & i11=0 & i13=1 & i14=1 & i15=1 & i16=1 & i17=1 & i1=0 & c_is16=0 & Cond & Src2 & Dst { c6000_sem_not(Src2, Dst); }
+:NOT.S2 Src2, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i6=0 & i7=1 & i8=0 & i9=1 & i10=0 & i11=0 & i13=1 & i14=1 & i15=1 & i16=1 & i17=1 & i1=1 & c_is16=0 & Cond & Src2 & Dst { c6000_sem_not(Src2, Dst); }
+:NOT.D2 Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=1 & i7=1 & i8=1 & i9=1 & i10=0 & i11=1 & i13=1 & i14=1 & i15=1 & i16=1 & i17=1 & c_is16=0 & Cond & Src2 & Dst { c6000_sem_not(Src2, Dst); }
+
+:OR.D2 Src1, Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i9=0 & i8=0 & i7=1 & i6=0 & i10=0 & i11=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_sem_or(Src1, Src2, Dst); }
+:OR.D2 Src1, Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i9=0 & i8=0 & i7=1 & i6=1 & i10=0 & i11=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_sem_or(Src1, Src2, Dst); }
+:OR.L1 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=1 & i10=1 & i9=1 & i8=1 & i7=1 & i6=1 & i5=1 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_sem_or(Src1, Src2, Dst); }
+:OR.L2 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=1 & i10=1 & i9=1 & i8=1 & i7=1 & i6=1 & i5=1 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_sem_or(Src1, Src2, Dst); }
+:OR.L1 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=1 & i10=1 & i9=1 & i8=1 & i7=1 & i6=1 & i5=0 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_sem_or(Src1, Src2, Dst); }
+:OR.L2 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=1 & i10=1 & i9=1 & i8=1 & i7=1 & i6=1 & i5=0 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_sem_or(Src1, Src2, Dst); }
+:OR.S1 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i11=0 & i10=1 & i9=1 & i8=0 & i7=1 & i6=1 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_sem_or(Src1, Src2, Dst); }
+:OR.S2 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i11=0 & i10=1 & i9=1 & i8=0 & i7=1 & i6=1 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_sem_or(Src1, Src2, Dst); }
+:OR.S1 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i11=0 & i10=1 & i9=1 & i8=0 & i7=1 & i6=0 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_sem_or(Src1, Src2, Dst); }
+:OR.S2 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i11=0 & i10=1 & i9=1 & i8=0 & i7=1 & i6=0 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_sem_or(Src1, Src2, Dst); }
+
+:PACK2.L1 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i5=0 & i6=0 & i7=0 & i8=0 & i9=0 & i10=0 & i11=0 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_pack2(); }
+:PACK2.L2 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i5=0 & i6=0 & i7=0 & i8=0 & i9=0 & i10=0 & i11=0 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_pack2(); }
+:PACK2.S1 Src1, Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=1 & i7=1 & i8=1 & i9=1 & i10=1 & i11=1 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_pack2(); }
+:PACK2.S2 Src1, Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=1 & i7=1 & i8=1 & i9=1 & i10=1 & i11=1 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_pack2(); }
+
+:PACKH2.L1 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i5=0 & i6=1 & i7=1 & i8=1 & i9=1 & i10=0 & i11=0 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_packh2(); }
+:PACKH2.L2 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i5=0 & i6=1 & i7=1 & i8=1 & i9=1 & i10=0 & i11=0 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_packh2(); }
+:PACKH2.S1 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i6=1 & i7=0 & i8=0 & i9=1 & i10=0 & i11=0 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_packh2(); }
+:PACKH2.S2 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i6=1 & i7=0 & i8=0 & i9=1 & i10=0 & i11=0 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_packh2(); }
+
+:PACKH4.L1 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i5=1 & i6=0 & i7=0 & i8=1 & i9=0 & i10=1 & i11=1 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_packh4(); }
+:PACKH4.L2 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i5=1 & i6=0 & i7=0 & i8=1 & i9=0 & i10=1 & i11=1 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_packh4(); }
+
+:PACKHL2.L1 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i5=0 & i6=0 & i7=1 & i8=1 & i9=1 & i10=0 & i11=0 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_packhl2(); }
+:PACKHL2.L2 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i5=0 & i6=0 & i7=1 & i8=1 & i9=1 & i10=0 & i11=0 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_packhl2(); }
+:PACKHL2.S1 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i6=0 & i7=0 & i8=0 & i9=1 & i10=0 & i11=0 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_packhl2(); }
+:PACKHL2.S2 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i6=0 & i7=0 & i8=0 & i9=1 & i10=0 & i11=0 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_packhl2(); }
+
+:PACKLH2.L1 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i5=1 & i6=1 & i7=0 & i8=1 & i9=1 & i10=0 & i11=0 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_packlh2(); }
+:PACKLH2.L2 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i5=1 & i6=1 & i7=0 & i8=1 & i9=1 & i10=0 & i11=0 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_packlh2(); }
+:PACKLH2.S1 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i6=0 & i7=0 & i8=0 & i9=0 & i10=1 & i11=0 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_packlh2(); }
+:PACKLH2.S2 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i6=0 & i7=0 & i8=0 & i9=0 & i10=1 & i11=0 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_packlh2(); }
+
+:PACKL4.L1 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i5=0 & i6=0 & i7=0 & i8=1 & i9=0 & i10=1 & i11=1 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_packl4(); }
+:PACKL4.L2 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i5=0 & i6=0 & i7=0 & i8=1 & i9=0 & i10=1 & i11=1 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_packl4(); }
+
+:RCPDP.S1 Src2, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i6=1 & i7=0 & i8=1 & i9=1 & i10=0 & i11=1 & i13=0 & i14=0 & i15=0 & i16=0 & i17=0 & i1=0 & c_is16=0 & Cond & Src2 & Dst { c6000_unimpl_rcpdp(); }
+:RCPDP.S2 Src2, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i6=1 & i7=0 & i8=1 & i9=1 & i10=0 & i11=1 & i13=0 & i14=0 & i15=0 & i16=0 & i17=0 & i1=1 & c_is16=0 & Cond & Src2 & Dst { c6000_unimpl_rcpdp(); }
+
+:RCPSP.S1 Src2, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i6=1 & i7=0 & i8=1 & i9=1 & i10=1 & i11=1 & i13=0 & i14=0 & i15=0 & i16=0 & i17=0 & i1=0 & c_is16=0 & Cond & Src2 & Dst { c6000_unimpl_rcpsp(); }
+:RCPSP.S2 Src2, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i6=1 & i7=0 & i8=1 & i9=1 & i10=1 & i11=1 & i13=0 & i14=0 & i15=0 & i16=0 & i17=0 & i1=1 & c_is16=0 & Cond & Src2 & Dst { c6000_unimpl_rcpsp(); }
+
+:RINT is i1=0 & i2=0 & i3=0 & i4=0 & i5=0 & i6=0 & i7=0 & i8=0 & i9=0 & i10=0 & i11=0 & i12=0 & i13=1 & i14=1 & i15=0 & i16=0 & i17=0 & i18=0 & i19=0 & i20=0 & i21=0 & i22=0 & i23=0 & i24=0 & i25=0 & i26=0 & i27=0 & i28=1 & i29=0 & i30=0 & i31=0 & c_is16=0 { c6000_sem_rint(); }
+
+:ROTL.M1 Src2, Src1, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i10=1 & i9=1 & i8=1 & i7=0 & i6=1 & i11=0 & i1=0 & c_is16=0 & Cond & Src2 & Src1 & Dst { c6000_unimpl_rotl(); }
+:ROTL.M2 Src2, Src1, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i10=1 & i9=1 & i8=1 & i7=0 & i6=1 & i11=0 & i1=1 & c_is16=0 & Cond & Src2 & Src1 & Dst { c6000_unimpl_rotl(); }
+:ROTL.M1 Src2, Src1, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i10=1 & i9=1 & i8=1 & i7=1 & i6=0 & i11=0 & i1=0 & c_is16=0 & Cond & Src2 & Src1 & Dst { c6000_unimpl_rotl(); }
+:ROTL.M2 Src2, Src1, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i10=1 & i9=1 & i8=1 & i7=1 & i6=0 & i11=0 & i1=1 & c_is16=0 & Cond & Src2 & Src1 & Dst { c6000_unimpl_rotl(); }
+
+:RPACK2.S1 Src1, Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=1 & i7=1 & i8=0 & i9=1 & i10=1 & i11=1 & i28=1 & i29=0 & i30=0 & i31=0 & i1=0 & c_is16=0 & Src1 & Src2 & Dst { c6000_unimpl_rpack2(); }
+:RPACK2.S2 Src1, Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=1 & i7=1 & i8=0 & i9=1 & i10=1 & i11=1 & i28=1 & i29=0 & i30=0 & i31=0 & i1=1 & c_is16=0 & Src1 & Src2 & Dst { c6000_unimpl_rpack2(); }
+
+:RSQRDP.S1 Src2, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i6=0 & i7=1 & i8=1 & i9=1 & i10=0 & i11=1 & i13=0 & i14=0 & i15=0 & i16=0 & i17=0 & i1=0 & c_is16=0 & Cond & Src2 & Dst { c6000_unimpl_rsqrdp(); }
+:RSQRDP.S2 Src2, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i6=0 & i7=1 & i8=1 & i9=1 & i10=0 & i11=1 & i13=0 & i14=0 & i15=0 & i16=0 & i17=0 & i1=1 & c_is16=0 & Cond & Src2 & Dst { c6000_unimpl_rsqrdp(); }
+
+:RSQRSP.S1 Src2, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i6=0 & i7=1 & i8=1 & i9=1 & i10=1 & i11=1 & i13=0 & i14=0 & i15=0 & i16=0 & i17=0 & i1=0 & c_is16=0 & Cond & Src2 & Dst { c6000_unimpl_rsqrsp(); }
+:RSQRSP.S2 Src2, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i6=0 & i7=1 & i8=1 & i9=1 & i10=1 & i11=1 & i13=0 & i14=0 & i15=0 & i16=0 & i17=0 & i1=1 & c_is16=0 & Cond & Src2 & Dst { c6000_unimpl_rsqrsp(); }
+
+:SADD.L1 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=0 & i10=0 & i9=1 & i8=0 & i7=0 & i6=1 & i5=1 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_sadd(); }
+:SADD.L2 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=0 & i10=0 & i9=1 & i8=0 & i7=0 & i6=1 & i5=1 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_sadd(); }
+:SADD.L1 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=0 & i10=1 & i9=1 & i8=0 & i7=0 & i6=0 & i5=1 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_sadd(); }
+:SADD.L2 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=0 & i10=1 & i9=1 & i8=0 & i7=0 & i6=0 & i5=1 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_sadd(); }
+:SADD.L1 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=0 & i10=0 & i9=1 & i8=0 & i7=0 & i6=1 & i5=0 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_sadd(); }
+:SADD.L2 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=0 & i10=0 & i9=1 & i8=0 & i7=0 & i6=1 & i5=0 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_sadd(); }
+:SADD.L1 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=0 & i10=1 & i9=1 & i8=0 & i7=0 & i6=0 & i5=0 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_sadd(); }
+:SADD.L2 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=0 & i10=1 & i9=1 & i8=0 & i7=0 & i6=0 & i5=0 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_sadd(); }
+:SADD.S1 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i6=0 & i7=0 & i8=0 & i9=0 & i10=0 & i11=1 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_sadd(); }
+:SADD.S2 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i6=0 & i7=0 & i8=0 & i9=0 & i10=0 & i11=1 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_sadd(); }
+
+:SADD2.S1 Src1, Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=0 & i7=0 & i8=0 & i9=0 & i10=1 & i11=1 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_sadd2(); }
+:SADD2.S2 Src1, Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=0 & i7=0 & i8=0 & i9=0 & i10=1 & i11=1 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_sadd2(); }
+
+:SADDSUB.L1 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i5=0 & i6=1 & i7=1 & i8=1 & i9=0 & i10=0 & i11=0 & i23=0 & i28=1 & i29=0 & i30=0 & i31=0 & i1=0 & c_is16=0 & Src1 & Src2 & Dst { c6000_unimpl_saddsub(); }
+:SADDSUB.L2 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i5=0 & i6=1 & i7=1 & i8=1 & i9=0 & i10=0 & i11=0 & i23=0 & i28=1 & i29=0 & i30=0 & i31=0 & i1=1 & c_is16=0 & Src1 & Src2 & Dst { c6000_unimpl_saddsub(); }
+
+:SADDSUB2.L1 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i5=1 & i6=1 & i7=1 & i8=1 & i9=0 & i10=0 & i11=0 & i23=0 & i28=1 & i29=0 & i30=0 & i31=0 & i1=0 & c_is16=0 & Src1 & Src2 & Dst { c6000_unimpl_saddsub2(); }
+:SADDSUB2.L2 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i5=1 & i6=1 & i7=1 & i8=1 & i9=0 & i10=0 & i11=0 & i23=0 & i28=1 & i29=0 & i30=0 & i31=0 & i1=1 & c_is16=0 & Src1 & Src2 & Dst { c6000_unimpl_saddsub2(); }
+
+:SADDSU2.S1 Src2, Src1, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=1 & i7=0 & i8=0 & i9=0 & i10=1 & i11=1 & i1=0 & c_is16=0 & Cond & Src2 & Src1 & Dst { c6000_unimpl_saddsu2(); }
+:SADDSU2.S2 Src2, Src1, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=1 & i7=0 & i8=0 & i9=0 & i10=1 & i11=1 & i1=1 & c_is16=0 & Cond & Src2 & Src1 & Dst { c6000_unimpl_saddsu2(); }
+
+
+:SADDU4.S1 Src1, Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=1 & i7=1 & i8=0 & i9=0 & i10=1 & i11=1 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_saddu4(); }
+:SADDU4.S2 Src1, Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=1 & i7=1 & i8=0 & i9=0 & i10=1 & i11=1 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_saddu4(); }
+
+:SAT.L1 Src2, Dst is i2=0 & i3=1 & i4=1 & i5=0 & i6=0 & i7=0 & i8=0 & i9=0 & i10=0 & i11=1 & i13=0 & i14=0 & i15=0 & i16=0 & i17=0 & i1=0 & c_is16=0 & Cond & Src2 & Dst { c6000_unimpl_sat(); }
+:SAT.L2 Src2, Dst is i2=0 & i3=1 & i4=1 & i5=0 & i6=0 & i7=0 & i8=0 & i9=0 & i10=0 & i11=1 & i13=0 & i14=0 & i15=0 & i16=0 & i17=0 & i1=1 & c_is16=0 & Cond & Src2 & Dst { c6000_unimpl_sat(); }
+
+:SET.S1 Src2, Csta, Cstb, Dst is i2=0 & i3=1 & i4=0 & i5=0 & i6=0 & i7=1 & i1=0 & c_is16=0 & Cond & Src2 & Csta & Cstb & Dst { c6000_unimpl_set(); }
+:SET.S2 Src2, Csta, Cstb, Dst is i2=0 & i3=1 & i4=0 & i5=0 & i6=0 & i7=1 & i1=1 & c_is16=0 & Cond & Src2 & Csta & Cstb & Dst { c6000_unimpl_set(); }
+:SET.S1 Src2, Csta, Cstb, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i6=1 & i7=1 & i8=0 & i9=1 & i10=1 & i11=1 & i1=0 & c_is16=0 & Cond & Src2 & Csta & Cstb & Dst { c6000_unimpl_set(); }
+:SET.S2 Src2, Csta, Cstb, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i6=1 & i7=1 & i8=0 & i9=1 & i10=1 & i11=1 & i1=1 & c_is16=0 & Cond & Src2 & Csta & Cstb & Dst { c6000_unimpl_set(); }
+
+:SHFL.M1 Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=1 & i7=1 & i8=0 & i9=0 & i10=0 & i11=0 & i13=0 & i14=0 & i15=1 & i16=1 & i17=1 & i1=0 & c_is16=0 & Cond & Src2 & Dst { c6000_unimpl_shfl(); }
+:SHFL.M2 Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=1 & i7=1 & i8=0 & i9=0 & i10=0 & i11=0 & i13=0 & i14=0 & i15=1 & i16=1 & i17=1 & i1=1 & c_is16=0 & Cond & Src2 & Dst { c6000_unimpl_shfl(); }
+
+:SHFL3.L1 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i5=0 & i6=1 & i7=1 & i8=0 & i9=1 & i10=1 & i11=0 & i28=1 & i29=0 & i30=0 & i31=0 & i1=0 & c_is16=0 & Src1 & Src2 & Dst { c6000_unimpl_shfl3(); }
+:SHFL3.L2 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i5=0 & i6=1 & i7=1 & i8=0 & i9=1 & i10=1 & i11=0 & i28=1 & i29=0 & i30=0 & i31=0 & i1=1 & c_is16=0 & Src1 & Src2 & Dst { c6000_unimpl_shfl3(); }
+
+:SHL.S1 Src2, Src1, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i11=1 & i10=1 & i9=0 & i8=0 & i7=1 & i6=1 & i1=0 & c_is16=0 & Cond & Src2 & Src1 & Dst { c6000_sem_shl(Src2, Src1, Dst); }
+:SHL.S2 Src2, Src1, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i11=1 & i10=1 & i9=0 & i8=0 & i7=1 & i6=1 & i1=1 & c_is16=0 & Cond & Src2 & Src1 & Dst { c6000_sem_shl(Src2, Src1, Dst); }
+:SHL.S1 Src2, Src1, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i11=1 & i10=1 & i9=0 & i8=0 & i7=0 & i6=1 & i1=0 & c_is16=0 & Cond & Src2 & Src1 & Dst { c6000_sem_shl(Src2, Src1, Dst); }
+:SHL.S2 Src2, Src1, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i11=1 & i10=1 & i9=0 & i8=0 & i7=0 & i6=1 & i1=1 & c_is16=0 & Cond & Src2 & Src1 & Dst { c6000_sem_shl(Src2, Src1, Dst); }
+:SHL.S1 Src2, Src1, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i11=0 & i10=1 & i9=0 & i8=0 & i7=1 & i6=1 & i1=0 & c_is16=0 & Cond & Src2 & Src1 & Dst { c6000_sem_shl(Src2, Src1, Dst); }
+:SHL.S2 Src2, Src1, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i11=0 & i10=1 & i9=0 & i8=0 & i7=1 & i6=1 & i1=1 & c_is16=0 & Cond & Src2 & Src1 & Dst { c6000_sem_shl(Src2, Src1, Dst); }
+:SHL.S1 Src2, Src1, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i11=1 & i10=1 & i9=0 & i8=0 & i7=1 & i6=0 & i1=0 & c_is16=0 & Cond & Src2 & Src1 & Dst { c6000_sem_shl(Src2, Src1, Dst); }
+:SHL.S2 Src2, Src1, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i11=1 & i10=1 & i9=0 & i8=0 & i7=1 & i6=0 & i1=1 & c_is16=0 & Cond & Src2 & Src1 & Dst { c6000_sem_shl(Src2, Src1, Dst); }
+:SHL.S1 Src2, Src1, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i11=1 & i10=1 & i9=0 & i8=0 & i7=0 & i6=0 & i1=0 & c_is16=0 & Cond & Src2 & Src1 & Dst { c6000_sem_shl(Src2, Src1, Dst); }
+:SHL.S2 Src2, Src1, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i11=1 & i10=1 & i9=0 & i8=0 & i7=0 & i6=0 & i1=1 & c_is16=0 & Cond & Src2 & Src1 & Dst { c6000_sem_shl(Src2, Src1, Dst); }
+:SHL.S1 Src2, Src1, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i11=0 & i10=1 & i9=0 & i8=0 & i7=1 & i6=0 & i1=0 & c_is16=0 & Cond & Src2 & Src1 & Dst { c6000_sem_shl(Src2, Src1, Dst); }
+:SHL.S2 Src2, Src1, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i11=0 & i10=1 & i9=0 & i8=0 & i7=1 & i6=0 & i1=1 & c_is16=0 & Cond & Src2 & Src1 & Dst { c6000_sem_shl(Src2, Src1, Dst); }
+
+:SHLMB.L1 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i5=1 & i6=0 & i7=0 & i8=0 & i9=0 & i10=1 & i11=1 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_shlmb(); }
+:SHLMB.L2 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i5=1 & i6=0 & i7=0 & i8=0 & i9=0 & i10=1 & i11=1 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_shlmb(); }
+:SHLMB.S1 Src1, Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=1 & i7=0 & i8=0 & i9=1 & i10=1 & i11=1 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_shlmb(); }
+:SHLMB.S2 Src1, Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=1 & i7=0 & i8=0 & i9=1 & i10=1 & i11=1 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_shlmb(); }
+
+:SHR.S1 Src2, Src1, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i11=1 & i10=1 & i9=0 & i8=1 & i7=1 & i6=1 & i1=0 & c_is16=0 & Cond & Src2 & Src1 & Dst { c6000_sem_shr(Src2, Src1, Dst); }
+:SHR.S2 Src2, Src1, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i11=1 & i10=1 & i9=0 & i8=1 & i7=1 & i6=1 & i1=1 & c_is16=0 & Cond & Src2 & Src1 & Dst { c6000_sem_shr(Src2, Src1, Dst); }
+:SHR.S1 Src2, Src1, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i11=1 & i10=1 & i9=0 & i8=1 & i7=0 & i6=1 & i1=0 & c_is16=0 & Cond & Src2 & Src1 & Dst { c6000_sem_shr(Src2, Src1, Dst); }
+:SHR.S2 Src2, Src1, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i11=1 & i10=1 & i9=0 & i8=1 & i7=0 & i6=1 & i1=1 & c_is16=0 & Cond & Src2 & Src1 & Dst { c6000_sem_shr(Src2, Src1, Dst); }
+:SHR.S1 Src2, Src1, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i11=1 & i10=1 & i9=0 & i8=1 & i7=1 & i6=0 & i1=0 & c_is16=0 & Cond & Src2 & Src1 & Dst { c6000_sem_shr(Src2, Src1, Dst); }
+:SHR.S2 Src2, Src1, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i11=1 & i10=1 & i9=0 & i8=1 & i7=1 & i6=0 & i1=1 & c_is16=0 & Cond & Src2 & Src1 & Dst { c6000_sem_shr(Src2, Src1, Dst); }
+:SHR.S1 Src2, Src1, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i11=1 & i10=1 & i9=0 & i8=1 & i7=0 & i6=0 & i1=0 & c_is16=0 & Cond & Src2 & Src1 & Dst { c6000_sem_shr(Src2, Src1, Dst); }
+:SHR.S2 Src2, Src1, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i11=1 & i10=1 & i9=0 & i8=1 & i7=0 & i6=0 & i1=1 & c_is16=0 & Cond & Src2 & Src1 & Dst { c6000_sem_shr(Src2, Src1, Dst); }
+
+:SHR2.S1 Src2, Src1, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=1 & i7=1 & i8=1 & i9=0 & i10=1 & i11=1 & i1=0 & c_is16=0 & Cond & Src2 & Src1 & Dst { c6000_unimpl_shr2(); }
+:SHR2.S2 Src2, Src1, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=1 & i7=1 & i8=1 & i9=0 & i10=1 & i11=1 & i1=1 & c_is16=0 & Cond & Src2 & Src1 & Dst { c6000_unimpl_shr2(); }
+:SHR2.S1 Src2, Src1, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i6=0 & i7=0 & i8=0 & i9=1 & i10=1 & i11=0 & i1=0 & c_is16=0 & Cond & Src2 & Src1 & Dst { c6000_unimpl_shr2(); }
+:SHR2.S2 Src2, Src1, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i6=0 & i7=0 & i8=0 & i9=1 & i10=1 & i11=0 & i1=1 & c_is16=0 & Cond & Src2 & Src1 & Dst { c6000_unimpl_shr2(); }
+
+:SHRMB.L1 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i5=0 & i6=1 & i7=0 & i8=0 & i9=0 & i10=1 & i11=1 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_shrmb(); }
+:SHRMB.L2 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i5=0 & i6=1 & i7=0 & i8=0 & i9=0 & i10=1 & i11=1 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_shrmb(); }
+:SHRMB.S1 Src1, Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=0 & i7=1 & i8=0 & i9=1 & i10=1 & i11=1 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_shrmb(); }
+:SHRMB.S2 Src1, Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=0 & i7=1 & i8=0 & i9=1 & i10=1 & i11=1 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_shrmb(); }
+
+:SHRU.S1 Src2, Src1, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i11=1 & i10=0 & i9=0 & i8=1 & i7=1 & i6=1 & i1=0 & c_is16=0 & Cond & Src2 & Src1 & Dst { c6000_sem_shru(Src2, Src1, Dst); }
+:SHRU.S2 Src2, Src1, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i11=1 & i10=0 & i9=0 & i8=1 & i7=1 & i6=1 & i1=1 & c_is16=0 & Cond & Src2 & Src1 & Dst { c6000_sem_shru(Src2, Src1, Dst); }
+:SHRU.S1 Src2, Src1, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i11=1 & i10=0 & i9=0 & i8=1 & i7=0 & i6=1 & i1=0 & c_is16=0 & Cond & Src2 & Src1 & Dst { c6000_sem_shru(Src2, Src1, Dst); }
+:SHRU.S2 Src2, Src1, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i11=1 & i10=0 & i9=0 & i8=1 & i7=0 & i6=1 & i1=1 & c_is16=0 & Cond & Src2 & Src1 & Dst { c6000_sem_shru(Src2, Src1, Dst); }
+:SHRU.S1 Src2, Src1, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i11=1 & i10=0 & i9=0 & i8=1 & i7=1 & i6=0 & i1=0 & c_is16=0 & Cond & Src2 & Src1 & Dst { c6000_sem_shru(Src2, Src1, Dst); }
+:SHRU.S2 Src2, Src1, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i11=1 & i10=0 & i9=0 & i8=1 & i7=1 & i6=0 & i1=1 & c_is16=0 & Cond & Src2 & Src1 & Dst { c6000_sem_shru(Src2, Src1, Dst); }
+:SHRU.S1 Src2, Src1, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i11=1 & i10=0 & i9=0 & i8=1 & i7=0 & i6=0 & i1=0 & c_is16=0 & Cond & Src2 & Src1 & Dst { c6000_sem_shru(Src2, Src1, Dst); }
+:SHRU.S2 Src2, Src1, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i11=1 & i10=0 & i9=0 & i8=1 & i7=0 & i6=0 & i1=1 & c_is16=0 & Cond & Src2 & Src1 & Dst { c6000_sem_shru(Src2, Src1, Dst); }
+
+:SHRU2.S1 Src2, Src1, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=0 & i7=0 & i8=0 & i9=1 & i10=1 & i11=1 & i1=0 & c_is16=0 & Cond & Src2 & Src1 & Dst { c6000_unimpl_shru2(); }
+:SHRU2.S2 Src2, Src1, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=0 & i7=0 & i8=0 & i9=1 & i10=1 & i11=1 & i1=1 & c_is16=0 & Cond & Src2 & Src1 & Dst { c6000_unimpl_shru2(); }
+:SHRU2.S1 Src2, Src1, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i6=1 & i7=0 & i8=0 & i9=1 & i10=1 & i11=0 & i1=0 & c_is16=0 & Cond & Src2 & Src1 & Dst { c6000_unimpl_shru2(); }
+:SHRU2.S2 Src2, Src1, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i6=1 & i7=0 & i8=0 & i9=1 & i10=1 & i11=0 & i1=1 & c_is16=0 & Cond & Src2 & Src1 & Dst { c6000_unimpl_shru2(); }
+
+:SMPY.M1 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=0 & i6=0 & i7=0 & i8=1 & i9=0 & i10=1 & i11=1 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_smpy(); }
+:SMPY.M2 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=0 & i6=0 & i7=0 & i8=1 & i9=0 & i10=1 & i11=1 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_smpy(); }
+
+:SMPYH.M1 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=0 & i6=0 & i7=0 & i8=1 & i9=0 & i10=0 & i11=0 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_smpyh(); }
+:SMPYH.M2 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=0 & i6=0 & i7=0 & i8=1 & i9=0 & i10=0 & i11=0 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_smpyh(); }
+
+:SMPYHL.M1 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=0 & i6=0 & i7=0 & i8=1 & i9=0 & i10=1 & i11=0 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_smpyhl(); }
+:SMPYHL.M2 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=0 & i6=0 & i7=0 & i8=1 & i9=0 & i10=1 & i11=0 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_smpyhl(); }
+
+:SMPYLH.M1 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=0 & i6=0 & i7=0 & i8=1 & i9=0 & i10=0 & i11=1 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_smpylh(); }
+:SMPYLH.M2 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=0 & i6=0 & i7=0 & i8=1 & i9=0 & i10=0 & i11=1 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_smpylh(); }
+
+:SMPY2.M1 Src1, Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=1 & i7=0 & i8=0 & i9=0 & i10=0 & i11=0 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_smpy2(); }
+:SMPY2.M2 Src1, Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=1 & i7=0 & i8=0 & i9=0 & i10=0 & i11=0 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_smpy2(); }
+
+:SMPY32.M1 Src1, Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=1 & i7=0 & i8=0 & i9=1 & i10=1 & i11=0 & i28=1 & i29=0 & i30=0 & i31=0 & i1=0 & c_is16=0 & Src1 & Src2 & Dst { c6000_unimpl_smpy32(); }
+:SMPY32.M2 Src1, Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=1 & i7=0 & i8=0 & i9=1 & i10=1 & i11=0 & i28=1 & i29=0 & i30=0 & i31=0 & i1=1 & c_is16=0 & Src1 & Src2 & Dst { c6000_unimpl_smpy32(); }
+
+:SPACK2.S1 Src1, Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=0 & i7=1 & i8=0 & i9=0 & i10=1 & i11=1 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_spack2(); }
+:SPACK2.S2 Src1, Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=0 & i7=1 & i8=0 & i9=0 & i10=1 & i11=1 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_spack2(); }
+
+:SPACKU4.S1 Src1, Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=0 & i7=0 & i8=1 & i9=0 & i10=1 & i11=1 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_spacku4(); }
+:SPACKU4.S2 Src1, Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=0 & i7=0 & i8=1 & i9=0 & i10=1 & i11=1 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_spacku4(); }
+
+:SPDP.S1 Src2, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i6=0 & i7=1 & i8=0 & i9=0 & i10=0 & i11=0 & i13=0 & i14=0 & i15=0 & i16=0 & i17=0 & i1=0 & c_is16=0 & Cond & Src2 & Dst { c6000_unimpl_spdp(); }
+:SPDP.S2 Src2, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i6=0 & i7=1 & i8=0 & i9=0 & i10=0 & i11=0 & i13=0 & i14=0 & i15=0 & i16=0 & i17=0 & i1=1 & c_is16=0 & Cond & Src2 & Dst { c6000_unimpl_spdp(); }
+
+:SPINT.L1 Src2, Dst is i2=0 & i3=1 & i4=1 & i5=0 & i6=1 & i7=0 & i8=1 & i9=0 & i10=0 & i11=0 & i13=0 & i14=0 & i15=0 & i16=0 & i17=0 & i1=0 & c_is16=0 & Cond & Src2 & Dst { c6000_unimpl_spint(); }
+:SPINT.L2 Src2, Dst is i2=0 & i3=1 & i4=1 & i5=0 & i6=1 & i7=0 & i8=1 & i9=0 & i10=0 & i11=0 & i13=0 & i14=0 & i15=0 & i16=0 & i17=0 & i1=1 & c_is16=0 & Cond & Src2 & Dst { c6000_unimpl_spint(); }
+
+:SPTRUNC.L1 Src2, Dst is i2=0 & i3=1 & i4=1 & i5=1 & i6=1 & i7=0 & i8=1 & i9=0 & i10=0 & i11=0 & i13=0 & i14=0 & i15=0 & i16=0 & i17=0 & i1=0 & c_is16=0 & Cond & Src2 & Dst { c6000_unimpl_sptrunc(); }
+:SPTRUNC.L2 Src2, Dst is i2=0 & i3=1 & i4=1 & i5=1 & i6=1 & i7=0 & i8=1 & i9=0 & i10=0 & i11=0 & i13=0 & i14=0 & i15=0 & i16=0 & i17=0 & i1=1 & c_is16=0 & Cond & Src2 & Dst { c6000_unimpl_sptrunc(); }
+
+:SSHL.S1 Src2, Src1, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i11=1 & i10=0 & i9=0 & i8=0 & i7=1 & i6=1 & i1=0 & c_is16=0 & Cond & Src2 & Src1 & Dst { c6000_sem_sshl(Src2, Src1, Dst); }
+:SSHL.S2 Src2, Src1, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i11=1 & i10=0 & i9=0 & i8=0 & i7=1 & i6=1 & i1=1 & c_is16=0 & Cond & Src2 & Src1 & Dst { c6000_sem_sshl(Src2, Src1, Dst); }
+:SSHL.S1 Src2, Src1, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i11=1 & i10=0 & i9=0 & i8=0 & i7=1 & i6=0 & i1=0 & c_is16=0 & Cond & Src2 & Src1 & Dst { c6000_sem_sshl(Src2, Src1, Dst); }
+:SSHL.S2 Src2, Src1, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i11=1 & i10=0 & i9=0 & i8=0 & i7=1 & i6=0 & i1=1 & c_is16=0 & Cond & Src2 & Src1 & Dst { c6000_sem_sshl(Src2, Src1, Dst); }
+
+:SSHVL.M1 Src2, Src1, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=0 & i7=0 & i8=1 & i9=1 & i10=1 & i11=0 & i1=0 & c_is16=0 & Cond & Src2 & Src1 & Dst { c6000_unimpl_sshvl(); }
+:SSHVL.M2 Src2, Src1, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=0 & i7=0 & i8=1 & i9=1 & i10=1 & i11=0 & i1=1 & c_is16=0 & Cond & Src2 & Src1 & Dst { c6000_unimpl_sshvl(); }
+
+:SSHVR.M1 Src2, Src1, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=0 & i7=1 & i8=0 & i9=1 & i10=1 & i11=0 & i1=0 & c_is16=0 & Cond & Src2 & Src1 & Dst { c6000_unimpl_sshvr(); }
+:SSHVR.M2 Src2, Src1, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=0 & i7=1 & i8=0 & i9=1 & i10=1 & i11=0 & i1=1 & c_is16=0 & Cond & Src2 & Src1 & Dst { c6000_unimpl_sshvr(); }
+
+:SSUB.L1 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=0 & i10=0 & i9=0 & i8=1 & i7=1 & i6=1 & i5=1 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_ssub(); }
+:SSUB.L2 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=0 & i10=0 & i9=0 & i8=1 & i7=1 & i6=1 & i5=1 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_ssub(); }
+:SSUB.L1 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=0 & i10=0 & i9=1 & i8=1 & i7=1 & i6=1 & i5=1 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_ssub(); }
+:SSUB.L2 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=0 & i10=0 & i9=1 & i8=1 & i7=1 & i6=1 & i5=1 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_ssub(); }
+:SSUB.L1 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=0 & i10=0 & i9=0 & i8=1 & i7=1 & i6=1 & i5=0 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_ssub(); }
+:SSUB.L2 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=0 & i10=0 & i9=0 & i8=1 & i7=1 & i6=1 & i5=0 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_ssub(); }
+:SSUB.L1 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=0 & i10=1 & i9=0 & i8=1 & i7=1 & i6=0 & i5=0 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_ssub(); }
+:SSUB.L2 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=0 & i10=1 & i9=0 & i8=1 & i7=1 & i6=0 & i5=0 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_ssub(); }
+
+:SSUB2.L1 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i5=0 & i6=0 & i7=1 & i8=0 & i9=0 & i10=1 & i11=1 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_ssub2(); }
+:SSUB2.L2 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i5=0 & i6=0 & i7=1 & i8=0 & i9=0 & i10=1 & i11=1 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_ssub2(); }
+
+:STB.D1 Src, MemReg is i2=1 & i3=0 & i4=1 & i5=1 & i6=0 & i8=0 & i7=0 & c_is16=0 & Cond & Src & MemReg { c6000_sem_stb(Src, MemReg); }
+:STB.D2 Src, MemReg is i2=1 & i3=0 & i4=1 & i5=1 & i6=0 & i8=0 & i7=1 & c_is16=0 & Cond & Src & MemReg { c6000_sem_stb(Src, MemReg); }
+
+:STB.D1 Src, MemLong is i2=1 & i3=1 & i4=1 & i5=1 & i6=0 & i7=0 & c_is16=0 & Cond & Src & MemLong { c6000_sem_stb(Src, MemLong); }
+:STB.D2 Src, MemLong is i2=1 & i3=1 & i4=1 & i5=1 & i6=0 & i7=1 & c_is16=0 & Cond & Src & MemLong { c6000_sem_stb(Src, MemLong); }
+
+:STDW.D1 Src, MemReg is i2=1 & i3=0 & i4=0 & i5=0 & i6=1 & i8=1 & i7=0 & c_is16=0 & Cond & Src & MemReg { c6000_sem_stdw(Src, MemReg); }
+:STDW.D2 Src, MemReg is i2=1 & i3=0 & i4=0 & i5=0 & i6=1 & i8=1 & i7=1 & c_is16=0 & Cond & Src & MemReg { c6000_sem_stdw(Src, MemReg); }
+
+:STH.D1 Src, MemReg is i2=1 & i3=0 & i4=1 & i5=0 & i6=1 & i8=0 & i7=0 & c_is16=0 & Cond & Src & MemReg { c6000_sem_sth(Src, MemReg); }
+:STH.D2 Src, MemReg is i2=1 & i3=0 & i4=1 & i5=0 & i6=1 & i8=0 & i7=1 & c_is16=0 & Cond & Src & MemReg { c6000_sem_sth(Src, MemReg); }
+
+:STH.D1 Src, MemLong is i2=1 & i3=1 & i4=1 & i5=0 & i6=1 & i7=0 & c_is16=0 & Cond & Src & MemLong { c6000_sem_sth(Src, MemLong); }
+:STH.D2 Src, MemLong is i2=1 & i3=1 & i4=1 & i5=0 & i6=1 & i7=1 & c_is16=0 & Cond & Src & MemLong { c6000_sem_sth(Src, MemLong); }
+
+:STNDW.D1 Src, MemReg is i2=1 & i3=0 & i4=1 & i5=1 & i6=1 & i8=1 & i7=0 & c_is16=0 & Cond & Src & MemReg { c6000_sem_stndw(Src, MemReg); }
+:STNDW.D2 Src, MemReg is i2=1 & i3=0 & i4=1 & i5=1 & i6=1 & i8=1 & i7=1 & c_is16=0 & Cond & Src & MemReg { c6000_sem_stndw(Src, MemReg); }
+
+:STNW.D1 Src, MemReg is i2=1 & i3=0 & i4=1 & i5=0 & i6=1 & i8=1 & i7=0 & c_is16=0 & Cond & Src & MemReg { c6000_sem_stnw(Src, MemReg); }
+:STNW.D2 Src, MemReg is i2=1 & i3=0 & i4=1 & i5=0 & i6=1 & i8=1 & i7=1 & c_is16=0 & Cond & Src & MemReg { c6000_sem_stnw(Src, MemReg); }
+
+:STW.D1 Src, MemReg is i2=1 & i3=0 & i4=1 & i5=1 & i6=1 & i8=0 & i7=0 & c_is16=0 & Cond & Src & MemReg { c6000_sem_stw(Src, MemReg); }
+:STW.D2 Src, MemReg is i2=1 & i3=0 & i4=1 & i5=1 & i6=1 & i8=0 & i7=1 & c_is16=0 & Cond & Src & MemReg { c6000_sem_stw(Src, MemReg); }
+
+:STW.D1 Src, MemLong is i2=1 & i3=1 & i4=1 & i5=1 & i6=1 & i7=0 & c_is16=0 & Cond & Src & MemLong { c6000_sem_stw(Src, MemLong); }
+:STW.D2 Src, MemLong is i2=1 & i3=1 & i4=1 & i5=1 & i6=1 & i7=1 & c_is16=0 & Cond & Src & MemLong { c6000_sem_stw(Src, MemLong); }
+
+:SUB.L1 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=0 & i10=0 & i9=0 & i8=0 & i7=1 & i6=1 & i5=1 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_sem_sub(Src1, Src2, Dst); }
+:SUB.L2 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=0 & i10=0 & i9=0 & i8=0 & i7=1 & i6=1 & i5=1 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_sem_sub(Src1, Src2, Dst); }
+:SUB.L1 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=0 & i10=0 & i9=1 & i8=0 & i7=1 & i6=1 & i5=1 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_sem_sub(Src1, Src2, Dst); }
+:SUB.L2 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=0 & i10=0 & i9=1 & i8=0 & i7=1 & i6=1 & i5=1 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_sem_sub(Src1, Src2, Dst); }
+:SUB.L1 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=0 & i10=1 & i9=0 & i8=0 & i7=1 & i6=1 & i5=1 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_sem_sub(Src1, Src2, Dst); }
+:SUB.L2 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=0 & i10=1 & i9=0 & i8=0 & i7=1 & i6=1 & i5=1 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_sem_sub(Src1, Src2, Dst); }
+:SUB.L1 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=0 & i10=1 & i9=1 & i8=0 & i7=1 & i6=1 & i5=1 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_sem_sub(Src1, Src2, Dst); }
+:SUB.L2 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=0 & i10=1 & i9=1 & i8=0 & i7=1 & i6=1 & i5=1 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_sem_sub(Src1, Src2, Dst); }
+:SUB.L1 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=0 & i10=0 & i9=0 & i8=0 & i7=1 & i6=1 & i5=0 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_sem_sub(Src1, Src2, Dst); }
+:SUB.L2 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=0 & i10=0 & i9=0 & i8=0 & i7=1 & i6=1 & i5=0 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_sem_sub(Src1, Src2, Dst); }
+:SUB.L1 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=0 & i10=1 & i9=0 & i8=0 & i7=1 & i6=0 & i5=0 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_sem_sub(Src1, Src2, Dst); }
+:SUB.L2 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=0 & i10=1 & i9=0 & i8=0 & i7=1 & i6=0 & i5=0 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_sem_sub(Src1, Src2, Dst); }
+:SUB.S1 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i11=0 & i10=1 & i9=0 & i8=1 & i7=1 & i6=1 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_sem_sub(Src1, Src2, Dst); }
+:SUB.S2 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i11=0 & i10=1 & i9=0 & i8=1 & i7=1 & i6=1 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_sem_sub(Src1, Src2, Dst); }
+:SUB.S1 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i11=0 & i10=1 & i9=0 & i8=1 & i7=1 & i6=0 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_sem_sub(Src1, Src2, Dst); }
+:SUB.S2 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i11=0 & i10=1 & i9=0 & i8=1 & i7=1 & i6=0 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_sem_sub(Src1, Src2, Dst); }
+:SUB.D2 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=0 & i6=1 & i12=0 & i11=1 & i10=0 & i9=0 & i8=0 & i7=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_sem_sub(Src1, Src2, Dst); }
+:SUB.D2 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=0 & i6=1 & i12=0 & i11=1 & i10=0 & i9=0 & i8=1 & i7=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_sem_sub(Src1, Src2, Dst); }
+:SUB.D1 Src1, Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=0 & i7=0 & i8=1 & i9=1 & i10=0 & i11=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_sem_sub(Src1, Src2, Dst); }
+
+:SUBAB.D2 Src2, Src1, Dst is i2=0 & i3=0 & i4=0 & i5=0 & i6=1 & i12=1 & i11=1 & i10=0 & i9=0 & i8=0 & i7=1 & c_is16=0 & Cond & Src2 & Src1 & Dst { c6000_unimpl_subab(); }
+:SUBAB.D2 Src2, Src1, Dst is i2=0 & i3=0 & i4=0 & i5=0 & i6=1 & i12=1 & i11=1 & i10=0 & i9=0 & i8=1 & i7=1 & c_is16=0 & Cond & Src2 & Src1 & Dst { c6000_unimpl_subab(); }
+
+:SUBABS4.L1 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i5=0 & i6=1 & i7=0 & i8=1 & i9=1 & i10=0 & i11=1 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_subabs4(); }
+:SUBABS4.L2 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i5=0 & i6=1 & i7=0 & i8=1 & i9=1 & i10=0 & i11=1 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_subabs4(); }
+
+:SUBAH.D2 Src2, Src1, Dst is i2=0 & i3=0 & i4=0 & i5=0 & i6=1 & i12=1 & i11=1 & i10=0 & i9=1 & i8=0 & i7=1 & c_is16=0 & Cond & Src2 & Src1 & Dst { c6000_unimpl_subah(); }
+:SUBAH.D2 Src2, Src1, Dst is i2=0 & i3=0 & i4=0 & i5=0 & i6=1 & i12=1 & i11=1 & i10=0 & i9=1 & i8=1 & i7=1 & c_is16=0 & Cond & Src2 & Src1 & Dst { c6000_unimpl_subah(); }
+
+:SUBAW.D2 Src2, Src1, Dst is i2=0 & i3=0 & i4=0 & i5=0 & i6=1 & i12=1 & i11=1 & i10=1 & i9=0 & i8=0 & i7=1 & c_is16=0 & Cond & Src2 & Src1 & Dst { c6000_unimpl_subaw(); }
+:SUBAW.D2 Src2, Src1, Dst is i2=0 & i3=0 & i4=0 & i5=0 & i6=1 & i12=1 & i11=1 & i10=1 & i9=0 & i8=1 & i7=1 & c_is16=0 & Cond & Src2 & Src1 & Dst { c6000_unimpl_subaw(); }
+
+:SUBC.L1 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i5=1 & i6=1 & i7=0 & i8=1 & i9=0 & i10=0 & i11=1 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_subc(); }
+:SUBC.L2 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i5=1 & i6=1 & i7=0 & i8=1 & i9=0 & i10=0 & i11=1 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_subc(); }
+
+:SUBDP.L1 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=0 & i10=0 & i9=1 & i8=1 & i7=0 & i6=0 & i5=1 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_subdp(); }
+:SUBDP.L2 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=0 & i10=0 & i9=1 & i8=1 & i7=0 & i6=0 & i5=1 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_subdp(); }
+:SUBDP.L1 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=0 & i10=0 & i9=1 & i8=1 & i7=1 & i6=0 & i5=1 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_subdp(); }
+:SUBDP.L2 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=0 & i10=0 & i9=1 & i8=1 & i7=1 & i6=0 & i5=1 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_subdp(); }
+:SUBDP.L1 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=1 & i10=1 & i9=1 & i8=0 & i7=0 & i6=1 & i5=1 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_subdp(); }
+:SUBDP.L2 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=1 & i10=1 & i9=1 & i8=0 & i7=0 & i6=1 & i5=1 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_subdp(); }
+:SUBDP.L1 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=1 & i10=1 & i9=1 & i8=0 & i7=1 & i6=1 & i5=1 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_subdp(); }
+:SUBDP.L2 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=1 & i10=1 & i9=1 & i8=0 & i7=1 & i6=1 & i5=1 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_subdp(); }
+
+:SUBSP.L1 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=0 & i10=0 & i9=1 & i8=0 & i7=0 & i6=0 & i5=1 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_subsp(); }
+:SUBSP.L2 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=0 & i10=0 & i9=1 & i8=0 & i7=0 & i6=0 & i5=1 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_subsp(); }
+:SUBSP.L1 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=0 & i10=0 & i9=1 & i8=0 & i7=1 & i6=0 & i5=1 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_subsp(); }
+:SUBSP.L2 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=0 & i10=0 & i9=1 & i8=0 & i7=1 & i6=0 & i5=1 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_subsp(); }
+:SUBSP.L1 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=1 & i10=1 & i9=1 & i8=0 & i7=0 & i6=0 & i5=1 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_subsp(); }
+:SUBSP.L2 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=1 & i10=1 & i9=1 & i8=0 & i7=0 & i6=0 & i5=1 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_subsp(); }
+:SUBSP.L1 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=1 & i10=1 & i9=1 & i8=0 & i7=1 & i6=0 & i5=1 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_subsp(); }
+:SUBSP.L2 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=1 & i10=1 & i9=1 & i8=0 & i7=1 & i6=0 & i5=1 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_subsp(); }
+
+:SUBU.L1 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=0 & i10=1 & i9=0 & i8=1 & i7=1 & i6=1 & i5=1 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_subu(); }
+:SUBU.L2 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=0 & i10=1 & i9=0 & i8=1 & i7=1 & i6=1 & i5=1 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_subu(); }
+:SUBU.L1 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=0 & i10=1 & i9=1 & i8=1 & i7=1 & i6=1 & i5=1 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_subu(); }
+:SUBU.L2 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=0 & i10=1 & i9=1 & i8=1 & i7=1 & i6=1 & i5=1 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_subu(); }
+
+:SUB2.L1 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i5=0 & i6=0 & i7=1 & i8=0 & i9=0 & i10=0 & i11=0 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_sub2(); }
+:SUB2.L2 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i5=0 & i6=0 & i7=1 & i8=0 & i9=0 & i10=0 & i11=0 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_sub2(); }
+:SUB2.S1 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i6=1 & i7=0 & i8=0 & i9=0 & i10=1 & i11=0 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_sub2(); }
+:SUB2.S2 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i6=1 & i7=0 & i8=0 & i9=0 & i10=1 & i11=0 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_sub2(); }
+:SUB2.D1 Src1, Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=1 & i7=0 & i8=1 & i9=0 & i10=0 & i11=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_sub2(); }
+
+:SUB4.L1 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i5=0 & i6=1 & i7=1 & i8=0 & i9=0 & i10=1 & i11=1 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_sub4(); }
+:SUB4.L2 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i5=0 & i6=1 & i7=1 & i8=0 & i9=0 & i10=1 & i11=1 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_unimpl_sub4(); }
+
+:SWAP4.L1 Src2, Dst is i2=0 & i3=1 & i4=1 & i5=0 & i6=1 & i7=0 & i8=1 & i9=1 & i10=0 & i11=0 & i13=1 & i14=0 & i15=0 & i16=0 & i17=0 & i1=0 & c_is16=0 & Cond & Src2 & Dst { c6000_unimpl_swap4(); }
+:SWAP4.L2 Src2, Dst is i2=0 & i3=1 & i4=1 & i5=0 & i6=1 & i7=0 & i8=1 & i9=1 & i10=0 & i11=0 & i13=1 & i14=0 & i15=0 & i16=0 & i17=0 & i1=1 & c_is16=0 & Cond & Src2 & Dst { c6000_unimpl_swap4(); }
+
+:SWE is i1=0 & i2=0 & i3=0 & i4=0 & i5=0 & i6=0 & i7=0 & i8=0 & i9=0 & i10=0 & i11=0 & i12=0 & i13=0 & i14=0 & i15=0 & i16=0 & i17=0 & i18=0 & i19=0 & i20=0 & i21=0 & i22=0 & i23=0 & i24=0 & i25=0 & i26=0 & i27=0 & i28=1 & i29=0 & i30=0 & i31=0 & c_is16=0 { c6000_unimpl_swe(); }
+
+:SWENR is i1=0 & i2=0 & i3=0 & i4=0 & i5=0 & i6=0 & i7=0 & i8=0 & i9=0 & i10=0 & i11=0 & i12=0 & i13=1 & i14=0 & i15=0 & i16=0 & i17=0 & i18=0 & i19=0 & i20=0 & i21=0 & i22=0 & i23=0 & i24=0 & i25=0 & i26=0 & i27=0 & i28=1 & i29=0 & i30=0 & i31=0 & c_is16=0 { c6000_unimpl_swenr(); }
+
+:UNPKHU4.L1 Src2, Dst is i2=0 & i3=1 & i4=1 & i5=0 & i6=1 & i7=0 & i8=1 & i9=1 & i10=0 & i11=0 & i13=1 & i14=1 & i15=0 & i16=0 & i17=0 & i1=0 & c_is16=0 & Cond & Src2 & Dst { c6000_unimpl_unpkhu4(); }
+:UNPKHU4.L2 Src2, Dst is i2=0 & i3=1 & i4=1 & i5=0 & i6=1 & i7=0 & i8=1 & i9=1 & i10=0 & i11=0 & i13=1 & i14=1 & i15=0 & i16=0 & i17=0 & i1=1 & c_is16=0 & Cond & Src2 & Dst { c6000_unimpl_unpkhu4(); }
+:UNPKHU4.S1 Src2, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i6=0 & i7=0 & i8=1 & i9=1 & i10=1 & i11=1 & i13=1 & i14=1 & i15=0 & i16=0 & i17=0 & i1=0 & c_is16=0 & Cond & Src2 & Dst { c6000_unimpl_unpkhu4(); }
+:UNPKHU4.S2 Src2, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i6=0 & i7=0 & i8=1 & i9=1 & i10=1 & i11=1 & i13=1 & i14=1 & i15=0 & i16=0 & i17=0 & i1=1 & c_is16=0 & Cond & Src2 & Dst { c6000_unimpl_unpkhu4(); }
+
+:UNPKLU4.L1 Src2, Dst is i2=0 & i3=1 & i4=1 & i5=0 & i6=1 & i7=0 & i8=1 & i9=1 & i10=0 & i11=0 & i13=0 & i14=1 & i15=0 & i16=0 & i17=0 & i1=0 & c_is16=0 & Cond & Src2 & Dst { c6000_unimpl_unpklu4(); }
+:UNPKLU4.L2 Src2, Dst is i2=0 & i3=1 & i4=1 & i5=0 & i6=1 & i7=0 & i8=1 & i9=1 & i10=0 & i11=0 & i13=0 & i14=1 & i15=0 & i16=0 & i17=0 & i1=1 & c_is16=0 & Cond & Src2 & Dst { c6000_unimpl_unpklu4(); }
+:UNPKLU4.S1 Src2, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i6=0 & i7=0 & i8=1 & i9=1 & i10=1 & i11=1 & i13=0 & i14=1 & i15=0 & i16=0 & i17=0 & i1=0 & c_is16=0 & Cond & Src2 & Dst { c6000_unimpl_unpklu4(); }
+:UNPKLU4.S2 Src2, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i6=0 & i7=0 & i8=1 & i9=1 & i10=1 & i11=1 & i13=0 & i14=1 & i15=0 & i16=0 & i17=0 & i1=1 & c_is16=0 & Cond & Src2 & Dst { c6000_unimpl_unpklu4(); }
+
+:XOR.L1 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=1 & i10=1 & i9=0 & i8=1 & i7=1 & i6=1 & i5=1 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_sem_xor(Src1, Src2, Dst); }
+:XOR.L2 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=1 & i10=1 & i9=0 & i8=1 & i7=1 & i6=1 & i5=1 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_sem_xor(Src1, Src2, Dst); }
+:XOR.L1 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=1 & i10=1 & i9=0 & i8=1 & i7=1 & i6=1 & i5=0 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_sem_xor(Src1, Src2, Dst); }
+:XOR.L2 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=1 & i10=1 & i9=0 & i8=1 & i7=1 & i6=1 & i5=0 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_sem_xor(Src1, Src2, Dst); }
+:XOR.S1 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i11=0 & i10=0 & i9=1 & i8=0 & i7=1 & i6=1 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_sem_xor(Src1, Src2, Dst); }
+:XOR.S2 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i11=0 & i10=0 & i9=1 & i8=0 & i7=1 & i6=1 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_sem_xor(Src1, Src2, Dst); }
+:XOR.S1 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i11=0 & i10=0 & i9=1 & i8=0 & i7=1 & i6=0 & i1=0 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_sem_xor(Src1, Src2, Dst); }
+:XOR.S2 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i11=0 & i10=0 & i9=1 & i8=0 & i7=1 & i6=0 & i1=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_sem_xor(Src1, Src2, Dst); }
+:XOR.D2 Src1, Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i9=1 & i8=1 & i7=1 & i6=0 & i10=0 & i11=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_sem_xor(Src1, Src2, Dst); }
+:XOR.D2 Src1, Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i9=1 & i8=1 & i7=1 & i6=1 & i10=0 & i11=1 & c_is16=0 & Cond & Src1 & Src2 & Dst { c6000_sem_xor(Src1, Src2, Dst); }
+
+:XORMPY.M1 Src1, Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=1 & i7=1 & i8=0 & i9=1 & i10=1 & i11=0 & i28=1 & i29=0 & i30=0 & i31=0 & i1=0 & c_is16=0 & Src1 & Src2 & Dst { c6000_unimpl_xormpy(); }
+:XORMPY.M2 Src1, Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=1 & i7=1 & i8=0 & i9=1 & i10=1 & i11=0 & i28=1 & i29=0 & i30=0 & i31=0 & i1=1 & c_is16=0 & Src1 & Src2 & Dst { c6000_unimpl_xormpy(); }
+
+:XPND2.M1 Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=1 & i7=1 & i8=0 & i9=0 & i10=0 & i11=0 & i13=1 & i14=0 & i15=0 & i16=1 & i17=1 & i1=0 & c_is16=0 & Cond & Src2 & Dst { c6000_unimpl_xpnd2(); }
+:XPND2.M2 Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=1 & i7=1 & i8=0 & i9=0 & i10=0 & i11=0 & i13=1 & i14=0 & i15=0 & i16=1 & i17=1 & i1=1 & c_is16=0 & Cond & Src2 & Dst { c6000_unimpl_xpnd2(); }
+
+:XPND4.M1 Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=1 & i7=1 & i8=0 & i9=0 & i10=0 & i11=0 & i13=0 & i14=0 & i15=0 & i16=1 & i17=1 & i1=0 & c_is16=0 & Cond & Src2 & Dst { c6000_unimpl_xpnd4(); }
+:XPND4.M2 Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=1 & i7=1 & i8=0 & i9=0 & i10=0 & i11=0 & i13=0 & i14=0 & i15=0 & i16=1 & i17=1 & i1=1 & c_is16=0 & Cond & Src2 & Dst { c6000_unimpl_xpnd4(); }
+

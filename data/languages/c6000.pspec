@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- TMS320C6000 processor specification. -->
+<processor_spec>
+  <properties>
+    <property key="c6000.packetSize" value="32"/>
+    <property key="c6000.delaySlotsBranch" value="5"/>
+    <property key="c6000.delaySlotsLoad" value="4"/>
+  </properties>
+</processor_spec>

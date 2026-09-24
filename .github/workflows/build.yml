@@ -1,0 +1,94 @@
+name: build
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # Update the Ghidra version here when a new 12.x release lands.
+        ghidra: [ "12.1.3" ]
+    env:
+      GHIDRA_VERSION: ${{ matrix.ghidra }}
+      GHIDRA_INSTALL_DIR: ${{ github.workspace }}/ghidra
+      GHIDRA_WORK: ${{ github.workspace }}/ghidra-work
+      # Ghidra 12 requires JDK 21 and rejects newer JDKs.
+      JAVA_HOME: ${{ github.workspace }}/jdk21
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install JDK 21
+        run: |
+          set -euo pipefail
+          curl -fsSL -o /tmp/jdk.tar.gz \
+            "https://api.adoptium.net/v3/binary/latest/21/ga/linux/x64/jdk/hotspot/normal/eclipse"
+          mkdir -p "$JAVA_HOME"
+          tar -xzf /tmp/jdk.tar.gz -C "$JAVA_HOME" --strip-components=1
+          "$JAVA_HOME/bin/java" -version
+
+      - name: Download Ghidra ${{ matrix.ghidra }}
+        run: |
+          set -euo pipefail
+          URL="https://github.com/NationalSecurityAgency/ghidra/releases/download/Ghidra_${GHIDRA_VERSION}_build/ghidra_${GHIDRA_VERSION}_PUBLIC_$(date +%Y%m%d).zip"
+          # The release asset date is not guessable; resolve it from the API.
+          URL=$(curl -fsSL "https://api.github.com/repos/NationalSecurityAgency/ghidra/releases" \
+                | grep -o 'https://[^"]*ghidra_'"${GHIDRA_VERSION}"'_PUBLIC_[0-9]*\.zip' | head -1)
+          [ -n "$URL" ] || { echo "no Ghidra ${GHIDRA_VERSION} release asset found"; exit 1; }
+          echo "downloading $URL"
+          curl -fsSL -o /tmp/ghidra.zip "$URL"
+          unzip -q /tmp/ghidra.zip -d /tmp/ghidra-extract
+          mv /tmp/ghidra-extract/ghidra_* "$GHIDRA_INSTALL_DIR"
+          ls "$GHIDRA_INSTALL_DIR/support/sleigh"
+
+      - name: Compile SLEIGH and build the extension
+        run: |
+          set -euo pipefail
+          # build.sh verifies that the zip contains the .sla files.  Without
+          # them the zip installs cleanly and then fails at import with
+          # "Unsupported language".
+          tools/build.sh
+
+      - name: Verify the zip contains both compiled languages
+        run: |
+          set -euo pipefail
+          ZIP=$(ls -t dist/*_C6000.zip | head -1)
+          unzip -l "$ZIP" | grep -E 'data/languages/c6000_(le|be)\.sla'
+          unzip -l "$ZIP" | grep -E 'data/languages/c6000\.opinion'
+          unzip -l "$ZIP" | grep -E 'C6000/lib/C6000\.jar'
+
+      - name: Install into the scratch Ghidra
+        run: |
+          set -euo pipefail
+          ZIP=$(ls -t dist/*_C6000.zip | head -1)
+          mkdir -p "$GHIDRA_INSTALL_DIR/Ghidra/Extensions"
+          rm -rf "$GHIDRA_INSTALL_DIR/Ghidra/Extensions/C6000"
+          unzip -q -o "$ZIP" -d "$GHIDRA_INSTALL_DIR/Ghidra/Extensions/"
+
+      - name: Smoke test - import and disassemble a synthetic image
+        run: |
+          set -euo pipefail
+          mkdir -p "$GHIDRA_WORK/home" "$GHIDRA_WORK/proj"
+          # A hand-assembled packet: MVK/MVKH, AND, MVK/MVKH, ZERO, MVC, B, ADDKPC.
+          printf '\x2a\x7e\xad\x07\x6a\xc0\x88\x07\xf2\x09\xbf\x07\x2a\x80\x34\x07' > "$GHIDRA_WORK/smoke.bin"
+          printf '\x6a\xc0\x08\x07\x5a\xa3\x00\x02\xa2\x03\x10\x09\xa2\x03\x10\x0a' >> "$GHIDRA_WORK/smoke.bin"
+          printf '\x2a\x40\x21\x02\x6a\xc0\x08\x02\x62\x03\x10\x00\x2a\x2d\x80\x28' >> "$GHIDRA_WORK/smoke.bin"
+          "$GHIDRA_INSTALL_DIR/support/analyzeHeadless" \
+            "$GHIDRA_WORK/proj" c6000-smoke \
+            -import "$GHIDRA_WORK/smoke.bin" \
+            -loader BinaryLoader -loader-baseAddr 0x11801da0 \
+            -processor C6000:LE:32:default -cspec default -noanalysis \
+            -scriptPath ghidra_scripts -postScript C6000CorpusTest.java image \
+            "$GHIDRA_WORK/smoke.bin" 0x11801da0 0 64 -overwrite \
+            2>&1 | tee "$GHIDRA_WORK/smoke.log"
+          grep -q "C6000_COVERAGE" "$GHIDRA_WORK/smoke.log"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ghidra-c6000-extension
+          path: dist/*_C6000.zip

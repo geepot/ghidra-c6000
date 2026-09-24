@@ -1,0 +1,31 @@
+// Ghidra extension build.
+//
+//   GHIDRA_INSTALL_DIR=/path/to/ghidra gradle buildExtension
+//
+// IMPORTANT: buildExtension does NOT compile SLEIGH.  Run
+// `$GHIDRA_INSTALL_DIR/support/sleigh data/languages/c6000_le.slaspec` (and
+// the big-endian variant) first, or use tools/build.sh, which enforces it and
+// verifies that the produced zip actually contains the .sla files.
+def ghidraInstallDir
+
+if (System.env.GHIDRA_INSTALL_DIR) {
+	ghidraInstallDir = System.env.GHIDRA_INSTALL_DIR
+}
+else if (project.hasProperty("GHIDRA_INSTALL_DIR")) {
+	ghidraInstallDir = project.getProperty("GHIDRA_INSTALL_DIR")
+}
+else {
+	throw new GradleException("Set GHIDRA_INSTALL_DIR (env or -P) to a Ghidra installation")
+}
+
+apply from: new File(ghidraInstallDir).getCanonicalPath() + "/support/buildExtension.gradle"
+
+// Keep local-only material out of the published archive.  .research/ holds the
+// SPRUFE8B-derived encoding table that tools/gen_decode.py reads; scratch/
+// holds build and test scratch space.  Neither belongs in a release zip.
+tasks.named("buildExtension") {
+	exclude ".research/**"
+	exclude "scratch/**"
+	exclude ".tmp/**"
+	exclude "tools/research/**"
+}

@@ -1,0 +1,12 @@
+# Build artifacts
+.gradle/
+build/
+dist/
+data/languages/*.sla
+/tmp/
+scratch/
+.research/
+
+# Editors / OS
+.DS_Store
+*.swp
