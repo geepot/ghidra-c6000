@@ -22,6 +22,7 @@ import ghidra.program.model.listing.Instruction;
 import ghidra.program.model.listing.InstructionIterator;
 import ghidra.program.model.listing.Listing;
 import ghidra.program.model.listing.Program;
+import ghidra.program.model.mem.MemoryAccessException;
 import ghidra.program.model.scalar.Scalar;
 import ghidra.util.exception.CancelledException;
 import ghidra.util.task.TaskMonitor;
@@ -109,6 +110,12 @@ public final class C6000SoftwareLoops {
 		int undecoded = missingBytes(program.getListing(), start, kernel);
 		String common = "ii=" + ii + ", " + kind + "; " + delay +
 			(undecoded == 0 ? "" : "; " + undecoded + " undecoded body byte(s)");
+		if (undecoded == 0) {
+			String body = describeBody(program, start, kernel);
+			if (body != null) {
+				common += "; " + body;
+			}
+		}
 		program.getBookmarkManager().setBookmark(start.getMinAddress(),
 			BookmarkType.INFO, CATEGORY,
 			"SPLOOP buffer ends at " + kernel.getMinAddress() + "; " + common);
@@ -132,6 +139,70 @@ public final class C6000SoftwareLoops {
 			stage |= ((encoded >>> (5 - bit)) & 1) << bit;
 		}
 		return "post-epilog fetch delay=(" + stage + " stages, " + cycle + " cycles)";
+	}
+
+	private static String describeBody(Program program, Instruction start,
+			Instruction kernel) {
+		Listing listing = program.getListing();
+		Instruction cursor = start;
+		try {
+			// Instructions parallel with SPLOOP execute once and are not
+			// loaded into the buffer (SPRUFE8B section 7.11.2).
+			while (parallelWithNext(program, cursor)) {
+				cursor = nextExecutable(listing, cursor);
+				if (cursor == null || cursor.getMinAddress().compareTo(
+						kernel.getMinAddress()) >= 0) {
+					return null;
+				}
+			}
+			cursor = nextExecutable(listing, cursor);
+			if (cursor == null || cursor.getMinAddress().compareTo(
+						kernel.getMinAddress()) > 0) {
+				return null;
+			}
+			Address bodyStart = cursor.getMinAddress();
+			int packets = 1;
+			while (cursor.getMinAddress().compareTo(kernel.getMinAddress()) < 0) {
+				boolean parallel = parallelWithNext(program, cursor);
+				cursor = nextExecutable(listing, cursor);
+				if (cursor == null || cursor.getMinAddress().compareTo(
+						kernel.getMinAddress()) > 0) {
+					return null;
+				}
+				if (!parallel) {
+					packets++;
+				}
+			}
+			return "source body=" + bodyStart + ".." + kernel.getMinAddress() +
+				", " + packets + " source execute packet(s)";
+		}
+		catch (MemoryAccessException e) {
+			return null;
+		}
+	}
+
+	private static Instruction nextExecutable(Listing listing, Instruction current) {
+		Instruction next = listing.getInstructionAfter(current.getMinAddress());
+		while (next != null && next.getMnemonicString().equals("CPKT")) {
+			next = listing.getInstructionAfter(next.getMinAddress());
+		}
+		return next;
+	}
+
+	private static boolean parallelWithNext(Program program, Instruction insn)
+			throws MemoryAccessException {
+		Address address = insn.getMinAddress();
+		if (insn.getLength() == 4) {
+			return (program.getMemory().getInt(address) & 1) != 0;
+		}
+		long packetBase = address.getOffset() & ~31L;
+		Address header = address.getNewAddress(packetBase + 28);
+		int headerWord = program.getMemory().getInt(header);
+		if ((headerWord >>> 28) != 0xe) {
+			throw new MemoryAccessException("missing compact packet header at " + header);
+		}
+		int slot = (int) ((address.getOffset() - packetBase) / 2);
+		return ((headerWord >>> slot) & 1) != 0;
 	}
 
 	private static int operand(Instruction insn) {

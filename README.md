@@ -175,8 +175,10 @@ unambiguous: `1110` in bits 31..28 is the reserved predication encoding
 
 ## Execute packets, delay slots and parallel semantics
 
-* Bit 0 of each word is the p-bit; `p=1` chains the next instruction into the
-  same execute packet. Execute packets cannot cross a fetch packet.
+* Bit 0 of each 32-bit opcode is its p-bit. A compact 16-bit instruction's
+  p-bit comes from bits 13–0 of its fetch-packet header. In either case,
+  `p=1` chains the next instruction into the same execute packet, including
+  across a fetch-packet boundary.
 * Instructions in an execute packet read pre-packet state and commit together.
   Ghidra has no notion of an execute packet, so each instruction is lifted on
   its own with its own reads and writes. This is the usual pragmatic model; it
@@ -286,8 +288,11 @@ it produces.
   `C6000SoftwareLoopAnalyzer` matches each disassembled loop start with its
   kernel boundary and adds Info bookmarks at both addresses. The bookmarks
   resolve the six-bit `SPKERNEL` field to stage/cycle delay using the loop's
-  initiation interval; `SPMASK` bookmarks list the affected functional units.
-  If an undecoded slot lies in the body, its byte count appears in the bookmark.
+  initiation interval and show the source body and execute-packet count;
+  `SPMASK` bookmarks list the affected functional units. Source packets from
+  different stages overlay the same buffer slots, so their count may exceed
+  the buffer's 14-entry capacity. If an undecoded slot lies in the body, its
+  byte count appears in the bookmark instead of an exact packet count.
   The hardware's repeated execute-packet schedule and stage-boundary `ILC`
   updates still require loop-buffer emulation. They are not ordinary PC branches
   and are not reproduced by the decompiler's control-flow graph.
