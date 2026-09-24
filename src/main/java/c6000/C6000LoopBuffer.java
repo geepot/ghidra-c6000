@@ -11,7 +11,9 @@ package c6000;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 import java.util.function.IntPredicate;
@@ -45,13 +47,16 @@ public final class C6000LoopBuffer {
 		public final int sourceCycle;
 		public final int iteration;
 		public final Origin origin;
+		/** Issue time is retained, but the emulator must not execute this instruction's p-code. */
+		public final boolean idleOnly;
 
 		private Operation(Instruction instruction, int sourceCycle, int iteration,
-				Origin origin) {
+				Origin origin, boolean idleOnly) {
 			this.instruction = instruction;
 			this.sourceCycle = sourceCycle;
 			this.iteration = iteration;
 			this.origin = origin;
+			this.idleOnly = idleOnly;
 		}
 	}
 
@@ -104,7 +109,7 @@ public final class C6000LoopBuffer {
 			for (Instruction insn : packet) {
 				String name = insn.getMnemonicString();
 				if (!name.contains("SPMASK") && !name.equals("CPKT")) {
-					merged.add(new Operation(insn, -1, postBodyCycle, Origin.PROGRAM));
+					merged.add(new Operation(insn, -1, postBodyCycle, Origin.PROGRAM, false));
 				}
 			}
 			for (Operation op : operations) {
@@ -168,11 +173,13 @@ public final class C6000LoopBuffer {
 	private final Address bodyStart;
 	private final int sourcePackets;
 	private final List<SourceCycle> source;
+	private final Set<Address> protectedLoads;
 	private final boolean reloadable;
 	private final int fetchDelay;
 
 	private C6000LoopBuffer(Kind kind, int ii, Address loopStart, Address bodyStart,
-			int sourcePackets, List<SourceCycle> source, boolean reloadable,
+			int sourcePackets, List<SourceCycle> source, Set<Address> protectedLoads,
+			boolean reloadable,
 			int fetchDelay) {
 		this.kind = kind;
 		this.ii = ii;
@@ -180,6 +187,7 @@ public final class C6000LoopBuffer {
 		this.bodyStart = bodyStart;
 		this.sourcePackets = sourcePackets;
 		this.source = source;
+		this.protectedLoads = protectedLoads;
 		this.reloadable = reloadable;
 		this.fetchDelay = fetchDelay;
 	}
@@ -187,6 +195,8 @@ public final class C6000LoopBuffer {
 	public Kind kind() { return kind; }
 	public int initiationInterval() { return ii; }
 	public int dynamicLength() { return source.size(); }
+	/** Number of source loads carrying the compact fetch header's PROT delay. */
+	public int protectedLoadCount() { return protectedLoads.size(); }
 	/** Unit mask issued by the source packet in this cycle, or zero afterward. */
 	public int sourceMaskAt(int cycle) {
 		return cycle >= 0 && cycle < source.size() ? source.get(cycle).unitMask : 0;
@@ -234,6 +244,7 @@ public final class C6000LoopBuffer {
 		}
 		Address bodyStart = cursor.getMinAddress();
 		List<SourceCycle> cycles = new ArrayList<>();
+		Set<Address> protectedLoads = new HashSet<>();
 		int packets = 0;
 		while (cursor != null && cursor.getMinAddress().compareTo(kernel.getMinAddress()) <= 0) {
 			List<Instruction> packet = new ArrayList<>();
@@ -261,7 +272,9 @@ public final class C6000LoopBuffer {
 			for (Instruction insn : packet) {
 				String mnemonic = insn.getMnemonicString();
 				if (mnemonic.contains("SPMASK")) mask |= scalar(insn) & 0xff;
-				if (mnemonic.equals("NOP")) duration = Math.max(duration, scalar(insn) + 1);
+				boolean protectedLoad = isProtectedLoad(program, insn);
+				if (protectedLoad) protectedLoads.add(insn.getMinAddress());
+				duration = Math.max(duration, instructionCycles(insn, protectedLoad));
 			}
 			List<Instruction> programOps = new ArrayList<>();
 			List<Instruction> bufferedOps = new ArrayList<>();
@@ -285,7 +298,7 @@ public final class C6000LoopBuffer {
 		boolean reloadable = kind != Kind.SPLOOPW &&
 			(name.startsWith("[") || kernel.getMnemonicString().contains("SPKERNELR"));
 		return new C6000LoopBuffer(kind, ii, start.getMinAddress(), bodyStart,
-			packets, List.copyOf(cycles),
+			packets, List.copyOf(cycles), Set.copyOf(protectedLoads),
 			reloadable, kernel.getMnemonicString().contains("SPKERNELR") ? 0 :
 			fetchDelay(ii, scalar(kernel)));
 	}
@@ -333,7 +346,6 @@ public final class C6000LoopBuffer {
 	 */
 	public ReplayResult replayCountedRestart(long restoredIlc, int maxCycles,
 			Consumer<Cycle> sink, IntPredicate pendingInterruptAtCycle) {
-		checkRestartDelays();
 		return replayCounted(restoredIlc, maxCycles, sink,
 			pendingInterruptAtCycle, true);
 	}
@@ -434,7 +446,6 @@ public final class C6000LoopBuffer {
 	public ReplayResult replayWhileRestart(long restoredIlc, int maxCycles,
 			Consumer<Cycle> sink, BooleanSupplier continuePredicate,
 			IntPredicate pendingInterruptAtCycle) {
-		checkRestartDelays();
 		return replayWhile(restoredIlc, maxCycles, sink, continuePredicate,
 			pendingInterruptAtCycle, true);
 	}
@@ -489,18 +500,33 @@ public final class C6000LoopBuffer {
 			if (iteration == 0) {
 				// The source is fetched once, including its SPMASKed setup code.
 				for (Instruction insn : cell.program) {
-					boolean masked = (unitBit(insn.getMnemonicString()) &
-						cell.unitMask) != 0;
-					if (restart ? !initiallyZero && !masked :
-						!initiallyZero || masked) {
-						ops.add(new Operation(insn, s, 0, Origin.PROGRAM));
+					String name = insn.getMnemonicString();
+					boolean masked = (unitBit(name) & cell.unitMask) != 0;
+					if (restart) {
+						if (initiallyZero) continue;
+						// Displacement BNOP is treated as masked even though it
+						// uses no unit. Other masked delay instructions also keep
+						// their idle cycles on return.
+						boolean displacementBnop = name.contains("BNOP") &&
+							insn.getScalar(0) != null;
+						if (displacementBnop || (masked &&
+							(name.contains("BNOP") || name.contains("ADDKPC") ||
+							protectedLoads.contains(insn.getMinAddress())))) {
+							ops.add(new Operation(insn, s, 0, Origin.PROGRAM, true));
+						}
+						else if (!masked) {
+							ops.add(new Operation(insn, s, 0, Origin.PROGRAM, false));
+						}
+					}
+					else if (!initiallyZero || masked) {
+						ops.add(new Operation(insn, s, 0, Origin.PROGRAM, false));
 					}
 				}
 			}
 			else if (iteration <= finalIteration && !initiallyZero) {
 				for (Instruction insn : cell.buffered) {
 					if ((unitBit(insn.getMnemonicString()) & memoryMask) == 0) {
-						ops.add(new Operation(insn, s, iteration, Origin.BUFFER));
+						ops.add(new Operation(insn, s, iteration, Origin.BUFFER, false));
 					}
 				}
 			}
@@ -508,17 +534,38 @@ public final class C6000LoopBuffer {
 		return ops;
 	}
 
-	private void checkRestartDelays() {
-		for (SourceCycle cell : source) {
-			for (Instruction insn : cell.program) {
-				String name = insn.getMnemonicString();
-				if (name.contains("BNOP") || name.contains("ADDKPC")) {
-					throw new UnsupportedOperationException(
-						"restart delay-slot operation needs an idle-cycle model at " +
-						insn.getMinAddress());
-				}
-			}
+	private static int instructionCycles(Instruction insn, boolean protectedLoad) {
+		if (protectedLoad) return 5;
+		String name = insn.getMnemonicString();
+		int operand;
+		if (name.equals("NOP")) operand = 0;
+		else if (name.contains("BNOP")) operand = 1;
+		else if (name.contains("ADDKPC")) operand = 2;
+		else return 1;
+		Scalar count = insn.getScalar(operand);
+		if (count != null) return (int) count.getUnsignedValue() + 1;
+		// The compact BNOP encoding with a fixed count of five has no Scalar
+		// object; Ghidra renders its literal operand as decimal text.
+		String rendered = insn.getDefaultOperandRepresentation(operand);
+		if (rendered != null && rendered.matches("[0-7]")) {
+			return Integer.parseInt(rendered) + 1;
 		}
+		throw new IllegalArgumentException("missing idle count at " +
+			insn.getMinAddress());
+	}
+
+	private static boolean isProtectedLoad(Program program, Instruction insn)
+			throws MemoryAccessException {
+		String name = insn.getMnemonicString();
+		int predicateEnd = name.indexOf(']');
+		if (predicateEnd >= 0) name = name.substring(predicateEnd + 1);
+		if (!name.startsWith("LD")) return false;
+		Address address = insn.getMinAddress();
+		Address headerAddress = address.getNewAddress(
+			(address.getOffset() & ~31L) + 28);
+		if (!program.getMemory().contains(headerAddress)) return false;
+		int header = program.getMemory().getInt(headerAddress);
+		return (header >>> 28) == 0xe && (header & (1 << 20)) != 0;
 	}
 
 	private static int scalar(Instruction insn) {

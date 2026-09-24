@@ -22,6 +22,7 @@ public class C6000LoopModelTest extends GhidraScript {
 		int unsupported = 0;
 		int replayed = 0;
 		int whileInterruptExits = 0;
+		int protectedSourceLoads = 0;
 		Instruction maskProbe = null;
 		InstructionIterator maskInstructions = currentProgram.getListing().getInstructions(true);
 		while (maskInstructions.hasNext()) {
@@ -37,6 +38,7 @@ public class C6000LoopModelTest extends GhidraScript {
 		AtomicInteger maskedOverlays = new AtomicInteger();
 		AtomicInteger maskedSourceOps = new AtomicInteger();
 		AtomicInteger restartBufferOpsThroughMask = new AtomicInteger();
+		AtomicInteger restartIdleOps = new AtomicInteger();
 		InstructionIterator instructions = currentProgram.getListing().getInstructions(true);
 		while (instructions.hasNext()) {
 			monitor.checkCancelled();
@@ -58,6 +60,7 @@ public class C6000LoopModelTest extends GhidraScript {
 					throw new AssertionError("wrong interrupt return packet");
 				}
 				parsed++;
+				protectedSourceLoads += buffer.protectedLoadCount();
 				int ii = buffer.initiationInterval();
 				int dynlen = buffer.dynamicLength();
 				if (buffer.kind() == C6000LoopBuffer.Kind.SPLOOPW) {
@@ -124,7 +127,7 @@ public class C6000LoopModelTest extends GhidraScript {
 					AtomicInteger restartedSamples = new AtomicInteger();
 					ReplayResult restarted = buffer.replayWhileRestart(whileHandoff.ilc, 512,
 						cycle -> checkRestartMasks(buffer, cycle,
-							restartBufferOpsThroughMask),
+							restartBufferOpsThroughMask, restartIdleOps),
 						() -> restartedSamples.getAndIncrement() < 2 * ii,
 						cycle -> false);
 					if (restarted.outcome != Outcome.COMPLETE ||
@@ -263,8 +266,8 @@ public class C6000LoopModelTest extends GhidraScript {
 					}
 					ReplayResult restarted = buffer.replayCountedRestart(2, 512,
 						cycle -> {
-							checkRestartMasks(buffer, cycle,
-								restartBufferOpsThroughMask);
+						checkRestartMasks(buffer, cycle,
+								restartBufferOpsThroughMask, restartIdleOps);
 							if (cycle.number == 0 && cycle.ilcBefore != 1) {
 								throw new AssertionError("restart did not initially decrement ILC");
 							}
@@ -304,18 +307,30 @@ public class C6000LoopModelTest extends GhidraScript {
 			" maskOverlays=" + maskedOverlays.get() +
 			" whileInterruptExits=" + whileInterruptExits +
 			" maskedSourceOps=" + maskedSourceOps.get() +
+			" protectedSourceLoads=" + protectedSourceLoads +
+			" restartIdleOps=" + restartIdleOps.get() +
 			" restartBufferOpsThroughMask=" +
 			restartBufferOpsThroughMask.get());
 	}
 
 	private static void checkRestartMasks(C6000LoopBuffer buffer,
-			C6000LoopBuffer.Cycle cycle, AtomicInteger bufferOpsThroughMask) {
+			C6000LoopBuffer.Cycle cycle, AtomicInteger bufferOpsThroughMask,
+			AtomicInteger restartIdleOps) {
 		for (C6000LoopBuffer.Operation op : cycle.operations) {
+			if (op.idleOnly) {
+				if (op.origin != C6000LoopBuffer.Origin.PROGRAM) {
+					throw new AssertionError("idle-only buffered operation");
+				}
+				restartIdleOps.incrementAndGet();
+			}
 			int mask = buffer.sourceMaskAt(op.origin == C6000LoopBuffer.Origin.PROGRAM ?
 				op.sourceCycle : cycle.number);
 			if ((unitBit(op.instruction.getMnemonicString()) & mask) == 0) continue;
 			if (op.origin == C6000LoopBuffer.Origin.PROGRAM) {
-				throw new AssertionError("restart executed SPMASKed program operation");
+				if (!op.idleOnly) {
+					throw new AssertionError("restart executed SPMASKed program operation");
+				}
+				continue;
 			}
 			bufferOpsThroughMask.incrementAndGet();
 		}
