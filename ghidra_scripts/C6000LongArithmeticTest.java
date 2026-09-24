@@ -58,9 +58,9 @@ public class C6000LongArithmeticTest extends GhidraScript {
 				String dst = i < 2 ? "A2" : (i < 5 ? "A3" : "A5_A4");
 				long actual = emulator.readRegister(dst).longValue();
 				if (actual != EXPECTED[i]) {
-				for (PcodeOp op : insn.getPcode()) {
-					println("C6000_LONG_ARITH_PCODE " + op);
-				}
+					for (PcodeOp op : insn.getPcode()) {
+						println("C6000_LONG_ARITH_PCODE " + op);
+					}
 					throw new AssertionError("fixture " + i + ": " + dst + "=0x" +
 						Long.toHexString(actual) + " expected=0x" +
 						Long.toHexString(EXPECTED[i]));

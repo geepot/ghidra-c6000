@@ -352,6 +352,11 @@ def main():
                     elif mnem in SEMANTIC_MNEMONICS:
                         args = ", ".join(o for o in (ops or []) if not o.startswith(chr(34)))
                         macro = "c6000_sem_%s" % mnem.lower()
+                        if mnem in {"SPINT", "SPTRUNC"}:
+                            macro = "c6000_sem_sp_to_int"
+                            args += ", %d, %d" % (
+                                0 if suffix == ".1" else 16,
+                                0 if mnem == "SPINT" else 1)
                         if mnem == "MPY32":
                             macro += "_64" if ops[-1] == "DstPair" else "_32"
                         if mnem in {"CLR", "EXT", "EXTU", "SET"} and "src1" in names:

@@ -97,7 +97,6 @@ define pcodeop c6000_unimpl_smpyhl;
 define pcodeop c6000_unimpl_smpylh;
 define pcodeop c6000_unimpl_spack2;
 define pcodeop c6000_unimpl_spacku4;
-define pcodeop c6000_unimpl_spint;
 define pcodeop c6000_unimpl_sshvl;
 define pcodeop c6000_unimpl_sshvr;
 define pcodeop c6000_unimpl_ssub;

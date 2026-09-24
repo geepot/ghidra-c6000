@@ -31,6 +31,9 @@ First public release.
   run-time library built with the TI C6000 code generation tools.
 
 ### Fixed
+* `SPINT` and `SPTRUNC` now use the `.L1`/`.L2` FADCR rounding mode and update
+  conversion warning bits, including exceptional inputs. `SPINT` no longer
+  lifts to an unimplemented-operation placeholder.
 * `NORM` now distinguishes 32-bit and 40-bit sources, counts the 40-bit sign
   width correctly, and `SUBU` writes its signed 40-bit result to a register
   pair. Both have executable p-code instead of placeholders.
