@@ -147,6 +147,7 @@ def con(disp, pat, sem):
     if disp.startswith(("LDDW", "STDW", "LDNDW", "STNDW")):
         disp = disp.replace("RT65", "RT65Pair")
         pat = [term.replace("RT65", "RT65Pair") for term in pat]
+        sem = sem.replace("RT65", "RT65Pair")
         disp = disp.replace("RT710", "RT710Pair")
         pat = [term.replace("RT710", "RT710Pair") for term in pat]
     # A concatenated literal space remains part of Ghidra's mnemonic field.
@@ -341,17 +342,17 @@ for suf in SUFFIXES["65"]:
     for index in range(4):
         even = base + 2 * index
         w('RT65Pair: "%s%d:%s%d" is q_r2b=%d & q_t=%d & c_rs=%d '
-          '{ export %s%d; }' %
+          '{ export %s%d_%s%d; }' %
           (suf[0].upper(), even + 1, suf[0].upper(), even,
-           index, side, rs, suf[0].upper(), even))
+           index, side, rs, suf[0].upper(), even + 1, suf[0].upper(), even))
 w("")
 reg_table("RPTR", "87", "s")
 reg_table("RT710", "710", "tn")
 for file, side in (("A", 0), ("B", 1)):
     for even in range(0, 16, 2):
         w('RT710Pair: "%s%d:%s%d" is q_pair710=%d & q_t=%d '
-          '{ export %s%d; }' %
-          (file, even + 1, file, even, even, side, file, even))
+          '{ export %s%d_%s%d; }' %
+          (file, even + 1, file, even, even, side, file, even + 1, file, even))
 w("")
 reg_table("RB710", "710b", "br")
 w("# Accumulator (A0/B0) and link register (A3/B3) named by the s bit.")
@@ -479,8 +480,8 @@ def ldst_info(v, sz, na=None):
 
 
 def ld_sem(reg, addr, size, sign):
-    if size == 4:
-        return "%s = *[ram]:4 %s;" % (reg, addr)
+    if size >= 4:
+        return "%s = *[ram]:%d %s;" % (reg, size, addr)
     if sign == "s":
         return "%s = sext(*[ram]:%d %s);" % (reg, size, addr)
     return "%s = zext(*[ram]:%d %s);" % (reg, size, addr)
@@ -558,7 +559,7 @@ def emit_one(pat, mem_kind, imm, v, info, na, sz):
                 else:
                     sem = st_sem(reg, addr, size)
             else:
-                sem = unimpl()
+                sem = ld_sem(reg, addr, size, sign) if ldst else st_sem(reg, addr, size)
             if ldst:
                 disp = "%s^CUnitD^\" \"^%s^\", \"^%s" % (mn, memdisp, reg)
             else:
@@ -572,7 +573,7 @@ def emit_one(pat, mem_kind, imm, v, info, na, sz):
             if size <= 4:
                 sem = ld_sem(reg, addr, size, sign) if ldst else st_sem(reg, addr, size)
             else:
-                sem = unimpl()
+                sem = ld_sem(reg, addr, size, sign) if ldst else st_sem(reg, addr, size)
             if ldst:
                 disp = "%s^CUnitD^\" \"^%s^\", \"^%s" % (mn, memdisp, reg)
             else:
@@ -590,7 +591,12 @@ def emit_one(pat, mem_kind, imm, v, info, na, sz):
                     sem = "%s RPTR = RPTR + (%s << %d);" % (
                         st_sem(reg, "RPTR", size), imm, shift)
             else:
-                sem = unimpl()
+                if ldst:
+                    sem = "%s RPTR = RPTR + (%s << %d);" % (
+                        ld_sem(reg, "RPTR", size, sign), imm, shift)
+                else:
+                    sem = "%s RPTR = RPTR + (%s << %d);" % (
+                        st_sem(reg, "RPTR", size), imm, shift)
             if ldst:
                 disp = "%s^CUnitD^\" \"^%s^\", \"^%s" % (mn, memdisp, reg)
             else:
@@ -608,7 +614,12 @@ def emit_one(pat, mem_kind, imm, v, info, na, sz):
                     sem = "RPTR = RPTR - (%s << %d); %s" % (
                         imm, shift, st_sem(reg, "RPTR", size))
             else:
-                sem = unimpl()
+                if ldst:
+                    sem = "RPTR = RPTR - (%s << %d); %s" % (
+                        imm, shift, ld_sem(reg, "RPTR", size, sign))
+                else:
+                    sem = "RPTR = RPTR - (%s << %d); %s" % (
+                        imm, shift, st_sem(reg, "RPTR", size))
             if ldst:
                 disp = "%s^CUnitD^\" \"^%s^\", \"^%s" % (mn, memdisp, reg)
             else:
@@ -734,7 +745,10 @@ for dw, ldst, suf, upd in ((0, 0, "W", "B15 = B15 - (Cucst2pp << 2);"),
         else:
             disp = "%s^CUnitD^\" \"^RT710^\", \"^%s" % (mn, memdisp)
     else:
-        sem = unimpl()
+        if ldst:
+            sem = "B15 = B15 + (Cucst2pp << 3); RT710Pair = *[ram]:8 B15;"
+        else:
+            sem = "*[ram]:8 B15 = RT710Pair; B15 = B15 - (Cucst2pp << 3);"
         if ldst:
             disp = "%s^CUnitD^\" \"^%s^\", \"^RT710" % (mn, memdisp)
         else:
@@ -852,7 +866,9 @@ w("")
 for sat in (0, 1):
     for op, base in ((0, "MPY"), (1, "MPYH"), (2, "MPYLH"), (3, "MPYHL")):
         mn = ("S" + base) if sat else base
-        sem = "RA1110 = RA15 * RX97;" if (sat == 0 and op == 0) else unimpl()
+        sem = ("local a:4 = (RA15 << 16) s>> 16; "
+               "local b:4 = (RX97 << 16) s>> 16; RA1110 = a * b;") \
+              if (sat == 0 and op == 0) else unimpl()
         con("%s^CUnitM RA15, RX97, RA1110" % mn,
             ["j4=1", "j3=1", "j2=1", "j1=1", "j6=%d" % ((op >> 1) & 1), "j5=%d" % (op & 1),
              "c_sat=%d" % sat, "RA15", "RX97", "RA1110"], sem)
@@ -988,7 +1004,8 @@ w("# ---------------------------------------------------------------------------
 w("")
 con("EXTU^CUnitS RA97, Cucst5f23, 31, CAcc",
     ["j10=0", "j4=0", "j3=0", "j2=0", "j1=1", "c_br=0", "j6=0", "j5=0",
-     "RA97", "Cucst5f23", "CAcc"], unimpl())
+     "RA97", "Cucst5f23", "CAcc"],
+    "CAcc = (RA97 << Cucst5f23) >> 31;")
 con("SET^CUnitS RA97, Cucst5d, Cucst5f23, RB97",
     ["j10=0", "j4=0", "j3=0", "j2=0", "j1=1", "c_br=0", "j6=0", "j5=1",
      "RA97", "Cucst5d", "Cucst5f23", "RB97"],
@@ -1005,9 +1022,11 @@ w("# ---------------------------------------------------------------------------
 w("")
 for op, mn, a, b in ((0, "EXT", 16, 16), (1, "EXT", 24, 24),
                      (2, "EXTU", 16, 16), (3, "EXTU", 24, 24)):
+    shift = "s>>" if mn == "EXT" else ">>"
     con("%s^CUnitS RA97, %d, %d, RA15" % (mn, a, b),
         ["j10=0", "j6=1", "j5=1", "j4=0", "j3=0", "j2=0", "j1=1", "c_br=0",
-         "j12=%d" % ((op >> 1) & 1), "j11=%d" % (op & 1), "RA97", "RA15"], unimpl())
+         "j12=%d" % ((op >> 1) & 1), "j11=%d" % (op & 1), "RA97", "RA15"],
+        "RA15 = (RA97 << %d) %s %d;" % (a, shift, b))
 w("")
 
 w("# ---------------------------------------------------------------------------")
@@ -1043,7 +1062,7 @@ con('ADD^CUnitS^" -1, "^RA97^", "^RB97',
      "c_br=0", "j15=0", "j14=1", "j13=1", "RA97", "RB97"], "RB97 = RA97 - 1;")
 con('MVC^CUnitS RA97^", ILC"',
     ["j12=1", "j11=1", "j10=0", "j6=1", "j5=1", "j4=0", "j3=1", "j2=1", "j1=1",
-     "c_br=0", "j15=1", "j14=1", "j13=0", "q_s=1", "RA97"], unimpl())
+     "c_br=0", "j15=1", "j14=1", "j13=0", "q_s=1", "RA97"], "ILC = RA97;")
 w("")
 
 w("# ---------------------------------------------------------------------------")
@@ -1054,7 +1073,7 @@ w("# ---------------------------------------------------------------------------
 w("")
 con("BNOP^CUnitS RB710, CN3",
     ["j12=0", "j11=0", "j6=1", "j5=1", "j4=0", "j3=1", "j2=1", "j1=1",
-     "RB710", "CN3"], unimpl())
+     "RB710", "CN3"], "goto [RB710];")
 w("")
 
 # ===========================================================================

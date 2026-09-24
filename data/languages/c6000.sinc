@@ -29,6 +29,20 @@ define space register  type=register_space size=4;
 # pointer (FP) by the C6000 ABI.
 # ---------------------------------------------------------------------------
 
+@if ENDIAN == "big"
+# In big-endian register space the odd word must precede the even word so
+# an overlapping 64-bit pair still has the even register as its low half.
+define register offset=0x0000 size=4
+  [ A1  A0  A3  A2  A5  A4  A7  A6
+    A9  A8  A11 A10 A13 A12 A15 A14
+    A17 A16 A19 A18 A21 A20 A23 A22
+    A25 A24 A27 A26 A29 A28 A31 A30 ];
+define register offset=0x1000 size=4
+  [ B1  B0  B3  B2  B5  B4  B7  B6
+    B9  B8  B11 B10 B13 B12 B15 B14
+    B17 B16 B19 B18 B21 B20 B23 B22
+    B25 B24 B27 B26 B29 B28 B31 B30 ];
+@else
 define register offset=0x0000 size=4
   [ A0  A1  A2  A3  A4  A5  A6  A7
     A8  A9  A10 A11 A12 A13 A14 A15
@@ -40,6 +54,15 @@ define register offset=0x1000 size=4
     B8  B9  B10 B11 B12 B13 B14 B15
     B16 B17 B18 B19 B20 B21 B22 B23
     B24 B25 B26 B27 B28 B29 B30 B31 ];
+@endif
+
+# Overlapping doubleword views preserve the architectural odd:even order.
+define register offset=0x0000 size=8
+  [ A1_A0 A3_A2 A5_A4 A7_A6 A9_A8 A11_A10 A13_A12 A15_A14
+    A17_A16 A19_A18 A21_A20 A23_A22 A25_A24 A27_A26 A29_A28 A31_A30 ];
+define register offset=0x1000 size=8
+  [ B1_B0 B3_B2 B5_B4 B7_B6 B9_B8 B11_B10 B13_B12 B15_B14
+    B17_B16 B19_B18 B21_B20 B23_B22 B25_B24 B27_B26 B29_B28 B31_B30 ];
 
 # ---------------------------------------------------------------------------
 # Control registers
@@ -103,6 +126,8 @@ define token insn32 (32)
   # five-bit register fields, A-side view, and B-side view of the same bits
   ra_dst=(23,27)  rb_dst=(23,27)
   pair_index=(24,27)
+  src2_pair_index=(19,22)
+  src1_pair_index=(14,17)
   ra_src1=(13,17) rb_src1=(13,17)
   ra_src2=(18,22) rb_src2=(18,22)
   ra_src=(18,22)  rb_src=(18,22)
@@ -117,7 +142,7 @@ define token insn32 (32)
   # operand fields
   xbit=(12,12)  ybit=(7,7)  hbit=(6,6)  nbit=(12,12)
   scbit=(23,23) nabit=(5,5)  rbit=(8,8)
-  ucst5=(13,17) scst5=(13,17) cst5=(13,17)
+  ucst5=(13,17) scst5=(13,17) signed cst5=(13,17)
   cst5_hi=(18,22) crf_dst=(23,27)
   csta=(13,17)  cstb=(8,12)
   cst16=(7,22)  cst21=(7,27) signed  ucst15=(8,22)
@@ -125,6 +150,7 @@ define token insn32 (32)
   mode=(9,12)   offr=(13,17)  off15=(8,22)  off4=(5,8)
   fstg=(13,15)  fcyc=(11,12)
   bnopd=(16,27) signed  bnopc=(13,15)
+  scst10=(13,22) signed
   ii=(23,27)
   spmask=(18,25)  kfstg=(22,27)
   hdr_layout=(21,27) hdr_exp=(14,20) hdr_pbits=(0,13)
@@ -298,11 +324,8 @@ Src1: rb_src1 is rb_src1 & i1=1 { export rb_src1; }
 Dst: ra_dst is ra_dst & i1=0 { export ra_dst; }
 Dst: rb_dst is rb_dst & i1=1 { export rb_dst; }
 
-Src: ra_src is ra_src & i1=0 { export ra_src; }
-Src: rb_src is rb_src & i1=1 { export rb_src; }
-
 # .D stores encode their data source in bits 27..23, whereas baseR occupies
-# bits 22..18.  Keep this separate from the general Src table above.
+# bits 22..18.
 StoreSrc: ra_dst is ra_dst & i1=0 { export ra_dst; }
 StoreSrc: rb_dst is rb_dst & i1=1 { export rb_dst; }
 
@@ -322,6 +345,7 @@ CtlDst: crf_dst is crf_dst { export crf_dst; }
 
 UCst5:  ucst5  is ucst5  { export *[const]:4 ucst5; }
 Cst5:   cst5   is cst5   { export *[const]:4 cst5; }
+SCst5:  scst5  is scst5 { export *[const]:4 scst5; }
 Cst5Hi: cst5_hi is cst5_hi { export *[const]:4 cst5_hi; }
 UCst15: ucst15 is ucst15 { export *[const]:4 ucst15; }
 Csta:   csta   is csta   { export *[const]:4 csta; }
@@ -343,6 +367,10 @@ BranchTarget: reloc is cst21
 # BNOP displacement target (SPRUFE8B figure F-10, BNOP execution block).
 BnopTgt: reloc is bnopd
   [ reloc = (inst_start & 0xffffffe0) + (bnopd * 4); ] { export *[const]:4 reloc; }
+
+# BDEC/BPOS encode a signed ten-bit fetch-packet-relative branch displacement.
+BdecTgt: reloc is scst10
+  [ reloc = (inst_start & 0xffffffe0) + (scst10 << 2); ] { export *[const]:4 reloc; }
 
 # ---------------------------------------------------------------------------
 # .D unit addressing modes - SPRUFE8B Table C-3 / section 3.9.3

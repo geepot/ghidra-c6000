@@ -22,12 +22,12 @@ below show both the decoded instructions and the remaining gaps.
 |---|---|
 | 32-bit instruction decode (mnemonic, unit, operands, length) | broad SPRUFE8B §3.12 coverage, plus legacy `MVC`; some words remain undecoded |
 | Instruction lengths and execute-packet framing | 2/4-byte lengths and compact layout context; execute packets are not atomic |
-| Branch / call targets (`B`, `BNOP`, `CALLP`) | modelled, PCE1-relative per the manual; `BDEC` and `BPOS` are placeholders |
+| Branch / call targets (`B`, `BNOP`, `CALLP`, `BDEC`, `BPOS`) | modelled, PCE1-relative per the manual |
 | Compact 16-bit fetch packets | most observed slots decode, driven by packet-header context (see below) |
-| P-code semantics | integer ALU, immediates, bit-field operations, linear address arithmetic, scalar loads/stores, scalar single-precision arithmetic and conversions, compares, shifts, branches/calls, `MVC` |
+| P-code semantics | integer ALU and common multiplies, immediates, bit-field operations, linear address arithmetic, scalar and doubleword loads/stores, single-precision arithmetic and conversions, selected double-precision arithmetic and conversions, compares, shifts, branches/calls, `MVC` |
 | Other decoded instructions | lift to `c6000_unimpl_<mnemonic>` (32-bit) or `c6000_unimplemented` (compact) |
 | Function ID | generation script shipped; database not shipped (TI licence) |
-| Double-precision floating point, integer `.M` multiply, packed 8/16-bit arithmetic, Galois, SPLOOP buffer internals | decode only |
+| Remaining double-precision floating point, advanced integer `.M` multiply, packed 8/16-bit arithmetic, Galois, SPLOOP buffer internals | decode only |
 
 Unimplemented instructions are **explicit, greppable placeholders**, not
 silently wrong data flow. `C6000CorpusTest.java` counts how often each is
@@ -43,15 +43,15 @@ C6000CorpusTest.java stage1   # or stage2
 
 | Corpus (first 12,288 / 131,072 bytes) | Bytes decoded | Instructions | Compact 16-bit | Headers | Unimplemented p-code | Undecoded slots | Byte coverage |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| CDJ-2000NXS stage 1, base `0x11801da0` | 11,318 | 3,175 | 691 | 161 | 263 (8%) | 244 | **92.1%** |
-| CDJ-2000NXS stage 2, base `0xC0000000` | 130,802 | 36,510 | 7,619 | 2,209 | 2,168 (5%) | 95 | **99.8%** |
+| CDJ-2000NXS stage 1, base `0x11801da0` | 11,318 | 3,175 | 691 | 161 | 88 (2%) | 244 | **92.1%** |
+| CDJ-2000NXS stage 2, base `0xC0000000` | 130,802 | 36,510 | 7,619 | 2,209 | 719 (1%) | 95 | **99.8%** |
 
 Full-payload linear sweeps also completed with no zero-width p-code operands:
 
 | Corpus | Payload bytes | Bytes decoded | Instructions | Unimplemented p-code | Undecoded slots | Byte coverage |
 |---|---:|---:|---:|---:|---:|---:|
-| Stage 1 | 55,120 | 40,694 | 10,532 | 1,934 (18%) | 3,611 | **73.8%** |
-| Stage 2 | 361,248 | 335,562 | 91,317 | 4,435 (4%) | 6,484 | **92.9%** |
+| Stage 1 | 55,120 | 40,550 | 10,496 | 1,185 (11%) | 3,647 | **73.6%** |
+| Stage 2 | 361,248 | 335,562 | 91,317 | 1,039 (1%) | 6,484 | **92.9%** |
 
 `CPKT` headers now decode as named 4-byte rows. Undecoded slots remain: the
 stage 1 window is mostly `0xffffffff` fill/data, with a few unknown compact
@@ -262,9 +262,14 @@ it produces.
   load/store effective addresses use linear mode, with size scaling and
   pre/post register updates. Base writes occur after the memory transfer so a
   store using the same register for its source and base reads the old value.
-* **Integer `.M` multiply, double-precision floating point, packed 8/16-bit,
-  Galois, and doubleword memory semantics** are placeholders. `MVC` uses distinct control registers
-  in its 32-bit forms; compact `MVC` is still a placeholder.
+* **Advanced integer `.M` multiply, remaining double-precision floating point,
+  packed 8/16-bit, and Galois semantics** are placeholders. Common 16-bit signed,
+  unsigned and mixed-sign multiplies and `MPYLI` are modelled. Doubleword
+  loads and stores transfer an overlapping 64-bit register pair. Selected
+  double-precision arithmetic, comparisons and conversions use the same pair
+  views; floating-point status register side effects remain unmodelled. `MVC` uses
+  distinct control registers in its 32-bit forms; the compact `MVC` to `ILC`
+  is also modelled.
 * **`SPLOOP` buffer execution** is not modelled: the loop buffer is a
   microarchitectural structure with no program-counter effect, so the SPLOOP
   control instructions lift to placeholders rather than to a branch.

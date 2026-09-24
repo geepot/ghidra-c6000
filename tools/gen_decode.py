@@ -38,7 +38,7 @@ MEMORY_SUFFIX = {
     "LDB": "B", "LDBU": "B", "STB": "B", "STBU": "B",
     "LDH": "H", "LDHU": "H", "STH": "H", "STHU": "H",
     "LDW": "W", "STW": "W", "LDDW": "D", "STDW": "D",
-    "LDNW": "N", "STNW": "N", "LDNDW": "N", "STNDW": "N",
+    "LDNW": "W", "STNW": "W", "LDNDW": "N", "STNDW": "N",
 }
 
 
@@ -112,7 +112,7 @@ def operands_for(syntax, fields, mnem):
         elif base == "src2":
             out.append("Src2")
         elif base == "src":
-            out.append("StoreSrc" if mnem.startswith("ST") else "Src")
+            out.append("StoreSrc" if mnem.startswith("ST") else "Src2")
         elif base == "dst":
             out.append("Dst")
         elif base == "cst":
@@ -219,6 +219,18 @@ def main():
                 # The primary syntax line is the immediate form; the sibling
                 # opcode diagram uses a packed register instead of csta/cstb.
                 ops = ["Src2", "Src1", "Dst"]
+            if mnem in {"BDEC", "BPOS"}:
+                ops = ["BdecTgt", "Dst"]
+            if mnem == "MPYLI":
+                ops = ["Src1", "Src2", "DstPair"]
+            if mnem in {"INTDP", "INTDPU", "SPDP"}:
+                ops = ["Src2", "DstPair"]
+            if mnem == "DPSP":
+                ops = ["Src2Pair", "Dst"]
+            if mnem in {"ADDDP", "MPYDP"}:
+                ops = ["Src1Pair", "Src2Pair", "DstPair"]
+            if mnem in {"CMPEQDP", "CMPGTDP", "CMPLTDP"}:
+                ops = ["Src1Pair", "Src2Pair", "Dst"]
             if ops is None:
                 names = {f["name"] for f in fields}
                 if "baseR" in names:
@@ -242,7 +254,15 @@ def main():
             if mnem in {"ADDAB", "ADDAH", "ADDAW"} and "ucst15" in names:
                 ops = ["BaseLong", "UCst15", "Dst"]
 
+            base_ops = ops
             for v, mem_mode in variants:
+                ops = list(base_ops) if base_ops is not None else None
+                if mnem in {"MPY", "MPYSU"} and v in {"11000", "11110"}:
+                    ops[0] = "SCst5"
+                if mnem == "ROTL" and v == "11110":
+                    ops[1] = "UCst5"
+                if mnem == "LMBD" and v == "1101010":
+                    ops[0] = "Cst5"
                 base = pattern_of(fields, v)
                 if base is None:
                     continue
@@ -299,7 +319,12 @@ def main():
                     disp = mnem + (("." + ul + suffix[1:]) if ul else "")
                     if ops:
                         disp += " " + ", ".join(ops)
-                    if mnem in SEMANTIC_MNEMONICS:
+                    if mnem in {"BDEC", "BPOS"}:
+                        if mnem == "BDEC":
+                            sem = "if (Dst s< 0) goto <done>; Dst = Dst - 1; goto BdecTgt; <done>"
+                        else:
+                            sem = "if (Dst s< 0) goto <done>; goto BdecTgt; <done>"
+                    elif mnem in SEMANTIC_MNEMONICS:
                         args = ", ".join(o for o in (ops or []) if not o.startswith(chr(34)))
                         macro = "c6000_sem_%s" % mnem.lower()
                         if mnem in {"CLR", "EXT", "EXTU", "SET"} and "src1" in names:

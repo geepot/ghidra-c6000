@@ -61,6 +61,23 @@ First public release.
   unconstrained opcode-map field.
 * CI's synthetic image test scans its actual 48-byte size and checks that all
   12 instructions decode.
+* Doubleword loads and stores now lift 64-bit transfers through overlapping
+  odd:even register pairs in both endian modes, including compact stack forms.
+  The common 16-bit integer multiplies and 16-by-32 `MPYLI` also lift to
+  p-code; immediate multiply operands are signed five-bit values.
+* `BDEC` and `BPOS` now show their signed fetch-packet-relative target and
+  lift conditional branch behavior. Compact register `BNOP` branches through
+  its register; compact `MVC` to `ILC` and common `EXT`/`EXTU` forms lift to
+  data-flow p-code.
+* Selected double-precision conversions, addition, multiplication and
+  comparisons now use pair operands and floating-point p-code. `MVD` lifts
+  its register copy; pipeline timing and floating-point status side effects
+  remain outside the p-code model.
+* `SUBC`, `ROTL` and `LMBD` lift their documented integer operations.
+  Nonaligned word loads and stores use word-scaled offsets; nonaligned
+  doubleword transfers retain doubleword scaling.
+* `MPYLHU` and `PACK2` now lift their unsigned halfword multiply and
+  halfword packing operations.
 
 ### Notes
 * `buildExtension` does not compile SLEIGH. `tools/build.sh` (and CI) run

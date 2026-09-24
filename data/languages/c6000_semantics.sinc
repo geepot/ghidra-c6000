@@ -38,6 +38,8 @@ macro c6000_sem_abs(a, d) { local s = (a s< 0); if (s) goto <neg>; d = a; goto <
 
 # SEM: MV
 macro c6000_sem_mv(a, d) { d = a; }
+# SEM: MVD
+macro c6000_sem_mvd(a, d) { d = a; }
 # SEM: ZERO
 macro c6000_sem_zero(d) { d = 0; }
 
@@ -78,6 +80,61 @@ macro c6000_sem_subab(b, a, d) { d = b - a; }
 macro c6000_sem_subah(b, a, d) { d = b - (a << 1); }
 # SEM: SUBAW
 macro c6000_sem_subaw(b, a, d) { d = b - (a << 2); }
+
+# SEM: SUBC
+macro c6000_sem_subc(a, b, d) {
+  if (a < b) goto <less>;
+  d = ((a - b) << 1) + 1;
+  goto <done>;
+  <less> d = a << 1;
+  <done>
+}
+# SEM: ROTL
+macro c6000_sem_rotl(v, n, d) {
+  local count:4 = n & 31;
+  d = (v << count) | (v >> ((32 - count) & 31));
+}
+# SEM: LMBD
+macro c6000_sem_lmbd(bit, v, d) {
+  if ((bit & 1) == 0) goto <zeros>;
+  d = lzcount(v);
+  goto <done>;
+  <zeros> d = lzcount(~v);
+  <done>
+}
+
+# 16x16 integer multiplies and MPYLI - SPRUFE8B MPY, MPYU, MPYSU,
+# MPYUS and MPYLI execution blocks.  Signed five-bit constants are decoded
+# by SCst5 before reaching these macros.
+# SEM: MPY
+macro c6000_sem_mpy(a, b, d) {
+  local x:4 = (a << 16) s>> 16;
+  local y:4 = (b << 16) s>> 16;
+  d = x * y;
+}
+# SEM: MPYU
+macro c6000_sem_mpyu(a, b, d) { d = (a & 0xffff) * (b & 0xffff); }
+# SEM: MPYSU
+macro c6000_sem_mpysu(a, b, d) {
+  local x:4 = (a << 16) s>> 16;
+  d = x * (b & 0xffff);
+}
+# SEM: MPYUS
+macro c6000_sem_mpyus(a, b, d) {
+  local y:4 = (b << 16) s>> 16;
+  d = (a & 0xffff) * y;
+}
+# SEM: MPYLI
+macro c6000_sem_mpyli(a, b, d) {
+  local x:4 = (a << 16) s>> 16;
+  local x64:8 = sext(x);
+  local y64:8 = sext(b);
+  d = x64 * y64;
+}
+# SEM: MPYLHU
+macro c6000_sem_mpylhu(a, b, d) { d = (a & 0xffff) * (b >> 16); }
+# SEM: PACK2
+macro c6000_sem_pack2(a, b, d) { d = ((a & 0xffff) << 16) | (b & 0xffff); }
 
 # ---------------------------------------------------------------------------
 # Bit-field operations - SPRUFE8B CLR, EXT, EXTU and SET descriptions.
@@ -142,22 +199,40 @@ macro c6000_sem_set_r(s, v, d) {
 macro c6000_sem_abssp(a, d) { d = abs(a); }
 # SEM: ADDSP
 macro c6000_sem_addsp(a, b, d) { d = a f+ b; }
+# SEM: ADDDP
+macro c6000_sem_adddp(a, b, d) { d = a f+ b; }
 # SEM: SUBSP
 macro c6000_sem_subsp(a, b, d) { d = a f- b; }
 # SEM: MPYSP
 macro c6000_sem_mpysp(a, b, d) { d = a f* b; }
+# SEM: MPYDP
+macro c6000_sem_mpydp(a, b, d) { d = a f* b; }
 # SEM: INTSP
 macro c6000_sem_intsp(a, d) { d = int2float(a); }
 # SEM: INTSPU
 macro c6000_sem_intspu(a, d) { local unsigned:8 = zext(a); d = int2float(unsigned); }
+# SEM: INTDP
+macro c6000_sem_intdp(a, d) { d = int2float(a); }
+# SEM: INTDPU
+macro c6000_sem_intdpu(a, d) { local unsigned:8 = zext(a); d = int2float(unsigned); }
+# SEM: SPDP
+macro c6000_sem_spdp(a, d) { d = float2float(a); }
+# SEM: DPSP
+macro c6000_sem_dpsp(a, d) { d = float2float(a); }
 # SEM: SPTRUNC
 macro c6000_sem_sptrunc(a, d) { d = trunc(a); }
 # SEM: CMPEQSP
 macro c6000_sem_cmpeqsp(a, b, d) { d = zext(a f== b); }
+# SEM: CMPEQDP
+macro c6000_sem_cmpeqdp(a, b, d) { d = zext(a f== b); }
 # SEM: CMPGTSP
 macro c6000_sem_cmpgtsp(a, b, d) { d = zext(a f> b); }
+# SEM: CMPGTDP
+macro c6000_sem_cmpgtdp(a, b, d) { d = zext(a f> b); }
 # SEM: CMPLTSP
 macro c6000_sem_cmpltsp(a, b, d) { d = zext(a f< b); }
+# SEM: CMPLTDP
+macro c6000_sem_cmpltdp(a, b, d) { d = zext(a f< b); }
 
 # ---------------------------------------------------------------------------
 # Shifts - SPRUFE8B section 3.12, SHL / SHR / SHRU / SSHL.
@@ -196,6 +271,12 @@ macro c6000_sem_cmpgtu(a, b, d) { local t = (a > b); if (t) goto <y>; d = 0; got
 
 # SEM: LDW
 macro c6000_sem_ldw(a, d) { d = *[ram]:4 a; }
+# SEM: LDDW
+macro c6000_sem_lddw(a, d) { d = *[ram]:8 a; }
+# SEM: LDNDW
+macro c6000_sem_ldndw(a, d) { d = *[ram]:8 a; }
+# SEM: LDNW
+macro c6000_sem_ldnw(a, d) { d = *[ram]:4 a; }
 # SEM: LDB
 macro c6000_sem_ldb(a, d) { d = sext(*[ram]:1 a); }
 # SEM: LDBU
@@ -207,6 +288,12 @@ macro c6000_sem_ldhu(a, d) { d = zext(*[ram]:2 a); }
 
 # SEM: STW
 macro c6000_sem_stw(s, a) { *[ram]:4 a = s; }
+# SEM: STDW
+macro c6000_sem_stdw(s, a) { *[ram]:8 a = s; }
+# SEM: STNDW
+macro c6000_sem_stndw(s, a) { *[ram]:8 a = s; }
+# SEM: STNW
+macro c6000_sem_stnw(s, a) { *[ram]:4 a = s; }
 # SEM: STB
 macro c6000_sem_stb(s, a) { *[ram]:1 a = s; }
 # SEM: STH

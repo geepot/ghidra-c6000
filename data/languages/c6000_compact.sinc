@@ -132,22 +132,22 @@ RT64: cq_64_b0 is cq_64_b0 & q_t=1 & c_rs=0 { export cq_64_b0; }
 RT64: cq_64_a1 is cq_64_a1 & q_t=0 & c_rs=1 { export cq_64_a1; }
 RT64: cq_64_b1 is cq_64_b1 & q_t=1 & c_rs=1 { export cq_64_b1; }
 
-RT65Pair: "A1:A0" is q_r2b=0 & q_t=0 & c_rs=0 { export A0; }
-RT65Pair: "A3:A2" is q_r2b=1 & q_t=0 & c_rs=0 { export A2; }
-RT65Pair: "A5:A4" is q_r2b=2 & q_t=0 & c_rs=0 { export A4; }
-RT65Pair: "A7:A6" is q_r2b=3 & q_t=0 & c_rs=0 { export A6; }
-RT65Pair: "B1:B0" is q_r2b=0 & q_t=1 & c_rs=0 { export B0; }
-RT65Pair: "B3:B2" is q_r2b=1 & q_t=1 & c_rs=0 { export B2; }
-RT65Pair: "B5:B4" is q_r2b=2 & q_t=1 & c_rs=0 { export B4; }
-RT65Pair: "B7:B6" is q_r2b=3 & q_t=1 & c_rs=0 { export B6; }
-RT65Pair: "A17:A16" is q_r2b=0 & q_t=0 & c_rs=1 { export A16; }
-RT65Pair: "A19:A18" is q_r2b=1 & q_t=0 & c_rs=1 { export A18; }
-RT65Pair: "A21:A20" is q_r2b=2 & q_t=0 & c_rs=1 { export A20; }
-RT65Pair: "A23:A22" is q_r2b=3 & q_t=0 & c_rs=1 { export A22; }
-RT65Pair: "B17:B16" is q_r2b=0 & q_t=1 & c_rs=1 { export B16; }
-RT65Pair: "B19:B18" is q_r2b=1 & q_t=1 & c_rs=1 { export B18; }
-RT65Pair: "B21:B20" is q_r2b=2 & q_t=1 & c_rs=1 { export B20; }
-RT65Pair: "B23:B22" is q_r2b=3 & q_t=1 & c_rs=1 { export B22; }
+RT65Pair: "A1:A0" is q_r2b=0 & q_t=0 & c_rs=0 { export A1_A0; }
+RT65Pair: "A3:A2" is q_r2b=1 & q_t=0 & c_rs=0 { export A3_A2; }
+RT65Pair: "A5:A4" is q_r2b=2 & q_t=0 & c_rs=0 { export A5_A4; }
+RT65Pair: "A7:A6" is q_r2b=3 & q_t=0 & c_rs=0 { export A7_A6; }
+RT65Pair: "B1:B0" is q_r2b=0 & q_t=1 & c_rs=0 { export B1_B0; }
+RT65Pair: "B3:B2" is q_r2b=1 & q_t=1 & c_rs=0 { export B3_B2; }
+RT65Pair: "B5:B4" is q_r2b=2 & q_t=1 & c_rs=0 { export B5_B4; }
+RT65Pair: "B7:B6" is q_r2b=3 & q_t=1 & c_rs=0 { export B7_B6; }
+RT65Pair: "A17:A16" is q_r2b=0 & q_t=0 & c_rs=1 { export A17_A16; }
+RT65Pair: "A19:A18" is q_r2b=1 & q_t=0 & c_rs=1 { export A19_A18; }
+RT65Pair: "A21:A20" is q_r2b=2 & q_t=0 & c_rs=1 { export A21_A20; }
+RT65Pair: "A23:A22" is q_r2b=3 & q_t=0 & c_rs=1 { export A23_A22; }
+RT65Pair: "B17:B16" is q_r2b=0 & q_t=1 & c_rs=1 { export B17_B16; }
+RT65Pair: "B19:B18" is q_r2b=1 & q_t=1 & c_rs=1 { export B19_B18; }
+RT65Pair: "B21:B20" is q_r2b=2 & q_t=1 & c_rs=1 { export B21_B20; }
+RT65Pair: "B23:B22" is q_r2b=3 & q_t=1 & c_rs=1 { export B23_B22; }
 
 RPTR: cq_87_a0 is cq_87_a0 & q_s=0 & c_rs=0 { export cq_87_a0; }
 RPTR: cq_87_b0 is cq_87_b0 & q_s=1 & c_rs=0 { export cq_87_b0; }
@@ -157,22 +157,22 @@ RPTR: cq_87_b1 is cq_87_b1 & q_s=1 & c_rs=1 { export cq_87_b1; }
 RT710: cq_710_a is cq_710_a & q_t=0 { export cq_710_a; }
 RT710: cq_710_b is cq_710_b & q_t=1 { export cq_710_b; }
 
-RT710Pair: "A1:A0" is q_pair710=0 & q_t=0 { export A0; }
-RT710Pair: "A3:A2" is q_pair710=2 & q_t=0 { export A2; }
-RT710Pair: "A5:A4" is q_pair710=4 & q_t=0 { export A4; }
-RT710Pair: "A7:A6" is q_pair710=6 & q_t=0 { export A6; }
-RT710Pair: "A9:A8" is q_pair710=8 & q_t=0 { export A8; }
-RT710Pair: "A11:A10" is q_pair710=10 & q_t=0 { export A10; }
-RT710Pair: "A13:A12" is q_pair710=12 & q_t=0 { export A12; }
-RT710Pair: "A15:A14" is q_pair710=14 & q_t=0 { export A14; }
-RT710Pair: "B1:B0" is q_pair710=0 & q_t=1 { export B0; }
-RT710Pair: "B3:B2" is q_pair710=2 & q_t=1 { export B2; }
-RT710Pair: "B5:B4" is q_pair710=4 & q_t=1 { export B4; }
-RT710Pair: "B7:B6" is q_pair710=6 & q_t=1 { export B6; }
-RT710Pair: "B9:B8" is q_pair710=8 & q_t=1 { export B8; }
-RT710Pair: "B11:B10" is q_pair710=10 & q_t=1 { export B10; }
-RT710Pair: "B13:B12" is q_pair710=12 & q_t=1 { export B12; }
-RT710Pair: "B15:B14" is q_pair710=14 & q_t=1 { export B14; }
+RT710Pair: "A1:A0" is q_pair710=0 & q_t=0 { export A1_A0; }
+RT710Pair: "A3:A2" is q_pair710=2 & q_t=0 { export A3_A2; }
+RT710Pair: "A5:A4" is q_pair710=4 & q_t=0 { export A5_A4; }
+RT710Pair: "A7:A6" is q_pair710=6 & q_t=0 { export A7_A6; }
+RT710Pair: "A9:A8" is q_pair710=8 & q_t=0 { export A9_A8; }
+RT710Pair: "A11:A10" is q_pair710=10 & q_t=0 { export A11_A10; }
+RT710Pair: "A13:A12" is q_pair710=12 & q_t=0 { export A13_A12; }
+RT710Pair: "A15:A14" is q_pair710=14 & q_t=0 { export A15_A14; }
+RT710Pair: "B1:B0" is q_pair710=0 & q_t=1 { export B1_B0; }
+RT710Pair: "B3:B2" is q_pair710=2 & q_t=1 { export B3_B2; }
+RT710Pair: "B5:B4" is q_pair710=4 & q_t=1 { export B5_B4; }
+RT710Pair: "B7:B6" is q_pair710=6 & q_t=1 { export B7_B6; }
+RT710Pair: "B9:B8" is q_pair710=8 & q_t=1 { export B9_B8; }
+RT710Pair: "B11:B10" is q_pair710=10 & q_t=1 { export B11_B10; }
+RT710Pair: "B13:B12" is q_pair710=12 & q_t=1 { export B13_B12; }
+RT710Pair: "B15:B14" is q_pair710=14 & q_t=1 { export B15_B14; }
 
 RB710: cq_710b_b0 is cq_710b_b0 { export cq_710b_b0; }
 
@@ -353,29 +353,29 @@ CTgt10: reloc is cq_scst10 [ reloc = (inst_start & 0xffffffe0) + (cq_scst10 << 1
 # Figure C-9. Doff4DW - SPRUFE8B appendix C.4.
 # ---------------------------------------------------------------------------
 
-:STDW^CUnitD " " RT65Pair^", "^"*"^RPTR^"["^Cucst4^"]" is c_is16=1 & CUnitD & j10=0 & j2=1 & j1=0 & q_sz=0 & c_dsz=4 & q_ldst=0 & q_na=0 & RPTR & Cucst4 & RT65Pair { c6000_unimplemented(); }
-:LDDW^CUnitD " " "*"^RPTR^"["^Cucst4^"]"^", "^RT65Pair is c_is16=1 & CUnitD & j10=0 & j2=1 & j1=0 & q_sz=0 & c_dsz=4 & q_ldst=1 & q_na=0 & RPTR & Cucst4 & RT65Pair { c6000_unimplemented(); }
+:STDW^CUnitD " " RT65Pair^", "^"*"^RPTR^"["^Cucst4^"]" is c_is16=1 & CUnitD & j10=0 & j2=1 & j1=0 & q_sz=0 & c_dsz=4 & q_ldst=0 & q_na=0 & RPTR & Cucst4 & RT65Pair { *[ram]:8 (RPTR + (Cucst4 << 3)) = RT65Pair; }
+:LDDW^CUnitD " " "*"^RPTR^"["^Cucst4^"]"^", "^RT65Pair is c_is16=1 & CUnitD & j10=0 & j2=1 & j1=0 & q_sz=0 & c_dsz=4 & q_ldst=1 & q_na=0 & RPTR & Cucst4 & RT65Pair { RT65Pair = *[ram]:8 (RPTR + (Cucst4 << 3)); }
 
-:STNDW^CUnitD " " RT65Pair^", "^"*"^RPTR^"["^Cucst4^"]" is c_is16=1 & CUnitD & j10=0 & j2=1 & j1=0 & q_sz=0 & c_dsz=4 & q_ldst=0 & q_na=1 & RPTR & Cucst4 & RT65Pair { c6000_unimplemented(); }
-:LDNDW^CUnitD " " "*"^RPTR^"["^Cucst4^"]"^", "^RT65Pair is c_is16=1 & CUnitD & j10=0 & j2=1 & j1=0 & q_sz=0 & c_dsz=4 & q_ldst=1 & q_na=1 & RPTR & Cucst4 & RT65Pair { c6000_unimplemented(); }
+:STNDW^CUnitD " " RT65Pair^", "^"*"^RPTR^"["^Cucst4^"]" is c_is16=1 & CUnitD & j10=0 & j2=1 & j1=0 & q_sz=0 & c_dsz=4 & q_ldst=0 & q_na=1 & RPTR & Cucst4 & RT65Pair { *[ram]:8 (RPTR + (Cucst4 << 3)) = RT65Pair; }
+:LDNDW^CUnitD " " "*"^RPTR^"["^Cucst4^"]"^", "^RT65Pair is c_is16=1 & CUnitD & j10=0 & j2=1 & j1=0 & q_sz=0 & c_dsz=4 & q_ldst=1 & q_na=1 & RPTR & Cucst4 & RT65Pair { RT65Pair = *[ram]:8 (RPTR + (Cucst4 << 3)); }
 
-:STDW^CUnitD " " RT65Pair^", "^"*"^RPTR^"["^Cucst4^"]" is c_is16=1 & CUnitD & j10=0 & j2=1 & j1=0 & q_sz=0 & c_dsz=5 & q_ldst=0 & q_na=0 & RPTR & Cucst4 & RT65Pair { c6000_unimplemented(); }
-:LDDW^CUnitD " " "*"^RPTR^"["^Cucst4^"]"^", "^RT65Pair is c_is16=1 & CUnitD & j10=0 & j2=1 & j1=0 & q_sz=0 & c_dsz=5 & q_ldst=1 & q_na=0 & RPTR & Cucst4 & RT65Pair { c6000_unimplemented(); }
+:STDW^CUnitD " " RT65Pair^", "^"*"^RPTR^"["^Cucst4^"]" is c_is16=1 & CUnitD & j10=0 & j2=1 & j1=0 & q_sz=0 & c_dsz=5 & q_ldst=0 & q_na=0 & RPTR & Cucst4 & RT65Pair { *[ram]:8 (RPTR + (Cucst4 << 3)) = RT65Pair; }
+:LDDW^CUnitD " " "*"^RPTR^"["^Cucst4^"]"^", "^RT65Pair is c_is16=1 & CUnitD & j10=0 & j2=1 & j1=0 & q_sz=0 & c_dsz=5 & q_ldst=1 & q_na=0 & RPTR & Cucst4 & RT65Pair { RT65Pair = *[ram]:8 (RPTR + (Cucst4 << 3)); }
 
-:STNDW^CUnitD " " RT65Pair^", "^"*"^RPTR^"["^Cucst4^"]" is c_is16=1 & CUnitD & j10=0 & j2=1 & j1=0 & q_sz=0 & c_dsz=5 & q_ldst=0 & q_na=1 & RPTR & Cucst4 & RT65Pair { c6000_unimplemented(); }
-:LDNDW^CUnitD " " "*"^RPTR^"["^Cucst4^"]"^", "^RT65Pair is c_is16=1 & CUnitD & j10=0 & j2=1 & j1=0 & q_sz=0 & c_dsz=5 & q_ldst=1 & q_na=1 & RPTR & Cucst4 & RT65Pair { c6000_unimplemented(); }
+:STNDW^CUnitD " " RT65Pair^", "^"*"^RPTR^"["^Cucst4^"]" is c_is16=1 & CUnitD & j10=0 & j2=1 & j1=0 & q_sz=0 & c_dsz=5 & q_ldst=0 & q_na=1 & RPTR & Cucst4 & RT65Pair { *[ram]:8 (RPTR + (Cucst4 << 3)) = RT65Pair; }
+:LDNDW^CUnitD " " "*"^RPTR^"["^Cucst4^"]"^", "^RT65Pair is c_is16=1 & CUnitD & j10=0 & j2=1 & j1=0 & q_sz=0 & c_dsz=5 & q_ldst=1 & q_na=1 & RPTR & Cucst4 & RT65Pair { RT65Pair = *[ram]:8 (RPTR + (Cucst4 << 3)); }
 
-:STDW^CUnitD " " RT65Pair^", "^"*"^RPTR^"["^Cucst4^"]" is c_is16=1 & CUnitD & j10=0 & j2=1 & j1=0 & q_sz=0 & c_dsz=6 & q_ldst=0 & q_na=0 & RPTR & Cucst4 & RT65Pair { c6000_unimplemented(); }
-:LDDW^CUnitD " " "*"^RPTR^"["^Cucst4^"]"^", "^RT65Pair is c_is16=1 & CUnitD & j10=0 & j2=1 & j1=0 & q_sz=0 & c_dsz=6 & q_ldst=1 & q_na=0 & RPTR & Cucst4 & RT65Pair { c6000_unimplemented(); }
+:STDW^CUnitD " " RT65Pair^", "^"*"^RPTR^"["^Cucst4^"]" is c_is16=1 & CUnitD & j10=0 & j2=1 & j1=0 & q_sz=0 & c_dsz=6 & q_ldst=0 & q_na=0 & RPTR & Cucst4 & RT65Pair { *[ram]:8 (RPTR + (Cucst4 << 3)) = RT65Pair; }
+:LDDW^CUnitD " " "*"^RPTR^"["^Cucst4^"]"^", "^RT65Pair is c_is16=1 & CUnitD & j10=0 & j2=1 & j1=0 & q_sz=0 & c_dsz=6 & q_ldst=1 & q_na=0 & RPTR & Cucst4 & RT65Pair { RT65Pair = *[ram]:8 (RPTR + (Cucst4 << 3)); }
 
-:STNDW^CUnitD " " RT65Pair^", "^"*"^RPTR^"["^Cucst4^"]" is c_is16=1 & CUnitD & j10=0 & j2=1 & j1=0 & q_sz=0 & c_dsz=6 & q_ldst=0 & q_na=1 & RPTR & Cucst4 & RT65Pair { c6000_unimplemented(); }
-:LDNDW^CUnitD " " "*"^RPTR^"["^Cucst4^"]"^", "^RT65Pair is c_is16=1 & CUnitD & j10=0 & j2=1 & j1=0 & q_sz=0 & c_dsz=6 & q_ldst=1 & q_na=1 & RPTR & Cucst4 & RT65Pair { c6000_unimplemented(); }
+:STNDW^CUnitD " " RT65Pair^", "^"*"^RPTR^"["^Cucst4^"]" is c_is16=1 & CUnitD & j10=0 & j2=1 & j1=0 & q_sz=0 & c_dsz=6 & q_ldst=0 & q_na=1 & RPTR & Cucst4 & RT65Pair { *[ram]:8 (RPTR + (Cucst4 << 3)) = RT65Pair; }
+:LDNDW^CUnitD " " "*"^RPTR^"["^Cucst4^"]"^", "^RT65Pair is c_is16=1 & CUnitD & j10=0 & j2=1 & j1=0 & q_sz=0 & c_dsz=6 & q_ldst=1 & q_na=1 & RPTR & Cucst4 & RT65Pair { RT65Pair = *[ram]:8 (RPTR + (Cucst4 << 3)); }
 
-:STDW^CUnitD " " RT65Pair^", "^"*"^RPTR^"["^Cucst4^"]" is c_is16=1 & CUnitD & j10=0 & j2=1 & j1=0 & q_sz=0 & c_dsz=7 & q_ldst=0 & q_na=0 & RPTR & Cucst4 & RT65Pair { c6000_unimplemented(); }
-:LDDW^CUnitD " " "*"^RPTR^"["^Cucst4^"]"^", "^RT65Pair is c_is16=1 & CUnitD & j10=0 & j2=1 & j1=0 & q_sz=0 & c_dsz=7 & q_ldst=1 & q_na=0 & RPTR & Cucst4 & RT65Pair { c6000_unimplemented(); }
+:STDW^CUnitD " " RT65Pair^", "^"*"^RPTR^"["^Cucst4^"]" is c_is16=1 & CUnitD & j10=0 & j2=1 & j1=0 & q_sz=0 & c_dsz=7 & q_ldst=0 & q_na=0 & RPTR & Cucst4 & RT65Pair { *[ram]:8 (RPTR + (Cucst4 << 3)) = RT65Pair; }
+:LDDW^CUnitD " " "*"^RPTR^"["^Cucst4^"]"^", "^RT65Pair is c_is16=1 & CUnitD & j10=0 & j2=1 & j1=0 & q_sz=0 & c_dsz=7 & q_ldst=1 & q_na=0 & RPTR & Cucst4 & RT65Pair { RT65Pair = *[ram]:8 (RPTR + (Cucst4 << 3)); }
 
-:STNDW^CUnitD " " RT65Pair^", "^"*"^RPTR^"["^Cucst4^"]" is c_is16=1 & CUnitD & j10=0 & j2=1 & j1=0 & q_sz=0 & c_dsz=7 & q_ldst=0 & q_na=1 & RPTR & Cucst4 & RT65Pair { c6000_unimplemented(); }
-:LDNDW^CUnitD " " "*"^RPTR^"["^Cucst4^"]"^", "^RT65Pair is c_is16=1 & CUnitD & j10=0 & j2=1 & j1=0 & q_sz=0 & c_dsz=7 & q_ldst=1 & q_na=1 & RPTR & Cucst4 & RT65Pair { c6000_unimplemented(); }
+:STNDW^CUnitD " " RT65Pair^", "^"*"^RPTR^"["^Cucst4^"]" is c_is16=1 & CUnitD & j10=0 & j2=1 & j1=0 & q_sz=0 & c_dsz=7 & q_ldst=0 & q_na=1 & RPTR & Cucst4 & RT65Pair { *[ram]:8 (RPTR + (Cucst4 << 3)) = RT65Pair; }
+:LDNDW^CUnitD " " "*"^RPTR^"["^Cucst4^"]"^", "^RT65Pair is c_is16=1 & CUnitD & j10=0 & j2=1 & j1=0 & q_sz=0 & c_dsz=7 & q_ldst=1 & q_na=1 & RPTR & Cucst4 & RT65Pair { RT65Pair = *[ram]:8 (RPTR + (Cucst4 << 3)); }
 
 # ---------------------------------------------------------------------------
 # Figure C-10. Dind - SPRUFE8B appendix C.4.
@@ -421,29 +421,29 @@ CTgt10: reloc is cq_scst10 [ reloc = (inst_start & 0xffffffe0) + (cq_scst10 << 1
 # Figure C-11. DindDW - SPRUFE8B appendix C.4.
 # ---------------------------------------------------------------------------
 
-:STDW^CUnitD " " RT65Pair^", "^"*"^RPTR^"["^RA15^"]" is c_is16=1 & CUnitD & j11=0 & j10=1 & j2=1 & j1=0 & q_sz=0 & c_dsz=4 & q_ldst=0 & q_na=0 & RPTR & RA15 & RT65Pair { c6000_unimplemented(); }
-:LDDW^CUnitD " " "*"^RPTR^"["^RA15^"]"^", "^RT65Pair is c_is16=1 & CUnitD & j11=0 & j10=1 & j2=1 & j1=0 & q_sz=0 & c_dsz=4 & q_ldst=1 & q_na=0 & RPTR & RA15 & RT65Pair { c6000_unimplemented(); }
+:STDW^CUnitD " " RT65Pair^", "^"*"^RPTR^"["^RA15^"]" is c_is16=1 & CUnitD & j11=0 & j10=1 & j2=1 & j1=0 & q_sz=0 & c_dsz=4 & q_ldst=0 & q_na=0 & RPTR & RA15 & RT65Pair { *[ram]:8 (RPTR + (RA15 << 3)) = RT65Pair; }
+:LDDW^CUnitD " " "*"^RPTR^"["^RA15^"]"^", "^RT65Pair is c_is16=1 & CUnitD & j11=0 & j10=1 & j2=1 & j1=0 & q_sz=0 & c_dsz=4 & q_ldst=1 & q_na=0 & RPTR & RA15 & RT65Pair { RT65Pair = *[ram]:8 (RPTR + (RA15 << 3)); }
 
-:STNDW^CUnitD " " RT65Pair^", "^"*"^RPTR^"["^RA15^"]" is c_is16=1 & CUnitD & j11=0 & j10=1 & j2=1 & j1=0 & q_sz=0 & c_dsz=4 & q_ldst=0 & q_na=1 & RPTR & RA15 & RT65Pair { c6000_unimplemented(); }
-:LDNDW^CUnitD " " "*"^RPTR^"["^RA15^"]"^", "^RT65Pair is c_is16=1 & CUnitD & j11=0 & j10=1 & j2=1 & j1=0 & q_sz=0 & c_dsz=4 & q_ldst=1 & q_na=1 & RPTR & RA15 & RT65Pair { c6000_unimplemented(); }
+:STNDW^CUnitD " " RT65Pair^", "^"*"^RPTR^"["^RA15^"]" is c_is16=1 & CUnitD & j11=0 & j10=1 & j2=1 & j1=0 & q_sz=0 & c_dsz=4 & q_ldst=0 & q_na=1 & RPTR & RA15 & RT65Pair { *[ram]:8 (RPTR + (RA15 << 3)) = RT65Pair; }
+:LDNDW^CUnitD " " "*"^RPTR^"["^RA15^"]"^", "^RT65Pair is c_is16=1 & CUnitD & j11=0 & j10=1 & j2=1 & j1=0 & q_sz=0 & c_dsz=4 & q_ldst=1 & q_na=1 & RPTR & RA15 & RT65Pair { RT65Pair = *[ram]:8 (RPTR + (RA15 << 3)); }
 
-:STDW^CUnitD " " RT65Pair^", "^"*"^RPTR^"["^RA15^"]" is c_is16=1 & CUnitD & j11=0 & j10=1 & j2=1 & j1=0 & q_sz=0 & c_dsz=5 & q_ldst=0 & q_na=0 & RPTR & RA15 & RT65Pair { c6000_unimplemented(); }
-:LDDW^CUnitD " " "*"^RPTR^"["^RA15^"]"^", "^RT65Pair is c_is16=1 & CUnitD & j11=0 & j10=1 & j2=1 & j1=0 & q_sz=0 & c_dsz=5 & q_ldst=1 & q_na=0 & RPTR & RA15 & RT65Pair { c6000_unimplemented(); }
+:STDW^CUnitD " " RT65Pair^", "^"*"^RPTR^"["^RA15^"]" is c_is16=1 & CUnitD & j11=0 & j10=1 & j2=1 & j1=0 & q_sz=0 & c_dsz=5 & q_ldst=0 & q_na=0 & RPTR & RA15 & RT65Pair { *[ram]:8 (RPTR + (RA15 << 3)) = RT65Pair; }
+:LDDW^CUnitD " " "*"^RPTR^"["^RA15^"]"^", "^RT65Pair is c_is16=1 & CUnitD & j11=0 & j10=1 & j2=1 & j1=0 & q_sz=0 & c_dsz=5 & q_ldst=1 & q_na=0 & RPTR & RA15 & RT65Pair { RT65Pair = *[ram]:8 (RPTR + (RA15 << 3)); }
 
-:STNDW^CUnitD " " RT65Pair^", "^"*"^RPTR^"["^RA15^"]" is c_is16=1 & CUnitD & j11=0 & j10=1 & j2=1 & j1=0 & q_sz=0 & c_dsz=5 & q_ldst=0 & q_na=1 & RPTR & RA15 & RT65Pair { c6000_unimplemented(); }
-:LDNDW^CUnitD " " "*"^RPTR^"["^RA15^"]"^", "^RT65Pair is c_is16=1 & CUnitD & j11=0 & j10=1 & j2=1 & j1=0 & q_sz=0 & c_dsz=5 & q_ldst=1 & q_na=1 & RPTR & RA15 & RT65Pair { c6000_unimplemented(); }
+:STNDW^CUnitD " " RT65Pair^", "^"*"^RPTR^"["^RA15^"]" is c_is16=1 & CUnitD & j11=0 & j10=1 & j2=1 & j1=0 & q_sz=0 & c_dsz=5 & q_ldst=0 & q_na=1 & RPTR & RA15 & RT65Pair { *[ram]:8 (RPTR + (RA15 << 3)) = RT65Pair; }
+:LDNDW^CUnitD " " "*"^RPTR^"["^RA15^"]"^", "^RT65Pair is c_is16=1 & CUnitD & j11=0 & j10=1 & j2=1 & j1=0 & q_sz=0 & c_dsz=5 & q_ldst=1 & q_na=1 & RPTR & RA15 & RT65Pair { RT65Pair = *[ram]:8 (RPTR + (RA15 << 3)); }
 
-:STDW^CUnitD " " RT65Pair^", "^"*"^RPTR^"["^RA15^"]" is c_is16=1 & CUnitD & j11=0 & j10=1 & j2=1 & j1=0 & q_sz=0 & c_dsz=6 & q_ldst=0 & q_na=0 & RPTR & RA15 & RT65Pair { c6000_unimplemented(); }
-:LDDW^CUnitD " " "*"^RPTR^"["^RA15^"]"^", "^RT65Pair is c_is16=1 & CUnitD & j11=0 & j10=1 & j2=1 & j1=0 & q_sz=0 & c_dsz=6 & q_ldst=1 & q_na=0 & RPTR & RA15 & RT65Pair { c6000_unimplemented(); }
+:STDW^CUnitD " " RT65Pair^", "^"*"^RPTR^"["^RA15^"]" is c_is16=1 & CUnitD & j11=0 & j10=1 & j2=1 & j1=0 & q_sz=0 & c_dsz=6 & q_ldst=0 & q_na=0 & RPTR & RA15 & RT65Pair { *[ram]:8 (RPTR + (RA15 << 3)) = RT65Pair; }
+:LDDW^CUnitD " " "*"^RPTR^"["^RA15^"]"^", "^RT65Pair is c_is16=1 & CUnitD & j11=0 & j10=1 & j2=1 & j1=0 & q_sz=0 & c_dsz=6 & q_ldst=1 & q_na=0 & RPTR & RA15 & RT65Pair { RT65Pair = *[ram]:8 (RPTR + (RA15 << 3)); }
 
-:STNDW^CUnitD " " RT65Pair^", "^"*"^RPTR^"["^RA15^"]" is c_is16=1 & CUnitD & j11=0 & j10=1 & j2=1 & j1=0 & q_sz=0 & c_dsz=6 & q_ldst=0 & q_na=1 & RPTR & RA15 & RT65Pair { c6000_unimplemented(); }
-:LDNDW^CUnitD " " "*"^RPTR^"["^RA15^"]"^", "^RT65Pair is c_is16=1 & CUnitD & j11=0 & j10=1 & j2=1 & j1=0 & q_sz=0 & c_dsz=6 & q_ldst=1 & q_na=1 & RPTR & RA15 & RT65Pair { c6000_unimplemented(); }
+:STNDW^CUnitD " " RT65Pair^", "^"*"^RPTR^"["^RA15^"]" is c_is16=1 & CUnitD & j11=0 & j10=1 & j2=1 & j1=0 & q_sz=0 & c_dsz=6 & q_ldst=0 & q_na=1 & RPTR & RA15 & RT65Pair { *[ram]:8 (RPTR + (RA15 << 3)) = RT65Pair; }
+:LDNDW^CUnitD " " "*"^RPTR^"["^RA15^"]"^", "^RT65Pair is c_is16=1 & CUnitD & j11=0 & j10=1 & j2=1 & j1=0 & q_sz=0 & c_dsz=6 & q_ldst=1 & q_na=1 & RPTR & RA15 & RT65Pair { RT65Pair = *[ram]:8 (RPTR + (RA15 << 3)); }
 
-:STDW^CUnitD " " RT65Pair^", "^"*"^RPTR^"["^RA15^"]" is c_is16=1 & CUnitD & j11=0 & j10=1 & j2=1 & j1=0 & q_sz=0 & c_dsz=7 & q_ldst=0 & q_na=0 & RPTR & RA15 & RT65Pair { c6000_unimplemented(); }
-:LDDW^CUnitD " " "*"^RPTR^"["^RA15^"]"^", "^RT65Pair is c_is16=1 & CUnitD & j11=0 & j10=1 & j2=1 & j1=0 & q_sz=0 & c_dsz=7 & q_ldst=1 & q_na=0 & RPTR & RA15 & RT65Pair { c6000_unimplemented(); }
+:STDW^CUnitD " " RT65Pair^", "^"*"^RPTR^"["^RA15^"]" is c_is16=1 & CUnitD & j11=0 & j10=1 & j2=1 & j1=0 & q_sz=0 & c_dsz=7 & q_ldst=0 & q_na=0 & RPTR & RA15 & RT65Pair { *[ram]:8 (RPTR + (RA15 << 3)) = RT65Pair; }
+:LDDW^CUnitD " " "*"^RPTR^"["^RA15^"]"^", "^RT65Pair is c_is16=1 & CUnitD & j11=0 & j10=1 & j2=1 & j1=0 & q_sz=0 & c_dsz=7 & q_ldst=1 & q_na=0 & RPTR & RA15 & RT65Pair { RT65Pair = *[ram]:8 (RPTR + (RA15 << 3)); }
 
-:STNDW^CUnitD " " RT65Pair^", "^"*"^RPTR^"["^RA15^"]" is c_is16=1 & CUnitD & j11=0 & j10=1 & j2=1 & j1=0 & q_sz=0 & c_dsz=7 & q_ldst=0 & q_na=1 & RPTR & RA15 & RT65Pair { c6000_unimplemented(); }
-:LDNDW^CUnitD " " "*"^RPTR^"["^RA15^"]"^", "^RT65Pair is c_is16=1 & CUnitD & j11=0 & j10=1 & j2=1 & j1=0 & q_sz=0 & c_dsz=7 & q_ldst=1 & q_na=1 & RPTR & RA15 & RT65Pair { c6000_unimplemented(); }
+:STNDW^CUnitD " " RT65Pair^", "^"*"^RPTR^"["^RA15^"]" is c_is16=1 & CUnitD & j11=0 & j10=1 & j2=1 & j1=0 & q_sz=0 & c_dsz=7 & q_ldst=0 & q_na=1 & RPTR & RA15 & RT65Pair { *[ram]:8 (RPTR + (RA15 << 3)) = RT65Pair; }
+:LDNDW^CUnitD " " "*"^RPTR^"["^RA15^"]"^", "^RT65Pair is c_is16=1 & CUnitD & j11=0 & j10=1 & j2=1 & j1=0 & q_sz=0 & c_dsz=7 & q_ldst=1 & q_na=1 & RPTR & RA15 & RT65Pair { RT65Pair = *[ram]:8 (RPTR + (RA15 << 3)); }
 
 # ---------------------------------------------------------------------------
 # Figure C-12. Dinc - SPRUFE8B appendix C.4.
@@ -489,29 +489,29 @@ CTgt10: reloc is cq_scst10 [ reloc = (inst_start & 0xffffffe0) + (cq_scst10 << 1
 # Figure C-13. DincDW - SPRUFE8B appendix C.4.
 # ---------------------------------------------------------------------------
 
-:STDW^CUnitD " " RT65Pair^", "^"*"^RPTR^"["^Cucst2^"]++" is c_is16=1 & CUnitD & j15=0 & j14=0 & j11=1 & j10=1 & j2=1 & j1=0 & q_sz=0 & c_dsz=4 & q_ldst=0 & q_na=0 & RPTR & Cucst2 & RT65Pair { c6000_unimplemented(); }
-:LDDW^CUnitD " " "*"^RPTR^"["^Cucst2^"]++"^", "^RT65Pair is c_is16=1 & CUnitD & j15=0 & j14=0 & j11=1 & j10=1 & j2=1 & j1=0 & q_sz=0 & c_dsz=4 & q_ldst=1 & q_na=0 & RPTR & Cucst2 & RT65Pair { c6000_unimplemented(); }
+:STDW^CUnitD " " RT65Pair^", "^"*"^RPTR^"["^Cucst2^"]++" is c_is16=1 & CUnitD & j15=0 & j14=0 & j11=1 & j10=1 & j2=1 & j1=0 & q_sz=0 & c_dsz=4 & q_ldst=0 & q_na=0 & RPTR & Cucst2 & RT65Pair { *[ram]:8 RPTR = RT65Pair; RPTR = RPTR + (Cucst2 << 3); }
+:LDDW^CUnitD " " "*"^RPTR^"["^Cucst2^"]++"^", "^RT65Pair is c_is16=1 & CUnitD & j15=0 & j14=0 & j11=1 & j10=1 & j2=1 & j1=0 & q_sz=0 & c_dsz=4 & q_ldst=1 & q_na=0 & RPTR & Cucst2 & RT65Pair { RT65Pair = *[ram]:8 RPTR; RPTR = RPTR + (Cucst2 << 3); }
 
-:STNDW^CUnitD " " RT65Pair^", "^"*"^RPTR^"["^Cucst2^"]++" is c_is16=1 & CUnitD & j15=0 & j14=0 & j11=1 & j10=1 & j2=1 & j1=0 & q_sz=0 & c_dsz=4 & q_ldst=0 & q_na=1 & RPTR & Cucst2 & RT65Pair { c6000_unimplemented(); }
-:LDNDW^CUnitD " " "*"^RPTR^"["^Cucst2^"]++"^", "^RT65Pair is c_is16=1 & CUnitD & j15=0 & j14=0 & j11=1 & j10=1 & j2=1 & j1=0 & q_sz=0 & c_dsz=4 & q_ldst=1 & q_na=1 & RPTR & Cucst2 & RT65Pair { c6000_unimplemented(); }
+:STNDW^CUnitD " " RT65Pair^", "^"*"^RPTR^"["^Cucst2^"]++" is c_is16=1 & CUnitD & j15=0 & j14=0 & j11=1 & j10=1 & j2=1 & j1=0 & q_sz=0 & c_dsz=4 & q_ldst=0 & q_na=1 & RPTR & Cucst2 & RT65Pair { *[ram]:8 RPTR = RT65Pair; RPTR = RPTR + (Cucst2 << 3); }
+:LDNDW^CUnitD " " "*"^RPTR^"["^Cucst2^"]++"^", "^RT65Pair is c_is16=1 & CUnitD & j15=0 & j14=0 & j11=1 & j10=1 & j2=1 & j1=0 & q_sz=0 & c_dsz=4 & q_ldst=1 & q_na=1 & RPTR & Cucst2 & RT65Pair { RT65Pair = *[ram]:8 RPTR; RPTR = RPTR + (Cucst2 << 3); }
 
-:STDW^CUnitD " " RT65Pair^", "^"*"^RPTR^"["^Cucst2^"]++" is c_is16=1 & CUnitD & j15=0 & j14=0 & j11=1 & j10=1 & j2=1 & j1=0 & q_sz=0 & c_dsz=5 & q_ldst=0 & q_na=0 & RPTR & Cucst2 & RT65Pair { c6000_unimplemented(); }
-:LDDW^CUnitD " " "*"^RPTR^"["^Cucst2^"]++"^", "^RT65Pair is c_is16=1 & CUnitD & j15=0 & j14=0 & j11=1 & j10=1 & j2=1 & j1=0 & q_sz=0 & c_dsz=5 & q_ldst=1 & q_na=0 & RPTR & Cucst2 & RT65Pair { c6000_unimplemented(); }
+:STDW^CUnitD " " RT65Pair^", "^"*"^RPTR^"["^Cucst2^"]++" is c_is16=1 & CUnitD & j15=0 & j14=0 & j11=1 & j10=1 & j2=1 & j1=0 & q_sz=0 & c_dsz=5 & q_ldst=0 & q_na=0 & RPTR & Cucst2 & RT65Pair { *[ram]:8 RPTR = RT65Pair; RPTR = RPTR + (Cucst2 << 3); }
+:LDDW^CUnitD " " "*"^RPTR^"["^Cucst2^"]++"^", "^RT65Pair is c_is16=1 & CUnitD & j15=0 & j14=0 & j11=1 & j10=1 & j2=1 & j1=0 & q_sz=0 & c_dsz=5 & q_ldst=1 & q_na=0 & RPTR & Cucst2 & RT65Pair { RT65Pair = *[ram]:8 RPTR; RPTR = RPTR + (Cucst2 << 3); }
 
-:STNDW^CUnitD " " RT65Pair^", "^"*"^RPTR^"["^Cucst2^"]++" is c_is16=1 & CUnitD & j15=0 & j14=0 & j11=1 & j10=1 & j2=1 & j1=0 & q_sz=0 & c_dsz=5 & q_ldst=0 & q_na=1 & RPTR & Cucst2 & RT65Pair { c6000_unimplemented(); }
-:LDNDW^CUnitD " " "*"^RPTR^"["^Cucst2^"]++"^", "^RT65Pair is c_is16=1 & CUnitD & j15=0 & j14=0 & j11=1 & j10=1 & j2=1 & j1=0 & q_sz=0 & c_dsz=5 & q_ldst=1 & q_na=1 & RPTR & Cucst2 & RT65Pair { c6000_unimplemented(); }
+:STNDW^CUnitD " " RT65Pair^", "^"*"^RPTR^"["^Cucst2^"]++" is c_is16=1 & CUnitD & j15=0 & j14=0 & j11=1 & j10=1 & j2=1 & j1=0 & q_sz=0 & c_dsz=5 & q_ldst=0 & q_na=1 & RPTR & Cucst2 & RT65Pair { *[ram]:8 RPTR = RT65Pair; RPTR = RPTR + (Cucst2 << 3); }
+:LDNDW^CUnitD " " "*"^RPTR^"["^Cucst2^"]++"^", "^RT65Pair is c_is16=1 & CUnitD & j15=0 & j14=0 & j11=1 & j10=1 & j2=1 & j1=0 & q_sz=0 & c_dsz=5 & q_ldst=1 & q_na=1 & RPTR & Cucst2 & RT65Pair { RT65Pair = *[ram]:8 RPTR; RPTR = RPTR + (Cucst2 << 3); }
 
-:STDW^CUnitD " " RT65Pair^", "^"*"^RPTR^"["^Cucst2^"]++" is c_is16=1 & CUnitD & j15=0 & j14=0 & j11=1 & j10=1 & j2=1 & j1=0 & q_sz=0 & c_dsz=6 & q_ldst=0 & q_na=0 & RPTR & Cucst2 & RT65Pair { c6000_unimplemented(); }
-:LDDW^CUnitD " " "*"^RPTR^"["^Cucst2^"]++"^", "^RT65Pair is c_is16=1 & CUnitD & j15=0 & j14=0 & j11=1 & j10=1 & j2=1 & j1=0 & q_sz=0 & c_dsz=6 & q_ldst=1 & q_na=0 & RPTR & Cucst2 & RT65Pair { c6000_unimplemented(); }
+:STDW^CUnitD " " RT65Pair^", "^"*"^RPTR^"["^Cucst2^"]++" is c_is16=1 & CUnitD & j15=0 & j14=0 & j11=1 & j10=1 & j2=1 & j1=0 & q_sz=0 & c_dsz=6 & q_ldst=0 & q_na=0 & RPTR & Cucst2 & RT65Pair { *[ram]:8 RPTR = RT65Pair; RPTR = RPTR + (Cucst2 << 3); }
+:LDDW^CUnitD " " "*"^RPTR^"["^Cucst2^"]++"^", "^RT65Pair is c_is16=1 & CUnitD & j15=0 & j14=0 & j11=1 & j10=1 & j2=1 & j1=0 & q_sz=0 & c_dsz=6 & q_ldst=1 & q_na=0 & RPTR & Cucst2 & RT65Pair { RT65Pair = *[ram]:8 RPTR; RPTR = RPTR + (Cucst2 << 3); }
 
-:STNDW^CUnitD " " RT65Pair^", "^"*"^RPTR^"["^Cucst2^"]++" is c_is16=1 & CUnitD & j15=0 & j14=0 & j11=1 & j10=1 & j2=1 & j1=0 & q_sz=0 & c_dsz=6 & q_ldst=0 & q_na=1 & RPTR & Cucst2 & RT65Pair { c6000_unimplemented(); }
-:LDNDW^CUnitD " " "*"^RPTR^"["^Cucst2^"]++"^", "^RT65Pair is c_is16=1 & CUnitD & j15=0 & j14=0 & j11=1 & j10=1 & j2=1 & j1=0 & q_sz=0 & c_dsz=6 & q_ldst=1 & q_na=1 & RPTR & Cucst2 & RT65Pair { c6000_unimplemented(); }
+:STNDW^CUnitD " " RT65Pair^", "^"*"^RPTR^"["^Cucst2^"]++" is c_is16=1 & CUnitD & j15=0 & j14=0 & j11=1 & j10=1 & j2=1 & j1=0 & q_sz=0 & c_dsz=6 & q_ldst=0 & q_na=1 & RPTR & Cucst2 & RT65Pair { *[ram]:8 RPTR = RT65Pair; RPTR = RPTR + (Cucst2 << 3); }
+:LDNDW^CUnitD " " "*"^RPTR^"["^Cucst2^"]++"^", "^RT65Pair is c_is16=1 & CUnitD & j15=0 & j14=0 & j11=1 & j10=1 & j2=1 & j1=0 & q_sz=0 & c_dsz=6 & q_ldst=1 & q_na=1 & RPTR & Cucst2 & RT65Pair { RT65Pair = *[ram]:8 RPTR; RPTR = RPTR + (Cucst2 << 3); }
 
-:STDW^CUnitD " " RT65Pair^", "^"*"^RPTR^"["^Cucst2^"]++" is c_is16=1 & CUnitD & j15=0 & j14=0 & j11=1 & j10=1 & j2=1 & j1=0 & q_sz=0 & c_dsz=7 & q_ldst=0 & q_na=0 & RPTR & Cucst2 & RT65Pair { c6000_unimplemented(); }
-:LDDW^CUnitD " " "*"^RPTR^"["^Cucst2^"]++"^", "^RT65Pair is c_is16=1 & CUnitD & j15=0 & j14=0 & j11=1 & j10=1 & j2=1 & j1=0 & q_sz=0 & c_dsz=7 & q_ldst=1 & q_na=0 & RPTR & Cucst2 & RT65Pair { c6000_unimplemented(); }
+:STDW^CUnitD " " RT65Pair^", "^"*"^RPTR^"["^Cucst2^"]++" is c_is16=1 & CUnitD & j15=0 & j14=0 & j11=1 & j10=1 & j2=1 & j1=0 & q_sz=0 & c_dsz=7 & q_ldst=0 & q_na=0 & RPTR & Cucst2 & RT65Pair { *[ram]:8 RPTR = RT65Pair; RPTR = RPTR + (Cucst2 << 3); }
+:LDDW^CUnitD " " "*"^RPTR^"["^Cucst2^"]++"^", "^RT65Pair is c_is16=1 & CUnitD & j15=0 & j14=0 & j11=1 & j10=1 & j2=1 & j1=0 & q_sz=0 & c_dsz=7 & q_ldst=1 & q_na=0 & RPTR & Cucst2 & RT65Pair { RT65Pair = *[ram]:8 RPTR; RPTR = RPTR + (Cucst2 << 3); }
 
-:STNDW^CUnitD " " RT65Pair^", "^"*"^RPTR^"["^Cucst2^"]++" is c_is16=1 & CUnitD & j15=0 & j14=0 & j11=1 & j10=1 & j2=1 & j1=0 & q_sz=0 & c_dsz=7 & q_ldst=0 & q_na=1 & RPTR & Cucst2 & RT65Pair { c6000_unimplemented(); }
-:LDNDW^CUnitD " " "*"^RPTR^"["^Cucst2^"]++"^", "^RT65Pair is c_is16=1 & CUnitD & j15=0 & j14=0 & j11=1 & j10=1 & j2=1 & j1=0 & q_sz=0 & c_dsz=7 & q_ldst=1 & q_na=1 & RPTR & Cucst2 & RT65Pair { c6000_unimplemented(); }
+:STNDW^CUnitD " " RT65Pair^", "^"*"^RPTR^"["^Cucst2^"]++" is c_is16=1 & CUnitD & j15=0 & j14=0 & j11=1 & j10=1 & j2=1 & j1=0 & q_sz=0 & c_dsz=7 & q_ldst=0 & q_na=1 & RPTR & Cucst2 & RT65Pair { *[ram]:8 RPTR = RT65Pair; RPTR = RPTR + (Cucst2 << 3); }
+:LDNDW^CUnitD " " "*"^RPTR^"["^Cucst2^"]++"^", "^RT65Pair is c_is16=1 & CUnitD & j15=0 & j14=0 & j11=1 & j10=1 & j2=1 & j1=0 & q_sz=0 & c_dsz=7 & q_ldst=1 & q_na=1 & RPTR & Cucst2 & RT65Pair { RT65Pair = *[ram]:8 RPTR; RPTR = RPTR + (Cucst2 << 3); }
 
 # ---------------------------------------------------------------------------
 # Figure C-14. Ddec - SPRUFE8B appendix C.4.
@@ -557,29 +557,29 @@ CTgt10: reloc is cq_scst10 [ reloc = (inst_start & 0xffffffe0) + (cq_scst10 << 1
 # Figure C-15. DdecDW - SPRUFE8B appendix C.4.
 # ---------------------------------------------------------------------------
 
-:STDW^CUnitD " " RT65Pair^", "^"*--"^RPTR^"["^Cucst2^"]" is c_is16=1 & CUnitD & j15=0 & j14=1 & j11=1 & j10=1 & j2=1 & j1=0 & q_sz=0 & c_dsz=4 & q_ldst=0 & q_na=0 & RPTR & Cucst2 & RT65Pair { c6000_unimplemented(); }
-:LDDW^CUnitD " " "*--"^RPTR^"["^Cucst2^"]"^", "^RT65Pair is c_is16=1 & CUnitD & j15=0 & j14=1 & j11=1 & j10=1 & j2=1 & j1=0 & q_sz=0 & c_dsz=4 & q_ldst=1 & q_na=0 & RPTR & Cucst2 & RT65Pair { c6000_unimplemented(); }
+:STDW^CUnitD " " RT65Pair^", "^"*--"^RPTR^"["^Cucst2^"]" is c_is16=1 & CUnitD & j15=0 & j14=1 & j11=1 & j10=1 & j2=1 & j1=0 & q_sz=0 & c_dsz=4 & q_ldst=0 & q_na=0 & RPTR & Cucst2 & RT65Pair { RPTR = RPTR - (Cucst2 << 3); *[ram]:8 RPTR = RT65Pair; }
+:LDDW^CUnitD " " "*--"^RPTR^"["^Cucst2^"]"^", "^RT65Pair is c_is16=1 & CUnitD & j15=0 & j14=1 & j11=1 & j10=1 & j2=1 & j1=0 & q_sz=0 & c_dsz=4 & q_ldst=1 & q_na=0 & RPTR & Cucst2 & RT65Pair { RPTR = RPTR - (Cucst2 << 3); RT65Pair = *[ram]:8 RPTR; }
 
-:STNDW^CUnitD " " RT65Pair^", "^"*--"^RPTR^"["^Cucst2^"]" is c_is16=1 & CUnitD & j15=0 & j14=1 & j11=1 & j10=1 & j2=1 & j1=0 & q_sz=0 & c_dsz=4 & q_ldst=0 & q_na=1 & RPTR & Cucst2 & RT65Pair { c6000_unimplemented(); }
-:LDNDW^CUnitD " " "*--"^RPTR^"["^Cucst2^"]"^", "^RT65Pair is c_is16=1 & CUnitD & j15=0 & j14=1 & j11=1 & j10=1 & j2=1 & j1=0 & q_sz=0 & c_dsz=4 & q_ldst=1 & q_na=1 & RPTR & Cucst2 & RT65Pair { c6000_unimplemented(); }
+:STNDW^CUnitD " " RT65Pair^", "^"*--"^RPTR^"["^Cucst2^"]" is c_is16=1 & CUnitD & j15=0 & j14=1 & j11=1 & j10=1 & j2=1 & j1=0 & q_sz=0 & c_dsz=4 & q_ldst=0 & q_na=1 & RPTR & Cucst2 & RT65Pair { RPTR = RPTR - (Cucst2 << 3); *[ram]:8 RPTR = RT65Pair; }
+:LDNDW^CUnitD " " "*--"^RPTR^"["^Cucst2^"]"^", "^RT65Pair is c_is16=1 & CUnitD & j15=0 & j14=1 & j11=1 & j10=1 & j2=1 & j1=0 & q_sz=0 & c_dsz=4 & q_ldst=1 & q_na=1 & RPTR & Cucst2 & RT65Pair { RPTR = RPTR - (Cucst2 << 3); RT65Pair = *[ram]:8 RPTR; }
 
-:STDW^CUnitD " " RT65Pair^", "^"*--"^RPTR^"["^Cucst2^"]" is c_is16=1 & CUnitD & j15=0 & j14=1 & j11=1 & j10=1 & j2=1 & j1=0 & q_sz=0 & c_dsz=5 & q_ldst=0 & q_na=0 & RPTR & Cucst2 & RT65Pair { c6000_unimplemented(); }
-:LDDW^CUnitD " " "*--"^RPTR^"["^Cucst2^"]"^", "^RT65Pair is c_is16=1 & CUnitD & j15=0 & j14=1 & j11=1 & j10=1 & j2=1 & j1=0 & q_sz=0 & c_dsz=5 & q_ldst=1 & q_na=0 & RPTR & Cucst2 & RT65Pair { c6000_unimplemented(); }
+:STDW^CUnitD " " RT65Pair^", "^"*--"^RPTR^"["^Cucst2^"]" is c_is16=1 & CUnitD & j15=0 & j14=1 & j11=1 & j10=1 & j2=1 & j1=0 & q_sz=0 & c_dsz=5 & q_ldst=0 & q_na=0 & RPTR & Cucst2 & RT65Pair { RPTR = RPTR - (Cucst2 << 3); *[ram]:8 RPTR = RT65Pair; }
+:LDDW^CUnitD " " "*--"^RPTR^"["^Cucst2^"]"^", "^RT65Pair is c_is16=1 & CUnitD & j15=0 & j14=1 & j11=1 & j10=1 & j2=1 & j1=0 & q_sz=0 & c_dsz=5 & q_ldst=1 & q_na=0 & RPTR & Cucst2 & RT65Pair { RPTR = RPTR - (Cucst2 << 3); RT65Pair = *[ram]:8 RPTR; }
 
-:STNDW^CUnitD " " RT65Pair^", "^"*--"^RPTR^"["^Cucst2^"]" is c_is16=1 & CUnitD & j15=0 & j14=1 & j11=1 & j10=1 & j2=1 & j1=0 & q_sz=0 & c_dsz=5 & q_ldst=0 & q_na=1 & RPTR & Cucst2 & RT65Pair { c6000_unimplemented(); }
-:LDNDW^CUnitD " " "*--"^RPTR^"["^Cucst2^"]"^", "^RT65Pair is c_is16=1 & CUnitD & j15=0 & j14=1 & j11=1 & j10=1 & j2=1 & j1=0 & q_sz=0 & c_dsz=5 & q_ldst=1 & q_na=1 & RPTR & Cucst2 & RT65Pair { c6000_unimplemented(); }
+:STNDW^CUnitD " " RT65Pair^", "^"*--"^RPTR^"["^Cucst2^"]" is c_is16=1 & CUnitD & j15=0 & j14=1 & j11=1 & j10=1 & j2=1 & j1=0 & q_sz=0 & c_dsz=5 & q_ldst=0 & q_na=1 & RPTR & Cucst2 & RT65Pair { RPTR = RPTR - (Cucst2 << 3); *[ram]:8 RPTR = RT65Pair; }
+:LDNDW^CUnitD " " "*--"^RPTR^"["^Cucst2^"]"^", "^RT65Pair is c_is16=1 & CUnitD & j15=0 & j14=1 & j11=1 & j10=1 & j2=1 & j1=0 & q_sz=0 & c_dsz=5 & q_ldst=1 & q_na=1 & RPTR & Cucst2 & RT65Pair { RPTR = RPTR - (Cucst2 << 3); RT65Pair = *[ram]:8 RPTR; }
 
-:STDW^CUnitD " " RT65Pair^", "^"*--"^RPTR^"["^Cucst2^"]" is c_is16=1 & CUnitD & j15=0 & j14=1 & j11=1 & j10=1 & j2=1 & j1=0 & q_sz=0 & c_dsz=6 & q_ldst=0 & q_na=0 & RPTR & Cucst2 & RT65Pair { c6000_unimplemented(); }
-:LDDW^CUnitD " " "*--"^RPTR^"["^Cucst2^"]"^", "^RT65Pair is c_is16=1 & CUnitD & j15=0 & j14=1 & j11=1 & j10=1 & j2=1 & j1=0 & q_sz=0 & c_dsz=6 & q_ldst=1 & q_na=0 & RPTR & Cucst2 & RT65Pair { c6000_unimplemented(); }
+:STDW^CUnitD " " RT65Pair^", "^"*--"^RPTR^"["^Cucst2^"]" is c_is16=1 & CUnitD & j15=0 & j14=1 & j11=1 & j10=1 & j2=1 & j1=0 & q_sz=0 & c_dsz=6 & q_ldst=0 & q_na=0 & RPTR & Cucst2 & RT65Pair { RPTR = RPTR - (Cucst2 << 3); *[ram]:8 RPTR = RT65Pair; }
+:LDDW^CUnitD " " "*--"^RPTR^"["^Cucst2^"]"^", "^RT65Pair is c_is16=1 & CUnitD & j15=0 & j14=1 & j11=1 & j10=1 & j2=1 & j1=0 & q_sz=0 & c_dsz=6 & q_ldst=1 & q_na=0 & RPTR & Cucst2 & RT65Pair { RPTR = RPTR - (Cucst2 << 3); RT65Pair = *[ram]:8 RPTR; }
 
-:STNDW^CUnitD " " RT65Pair^", "^"*--"^RPTR^"["^Cucst2^"]" is c_is16=1 & CUnitD & j15=0 & j14=1 & j11=1 & j10=1 & j2=1 & j1=0 & q_sz=0 & c_dsz=6 & q_ldst=0 & q_na=1 & RPTR & Cucst2 & RT65Pair { c6000_unimplemented(); }
-:LDNDW^CUnitD " " "*--"^RPTR^"["^Cucst2^"]"^", "^RT65Pair is c_is16=1 & CUnitD & j15=0 & j14=1 & j11=1 & j10=1 & j2=1 & j1=0 & q_sz=0 & c_dsz=6 & q_ldst=1 & q_na=1 & RPTR & Cucst2 & RT65Pair { c6000_unimplemented(); }
+:STNDW^CUnitD " " RT65Pair^", "^"*--"^RPTR^"["^Cucst2^"]" is c_is16=1 & CUnitD & j15=0 & j14=1 & j11=1 & j10=1 & j2=1 & j1=0 & q_sz=0 & c_dsz=6 & q_ldst=0 & q_na=1 & RPTR & Cucst2 & RT65Pair { RPTR = RPTR - (Cucst2 << 3); *[ram]:8 RPTR = RT65Pair; }
+:LDNDW^CUnitD " " "*--"^RPTR^"["^Cucst2^"]"^", "^RT65Pair is c_is16=1 & CUnitD & j15=0 & j14=1 & j11=1 & j10=1 & j2=1 & j1=0 & q_sz=0 & c_dsz=6 & q_ldst=1 & q_na=1 & RPTR & Cucst2 & RT65Pair { RPTR = RPTR - (Cucst2 << 3); RT65Pair = *[ram]:8 RPTR; }
 
-:STDW^CUnitD " " RT65Pair^", "^"*--"^RPTR^"["^Cucst2^"]" is c_is16=1 & CUnitD & j15=0 & j14=1 & j11=1 & j10=1 & j2=1 & j1=0 & q_sz=0 & c_dsz=7 & q_ldst=0 & q_na=0 & RPTR & Cucst2 & RT65Pair { c6000_unimplemented(); }
-:LDDW^CUnitD " " "*--"^RPTR^"["^Cucst2^"]"^", "^RT65Pair is c_is16=1 & CUnitD & j15=0 & j14=1 & j11=1 & j10=1 & j2=1 & j1=0 & q_sz=0 & c_dsz=7 & q_ldst=1 & q_na=0 & RPTR & Cucst2 & RT65Pair { c6000_unimplemented(); }
+:STDW^CUnitD " " RT65Pair^", "^"*--"^RPTR^"["^Cucst2^"]" is c_is16=1 & CUnitD & j15=0 & j14=1 & j11=1 & j10=1 & j2=1 & j1=0 & q_sz=0 & c_dsz=7 & q_ldst=0 & q_na=0 & RPTR & Cucst2 & RT65Pair { RPTR = RPTR - (Cucst2 << 3); *[ram]:8 RPTR = RT65Pair; }
+:LDDW^CUnitD " " "*--"^RPTR^"["^Cucst2^"]"^", "^RT65Pair is c_is16=1 & CUnitD & j15=0 & j14=1 & j11=1 & j10=1 & j2=1 & j1=0 & q_sz=0 & c_dsz=7 & q_ldst=1 & q_na=0 & RPTR & Cucst2 & RT65Pair { RPTR = RPTR - (Cucst2 << 3); RT65Pair = *[ram]:8 RPTR; }
 
-:STNDW^CUnitD " " RT65Pair^", "^"*--"^RPTR^"["^Cucst2^"]" is c_is16=1 & CUnitD & j15=0 & j14=1 & j11=1 & j10=1 & j2=1 & j1=0 & q_sz=0 & c_dsz=7 & q_ldst=0 & q_na=1 & RPTR & Cucst2 & RT65Pair { c6000_unimplemented(); }
-:LDNDW^CUnitD " " "*--"^RPTR^"["^Cucst2^"]"^", "^RT65Pair is c_is16=1 & CUnitD & j15=0 & j14=1 & j11=1 & j10=1 & j2=1 & j1=0 & q_sz=0 & c_dsz=7 & q_ldst=1 & q_na=1 & RPTR & Cucst2 & RT65Pair { c6000_unimplemented(); }
+:STNDW^CUnitD " " RT65Pair^", "^"*--"^RPTR^"["^Cucst2^"]" is c_is16=1 & CUnitD & j15=0 & j14=1 & j11=1 & j10=1 & j2=1 & j1=0 & q_sz=0 & c_dsz=7 & q_ldst=0 & q_na=1 & RPTR & Cucst2 & RT65Pair { RPTR = RPTR - (Cucst2 << 3); *[ram]:8 RPTR = RT65Pair; }
+:LDNDW^CUnitD " " "*--"^RPTR^"["^Cucst2^"]"^", "^RT65Pair is c_is16=1 & CUnitD & j15=0 & j14=1 & j11=1 & j10=1 & j2=1 & j1=0 & q_sz=0 & c_dsz=7 & q_ldst=1 & q_na=1 & RPTR & Cucst2 & RT65Pair { RPTR = RPTR - (Cucst2 << 3); RT65Pair = *[ram]:8 RPTR; }
 
 # ---------------------------------------------------------------------------
 # Figure C-16. Dstk - SPRUFE8B appendix C.4.  ptr is B15 and s is fixed to 1
@@ -626,8 +626,8 @@ CTgt10: reloc is cq_scst10 [ reloc = (inst_start & 0xffffffe0) + (cq_scst10 << 1
 
 :STW^CUnitD " " RT710^", "^"*B15--["^Cucst2pp^"]" is c_is16=1 & CUnitD & j11=0 & j6=1 & j5=1 & j4=1 & j3=0 & j2=1 & j1=1 & j0=1 & j15=0 & j14=0 & RT710 & Cucst2pp { *[ram]:4 B15 = RT710; B15 = B15 - (Cucst2pp << 2); }
 :LDW^CUnitD " " "*++B15["^Cucst2pp^"]"^", "^RT710 is c_is16=1 & CUnitD & j11=0 & j6=1 & j5=1 & j4=1 & j3=0 & j2=1 & j1=1 & j0=1 & j15=0 & j14=1 & RT710 & Cucst2pp { B15 = B15 + (Cucst2pp << 2); RT710 = *[ram]:4 B15; }
-:STDW^CUnitD " " RT710Pair^", "^"*B15--["^Cucst2pp^"]" is c_is16=1 & CUnitD & j11=0 & j6=1 & j5=1 & j4=1 & j3=0 & j2=1 & j1=1 & j0=1 & j15=1 & j14=0 & RT710Pair & Cucst2pp { c6000_unimplemented(); }
-:LDDW^CUnitD " " "*++B15["^Cucst2pp^"]"^", "^RT710Pair is c_is16=1 & CUnitD & j11=0 & j6=1 & j5=1 & j4=1 & j3=0 & j2=1 & j1=1 & j0=1 & j15=1 & j14=1 & RT710Pair & Cucst2pp { c6000_unimplemented(); }
+:STDW^CUnitD " " RT710Pair^", "^"*B15--["^Cucst2pp^"]" is c_is16=1 & CUnitD & j11=0 & j6=1 & j5=1 & j4=1 & j3=0 & j2=1 & j1=1 & j0=1 & j15=1 & j14=0 & RT710Pair & Cucst2pp { *[ram]:8 B15 = RT710Pair; B15 = B15 - (Cucst2pp << 3); }
+:LDDW^CUnitD " " "*++B15["^Cucst2pp^"]"^", "^RT710Pair is c_is16=1 & CUnitD & j11=0 & j6=1 & j5=1 & j4=1 & j3=0 & j2=1 & j1=1 & j0=1 & j15=1 & j14=1 & RT710Pair & Cucst2pp { B15 = B15 + (Cucst2pp << 3); RT710Pair = *[ram]:8 B15; }
 
 # ---------------------------------------------------------------------------
 # Figure D-4. L3 - SPRUFE8B appendix D.4.
@@ -699,7 +699,7 @@ CTgt10: reloc is cq_scst10 [ reloc = (inst_start & 0xffffffe0) + (cq_scst10 << 1
 # RS = 1 it is A16/A18/A20/A22 or B16/B18/B20/B22 (figure note).
 # ---------------------------------------------------------------------------
 
-:MPY^CUnitM RA15, RX97, RA1110 is c_is16=1 & CUnitM & j4=1 & j3=1 & j2=1 & j1=1 & j6=0 & j5=0 & c_sat=0 & RA15 & RX97 & RA1110 { RA1110 = RA15 * RX97; }
+:MPY^CUnitM RA15, RX97, RA1110 is c_is16=1 & CUnitM & j4=1 & j3=1 & j2=1 & j1=1 & j6=0 & j5=0 & c_sat=0 & RA15 & RX97 & RA1110 { local a:4 = (RA15 << 16) s>> 16; local b:4 = (RX97 << 16) s>> 16; RA1110 = a * b; }
 :MPYH^CUnitM RA15, RX97, RA1110 is c_is16=1 & CUnitM & j4=1 & j3=1 & j2=1 & j1=1 & j6=0 & j5=1 & c_sat=0 & RA15 & RX97 & RA1110 { c6000_unimplemented(); }
 :MPYLH^CUnitM RA15, RX97, RA1110 is c_is16=1 & CUnitM & j4=1 & j3=1 & j2=1 & j1=1 & j6=1 & j5=0 & c_sat=0 & RA15 & RX97 & RA1110 { c6000_unimplemented(); }
 :MPYHL^CUnitM RA15, RX97, RA1110 is c_is16=1 & CUnitM & j4=1 & j3=1 & j2=1 & j1=1 & j6=1 & j5=1 & c_sat=0 & RA15 & RX97 & RA1110 { c6000_unimplemented(); }
@@ -793,7 +793,7 @@ CTgt10: reloc is cq_scst10 [ reloc = (inst_start & 0xffffffe0) + (cq_scst10 << 1
 # (Figure F-28).  SET/CLR take csta = cstb = ucst5, i.e. a single bit.
 # ---------------------------------------------------------------------------
 
-:EXTU^CUnitS RA97, Cucst5f23, 31, CAcc is c_is16=1 & CUnitS & j10=0 & j4=0 & j3=0 & j2=0 & j1=1 & c_br=0 & j6=0 & j5=0 & RA97 & Cucst5f23 & CAcc { c6000_unimplemented(); }
+:EXTU^CUnitS RA97, Cucst5f23, 31, CAcc is c_is16=1 & CUnitS & j10=0 & j4=0 & j3=0 & j2=0 & j1=1 & c_br=0 & j6=0 & j5=0 & RA97 & Cucst5f23 & CAcc { CAcc = (RA97 << Cucst5f23) >> 31; }
 :SET^CUnitS RA97, Cucst5d, Cucst5f23, RB97 is c_is16=1 & CUnitS & j10=0 & j4=0 & j3=0 & j2=0 & j1=1 & c_br=0 & j6=0 & j5=1 & RA97 & Cucst5d & Cucst5f23 & RB97 { local b = 1; b = b << Cucst5d; RB97 = RA97 | b; }
 :CLR^CUnitS RA97, Cucst5d, Cucst5f23, RB97 is c_is16=1 & CUnitS & j10=0 & j4=0 & j3=0 & j2=0 & j1=1 & c_br=0 & j6=1 & j5=0 & RA97 & Cucst5d & Cucst5f23 & RB97 { local b = 1; b = b << Cucst5d; RB97 = RA97 & ~b; }
 
@@ -801,10 +801,10 @@ CTgt10: reloc is cq_scst10 [ reloc = (inst_start & 0xffffffe0) + (cq_scst10 << 1
 # Figure F-28. S2ext - SPRUFE8B appendix F.4.
 # ---------------------------------------------------------------------------
 
-:EXT^CUnitS RA97, 16, 16, RA15 is c_is16=1 & CUnitS & j10=0 & j6=1 & j5=1 & j4=0 & j3=0 & j2=0 & j1=1 & c_br=0 & j12=0 & j11=0 & RA97 & RA15 { c6000_unimplemented(); }
-:EXT^CUnitS RA97, 24, 24, RA15 is c_is16=1 & CUnitS & j10=0 & j6=1 & j5=1 & j4=0 & j3=0 & j2=0 & j1=1 & c_br=0 & j12=0 & j11=1 & RA97 & RA15 { c6000_unimplemented(); }
-:EXTU^CUnitS RA97, 16, 16, RA15 is c_is16=1 & CUnitS & j10=0 & j6=1 & j5=1 & j4=0 & j3=0 & j2=0 & j1=1 & c_br=0 & j12=1 & j11=0 & RA97 & RA15 { c6000_unimplemented(); }
-:EXTU^CUnitS RA97, 24, 24, RA15 is c_is16=1 & CUnitS & j10=0 & j6=1 & j5=1 & j4=0 & j3=0 & j2=0 & j1=1 & c_br=0 & j12=1 & j11=1 & RA97 & RA15 { c6000_unimplemented(); }
+:EXT^CUnitS RA97, 16, 16, RA15 is c_is16=1 & CUnitS & j10=0 & j6=1 & j5=1 & j4=0 & j3=0 & j2=0 & j1=1 & c_br=0 & j12=0 & j11=0 & RA97 & RA15 { RA15 = (RA97 << 16) s>> 16; }
+:EXT^CUnitS RA97, 24, 24, RA15 is c_is16=1 & CUnitS & j10=0 & j6=1 & j5=1 & j4=0 & j3=0 & j2=0 & j1=1 & c_br=0 & j12=0 & j11=1 & RA97 & RA15 { RA15 = (RA97 << 24) s>> 24; }
+:EXTU^CUnitS RA97, 16, 16, RA15 is c_is16=1 & CUnitS & j10=0 & j6=1 & j5=1 & j4=0 & j3=0 & j2=0 & j1=1 & c_br=0 & j12=1 & j11=0 & RA97 & RA15 { RA15 = (RA97 << 16) >> 16; }
+:EXTU^CUnitS RA97, 24, 24, RA15 is c_is16=1 & CUnitS & j10=0 & j6=1 & j5=1 & j4=0 & j3=0 & j2=0 & j1=1 & c_br=0 & j12=1 & j11=1 & RA97 & RA15 { RA15 = (RA97 << 24) >> 24; }
 
 # ---------------------------------------------------------------------------
 # Figure F-29. Sx2op - SPRUFE8B appendix F.4.  src1 = dst.
@@ -827,7 +827,7 @@ CTgt10: reloc is cq_scst10 [ reloc = (inst_start & 0xffffffe0) + (cq_scst10 << 1
 
 :SUB^CUnitS^" 0, "^RA97^", "^RB97 is c_is16=1 & CUnitS & j12=1 & j11=1 & j10=0 & j6=1 & j5=1 & j4=0 & j3=1 & j2=1 & j1=1 & c_br=0 & j15=0 & j14=1 & j13=0 & RA97 & RB97 { RB97 = 0 - RA97; }
 :ADD^CUnitS^" -1, "^RA97^", "^RB97 is c_is16=1 & CUnitS & j12=1 & j11=1 & j10=0 & j6=1 & j5=1 & j4=0 & j3=1 & j2=1 & j1=1 & c_br=0 & j15=0 & j14=1 & j13=1 & RA97 & RB97 { RB97 = RA97 - 1; }
-:MVC^CUnitS RA97^", ILC" is c_is16=1 & CUnitS & j12=1 & j11=1 & j10=0 & j6=1 & j5=1 & j4=0 & j3=1 & j2=1 & j1=1 & c_br=0 & j15=1 & j14=1 & j13=0 & q_s=1 & RA97 { c6000_unimplemented(); }
+:MVC^CUnitS RA97^", ILC" is c_is16=1 & CUnitS & j12=1 & j11=1 & j10=0 & j6=1 & j5=1 & j4=0 & j3=1 & j2=1 & j1=1 & c_br=0 & j15=1 & j14=1 & j13=0 & q_s=1 & RA97 { ILC = RA97; }
 
 # ---------------------------------------------------------------------------
 # Figure F-32. Sx1b (BNOP register form) - SPRUFE8B appendix F.4.  src2 is
@@ -835,7 +835,7 @@ CTgt10: reloc is cq_scst10 [ reloc = (inst_start & 0xffffffe0) + (cq_scst10 << 1
 # to this form, so it is decoded regardless of the header BR bit.
 # ---------------------------------------------------------------------------
 
-:BNOP^CUnitS RB710, CN3 is c_is16=1 & CUnitS & j12=0 & j11=0 & j6=1 & j5=1 & j4=0 & j3=1 & j2=1 & j1=1 & RB710 & CN3 { c6000_unimplemented(); }
+:BNOP^CUnitS RB710, CN3 is c_is16=1 & CUnitS & j12=0 & j11=0 & j6=1 & j5=1 & j4=0 & j3=1 & j2=1 & j1=1 & RB710 & CN3 { goto [RB710]; }
 
 # ---------------------------------------------------------------------------
 # Figures G-1/G-2. LSDmvto / LSDmvfr - SPRUFE8B appendix G.3.  The srcms /

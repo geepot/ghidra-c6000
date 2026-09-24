@@ -17,9 +17,8 @@ lines = [
     "",
 ]
 
-# Doubleword memory instructions name an even/odd register pair.  Their
-# transfer remains an explicit placeholder, but decoding must not treat the
-# encoded pair selector (or LDNDW/STNDW's sc bit) as a scalar register index.
+# Doubleword memory instructions name an even/odd register pair.  Export its
+# overlapping 64-bit register, preserving the even register as the low half.
 for side, file in ((0, "A"), (1, "B")):
     for pair in range(16):
         even = pair * 2
@@ -27,12 +26,36 @@ for side, file in ((0, "A"), (1, "B")):
         for role in ("DstPair", "StoreSrcPair"):
             lines.append(
                 f'{role}: {label} is pair_index={pair} & i23=0 & i1={side} '
-                f'{{ export {file}{even}; }}'
+                f'{{ export {file}{even + 1}_{file}{even}; }}'
             )
         for role in ("DstPairN", "StoreSrcPairN"):
             lines.append(
                 f'{role}: {label} is pair_index={pair} & i1={side} '
-                f'{{ export {file}{even}; }}'
+                f'{{ export {file}{even + 1}_{file}{even}; }}'
+            )
+lines.append("")
+
+# Double-precision src1 pairs remain on the unit's own register side.
+for side, file in ((0, "A"), (1, "B")):
+    for pair in range(16):
+        even = pair * 2
+        lines.append(
+            f'Src1Pair: "{file}{even + 1}:{file}{even}" is '
+            f'src1_pair_index={pair} & i13=0 & i1={side} '
+            f'{{ export {file}{even + 1}_{file}{even}; }}'
+        )
+lines.append("")
+
+# Double-precision source pairs use the src2 field and its cross-path bit.
+for unit_side in (0, 1):
+    for cross in (0, 1):
+        file = "B" if unit_side ^ cross else "A"
+        for pair in range(16):
+            even = pair * 2
+            lines.append(
+                f'Src2Pair: "{file}{even + 1}:{file}{even}" is '
+                f'src2_pair_index={pair} & i18=0 & i1={unit_side} & i12={cross} '
+                f'{{ export {file}{even + 1}_{file}{even}; }}'
             )
 lines.append("")
 
