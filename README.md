@@ -322,9 +322,10 @@ it produces.
   The scheduler reports operation order and loop-control state; it does not
   execute each instruction's p-code or model instruction latency, interrupts,
   nested reload, or choose the post-body program-memory packet after branches.
-  Native Ghidra
-  decompilation still displays the loop-control userops, because the hardware
-  buffer does not correspond to an ordinary control-flow edge.
+  [The loop conformance notes](docs/software-loop-conformance.md) specify
+  the remaining emulator state. Native Ghidra decompilation still displays
+  the loop-control userops, because the hardware buffer does not correspond
+  to an ordinary control-flow edge.
 * **Predication** is decoded, displayed and guards the modelled 32-bit p-code.
   Compact predication and packet-wide parallel effects need further work.
 * The generic corpus is assembled from GNU binutils, whose tic6x assembler
