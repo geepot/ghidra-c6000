@@ -455,6 +455,68 @@ macro c6000_sem_mpy32us(a, b, d) {
 macro c6000_sem_mpyi(a, b, d) { d = a * b; }
 # SEM: PACK2
 macro c6000_sem_pack2(a, b, d) { d = ((a & 0xffff) << 16) | (b & 0xffff); }
+# SEM: PACKH2
+macro c6000_sem_packh2(a, b, d) {
+  d = (a & 0xffff0000) | ((b >> 16) & 0xffff);
+}
+# SEM: PACKH4
+macro c6000_sem_packh4(a, b, d) {
+  d = (a & 0xff000000) | ((a & 0xff00) << 8) |
+      ((b >> 16) & 0xff00) | ((b >> 8) & 0xff);
+}
+# SEM: PACKHL2
+macro c6000_sem_packhl2(a, b, d) {
+  d = (a & 0xffff0000) | (b & 0xffff);
+}
+# SEM: PACKLH2
+macro c6000_sem_packlh2(a, b, d) {
+  d = (a << 16) | (b >> 16);
+}
+# SPACK2/SPACKU4 clamp lanes independently and leave CSR.SAT unchanged.
+macro c6000_sem_clamp_s16(v, d) {
+  d = v;
+  if (v s> 0x7fff) goto <positive>;
+  if (v s< -0x8000) goto <negative>;
+  goto <done>;
+  <positive> d = 0x7fff;
+  goto <done>;
+  <negative> d = 0x8000;
+  <done>
+}
+macro c6000_sem_clamp_u8(v, d) {
+  d = v;
+  if (v s< 0) goto <negative>;
+  if (v s> 0xff) goto <positive>;
+  goto <done>;
+  <positive> d = 0xff;
+  goto <done>;
+  <negative> d = 0;
+  <done>
+}
+# SEM: SPACK2
+macro c6000_sem_spack2(a, b, d) {
+  local high:4 = 0;
+  local low:4 = 0;
+  c6000_sem_clamp_s16(a, high);
+  c6000_sem_clamp_s16(b, low);
+  d = ((high & 0xffff) << 16) | (low & 0xffff);
+}
+# SEM: SPACKU4
+macro c6000_sem_spacku4(a, b, d) {
+  local a_hi:4 = a s>> 16;
+  local a_lo:4 = (a << 16) s>> 16;
+  local b_hi:4 = b s>> 16;
+  local b_lo:4 = (b << 16) s>> 16;
+  local r3:4 = 0;
+  local r2:4 = 0;
+  local r1:4 = 0;
+  local r0:4 = 0;
+  c6000_sem_clamp_u8(a_hi, r3);
+  c6000_sem_clamp_u8(a_lo, r2);
+  c6000_sem_clamp_u8(b_hi, r1);
+  c6000_sem_clamp_u8(b_lo, r0);
+  d = (r3 << 24) | (r2 << 16) | (r1 << 8) | r0;
+}
 # SEM: PACKL4
 macro c6000_sem_packl4(a, b, d) {
   d = ((a & 0x00ff0000) << 8) | ((a & 0xff) << 16) |
