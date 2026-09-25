@@ -1447,8 +1447,6 @@ macro c6000_sem_adddp(a, b, d) { d = a f+ b; }
 macro c6000_sem_subdp(a, b, d) { d = a f- b; }
 # SEM: SUBSP
 macro c6000_sem_subsp(a, b, d) { d = a f- b; }
-# SEM: MPYSP
-macro c6000_sem_mpysp(a, b, d) { d = a f* b; }
 # SEM: MPYDP
 macro c6000_sem_mpydp(a, b, d) { d = a f* b; }
 # SEM: MPYSPDP
@@ -1678,42 +1676,24 @@ macro c6000_sem_spdp(a, d, side) {
   flags = 0x12; # INVAL | NAN2
   <done> FAUCR = FAUCR | (flags << sideShift);
 }
-# SEM: DPSP
-macro c6000_sem_dpsp(a, d, side) {
+# Convert a finite, non-denormal DP value to SP using the selected rounding
+# mode. The caller accumulates its warning bits in flags and writes the
+# instruction's FADCR or FMCR half after this macro returns.
+macro c6000_sem_round_dp_to_sp(a, d, mode, flags) {
   local raw:8 = a;
   local sign:8 = raw & 0x8000000000000000;
   local magnitude:8 = raw & 0x7fffffffffffffff;
-  local exponent:8 = (raw >> 52) & 2047;
-  local fraction:8 = raw & 0xfffffffffffff;
   local high:8 = raw >> 32;
   local signSP:4 = high:4 & 0x80000000;
-  local sideShift:4 = side;
-  local roundMode:4 = (FADCR >> (9 + sideShift)) & 3;
-  local flags:4 = 0;
-  if (exponent == 2047) goto <special>;
-  if (exponent != 0) goto <range>;
-  if (fraction == 0) goto <convert>;
-  d = signSP;
-  flags = 0x88; # INEX | DEN2
-  goto <done>;
-  <special>
-  if (fraction != 0) goto <nan>;
-  d = signSP | 0x7f800000;
-  flags = 0x20; # INFO
-  goto <done>;
-  <nan> d = 0x7fffffff;
-  flags = 2; # NAN2
-  if ((fraction & 0x8000000000000) != 0) goto <done>;
-  flags = 0x12; # INVAL | NAN2
-  goto <done>;
-  <range>
+  local roundMode:4 = mode;
+  if (magnitude == 0) goto <convert>;
   if (magnitude > 0x47efffffe0000000) goto <overflow>;
   if (magnitude < 0x3810000000000000) goto <underflow>;
   <convert>
   d = float2float(a);
   local rounded:8 = float2float(d);
   if (rounded f== a) goto <done>;
-  flags = 0x80; # INEX
+  flags = flags | 0x80; # INEX
   if (roundMode == 0) goto <done>;
   if (roundMode == 1) goto <towardZero>;
   if (roundMode == 2) goto <towardPositive>;
@@ -1739,7 +1719,7 @@ macro c6000_sem_dpsp(a, d, side) {
   <decrement> d = d - 1;
   goto <done>;
   <overflow>
-  flags = 0xc0; # INEX | OVER
+  flags = flags | 0xc0; # INEX | OVER
   d = signSP | 0x7f800000;
   if (roundMode == 1) goto <largest>;
   if (roundMode == 2 && sign != 0) goto <largest>;
@@ -1748,13 +1728,62 @@ macro c6000_sem_dpsp(a, d, side) {
   <largest> d = signSP | 0x7f7fffff;
   goto <done>;
   <underflow>
-  flags = 0x180; # INEX | UNDER
+  flags = flags | 0x180; # INEX | UNDER
   d = signSP;
   if (roundMode == 2 && sign == 0) goto <smallest>;
   if (roundMode == 3 && sign != 0) goto <smallest>;
   goto <done>;
   <smallest> d = signSP | 0x00800000;
+  <done>
+}
+# SEM: DPSP
+macro c6000_sem_dpsp(a, d, side) {
+  local raw:8 = a;
+  local exponent:8 = (raw >> 52) & 2047;
+  local fraction:8 = raw & 0xfffffffffffff;
+  local high:8 = raw >> 32;
+  local signSP:4 = high:4 & 0x80000000;
+  local sideShift:4 = side;
+  local roundMode:4 = (FADCR >> (9 + sideShift)) & 3;
+  local flags:4 = 0;
+  if (exponent == 2047) goto <special>;
+  if (exponent != 0) goto <finite>;
+  if (fraction == 0) goto <finite>;
+  d = signSP;
+  flags = 0x88; # INEX | DEN2
+  goto <done>;
+  <special>
+  if (fraction != 0) goto <nan>;
+  d = signSP | 0x7f800000;
+  flags = 0x20; # INFO
+  goto <done>;
+  <nan> d = 0x7fffffff;
+  flags = 2; # NAN2
+  if ((fraction & 0x8000000000000) != 0) goto <done>;
+  flags = 0x12; # INVAL | NAN2
+  goto <done>;
+  <finite> c6000_sem_round_dp_to_sp(raw, d, roundMode, flags);
   <done> FADCR = FADCR | (flags << sideShift);
+}
+# SEM: MPYSP
+macro c6000_sem_mpysp(a, b, d, side) {
+  local product:8 = 0;
+  c6000_sem_mpysp2dp(a, b, product, side);
+  local exponent:8 = (product >> 52) & 2047;
+  local fraction:8 = product & 0xfffffffffffff;
+  local high:8 = product >> 32;
+  local signSP:4 = high:4 & 0x80000000;
+  local sideShift:4 = side;
+  local roundMode:4 = (FMCR >> (9 + sideShift)) & 3;
+  local flags:4 = 0;
+  if (exponent != 2047) goto <finite>;
+  if (fraction != 0) goto <nan>;
+  d = signSP | 0x7f800000;
+  goto <done>;
+  <nan> d = signSP | 0x7fffffff;
+  goto <done>;
+  <finite> c6000_sem_round_dp_to_sp(product, d, roundMode, flags);
+  <done> FMCR = FMCR | (flags << sideShift);
 }
 # The .L1 and .L2 conversion units use separate FADCR halves.  RMODE is at
 # bits 10:9/26:25; source flags are in the corresponding low/high half.

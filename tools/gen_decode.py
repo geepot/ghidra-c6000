@@ -433,7 +433,7 @@ def main():
                                 1 if mnem.startswith("RSQR") else 0)
                         if mnem in {"ABSDP", "ABSSP", "SPDP", "DPSP"}:
                             args += ", %d" % (0 if suffix == ".1" else 16)
-                        if mnem == "MPYSP2DP":
+                        if mnem in {"MPYSP", "MPYSP2DP"}:
                             args += ", %d" % (0 if suffix == ".1" else 16)
                         if mnem in {"CMPEQSP", "CMPGTSP", "CMPLTSP",
                                     "CMPEQDP", "CMPGTDP", "CMPLTDP"}:
