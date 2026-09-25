@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // @category C6000
-// Execute the MPY2 cases from mpy2.py. Usage: <cases.tsv>.
+// Execute MPY2/MPYHI paired-result cases. Usage: <cases.tsv>.
 
 import java.io.BufferedReader;
 import java.io.FileReader;
@@ -62,6 +62,6 @@ public class C6000Mpy2Test extends GhidraScript {
                 checked++;
             }
         }
-        println("C6000_MPY2_OK cases=" + checked);
+        println("C6000_PAIRED_MULTIPLY_OK cases=" + checked);
     }
 }

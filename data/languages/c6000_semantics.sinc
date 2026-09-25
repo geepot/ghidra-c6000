@@ -423,6 +423,43 @@ macro c6000_sem_mpyhl(a, b, d) {
 macro c6000_sem_mpyh(a, b, d) {
   d = (a s>> 16) * (b s>> 16);
 }
+# SEM: MPYHI
+macro c6000_sem_mpyhi(a, b, d) {
+  local high:4 = a s>> 16;
+  local lhs:8 = sext(high);
+  local rhs:8 = sext(b);
+  d = lhs * rhs;
+}
+# SEM: MPYHSLU
+macro c6000_sem_mpyhslu(a, b, d) {
+  d = (a s>> 16) * (b & 0xffff);
+}
+# SEM: MPYHSU
+macro c6000_sem_mpyhsu(a, b, d) {
+  d = (a s>> 16) * (b >> 16);
+}
+# SEM: MPYHU
+macro c6000_sem_mpyhu(a, b, d) {
+  d = (a >> 16) * (b >> 16);
+}
+# SEM: MPYHULS
+macro c6000_sem_mpyhuls(a, b, d) {
+  local low:4 = (b << 16) s>> 16;
+  d = (a >> 16) * low;
+}
+# SEM: MPYHUS
+macro c6000_sem_mpyhus(a, b, d) {
+  d = (a >> 16) * (b s>> 16);
+}
+# SEM: MPYLSHU
+macro c6000_sem_mpylshu(a, b, d) {
+  local low:4 = (a << 16) s>> 16;
+  d = low * (b >> 16);
+}
+# SEM: MPYLUHS
+macro c6000_sem_mpyluhs(a, b, d) {
+  d = (a & 0xffff) * (b s>> 16);
+}
 # SEM: MPY2
 macro c6000_sem_mpy2(a, b, d) {
   local low:4 = ((a << 16) s>> 16) * ((b << 16) s>> 16);
