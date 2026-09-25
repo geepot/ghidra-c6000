@@ -25,6 +25,7 @@ SLOTS = {
     "710":  (7, 10, "r4t"),
     "710b": (7, 10, "r4b"),
     "87":   (7, 8, "ptr"),
+    "117":  (7, 11, "r5"),
 }
 
 LISTS = {}
@@ -41,6 +42,8 @@ for suf in ("a0", "b0", "a1", "b1"):
 for suf in ("a", "b"):
     regs = A if suf == "a" else B
     LISTS[("710", suf)] = regs[0:16]
+    LISTS[("117", suf)] = regs[:32]
+    LISTS[("117", suf + "1")] = regs[16:32] + regs[0:16]
 for suf in ("b0", "b1"):
     base = 0 if suf[1] == "0" else 16
     LISTS[("710b", suf)] = B[base:base + 16]
@@ -54,6 +57,7 @@ SUFFIXES = {
     "4":    ("a0", "b0", "a1", "b1"),
     "87":   ("a0", "b0", "a1", "b1"),
     "710":  ("a", "b"),
+    "117":  ("a", "b", "a1", "b1"),
     "710b": ("b0",),   # 4-bit field, header RS ignored (Figure F-32 note)
 }
 
@@ -74,7 +78,7 @@ def token_text():
     out.append("  # list to a field, so every compact register slot is declared once")
     out.append("  # per (file, register set) combination: _a0 = A side low, _b0 = B")
     out.append("  # side low, _a1 = A side high, _b1 = B side high.")
-    for slot in ("1513", "97", "64", "1110", "65", "4", "710", "710b", "87"):
+    for slot in ("1513", "97", "64", "1110", "65", "4", "710", "710b", "87", "117"):
         lo, hi, _ = SLOTS[slot]
         parts = []
         for suf in SUFFIXES[slot]:
@@ -91,7 +95,7 @@ def token_text():
 
 def attach_text():
     groups = {}
-    for slot in ("1513", "97", "64", "1110", "65", "4", "710", "710b", "87"):
+    for slot in ("1513", "97", "64", "1110", "65", "4", "710", "710b", "87", "117"):
         for suf in SUFFIXES[slot]:
             key = tuple(LISTS[(slot, suf)])
             groups.setdefault(key, []).append(fld(slot, suf))
@@ -113,6 +117,7 @@ RA15 RB15 RA97 RB97 RA64 RA1110 RA4 RX97 RT64 RT65Pair RPTR RT710 RT710Pair RB71
 CAcc CRet Cucst4 Cucst2 Cucst2pp Cucst5stk Cucst5d Cucst5p Cucst5f23
 Cucst8f24 Cucst3d9 Cucst1f CN3 Cii Cspk Cmask CimmL3i CimmLx5 CimmS3i
 CTgt7 CTgt8 CTgt10 CPred20 CPredCC""".split())
+TABLES.update({"RMVTo", "RMVFr", "RCmpDst"})
 
 
 def w(s=""):
@@ -160,7 +165,16 @@ def con(disp, pat, sem):
     for t in pat:
         if t not in terms:
             terms.append(t)
-    w(":%s is %s { %s }" % (disp, " & ".join(terms), sem))
+    if "BNOP" in disp or "CALLP" in disp:
+        # The compact header's p bits tell how many later instructions share
+        # this execute packet. SLEIGH delay slots keep those instructions in
+        # Ghidra's flow and lift their effects before taking the branch.
+        for following in range(14):
+            body = ("delayslot(%d); " % following if following else "") + sem
+            w(":%s is %s & c_pfollow=%d { %s }" %
+              (disp, " & ".join(terms), following, body))
+    else:
+        w(":%s is %s { %s }" % (disp, " & ".join(terms), sem))
 
 
 def reg_table(name, slot, side):
@@ -328,6 +342,29 @@ reg_table("RA64", "64", "s")
 reg_table("RA1110", "1110", "s")
 reg_table("RA4", "4", "s")
 cross_table("RX97", "97")
+for side, regs in ((0, A), (1, B)):
+    for cross in (0, 1):
+        file_regs = regs if cross == 0 else (B if side == 0 else A)
+        for rs in (0, 1):
+            f = fld("117", ("a" if file_regs is A else "b") + ("1" if rs else ""))
+            w("RMVTo: %s is q_s=%d & q_t=%d & c_rs=%d & %s { export %s; }" %
+              (f, side, cross, rs, f, f))
+w("")
+for side, regs in ((0, A), (1, B)):
+    for rs in (0, 1):
+        for ms in range(4):
+            for low in range(8):
+                reg = regs[(16 * rs + 8 * ms + low) & 31]
+                w('RMVFr: "%s" is q_s=%d & c_rs=%d & j11=%d & j10=%d & q_r3=%d { export %s; }' %
+                  (reg, side, rs, (ms >> 1) & 1, ms & 1, low, reg))
+w("")
+for side, regs in ((0, A), (1, B)):
+    for rs in (0, 1):
+        for bit in (0, 1):
+            reg = regs[16 * rs + bit]
+            w('RCmpDst: "%s" is q_s=%d & c_rs=%d & j11=%d { export %s; }' %
+              (reg, side, rs, bit, reg))
+w("")
 reg_table("RT64", "64", "t")
 for suf in SUFFIXES["65"]:
     regs = A if suf[0] == "a" else B
@@ -341,7 +378,11 @@ for suf in SUFFIXES["65"]:
           (suf[0].upper(), even + 1, suf[0].upper(), even,
            index, side, rs, suf[0].upper(), even + 1, suf[0].upper(), even))
 w("")
-reg_table("RPTR", "87", "s")
+for suf in ("a0", "b0"):
+    f = fld("87", suf)
+    w("RPTR: %s is %s & q_s=%d { export %s; }" %
+      (f, f, 0 if suf == "a0" else 1, f))
+w("")
 reg_table("RT710", "710", "tn")
 for file, side in (("A", 0), ("B", 1)):
     for even in range(0, 16, 2):
@@ -428,23 +469,22 @@ imm_table("CimmS3i", s3i)
 w("# ---------------------------------------------------------------------------")
 w("# Branch targets for the compact S-unit branch forms (Figures F-17..F-21).")
 w("#")
-w("# Compact fetch packets scale the displacement by one bit, not two:")
+w("# BNOP scales its displacement by one bit; CALLP Scs10 scales by two:")
 w("# SPRUFE8B BNOP execution block, 'if instruction is within compact")
 w("# instruction fetch packet':  PFC = PCE1 + (se(scst12) << 1), where PCE1 =")
 w("# inst_start & 0xFFFFFFE0 is the first instruction of the containing fetch")
 w("# packet.  The compact forms use the same rule with their own displacement")
-w("# widths (Figures F-17/F-18/F-20/F-21 carry scst7 or ucst8, Figure F-19")
-w("# carries scst10).")
+w("# widths (Figures F-17/F-18/F-20/F-21 carry scst7 or ucst8).")
 w("# ---------------------------------------------------------------------------")
 w("")
 w("CTgt7: reloc is cq_scst7 [ reloc = (inst_start & 0xffffffe0) + (cq_scst7 << 1); ]")
-w("  { export *[const]:4 reloc; }")
+w("  { export *[ram]:4 reloc; }")
 w("")
 w("CTgt8: reloc is cq_ucst8 [ reloc = (inst_start & 0xffffffe0) + (cq_ucst8 << 1); ]")
-w("  { export *[const]:4 reloc; }")
+w("  { export *[ram]:4 reloc; }")
 w("")
-w("CTgt10: reloc is cq_scst10 [ reloc = (inst_start & 0xffffffe0) + (cq_scst10 << 1); ]")
-w("  { export *[const]:4 reloc; }")
+w("CTgt10: reloc is cq_scst10 [ reloc = (inst_start & 0xffffffe0) + (cq_scst10 << 2); ]")
+w("  { export *[ram]:4 reloc; }")
 w("")
 
 # ===========================================================================
@@ -525,7 +565,7 @@ def emit_dformat(fig, pat, mem_kind, imm, has_na, dwonly):
 def emit_one(pat, mem_kind, imm, v, info, na, sz):
     name, size, sign, pair = info
     for ldst in (0, 1):
-        mn = ("LD" if ldst else "ST") + name
+        mn = ("LD" if ldst else "ST") + (name.rstrip("U") if not ldst else name)
         terms = list(pat) + ["c_dsz=%d" % v, "q_ldst=%d" % ldst]
         if na is not None:
             terms.append("q_na=%d" % na)
@@ -813,22 +853,22 @@ w("# ---------------------------------------------------------------------------
 w("# Figure D-9. Lx3c - SPRUFE8B appendix D.4.")
 w("# ---------------------------------------------------------------------------")
 w("")
-con("CMPEQ^CUnitL Cucst3d9, RA97, RA4",
+con("CMPEQ^CUnitL Cucst3d9, RA97, RCmpDst",
     ["j12=0", "j10=0", "j6=0", "j5=1", "j4=0", "j3=0", "j2=1", "j1=1",
-     "Cucst3d9", "RA97", "RA4"], "RA4 = zext(Cucst3d9 == RA97);")
+     "Cucst3d9", "RA97", "RCmpDst"], "RCmpDst = zext(Cucst3d9 == RA97);")
 w("")
 
 w("# ---------------------------------------------------------------------------")
 w("# Figure D-10. Lx1c - SPRUFE8B appendix D.4.")
 w("# ---------------------------------------------------------------------------")
 w("")
-for op, mn, sem in ((0, "CMPLT", "RA4 = zext(Cucst1f s< RA97);"),
-                    (1, "CMPGT", "RA4 = zext(Cucst1f s> RA97);"),
-                    (2, "CMPLTU", "RA4 = zext(Cucst1f < RA97);"),
-                    (3, "CMPGTU", "RA4 = zext(Cucst1f > RA97);")):
-    con("%s^CUnitL Cucst1f, RA97, RA4" % mn,
+for op, mn, sem in ((0, "CMPLT", "RCmpDst = zext(Cucst1f s< RA97);"),
+                    (1, "CMPGT", "RCmpDst = zext(Cucst1f s> RA97);"),
+                    (2, "CMPLTU", "RCmpDst = zext(Cucst1f < RA97);"),
+                    (3, "CMPGTU", "RCmpDst = zext(Cucst1f > RA97);")):
+    con("%s^CUnitL Cucst1f, RA97, RCmpDst" % mn,
         ["j12=1", "j10=0", "j6=0", "j5=1", "j4=0", "j3=0", "j2=1", "j1=1",
-         "j15=%d" % ((op >> 1) & 1), "j14=%d" % (op & 1), "Cucst1f", "RA97", "RA4"], sem)
+         "j15=%d" % ((op >> 1) & 1), "j14=%d" % (op & 1), "Cucst1f", "RA97", "RCmpDst"], sem)
 w("")
 
 w("# ---------------------------------------------------------------------------")
@@ -1083,15 +1123,14 @@ w("")
 # Figures G-1..G-4: .D/.L/.S shared
 # ===========================================================================
 w("# ---------------------------------------------------------------------------")
-w("# Figures G-1/G-2. LSDmvto / LSDmvfr - SPRUFE8B appendix G.3.  The srcms /")
-w("# dstms fields are not defined by Table G-1 and are not used by the")
-w("# mnemonic, so they are left unconstrained here.")
+w("# Figures G-1/G-2. LSDmvto / LSDmvfr - SPRUFE8B appendix G.3.")
+w("# Bits 11:10 extend the source of mvto or destination of mvfr to 5 bits.")
 w("# ---------------------------------------------------------------------------")
 w("")
-con("MV^CUnitLSD RX97, RA15",
-    ["j6=0", "j5=0", "j2=1", "j1=1", "RX97", "RA15"], "RA15 = RX97;")
-con("MV^CUnitLSD RX97, RA15",
-    ["j6=1", "j5=0", "j2=1", "j1=1", "RX97", "RA15"], "RA15 = RX97;")
+con("MV^CUnitLSD RMVTo, RA15",
+    ["j6=0", "j5=0", "j2=1", "j1=1", "RMVTo", "RA15"], "RA15 = RMVTo;")
+con("MV^CUnitLSD RX97, RMVFr",
+    ["j6=1", "j5=0", "j2=1", "j1=1", "RX97", "RMVFr"], "RMVFr = RX97;")
 w("")
 
 w("# ---------------------------------------------------------------------------")
@@ -1181,7 +1220,6 @@ w("")
 con("NOP CN3",
     ["j12=0", "j11=1", "j10=1", "j9=0", "j8=0", "j7=0", "j6=1", "j5=1",
      "j4=0", "j3=1", "j2=1", "j1=1", "j0=0", "CN3"], "")
-w("")
 
 # fix the D-11/C-20/F-31 op constraints: these used j13 etc. above; ok.
 

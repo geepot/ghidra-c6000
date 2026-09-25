@@ -52,7 +52,11 @@ public class C6000RegisterBranchAnalyzer extends AbstractAnalyzer {
 			"Corrects unconditional register branches after code discovery",
 			AnalyzerType.INSTRUCTION_ANALYZER);
 		setDefaultEnablement(true);
-		setPriority(AnalysisPriority.LOW_PRIORITY);
+		// The Decompiler Switch analyzer runs at CODE_ANALYSIS.  Correct
+		// pre-disassembled register branches before it decompiles the sweep;
+		// otherwise a tiny branch thunk can look like a huge fall-through
+		// function and exhaust its timeout or heap.
+		setPriority(AnalysisPriority.CODE_ANALYSIS.before());
 	}
 
 	@Override
@@ -66,7 +70,10 @@ public class C6000RegisterBranchAnalyzer extends AbstractAnalyzer {
 		Listing listing = program.getListing();
 		Register mode = program.getRegister("c_branch_terminal");
 		List<Address> candidates = new ArrayList<>();
-		InstructionIterator instructions = listing.getInstructions(set, true);
+		// Calls discovered during later analysis can materialize branch thunks
+		// outside the current added set. Revisit every decoded branch here so
+		// those thunks receive terminal p-code before decompilation.
+		InstructionIterator instructions = listing.getInstructions(true);
 		while (instructions.hasNext()) {
 			monitor.checkCancelled();
 			Instruction instruction = instructions.next();

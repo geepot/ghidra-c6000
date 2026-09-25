@@ -351,6 +351,10 @@ def main():
                     ops = ["Src2PairLocal", "DstPair"]
                 if mnem in {"MPY", "MPYSU"} and v in {"11000", "11110"}:
                     ops[0] = "SCst5"
+                if mnem == "MPYI" and v == "00110":
+                    # Figure E-4 and the MPYI opcode table use a signed
+                    # five-bit immediate in this variant, not an A/B source.
+                    ops[0] = "SCst5"
                 if mnem == "MPYID":
                     ops[0] = "SCst5" if v == "01100" else "Src1"
                 if mnem == "SADD":
@@ -569,6 +573,13 @@ def main():
                         disp = '^Cond^"' + disp + '"'
                     if ops:
                         disp += " " + ", ".join(ops)
+                    if mnem == "CALLP" and suffix == ".1":
+                        disp = disp.replace('"B3"', '"A3"')
+                    if mnem == "ADDKPC":
+                        # Display the PC-relative target while keeping the raw
+                        # signed displacement as the semantic macro input.
+                        disp = disp.replace("AKPCDisp", "AKPCTgt", 1)
+                        pat.append("AKPCTgt")
                     if mnem in {"BDEC", "BPOS"}:
                         if mnem == "BDEC":
                             sem = "if (Dst s< 0) goto <done>; Dst = Dst - 1; goto BdecTgt; <done>"
@@ -693,7 +704,8 @@ def main():
                         if mnem == "B" and ops and ops[0] == "BranchTarget":
                             sem = "goto BranchTarget;"
                         elif mnem == "CALLP" and ops and ops[0] == "BranchTarget":
-                            sem = "B3 = inst_start + 24; call BranchTarget;"
+                            sem = ("A3" if suffix == ".1" else "B3") + \
+                                " = inst_start + 24; call BranchTarget;"
                         elif mnem == "MVK" and ops:
                             width = "5" if ops[0] == "Cst5" else "16"
                             sem = "c6000_sem_mvk%s(%s);" % (width, args)
@@ -720,6 +732,20 @@ def main():
                           (plain_disp, " & ".join(plain_pat)))
                         n += 1
                         pat.append("creg!=0")
+                    elif mnem == "B" and ops and ops[0] != "BranchTarget":
+                        # Keep indirect B conservative during code discovery,
+                        # then switch unpredicated branches to terminal p-code
+                        # in C6000RegisterBranchAnalyzer. Both variants must
+                        # be generated here; editing the .sinc alone is lost
+                        # the next time this generator runs.
+                        terminal_pat = [term for term in pat
+                                        if term not in {"Cond", "creg!=7"}]
+                        terminal_pat += ["creg=0", "z=0", "c_branch_terminal=1"]
+                        terminal_disp = "B." + variant_ul + suffix[1:] + " " + ops[0]
+                        w(":%s is %s { c6000_sem_b_ind(%s); }" %
+                          (terminal_disp, " & ".join(terminal_pat), ops[0]))
+                        n += 1
+                        pat.append("c_branch_terminal=0")
                     key = tuple(sorted(pat))
                     if key in seen_patterns:
                         # Same encoding can be listed again as a pseudo-op.

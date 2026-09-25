@@ -119,6 +119,7 @@ public final class C6000PacketContext {
 						if (word.compareTo(start) >= 0 && word.compareTo(end) <= 0) {
 							setField(program, "c_is16", word, 0);
 							setField(program, "c_isheader", word, 0);
+							setField(program, "c_pfollow", word, 0);
 							primeBranchMode(program, word);
 						}
 					}
@@ -136,17 +137,23 @@ public final class C6000PacketContext {
 					Address word = cursor.add(i * 4);
 					boolean compact = ((layout >>> i) & 1) == 1;
 					setSlot(program, word, compact, rs, dsz, prot, br, sat);
+					setField(program, "c_pfollow", word,
+						parallelFollowers(header, layout, 2 * i));
 					if (compact) {
 						setSlot(program, word.add(2), true, rs, dsz, prot, br, sat);
+						setField(program, "c_pfollow", word.add(2),
+							parallelFollowers(header, layout, 2 * i + 1));
 					}
 					else {
 						// make sure a stale 16-bit marking cannot survive
 						setSlot(program, word.add(2), false, 0, 0, 0, 0, 0);
+						setField(program, "c_pfollow", word.add(2), 0);
 					}
 				}
 				// The header is a 32-bit CPKT instruction, not a compact slot.
 				setField(program, "c_is16", hdrAddr, 0);
 				setField(program, "c_isheader", hdrAddr, 1);
+				setField(program, "c_pfollow", hdrAddr, 0);
 				primeBranchMode(program, hdrAddr);
 				cursor = cursor.add(FETCH_PACKET_SIZE);
 			}
@@ -177,6 +184,18 @@ public final class C6000PacketContext {
 		if (program.getProgramContext().getValue(field, at, false) == null) {
 			setField(program, "c_branch_terminal", at, 0);
 		}
+	}
+
+	/** Number of following instructions in the same execute packet. */
+	private static int parallelFollowers(int header, int layout, int halfword) {
+		int count = 0;
+		while (halfword < 14 && ((header >>> halfword) & 1) != 0) {
+			int next = halfword + (((layout >>> (halfword / 2)) & 1) != 0 ? 1 : 2);
+			if (next >= 14) break; // word 7 is the header, not an instruction
+			count++;
+			halfword = next;
+		}
+		return count;
 	}
 
 	private static void setField(Program program, String name, Address at, int value)
