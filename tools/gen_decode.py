@@ -263,6 +263,10 @@ def main():
                 ops = ["Src2", "DstPair"]
             if mnem in {"ABSDP", "RCPDP", "RSQRDP"}:
                 ops = ["Src2Pair", "DstPair"]
+            if mnem == "SAT":
+                ops = ["Src2Pair", "Dst"]
+            if mnem == "SHFL3":
+                ops = ["Src1", "Src2", "DstPair"]
             if mnem in {"DPINT", "DPTRUNC"}:
                 ops = ["Src2PairDpsp", "Dst"]
             if mnem == "DPSP":
@@ -425,6 +429,8 @@ def main():
                                 1 if mnem.startswith("RSQR") else 0)
                         if mnem == "ABSDP":
                             args += ", %d" % (0 if suffix == ".1" else 16)
+                        if mnem == "SAT":
+                            args += ", %d" % (1 if suffix == ".1" else 2)
                         if mnem == "MPY32":
                             macro += "_64" if ops[-1] == "DstPair" else "_32"
                         if mnem == "DOTP2":

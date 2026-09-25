@@ -813,8 +813,8 @@
 :SADDU4.S1 Src1, Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=1 & i7=1 & i8=0 & i9=0 & i10=1 & i11=1 & i1=0 & c_is16=0 & Cond & creg!=7 & Src1 & Src2 & Dst { if (Cond == 0) goto <skip>; c6000_sem_saddu4(Src1, Src2, Dst); <skip> }
 :SADDU4.S2 Src1, Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=1 & i7=1 & i8=0 & i9=0 & i10=1 & i11=1 & i1=1 & c_is16=0 & Cond & creg!=7 & Src1 & Src2 & Dst { if (Cond == 0) goto <skip>; c6000_sem_saddu4(Src1, Src2, Dst); <skip> }
 
-:SAT.L1 Src2, Dst is i2=0 & i3=1 & i4=1 & i5=0 & i6=0 & i7=0 & i8=0 & i9=0 & i10=0 & i11=1 & i13=0 & i14=0 & i15=0 & i16=0 & i17=0 & i1=0 & c_is16=0 & Cond & creg!=7 & Src2 & Dst { if (Cond == 0) goto <skip>; c6000_unimpl_sat(); <skip> }
-:SAT.L2 Src2, Dst is i2=0 & i3=1 & i4=1 & i5=0 & i6=0 & i7=0 & i8=0 & i9=0 & i10=0 & i11=1 & i13=0 & i14=0 & i15=0 & i16=0 & i17=0 & i1=1 & c_is16=0 & Cond & creg!=7 & Src2 & Dst { if (Cond == 0) goto <skip>; c6000_unimpl_sat(); <skip> }
+:SAT.L1 Src2Pair, Dst is i2=0 & i3=1 & i4=1 & i5=0 & i6=0 & i7=0 & i8=0 & i9=0 & i10=0 & i11=1 & i13=0 & i14=0 & i15=0 & i16=0 & i17=0 & i1=0 & c_is16=0 & Cond & creg!=7 & Src2Pair & Dst { if (Cond == 0) goto <skip>; c6000_sem_sat(Src2Pair, Dst, 1); <skip> }
+:SAT.L2 Src2Pair, Dst is i2=0 & i3=1 & i4=1 & i5=0 & i6=0 & i7=0 & i8=0 & i9=0 & i10=0 & i11=1 & i13=0 & i14=0 & i15=0 & i16=0 & i17=0 & i1=1 & c_is16=0 & Cond & creg!=7 & Src2Pair & Dst { if (Cond == 0) goto <skip>; c6000_sem_sat(Src2Pair, Dst, 2); <skip> }
 
 :SET.S1 Src2, Csta, Cstb, Dst is i2=0 & i3=1 & i4=0 & i5=0 & i6=0 & i7=1 & i1=0 & c_is16=0 & Cond & creg!=7 & Src2 & Csta & Cstb & Dst { if (Cond == 0) goto <skip>; c6000_sem_set(Src2, Csta, Cstb, Dst); <skip> }
 :SET.S2 Src2, Csta, Cstb, Dst is i2=0 & i3=1 & i4=0 & i5=0 & i6=0 & i7=1 & i1=1 & c_is16=0 & Cond & creg!=7 & Src2 & Csta & Cstb & Dst { if (Cond == 0) goto <skip>; c6000_sem_set(Src2, Csta, Cstb, Dst); <skip> }
@@ -824,8 +824,8 @@
 :SHFL.M1 Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=1 & i7=1 & i8=0 & i9=0 & i10=0 & i11=0 & i13=0 & i14=0 & i15=1 & i16=1 & i17=1 & i1=0 & c_is16=0 & Cond & creg!=7 & Src2 & Dst { if (Cond == 0) goto <skip>; c6000_sem_shfl(Src2, Dst); <skip> }
 :SHFL.M2 Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=1 & i7=1 & i8=0 & i9=0 & i10=0 & i11=0 & i13=0 & i14=0 & i15=1 & i16=1 & i17=1 & i1=1 & c_is16=0 & Cond & creg!=7 & Src2 & Dst { if (Cond == 0) goto <skip>; c6000_sem_shfl(Src2, Dst); <skip> }
 
-:SHFL3.L1 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i5=0 & i6=1 & i7=1 & i8=0 & i9=1 & i10=1 & i11=0 & i28=1 & i29=0 & i30=0 & i31=0 & i1=0 & c_is16=0 & Src1 & Src2 & Dst { c6000_unimpl_shfl3(); }
-:SHFL3.L2 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i5=0 & i6=1 & i7=1 & i8=0 & i9=1 & i10=1 & i11=0 & i28=1 & i29=0 & i30=0 & i31=0 & i1=1 & c_is16=0 & Src1 & Src2 & Dst { c6000_unimpl_shfl3(); }
+:SHFL3.L1 Src1, Src2, DstPair is i2=0 & i3=1 & i4=1 & i5=0 & i6=1 & i7=1 & i8=0 & i9=1 & i10=1 & i11=0 & i28=1 & i29=0 & i30=0 & i31=0 & i1=0 & c_is16=0 & Src1 & Src2 & DstPair { c6000_sem_shfl3(Src1, Src2, DstPair); }
+:SHFL3.L2 Src1, Src2, DstPair is i2=0 & i3=1 & i4=1 & i5=0 & i6=1 & i7=1 & i8=0 & i9=1 & i10=1 & i11=0 & i28=1 & i29=0 & i30=0 & i31=0 & i1=1 & c_is16=0 & Src1 & Src2 & DstPair { c6000_sem_shfl3(Src1, Src2, DstPair); }
 
 :SHL.S1 Src2, Src1, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i11=1 & i10=1 & i9=0 & i8=0 & i7=1 & i6=1 & i1=0 & c_is16=0 & Cond & creg!=7 & Src2 & Src1 & Dst { if (Cond == 0) goto <skip>; c6000_sem_shl(Src2, Src1, Dst); <skip> }
 :SHL.S2 Src2, Src1, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i11=1 & i10=1 & i9=0 & i8=0 & i7=1 & i6=1 & i1=1 & c_is16=0 & Cond & creg!=7 & Src2 & Src1 & Dst { if (Cond == 0) goto <skip>; c6000_sem_shl(Src2, Src1, Dst); <skip> }

@@ -419,6 +419,41 @@ macro c6000_sem_deal(a, d) {
   odd = (odd | (odd >> 8)) & 0x0000ffff;
   d = even | (odd << 16);
 }
+# SEM: SHFL3
+# src1 contributes two halfwords; src2 contributes its low halfword.
+macro c6000_sem_shfl3(a, b, d) {
+  local lane0:8 = zext(b & 0xffff);
+  local lane1:8 = zext(a & 0xffff);
+  local lane2:8 = zext(a >> 16);
+  local result:8 = 0;
+  local i:4 = 0;
+  <next>
+  if (i >= 16) goto <done>;
+  local shift:4 = i * 3;
+  result = result | (((lane0 >> i) & 1) << shift);
+  result = result | (((lane1 >> i) & 1) << (shift + 1));
+  result = result | (((lane2 >> i) & 1) << (shift + 2));
+  i = i + 1;
+  goto <next>;
+  <done> d = result;
+}
+# SEM: SAT
+# The long register stores a signed 40-bit value in a 64-bit pair.
+macro c6000_sem_sat(a, d, ssr_bit) {
+  local value:8 = (a << 24) s>> 24;
+  if (value s> 0x7fffffff) goto <positive>;
+  if (value s< -0x80000000) goto <negative>;
+  d = value:4;
+  goto <done>;
+  <positive> d = 0x7fffffff;
+  CSR = CSR | 0x200;
+  SSR = SSR | ssr_bit;
+  goto <done>;
+  <negative> d = 0x80000000;
+  CSR = CSR | 0x200;
+  SSR = SSR | ssr_bit;
+  <done>
+}
 # SEM: SWAP4
 macro c6000_sem_swap4(a, d) {
   d = ((a & 0x00ff00ff) << 8) | ((a >> 8) & 0x00ff00ff);

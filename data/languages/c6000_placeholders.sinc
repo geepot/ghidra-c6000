@@ -13,8 +13,6 @@ define pcodeop c6000_unimpl_mpy2ir;
 define pcodeop c6000_unimpl_mpyihr;
 define pcodeop c6000_unimpl_mpylir;
 define pcodeop c6000_unimpl_rpack2;
-define pcodeop c6000_unimpl_sat;
-define pcodeop c6000_unimpl_shfl3;
 define pcodeop c6000_unimpl_smpy32;
 define pcodeop c6000_unimpl_swe;
 define pcodeop c6000_unimpl_swenr;
