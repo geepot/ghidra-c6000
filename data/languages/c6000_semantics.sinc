@@ -356,6 +356,67 @@ macro c6000_sem_not(a, d) { d = ~a; }
 macro c6000_sem_neg(a, d) { d = -a; }
 # SEM: ABS
 macro c6000_sem_abs(a, d) { local s = (a s< 0); if (s) goto <neg>; d = a; goto <end>; <neg> d = -a; <end> }
+# SEM: ABS2
+# Each halfword saturates independently. SPRUFE8B explicitly says CSR.SAT
+# is unaffected by this operation.
+macro c6000_sem_abs2(a, d) {
+  local lo:4 = a & 0xffff;
+  local hi:4 = (a >> 16) & 0xffff;
+  if (lo < 0x8000) goto <loReady>;
+  if (lo == 0x8000) goto <loSaturate>;
+  lo = 0x10000 - lo;
+  goto <loReady>;
+  <loSaturate> lo = 0x7fff;
+  <loReady>
+  if (hi < 0x8000) goto <hiReady>;
+  if (hi == 0x8000) goto <hiSaturate>;
+  hi = 0x10000 - hi;
+  goto <hiReady>;
+  <hiSaturate> hi = 0x7fff;
+  <hiReady> d = (hi << 16) | lo;
+}
+# SEM: BITC4
+macro c6000_sem_bitc4(a, d) {
+  local x:4 = a;
+  x = (x & 0x55555555) + ((x >> 1) & 0x55555555);
+  x = (x & 0x33333333) + ((x >> 2) & 0x33333333);
+  d = (x & 0x0f0f0f0f) + ((x >> 4) & 0x0f0f0f0f);
+}
+# SEM: BITR
+macro c6000_sem_bitr(a, d) {
+  local x:4 = a;
+  x = ((x & 0x55555555) << 1) | ((x >> 1) & 0x55555555);
+  x = ((x & 0x33333333) << 2) | ((x >> 2) & 0x33333333);
+  x = ((x & 0x0f0f0f0f) << 4) | ((x >> 4) & 0x0f0f0f0f);
+  x = ((x & 0x00ff00ff) << 8) | ((x >> 8) & 0x00ff00ff);
+  d = (x << 16) | (x >> 16);
+}
+# SEM: ABSDP
+macro c6000_sem_absdp(a, d, side) {
+  local raw:8 = a;
+  local exponent:8 = (raw >> 52) & 2047;
+  local fraction:8 = raw & 0xfffffffffffff;
+  local flags:4 = 0;
+  local sideShift:4 = side;
+  if (exponent == 2047) goto <special>;
+  if (exponent != 0) goto <normal>;
+  if (fraction == 0) goto <normal>;
+  d = 0;
+  flags = 0x88;
+  goto <done>;
+  <normal> d = raw & 0x7fffffffffffffff;
+  goto <done>;
+  <special>
+  if (fraction != 0) goto <nan>;
+  d = 0x7ff0000000000000;
+  flags = 0x20;
+  goto <done>;
+  <nan> d = 0x7fffffffffffffff;
+  flags = 2;
+  if ((fraction & 0x8000000000000) != 0) goto <done>;
+  flags = 0x12;
+  <done> FAUCR = FAUCR | (flags << sideShift);
+}
 
 # SEM: MV
 macro c6000_sem_mv(a, d) { d = a; }

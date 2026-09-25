@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // @category C6000
-// Check reciprocal estimate results and FAUCR flags. Usage: <cases.tsv>.
+// Check unary instruction results and FAUCR flags. Usage: <cases.tsv>.
 
 import java.io.BufferedReader;
 import java.io.FileReader;
@@ -12,7 +12,7 @@ import ghidra.program.model.address.Address;
 import ghidra.program.model.listing.Instruction;
 import ghidra.program.model.pcode.PcodeOp;
 
-public class C6000ReciprocalTest extends GhidraScript {
+public class C6000UnaryStatusTest extends GhidraScript {
     @Override
     protected void run() throws Exception {
         String[] args = getScriptArgs();
@@ -45,6 +45,8 @@ public class C6000ReciprocalTest extends GhidraScript {
                 try {
                     emulator.writeRegister(f[2], Long.parseUnsignedLong(f[4], 16));
                     emulator.writeRegister("FAUCR", 0);
+                    long initialSat = f.length > 7 && !f[7].equals("0") ? 0x200 : 0;
+                    emulator.writeRegister("CSR", initialSat);
                     emulator.getEmulator().setExecuteAddress(offset);
                     if (!emulator.step(monitor)) {
                         throw new AssertionError(f[0] + ": " + emulator.getLastError());
@@ -53,11 +55,14 @@ public class C6000ReciprocalTest extends GhidraScript {
                     long expected = Long.parseUnsignedLong(f[5], 16);
                     long flags = emulator.readRegister("FAUCR").longValue();
                     long expectedFlags = Long.parseUnsignedLong(f[6], 16);
-                    if (actual != expected || flags != expectedFlags) {
+                    long sat = emulator.readRegister("CSR").longValue() & 0x200;
+                    if (actual != expected || flags != expectedFlags || sat != initialSat) {
                         throw new AssertionError(f[0] + ": result=0x" +
                             Long.toHexString(actual) + " FAUCR=0x" +
-                            Long.toHexString(flags) + " expected result=0x" +
-                            f[5] + " FAUCR=0x" + f[6]);
+                            Long.toHexString(flags) + " CSR.SAT=0x" +
+                            Long.toHexString(sat) + " expected result=0x" +
+                            f[5] + " FAUCR=0x" + f[6] + " CSR.SAT=0x" +
+                            Long.toHexString(initialSat));
                     }
                 } finally {
                     emulator.dispose();
@@ -65,6 +70,6 @@ public class C6000ReciprocalTest extends GhidraScript {
                 checked++;
             }
         }
-        println("C6000_RECIPROCAL_OK cases=" + checked);
+        println("C6000_UNARY_STATUS_OK cases=" + checked);
     }
 }
