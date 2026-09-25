@@ -238,6 +238,10 @@ def main():
                 ops = ["Src1", "Src2", "DstPair"]
             if mnem == "DDOTP4":
                 ops = ["Src1", "Src2", "DstPair"]
+            if mnem in {"DDOTPH2", "DDOTPL2"}:
+                ops = ["Src1Pair", "Src2", "DstPair"]
+            if mnem in {"DDOTPH2R", "DDOTPL2R"}:
+                ops = ["Src1Pair", "Src2", "Dst"]
             if mnem == "MPYID":
                 ops = ["Src1", "Src2", "DstPair"]
             if mnem in {"MPY32U", "MPY32SU", "MPY32US"}:
@@ -413,6 +417,8 @@ def main():
                             macro += "40" if ops[-1] == "DstPair" else "32"
                         if mnem == "SADDSUB":
                             args += ", %d" % (1 if suffix == ".1" else 2)
+                        if mnem in {"DDOTPH2", "DDOTPH2R", "DDOTPL2", "DDOTPL2R"}:
+                            args += ", %d" % (0x10 if suffix == ".1" else 0x20)
                         if mnem in {"CLR", "EXT", "EXTU", "SET"} and "src1" in names:
                             macro += "_r"
                         if mnem == "NORM":

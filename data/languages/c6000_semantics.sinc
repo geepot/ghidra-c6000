@@ -544,6 +544,110 @@ macro c6000_sem_ddotp4(a, b, d) {
   local odd:4 = a1 * b3 + a0 * b2;
   d = (zext(odd) << 32) | zext(even);
 }
+# The DDOTPH2/DDOTPL2 family reads adjacent 32-bit words as d3:d2:d1:d0.
+# Work in 64 bits so the two signed dot products and rounding bias cannot
+# overflow before the instruction's 32-bit saturation step.
+macro c6000_sem_ddot_h(a, b, odd, even) {
+  local upper:8 = a >> 32;
+  local odd_word:4 = upper:4;
+  local even_word:4 = a:4;
+  local d0:8 = sext((even_word << 16) s>> 16);
+  local d1:8 = sext(even_word s>> 16);
+  local d2:8 = sext((odd_word << 16) s>> 16);
+  local d3:8 = sext(odd_word s>> 16);
+  local c0:8 = sext((b << 16) s>> 16);
+  local c1:8 = sext(b s>> 16);
+  odd = d3 * c1 + d2 * c0;
+  even = d2 * c1 + d1 * c0;
+}
+macro c6000_sem_ddot_l(a, b, odd, even) {
+  local upper:8 = a >> 32;
+  local odd_word:4 = upper:4;
+  local even_word:4 = a:4;
+  local d0:8 = sext((even_word << 16) s>> 16);
+  local d1:8 = sext(even_word s>> 16);
+  local d2:8 = sext((odd_word << 16) s>> 16);
+  local c0:8 = sext((b << 16) s>> 16);
+  local c1:8 = sext(b s>> 16);
+  odd = d2 * c1 + d1 * c0;
+  even = d1 * c1 + d0 * c0;
+}
+macro c6000_sem_ddot_sat32(v, d, saturated) {
+  if (v s> 0x7fffffff) goto <positive>;
+  if (v s< -0x80000000) goto <negative>;
+  d = v:4;
+  goto <done>;
+  <positive> d = 0x7fffffff;
+  saturated = 1;
+  goto <done>;
+  <negative> d = 0x80000000;
+  saturated = 1;
+  <done>
+}
+# SEM: DDOTPH2
+macro c6000_sem_ddotph2(a, b, d, ssr_bit) {
+  local odd_wide:8 = 0;
+  local even_wide:8 = 0;
+  local odd:4 = 0;
+  local even:4 = 0;
+  local saturated:1 = 0;
+  c6000_sem_ddot_h(a, b, odd_wide, even_wide);
+  c6000_sem_ddot_sat32(odd_wide, odd, saturated);
+  c6000_sem_ddot_sat32(even_wide, even, saturated);
+  d = (zext(odd) << 32) | zext(even);
+  if (saturated == 0) goto <done>;
+  CSR = CSR | 0x200;
+  SSR = SSR | ssr_bit;
+  <done>
+}
+# SEM: DDOTPL2
+macro c6000_sem_ddotpl2(a, b, d, ssr_bit) {
+  local odd_wide:8 = 0;
+  local even_wide:8 = 0;
+  local odd:4 = 0;
+  local even:4 = 0;
+  local saturated:1 = 0;
+  c6000_sem_ddot_l(a, b, odd_wide, even_wide);
+  c6000_sem_ddot_sat32(odd_wide, odd, saturated);
+  c6000_sem_ddot_sat32(even_wide, even, saturated);
+  d = (zext(odd) << 32) | zext(even);
+  if (saturated == 0) goto <done>;
+  CSR = CSR | 0x200;
+  SSR = SSR | ssr_bit;
+  <done>
+}
+# SEM: DDOTPH2R
+macro c6000_sem_ddotph2r(a, b, d, ssr_bit) {
+  local odd_wide:8 = 0;
+  local even_wide:8 = 0;
+  local odd:4 = 0;
+  local even:4 = 0;
+  local saturated:1 = 0;
+  c6000_sem_ddot_h(a, b, odd_wide, even_wide);
+  c6000_sem_ddot_sat32(odd_wide + 0x8000, odd, saturated);
+  c6000_sem_ddot_sat32(even_wide + 0x8000, even, saturated);
+  d = (odd & 0xffff0000) | (even >> 16);
+  if (saturated == 0) goto <done>;
+  CSR = CSR | 0x200;
+  SSR = SSR | ssr_bit;
+  <done>
+}
+# SEM: DDOTPL2R
+macro c6000_sem_ddotpl2r(a, b, d, ssr_bit) {
+  local odd_wide:8 = 0;
+  local even_wide:8 = 0;
+  local odd:4 = 0;
+  local even:4 = 0;
+  local saturated:1 = 0;
+  c6000_sem_ddot_l(a, b, odd_wide, even_wide);
+  c6000_sem_ddot_sat32(odd_wide + 0x8000, odd, saturated);
+  c6000_sem_ddot_sat32(even_wide + 0x8000, even, saturated);
+  d = (odd & 0xffff0000) | (even >> 16);
+  if (saturated == 0) goto <done>;
+  CSR = CSR | 0x200;
+  SSR = SSR | ssr_bit;
+  <done>
+}
 # SEM: MPYHLU
 macro c6000_sem_mpyhlu(a, b, d) { d = (a >> 16) * (b & 0xffff); }
 # SEM: MPYHIR

@@ -246,17 +246,17 @@
 :DDOTP4.M1 Src1, Src2, DstPair is i2=0 & i3=0 & i4=1 & i5=1 & i6=0 & i7=0 & i8=0 & i9=1 & i10=1 & i11=0 & i28=1 & i29=0 & i30=0 & i31=0 & i1=0 & c_is16=0 & Src1 & Src2 & DstPair { c6000_sem_ddotp4(Src1, Src2, DstPair); }
 :DDOTP4.M2 Src1, Src2, DstPair is i2=0 & i3=0 & i4=1 & i5=1 & i6=0 & i7=0 & i8=0 & i9=1 & i10=1 & i11=0 & i28=1 & i29=0 & i30=0 & i31=0 & i1=1 & c_is16=0 & Src1 & Src2 & DstPair { c6000_sem_ddotp4(Src1, Src2, DstPair); }
 
-:DDOTPH2.M1 Src1, Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=1 & i7=1 & i8=1 & i9=0 & i10=1 & i11=0 & i28=1 & i29=0 & i30=0 & i31=0 & i1=0 & c_is16=0 & Src1 & Src2 & Dst { c6000_unimpl_ddotph2(); }
-:DDOTPH2.M2 Src1, Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=1 & i7=1 & i8=1 & i9=0 & i10=1 & i11=0 & i28=1 & i29=0 & i30=0 & i31=0 & i1=1 & c_is16=0 & Src1 & Src2 & Dst { c6000_unimpl_ddotph2(); }
+:DDOTPH2.M1 Src1Pair, Src2, DstPair is i2=0 & i3=0 & i4=1 & i5=1 & i6=1 & i7=1 & i8=1 & i9=0 & i10=1 & i11=0 & i28=1 & i29=0 & i30=0 & i31=0 & i1=0 & c_is16=0 & Src1Pair & Src2 & DstPair { c6000_sem_ddotph2(Src1Pair, Src2, DstPair, 16); }
+:DDOTPH2.M2 Src1Pair, Src2, DstPair is i2=0 & i3=0 & i4=1 & i5=1 & i6=1 & i7=1 & i8=1 & i9=0 & i10=1 & i11=0 & i28=1 & i29=0 & i30=0 & i31=0 & i1=1 & c_is16=0 & Src1Pair & Src2 & DstPair { c6000_sem_ddotph2(Src1Pair, Src2, DstPair, 32); }
 
-:DDOTPH2R.M1 Src1, Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=1 & i7=0 & i8=1 & i9=0 & i10=1 & i11=0 & i28=1 & i29=0 & i30=0 & i31=0 & i1=0 & c_is16=0 & Src1 & Src2 & Dst { c6000_unimpl_ddotph2r(); }
-:DDOTPH2R.M2 Src1, Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=1 & i7=0 & i8=1 & i9=0 & i10=1 & i11=0 & i28=1 & i29=0 & i30=0 & i31=0 & i1=1 & c_is16=0 & Src1 & Src2 & Dst { c6000_unimpl_ddotph2r(); }
+:DDOTPH2R.M1 Src1Pair, Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=1 & i7=0 & i8=1 & i9=0 & i10=1 & i11=0 & i28=1 & i29=0 & i30=0 & i31=0 & i1=0 & c_is16=0 & Src1Pair & Src2 & Dst { c6000_sem_ddotph2r(Src1Pair, Src2, Dst, 16); }
+:DDOTPH2R.M2 Src1Pair, Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=1 & i7=0 & i8=1 & i9=0 & i10=1 & i11=0 & i28=1 & i29=0 & i30=0 & i31=0 & i1=1 & c_is16=0 & Src1Pair & Src2 & Dst { c6000_sem_ddotph2r(Src1Pair, Src2, Dst, 32); }
 
-:DDOTPL2.M1 Src1, Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=0 & i7=1 & i8=1 & i9=0 & i10=1 & i11=0 & i28=1 & i29=0 & i30=0 & i31=0 & i1=0 & c_is16=0 & Src1 & Src2 & Dst { c6000_unimpl_ddotpl2(); }
-:DDOTPL2.M2 Src1, Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=0 & i7=1 & i8=1 & i9=0 & i10=1 & i11=0 & i28=1 & i29=0 & i30=0 & i31=0 & i1=1 & c_is16=0 & Src1 & Src2 & Dst { c6000_unimpl_ddotpl2(); }
+:DDOTPL2.M1 Src1Pair, Src2, DstPair is i2=0 & i3=0 & i4=1 & i5=1 & i6=0 & i7=1 & i8=1 & i9=0 & i10=1 & i11=0 & i28=1 & i29=0 & i30=0 & i31=0 & i1=0 & c_is16=0 & Src1Pair & Src2 & DstPair { c6000_sem_ddotpl2(Src1Pair, Src2, DstPair, 16); }
+:DDOTPL2.M2 Src1Pair, Src2, DstPair is i2=0 & i3=0 & i4=1 & i5=1 & i6=0 & i7=1 & i8=1 & i9=0 & i10=1 & i11=0 & i28=1 & i29=0 & i30=0 & i31=0 & i1=1 & c_is16=0 & Src1Pair & Src2 & DstPair { c6000_sem_ddotpl2(Src1Pair, Src2, DstPair, 32); }
 
-:DDOTPL2R.M1 Src1, Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=0 & i7=0 & i8=1 & i9=0 & i10=1 & i11=0 & i28=1 & i29=0 & i30=0 & i31=0 & i1=0 & c_is16=0 & Src1 & Src2 & Dst { c6000_unimpl_ddotpl2r(); }
-:DDOTPL2R.M2 Src1, Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=0 & i7=0 & i8=1 & i9=0 & i10=1 & i11=0 & i28=1 & i29=0 & i30=0 & i31=0 & i1=1 & c_is16=0 & Src1 & Src2 & Dst { c6000_unimpl_ddotpl2r(); }
+:DDOTPL2R.M1 Src1Pair, Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=0 & i7=0 & i8=1 & i9=0 & i10=1 & i11=0 & i28=1 & i29=0 & i30=0 & i31=0 & i1=0 & c_is16=0 & Src1Pair & Src2 & Dst { c6000_sem_ddotpl2r(Src1Pair, Src2, Dst, 16); }
+:DDOTPL2R.M2 Src1Pair, Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=0 & i7=0 & i8=1 & i9=0 & i10=1 & i11=0 & i28=1 & i29=0 & i30=0 & i31=0 & i1=1 & c_is16=0 & Src1Pair & Src2 & Dst { c6000_sem_ddotpl2r(Src1Pair, Src2, Dst, 32); }
 
 :DEAL.M1 Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=1 & i7=1 & i8=0 & i9=0 & i10=0 & i11=0 & i13=1 & i14=0 & i15=1 & i16=1 & i17=1 & i1=0 & c_is16=0 & Cond & creg!=7 & Src2 & Dst { if (Cond == 0) goto <skip>; c6000_unimpl_deal(); <skip> }
 :DEAL.M2 Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=1 & i7=1 & i8=0 & i9=0 & i10=0 & i11=0 & i13=1 & i14=0 & i15=1 & i16=1 & i17=1 & i1=1 & c_is16=0 & Cond & creg!=7 & Src2 & Dst { if (Cond == 0) goto <skip>; c6000_unimpl_deal(); <skip> }
