@@ -268,6 +268,8 @@ def main():
                 ops = ["AKPCDisp", "Dst", "AKPCNop"]
             if mnem in {"ADDAB", "ADDAH", "ADDAW"} and "ucst15" in names:
                 ops = ["BaseLong", "UCst15", "Dst"]
+            if mnem in {"SHR2", "SHRU2"} and "cst form" in heading:
+                ops[1] = "UCst5"
 
             base_ops = ops
             for v, mem_mode in variants:

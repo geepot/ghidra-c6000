@@ -51,7 +51,7 @@ Full-payload linear sweeps also completed with no zero-width p-code operands:
 
 | Corpus | Payload bytes | Bytes decoded | Instructions | Unimplemented p-code | Undecoded slots | Byte coverage |
 |---|---:|---:|---:|---:|---:|---:|
-| Stage 1 | 55,120 | 40,232 | 10,428 | 453 (4%) | 3,722 | **73.0%** |
+| Stage 1 | 55,120 | 40,232 | 10,428 | 371 (3%) | 3,722 | **73.0%** |
 | Stage 2 | 361,248 | 336,000 | 91,490 | 23 (<1%) | 6,312 | **93.0%** |
 
 The sweeps found 24 paired software loops and 43 buffer masks in stage 1,
@@ -137,6 +137,13 @@ source, and signed five-bit constants.
 `C6000SatArithmeticTest.java <cases.tsv>` execute 15 `SADD` and `SSUB` cases
 per endian mode. They cover 32-bit and 40-bit saturation, signed constants,
 register-pair results, and both `src1` and `src2` cross paths.
+
+`tests/fixtures/packed-shifts.py <image.bin> <cases.tsv> [be]` and
+`tests/fixtures/variable-shifts.py <image.bin> <cases.tsv> [be]` run through
+`C6000PackedShiftTest.java <cases.tsv>`. The 12 `SHR2`/`SHRU2` and 14
+`SSHVL`/`SSHVR` cases per endian mode check immediate and register counts,
+cross-path sources, counts beyond 15/31, signed direction changes, saturation,
+and `CSR.SAT`.
 
 The generated 32-bit decode table can be rebuilt from the public TI PDF:
 run `pdftotext -layout sprufe8b.pdf /tmp/c6000ref/sprufe8b.txt`, then

@@ -711,6 +711,69 @@ macro c6000_sem_shl(v, c, d) { d = v << c; }
 macro c6000_sem_shr(v, c, d) { d = v s>> c; }
 # SEM: SHRU
 macro c6000_sem_shru(v, c, d) { d = v >> c; }
+# SEM: SHR2
+macro c6000_sem_shr2(v, c, d) {
+  local count:4 = c & 31;
+  if (count < 16) goto <shift>;
+  count = 15;
+  <shift>
+  local low:4 = ((v << 16) s>> 16) s>> count;
+  local high:4 = (v s>> 16) s>> count;
+  d = (low & 0xffff) | ((high & 0xffff) << 16);
+}
+# SEM: SHRU2
+macro c6000_sem_shru2(v, c, d) {
+  local count:4 = c & 31;
+  if (count < 16) goto <shift>;
+  d = 0;
+  goto <done>;
+  <shift>
+  local low:4 = (v & 0xffff) >> count;
+  local high:4 = (v >> 16) >> count;
+  d = low | (high << 16);
+  <done>
+}
+macro c6000_sem_satleft32(v, count, d) {
+  local result:8 = sext(v) << count;
+  if (result s> 0x7fffffff) goto <positive>;
+  if (result s< -0x80000000) goto <negative>;
+  d = result:4;
+  goto <done>;
+  <positive> d = 0x7fffffff;
+  CSR = CSR | 0x200;
+  goto <done>;
+  <negative> d = 0x80000000;
+  CSR = CSR | 0x200;
+  <done>
+}
+# SEM: SSHVL
+macro c6000_sem_sshvl(v, c, d) {
+  local count:8 = sext(c);
+  if (count s< 0) goto <right>;
+  if (count s<= 31) goto <left>;
+  count = 31;
+  <left> c6000_sem_satleft32(v, count, d);
+  goto <done>;
+  <right> count = -count;
+  if (count <= 31) goto <rightshift>;
+  count = 31;
+  <rightshift> d = v s>> count;
+  <done>
+}
+# SEM: SSHVR
+macro c6000_sem_sshvr(v, c, d) {
+  local count:8 = sext(c);
+  if (count s< 0) goto <left>;
+  if (count s<= 31) goto <right>;
+  count = 31;
+  <right> d = v s>> count;
+  goto <done>;
+  <left> count = -count;
+  if (count <= 31) goto <leftshift>;
+  count = 31;
+  <leftshift> c6000_sem_satleft32(v, count, d);
+  <done>
+}
 # SEM: SSHL
 macro c6000_sem_sshl(v, c, d) { local neg = (c s< 0); if (neg) goto <r>; d = v << c; goto <e>; <r> d = v s>> (-c); <e> }
 
