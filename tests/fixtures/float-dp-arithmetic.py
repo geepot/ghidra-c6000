@@ -119,7 +119,7 @@ def multiply(a, b, mode):
     if ae == 2047 or be == 2047:
         if (ae == 2047 and not b & MASK) or (be == 2047 and not a & MASK):
             return sign | NAN, flags | 0x10
-        return sign | INF, flags
+        return sign | INF, flags | 0x20
     if not a & MASK or not b & MASK:
         return sign, flags
     result, rounding = round_finite(value(a) * value(b), mode)
@@ -155,6 +155,26 @@ MUL_CASES = [
     (1, 1), (SIGN | MIN, 0x3fe0000000000000),
 ]
 
+MIX_CASES = [
+    (0x3fc00000, 0x4002000000000000),       # 1.5 * 2.25
+    (0xbf000000, 0xbfc999999999999a),       # two negative inputs
+    (0x3f800001, 0x3ff0000000000001),       # rounded DP product
+    (0x7f7fffff, MAX),                      # overflow
+    (0x3f000000, MIN),                      # underflow
+    (0xbf000000, SIGN | MIN),               # positive underflow
+    (0x7f800000, 0),                        # invalid infinity * zero
+    (0x7f800000, 1),                        # invalid infinity * denormal
+    (0xff800000, 0x4000000000000000),      # signed infinity
+    (0, INF),                               # invalid zero * infinity
+    (0x7fc00001, 0x3ff0000000000000),      # QNaN in src1
+    (0x3f800000, 0x7ff0000000000001),      # SNaN in src2
+    (0x7f800001, 0x7ff8000000000001),      # NaNs in both ports
+    (1, 0x3ff0000000000000),               # DEN1 and INEX
+    (0x3f800000, 1),                        # DEN2 and INEX
+    (1, 0), (1, 1),                         # denormal with zero/denormal
+    (0x80000000, 0x4000000000000000),      # signed zero
+]
+
 
 random_cases = random.Random(0xc674)
 
@@ -165,8 +185,52 @@ def random_normal():
     return (random_cases.getrandbits(1) << 63) | (exponent << 52) | fraction
 
 
+def random_sp_normal():
+    exponent = random_cases.randint(1, 254)
+    fraction = random_cases.getrandbits(23)
+    return (random_cases.getrandbits(1) << 31) | (exponent << 23) | fraction
+
+
 ADD_CASES.extend((random_normal(), random_normal()) for _ in range(24))
 MUL_CASES.extend((random_normal(), random_normal()) for _ in range(24))
+MIX_CASES.extend((random_sp_normal(), random_normal()) for _ in range(24))
+
+
+def value_sp(bits):
+    exponent = (bits >> 23) & 255
+    if exponent == 0:
+        return Fraction(0)
+    significand = (1 << 23) | (bits & 0x7fffff)
+    shift = exponent - 150
+    number = Fraction(significand << shift) if shift >= 0 else Fraction(significand, 1 << -shift)
+    return -number if bits & 0x80000000 else number
+
+
+def multiply_spdp(a, b, mode):
+    ae, af = (a >> 23) & 255, a & 0x7fffff
+    be, bf = classify(b)
+    sign = ((a & 0x80000000) << 32) ^ (b & SIGN)
+    flags = 0
+    if ae == 255 and af:
+        flags |= 1 | (0 if af & 0x400000 else 0x10)
+    if be == 2047 and bf:
+        flags |= 2 | (0 if bf & (1 << 51) else 0x10)
+    if ae == 0 and af:
+        flags |= 4 | (0x80 if be != 2047 and b & MASK else 0)
+        a &= 0x80000000
+    if be == 0 and bf:
+        flags |= 8 | (0x80 if ae != 255 and a & 0x7fffffff else 0)
+        b &= SIGN
+    if flags & 3:
+        return sign | NAN, flags
+    if ae == 255 or be == 2047:
+        if (ae == 255 and not b & MASK) or (be == 2047 and not a & 0x7fffffff):
+            return sign | NAN, flags | 0x10
+        return sign | INF, flags | 0x20
+    if not a & 0x7fffffff or not b & MASK:
+        return sign, flags
+    result, rounding = round_finite(value_sp(a) * value(b), mode)
+    return result, flags | rounding
 
 
 def opcode(mnemonic, unit, side, opfield):
@@ -177,7 +241,8 @@ def opcode(mnemonic, unit, side, opfield):
             continue
         fixed = {int(bit): int(v) for bit, v in re.findall(r"\bi(\d+)=(\d)\b", line)}
         if unit == "M" or "".join(str(fixed[i]) for i in range(11, 4, -1)) == opfield:
-            return sum(v << bit for bit, v in fixed.items()) | (2 << 18) | (4 << 23)
+            source1 = 1 << 13 if mnemonic == "MPYSPDP" else 0
+            return sum(v << bit for bit, v in fixed.items()) | source1 | (2 << 18) | (4 << 23)
     raise ValueError((mnemonic, unit, side, opfield))
 
 
@@ -211,6 +276,18 @@ def main():
                     else:
                         op1, op2 = (shown2, shown1) if reverse else (shown1, shown2)
                         add_file.write(f"{index}\t{mnemonic}.{unit}{side}\t{op1}\t{op2}\t{shown_dst}\t{src1}\t{src2}\t{a:x}\t{b:x}\t{result:x}\t{preset:x}\t{preset | flags << shift:x}\n")
+                    index += 1
+        for side in (1, 2):
+            bank = "A" if side == 1 else "B"
+            src1, src2, dst = f"{bank}1", f"{bank}3_{bank}2", f"{bank}5_{bank}4"
+            word = opcode("MPYSPDP", "M", side, "")
+            shift = 0 if side == 1 else 16
+            for mode in range(4):
+                for a, b in MIX_CASES:
+                    result, flags = multiply_spdp(a, b, mode)
+                    preset = (mode << (9 + shift)) | (1 << (16 if side == 1 else 0))
+                    out.write(struct.pack(endian + "I", word) + bytes(28))
+                    mul_file.write(f"{index}\tMPYSPDP.M{side}\t{src1}\t{src2}\t{dst}\t{a:x}\t{b:x}\t{result:x}\t{preset:x}\t{preset | flags << shift:x}\n")
                     index += 1
 
 

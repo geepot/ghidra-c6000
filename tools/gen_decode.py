@@ -458,7 +458,7 @@ def main():
                                 1 if mnem == "INTSPU" else 0)
                         if mnem in {"MPYSP", "MPYSP2DP"}:
                             args += ", %d" % (0 if suffix == ".1" else 16)
-                        if mnem == "MPYDP":
+                        if mnem in {"MPYDP", "MPYSPDP"}:
                             args += ", %d" % (0 if suffix == ".1" else 16)
                         if mnem in {"ADDDP", "SUBDP"}:
                             macro = "c6000_sem_addsub_dp"

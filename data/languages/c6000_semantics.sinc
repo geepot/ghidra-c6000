@@ -1722,6 +1722,7 @@ macro c6000_sem_mpydp(a, b, d, side) {
   <bInfinity>
   if ((aClean & 0x7fffffffffffffff) == 0) goto <invalid>;
   <infinity> d = sign | 0x7ff0000000000000;
+  flags = flags | 0x20; # INFO
   goto <done>;
   <invalid> flags = flags | 0x10;
   <nan> d = sign | 0x7fffffffffffffff;
@@ -1730,9 +1731,74 @@ macro c6000_sem_mpydp(a, b, d, side) {
   <done> FMCR = FMCR | (flags << sideShift);
 }
 # SEM: MPYSPDP
-macro c6000_sem_mpyspdp(a, b, d) {
-  local converted:8 = float2float(a);
-  d = converted f* b;
+macro c6000_sem_mpyspdp(a, b, d, side) {
+  local aRaw:4 = a;
+  local bRaw:8 = b;
+  local aExp:4 = (aRaw >> 23) & 255;
+  local bExp:8 = (bRaw >> 52) & 2047;
+  local aFrac:4 = aRaw & 0x7fffff;
+  local bFrac:8 = bRaw & 0xfffffffffffff;
+  local aSign:4 = aRaw & 0x80000000;
+  local sign:8 = (zext(aSign) << 32) ^ (bRaw & 0x8000000000000000);
+  local aClean:4 = aRaw;
+  local bClean:8 = bRaw;
+  local flags:4 = 0;
+  local sideShift:4 = side;
+  local roundMode:4 = (FMCR >> (9 + sideShift)) & 3;
+  if (aExp == 255 && aFrac != 0) goto <aNaN>;
+  if (aExp == 0 && aFrac != 0) goto <aDenormal>;
+  goto <classifyB>;
+  <aNaN> flags = flags | 1;
+  if ((aFrac & 0x400000) != 0) goto <classifyB>;
+  flags = flags | 0x10;
+  goto <classifyB>;
+  <aDenormal> flags = flags | 4;
+  aClean = aSign;
+  <classifyB>
+  if (bExp == 2047 && bFrac != 0) goto <bNaN>;
+  if (bExp == 0 && bFrac != 0) goto <bDenormal>;
+  goto <prepare>;
+  <bNaN> flags = flags | 2;
+  if ((bFrac & 0x8000000000000) != 0) goto <prepare>;
+  flags = flags | 0x10;
+  goto <prepare>;
+  <bDenormal> flags = flags | 8;
+  bClean = bRaw & 0x8000000000000000;
+  <prepare>
+  if ((flags & 4) != 0 && bExp != 2047 &&
+      (bRaw & 0x7fffffffffffffff) != 0) goto <aInexact>;
+  goto <checkBInexact>;
+  <aInexact> flags = flags | 0x80;
+  <checkBInexact>
+  if ((flags & 8) != 0 && aExp != 255 &&
+      (aRaw & 0x7fffffff) != 0) goto <bInexact>;
+  goto <checkNaN>;
+  <bInexact> flags = flags | 0x80;
+  <checkNaN>
+  if ((flags & 3) != 0) goto <nan>;
+  if (aExp == 255) goto <aInfinity>;
+  if (bExp == 2047) goto <bInfinity>;
+  if ((aClean & 0x7fffffff) == 0) goto <zero>;
+  if ((bClean & 0x7fffffffffffffff) == 0) goto <zero>;
+  local converted:8 = float2float(aClean);
+  local left:16 = float2float(converted);
+  local right:16 = float2float(bClean);
+  local product:16 = left f* right;
+  c6000_sem_round_qp_to_dp(product, d, roundMode, flags);
+  goto <done>;
+  <aInfinity>
+  if ((bClean & 0x7fffffffffffffff) == 0) goto <invalid>;
+  goto <infinity>;
+  <bInfinity>
+  if ((aClean & 0x7fffffff) == 0) goto <invalid>;
+  <infinity> d = sign | 0x7ff0000000000000;
+  flags = flags | 0x20; # INFO
+  goto <done>;
+  <invalid> flags = flags | 0x10;
+  <nan> d = sign | 0x7fffffffffffffff;
+  goto <done>;
+  <zero> d = sign;
+  <done> FMCR = FMCR | (flags << sideShift);
 }
 # SEM: MPYSP2DP
 # A product of two normalized 24-bit SP significands fits exactly in the

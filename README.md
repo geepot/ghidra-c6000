@@ -96,9 +96,9 @@ the base register cannot use circular addressing.
 `tests/fixtures/float-dp-arithmetic.py <image.bin> <add.tsv> <mul.tsv> [be]`
 generates exact-rational `ADDDP`/`SUBDP`/`MPYDP` results and FADCR/FMCR flags.
 `C6000FloatAddTest.java <add.tsv>` and
-`C6000FloatMultiplyTest.java <mul.tsv>` exercise 840 add/subtract and 304
-multiply cases per endian mode, including all four rounding modes, reversed
-`SUBDP` forms, special values, and widely separated operands.
+`C6000FloatMultiplyTest.java <mul.tsv>` exercise 840 add/subtract and 640
+multiply cases per endian mode, including `MPYSPDP`, all four rounding modes,
+reversed `SUBDP` forms, special values, and widely separated operands.
 
 The stage images are **not** in this repository. The test accepts an external
 image path and base address, so private firmware can be measured without being
@@ -410,7 +410,9 @@ it produces.
   status-register side effects. `SPDP` and `DPSP` model their documented
   special values and status flags; `DPSP` also uses the FADCR rounding mode.
   `MPYSP2DP` handles signed special values and FMCR warning bits. `MPYSP`
-  uses the same input handling and rounds its result using FMCR. `ADDSP` and
+  uses the same input handling and rounds its result using FMCR. `MPYSPDP`
+  handles mixed-width special values and rounds its DP product using FMCR.
+  `ADDSP` and
   `SUBSP` use FADCR rounding and warning bits, including the reversed `SUBSP`
   opcodes and both `.L` and `.S` unit forms. `ADDDP` and `SUBDP` use FADCR;
   `MPYDP` uses FMCR. Their finite arithmetic uses a quad-precision intermediate
