@@ -38,20 +38,29 @@ CASES = [
     ("ABSSP", 2, 0x80000001, 0x00000000, 0x88, 0),
     ("ABSSP", 1, 0x7fc00001, 0x7fffffff, 0x2, 0),
     ("ABSSP", 2, 0xff800001, 0x7fffffff, 0x12, 0),
+    ("SPDP", 1, 0x4109999a, 0x4021333340000000, 0, 0),
+    ("SPDP", 2, 0x80000000, 0x8000000000000000, 0, 0),
+    ("SPDP", 1, 0xff800000, 0xfff0000000000000, 0x20, 0),
+    ("SPDP", 2, 0x80000001, 0x8000000000000000, 0x88, 0),
+    ("SPDP", 1, 0x7fc00001, 0x7fffffffffffffff, 0x2, 0),
+    ("SPDP", 2, 0xff800001, 0x7fffffffffffffff, 0x12, 0),
+    ("SPDP", 1, 0x4109999a, 0x4021333340000000, 0, 0, 1),
 ]
 
 
-def opcode(mnemonic, side):
+def opcode(mnemonic, side, cross=False):
     decode = Path(__file__).resolve().parents[2] / "data/languages/c6000_decode.sinc"
-    unit = "L" if mnemonic in {"ABS2", "SWAP4", "UNPKHU4"} else "S" if mnemonic in {"ABSDP", "ABSSP"} else "M"
+    unit = "L" if mnemonic in {"ABS2", "SWAP4", "UNPKHU4"} else "S" if mnemonic in {"ABSDP", "ABSSP", "SPDP"} else "M"
     prefix = f":{mnemonic}.{unit}{side} "
     line = next(line for line in decode.read_text().splitlines()
                 if line.startswith(prefix))
     fixed = {int(bit): int(value) for bit, value in
              re.findall(r"\bi(\d+)=(\d)\b", line)}
     word = sum(value << bit for bit, value in fixed.items())
+    if cross:
+        word |= 1 << 12
     word |= 2 << 18  # src2 A2/B2 or A3:A2/B3:B2
-    word |= (2 << 24) if mnemonic == "ABSDP" else (4 << 23)
+    word |= (2 << 24) if mnemonic in {"ABSDP", "SPDP"} else (4 << 23)
     return word, unit
 
 
@@ -61,14 +70,16 @@ def main():
     endian = ">" if len(sys.argv) > 3 and sys.argv[3] == "be" else "<"
     image.parent.mkdir(parents=True, exist_ok=True)
     with image.open("wb") as out, manifest.open("w") as rows:
-        for index, (mnemonic, side, value, expected, flags, sat) in enumerate(CASES):
-            word, unit = opcode(mnemonic, side)
+        for index, case in enumerate(CASES):
+            mnemonic, side, value, expected, flags, sat = case[:6]
+            cross = len(case) > 6 and bool(case[6])
+            word, unit = opcode(mnemonic, side, cross)
             out.write(struct.pack(endian + "I", word))
             out.write(bytes(28))
             bank = "A" if side == 1 else "B"
-            pair = mnemonic == "ABSDP"
-            src = f"{bank}3_{bank}2" if pair else f"{bank}2"
-            dst = f"{bank}5_{bank}4" if pair else f"{bank}4"
+            srcbank = ("B" if bank == "A" else "A") if cross else bank
+            src = f"{bank}3_{bank}2" if mnemonic == "ABSDP" else f"{srcbank}2"
+            dst = f"{bank}5_{bank}4" if mnemonic in {"ABSDP", "SPDP"} else f"{bank}4"
             rows.write(f"{index}\t{mnemonic}.{unit}{side}\t{src}\t{dst}\t"
                        f"{value:x}\t{expected:x}\t"
                        f"{flags << (16 if side == 2 else 0):x}\t{sat}\n")

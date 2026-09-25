@@ -1590,7 +1590,33 @@ macro c6000_sem_intdp(a, d) { d = int2float(a); }
 # SEM: INTDPU
 macro c6000_sem_intdpu(a, d) { local unsigned:8 = zext(a); d = int2float(unsigned); }
 # SEM: SPDP
-macro c6000_sem_spdp(a, d) { d = float2float(a); }
+macro c6000_sem_spdp(a, d, side) {
+  local raw:4 = a;
+  local sign:4 = raw & 0x80000000;
+  local exponent:4 = (raw >> 23) & 255;
+  local fraction:4 = raw & 0x7fffff;
+  local flags:4 = 0;
+  local sideShift:4 = side;
+  local bigSign:8 = zext(sign);
+  if (exponent == 255) goto <special>;
+  if (exponent != 0) goto <normal>;
+  if (fraction == 0) goto <normal>;
+  d = bigSign << 32;
+  flags = 0x88; # INEX | DEN2
+  goto <done>;
+  <normal> d = float2float(a);
+  goto <done>;
+  <special>
+  if (fraction != 0) goto <nan>;
+  d = (bigSign << 32) | 0x7ff0000000000000;
+  flags = 0x20; # INFO
+  goto <done>;
+  <nan> d = 0x7fffffffffffffff;
+  flags = 2; # NAN2
+  if ((fraction & 0x400000) != 0) goto <done>;
+  flags = 0x12; # INVAL | NAN2
+  <done> FAUCR = FAUCR | (flags << sideShift);
+}
 # SEM: DPSP
 macro c6000_sem_dpsp(a, d) { d = float2float(a); }
 # The .L1 and .L2 conversion units use separate FADCR halves.  RMODE is at
