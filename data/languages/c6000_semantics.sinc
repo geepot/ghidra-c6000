@@ -20,6 +20,14 @@ macro c6000_sem_add(a, b, d) { d = a + b; }
 macro c6000_sem_addu(a, b, d) { d = a + b; }
 # SEM: SUB
 macro c6000_sem_sub(a, b, d) { d = a - b; }
+# SEM: ADDSUB
+macro c6000_sem_addsub(a, b, d) {
+  local sum:4 = a + b;
+  local difference:4 = a - b;
+  d = (zext(sum) << 32) | zext(difference);
+}
+# SEM: DMV
+macro c6000_sem_dmv(a, b, d) { d = (zext(a) << 32) | zext(b); }
 # Packed arithmetic and comparisons (SPRUFE8B ADD2, ADD4, SUB2, SUB4,
 # CMPEQ2, CMPEQ4, CMPGT2, CMPGTU4). Each lane wraps independently;
 # comparison results are collected in the low two or four bits.
@@ -42,6 +50,14 @@ macro c6000_sem_sub2(a, b, d) {
   local lo:4 = ((a & 0xffff) - (b & 0xffff)) & 0xffff;
   local hi:4 = ((a >> 16) - (b >> 16)) & 0xffff;
   d = lo | (hi << 16);
+}
+# SEM: ADDSUB2
+macro c6000_sem_addsub2(a, b, d) {
+  local sum:4 = 0;
+  local difference:4 = 0;
+  c6000_sem_add2(a, b, sum);
+  c6000_sem_sub2(a, b, difference);
+  d = (zext(sum) << 32) | zext(difference);
 }
 # SEM: SUB4
 macro c6000_sem_sub4(a, b, d) {
@@ -669,6 +685,39 @@ macro c6000_sem_sadd2(a, b, d) {
   c6000_sem_clamp_s16(lo, lo);
   d = ((hi & 0xffff) << 16) | (lo & 0xffff);
 }
+# SEM: SADDSUB
+macro c6000_sem_saddsub(a, b, d, ssr_bit) {
+  local lhs:8 = sext(a);
+  local rhs:8 = sext(b);
+  local sum:8 = lhs + rhs;
+  local difference:8 = lhs - rhs;
+  local odd:4 = sum:4;
+  local even:4 = difference:4;
+  local saturated:1 = 0;
+  if (sum s> 0x7fffffff) goto <sum_positive>;
+  if (sum s< -0x80000000) goto <sum_negative>;
+  goto <sum_done>;
+  <sum_positive> odd = 0x7fffffff;
+  saturated = 1;
+  goto <sum_done>;
+  <sum_negative> odd = 0x80000000;
+  saturated = 1;
+  <sum_done>
+  if (difference s> 0x7fffffff) goto <difference_positive>;
+  if (difference s< -0x80000000) goto <difference_negative>;
+  goto <difference_done>;
+  <difference_positive> even = 0x7fffffff;
+  saturated = 1;
+  goto <difference_done>;
+  <difference_negative> even = 0x80000000;
+  saturated = 1;
+  <difference_done>
+  d = (zext(odd) << 32) | zext(even);
+  if (saturated == 0) goto <done>;
+  CSR = CSR | 0x200;
+  SSR = SSR | ssr_bit;
+  <done>
+}
 # SEM: SADDUS2
 macro c6000_sem_saddus2(a, b, d) {
   local hi:4 = (a >> 16) + (b s>> 16);
@@ -696,6 +745,14 @@ macro c6000_sem_ssub2(a, b, d) {
   c6000_sem_clamp_s16(hi, hi);
   c6000_sem_clamp_s16(lo, lo);
   d = ((hi & 0xffff) << 16) | (lo & 0xffff);
+}
+# SEM: SADDSUB2
+macro c6000_sem_saddsub2(a, b, d) {
+  local sum:4 = 0;
+  local difference:4 = 0;
+  c6000_sem_sadd2(a, b, sum);
+  c6000_sem_ssub2(a, b, difference);
+  d = (zext(sum) << 32) | zext(difference);
 }
 macro c6000_sem_absdiff8(a, b, d) {
   d = a - b;
@@ -745,6 +802,8 @@ macro c6000_sem_packl4(a, b, d) {
   d = ((a & 0x00ff0000) << 8) | ((a & 0xff) << 16) |
       ((b & 0x00ff0000) >> 8) | (b & 0xff);
 }
+# SEM: UNPKLU4
+macro c6000_sem_unpklu4(v, d) { d = ((v & 0xff00) << 8) | (v & 0xff); }
 # SEM: XPND2
 macro c6000_sem_xpnd2(v, d) {
   local lo:4 = (0 - (v & 1)) & 0xffff;

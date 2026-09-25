@@ -44,14 +44,14 @@ C6000CorpusTest.java stage1   # or stage2
 
 | Corpus (first 12,288 / 131,072 bytes) | Bytes decoded | Instructions | Compact 16-bit | Headers | Unimplemented p-code | Undecoded slots | Byte coverage |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| CDJ-2000NXS stage 1, base `0x11801da0` | 11,328 | 3,179 | 694 | 162 | 1 (<1%) | 240 | **92.2%** |
+| CDJ-2000NXS stage 1, base `0x11801da0` | 11,328 | 3,179 | 694 | 162 | 0 | 240 | **92.2%** |
 | CDJ-2000NXS stage 2, base `0xC0000000` | 131,072 | 36,605 | 7,674 | 2,214 | 9 (<1%) | 0 | **100%** |
 
 Full-payload linear sweeps also completed with no zero-width p-code operands:
 
 | Corpus | Payload bytes | Bytes decoded | Instructions | Unimplemented p-code | Undecoded slots | Byte coverage |
 |---|---:|---:|---:|---:|---:|---:|
-| Stage 1 | 55,120 | 40,180 | 10,415 | 43 (<1%) | 3,735 | **72.9%** |
+| Stage 1 | 55,120 | 40,168 | 10,412 | 34 (<1%) | 3,738 | **72.9%** |
 | Stage 2 | 361,248 | 336,000 | 91,490 | 23 (<1%) | 6,312 | **93.0%** |
 
 The sweeps found 24 paired software loops and 43 buffer masks in stage 1,
@@ -142,6 +142,14 @@ signed upper-halfword times signed 32-bit product in a register pair. Four
 signed dot product, including the positive `0x80000000` boundary. Four
 `SMPY2` cases from `tests/fixtures/smpy2.py` cover both 32-bit products in a
 pair and `CSR.SAT` when either lane saturates.
+Four `MPYSU4`/`MPYU4` cases from `tests/fixtures/packed-byte-mul.py` check all
+four 16-bit products in a 64-bit pair, including signed byte boundaries.
+
+`tests/fixtures/paired-alu.py <image.bin> <cases.tsv> [be]` and
+`C6000PairAluTest.java <cases.tsv>` execute 13 `ADDSUB`, `ADDSUB2`, `SADDSUB`,
+`SADDSUB2`, `DMV`, and `UNPKLU4` cases per endian mode. They check pair
+destination order, cross-path sources, signed and lane saturation, and
+`CSR.SAT`/`SSR.L1`/`SSR.L2` effects.
 
 `tests/fixtures/mpyid.py <image.bin> <cases.tsv> [be]` and
 `C6000MpyidTest.java <cases.tsv>` check four signed 32-by-32 multiplication
@@ -159,6 +167,8 @@ register-pair results, and both `src1` and `src2` cross paths.
 `SSHVL`/`SSHVR` cases per endian mode check immediate and register counts,
 cross-path sources, counts beyond 15/31, signed direction changes, saturation,
 and `CSR.SAT`.
+Seven `XPND2`/`XPND4` cases from `tests/fixtures/xpnd.py` use the same script
+to check bit-to-halfword and bit-to-byte mask expansion.
 
 The generated 32-bit decode table can be rebuilt from the public TI PDF:
 run `pdftotext -layout sprufe8b.pdf /tmp/c6000ref/sprufe8b.txt`, then

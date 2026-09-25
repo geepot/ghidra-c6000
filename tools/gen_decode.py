@@ -234,6 +234,8 @@ def main():
                 ops = ["Src1", "Src2", "DstPair"]
             if mnem in {"MPYSU4", "MPYU4"}:
                 ops = ["Src1", "Src2", "DstPair"]
+            if mnem in {"ADDSUB", "ADDSUB2", "SADDSUB", "SADDSUB2", "DMV"}:
+                ops = ["Src1", "Src2", "DstPair"]
             if mnem == "MPYID":
                 ops = ["Src1", "Src2", "DstPair"]
             if mnem in {"MPY32U", "MPY32SU", "MPY32US"}:
@@ -407,6 +409,8 @@ def main():
                             macro += "_64" if ops[-1] == "DstPair" else "_32"
                         if mnem in {"SADD", "SSUB"}:
                             macro += "40" if ops[-1] == "DstPair" else "32"
+                        if mnem == "SADDSUB":
+                            args += ", %d" % (1 if suffix == ".1" else 2)
                         if mnem in {"CLR", "EXT", "EXTU", "SET"} and "src1" in names:
                             macro += "_r"
                         if mnem == "NORM":
