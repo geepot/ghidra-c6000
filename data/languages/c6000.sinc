@@ -522,6 +522,9 @@ define pcodeop c6000_idle;
 define pcodeop c6000_link_load;
 define pcodeop c6000_link_store;
 define pcodeop c6000_link_commit;
+@if FP_MODEL == "analysis"
+define pcodeop c6000_fp_status;
+@endif
 @include "c6000_semantics.sinc"
 # Figure F-8 pointer branches use op=110 (IRP) or 111 (NRP).
 # The op field overlaps the five-bit register field of Figure F-7; match

@@ -79,10 +79,12 @@ linear sweep of the stated windows or payloads, not a claim that every byte is
 code. The full stage 1 image in particular contains substantial fill/data;
 some repeating table bytes resemble compact instructions, so full-image
 instruction counts are not a measure of executable-code coverage.
-The full-payload sweeps used `-noanalysis`; normal Ghidra autoanalysis completed
-on the stage 2 code window. Running autoanalysis after a full stage 2 linear
-sweep exceeded the available Ghidra 12.1.3 heap, so the full-payload numbers
-are decode and p-code checks rather than a whole-image decompiler test.
+The full-payload sweeps first use `-noanalysis` for decode and p-code coverage.
+With register-branch correction scheduled before decompiler-driven analysis,
+autoanalysis after a full stage 2 sweep also completes: the formerly merged
+function at `0xc001dd80` is 16 bytes in one range, and Ghidra's Stack analyzer
+finishes. A linear sweep still attempts to decode data and fill as code; its
+error bookmarks are not executable-code coverage failures.
 
 The final full-payload operand audit compares the rendered operands of 770
 stage 1 code instructions and 22,657 stage 2 instructions with GNU tic6x;
@@ -351,7 +353,7 @@ at word 7 would have to declare every compact instruction 32 bytes long. The
 decode context is therefore primed out of band:
 
 * `c6000.C6000PacketAnalyzer` runs before Ghidra's disassembly pass and writes
-  the per-slot context (`c_is16`, `c_isheader`, `c_rs`, `c_dsz`, `c_sat`, `c_br`, `c_prot`)
+  the per-slot context (`c_is16`, `c_isheader`, `c_rs`, `c_dsz`, `c_sat`, `c_br`, `c_prot`, `c_pfollow`)
   for every compact packet.
 * `c6000.C6000PacketContext.prime(program, monitor)` is the same logic as a
   static helper, so scripts and headless runs can call it directly; the corpus
@@ -388,9 +390,9 @@ encoding `creg=7, z=0` (Table 3-9), so no valid 32-bit instruction matches it.
   within five execute packets and classifies the branch as a call. A separate
   early analyzer classifies branches through the ABI return register `B3` as
   returns before Ghidra's switch analysis. Unpredicated `B`/`BNOP` register
-  branches retain conservative fall-through during code discovery; a late
-  analyzer redecodes them as terminal branches or returns so the decompiler
-  sees their actual control flow.
+  branches retain conservative fall-through during code discovery; an analyzer
+  redecodes them as terminal branches or returns before Decompiler Switch
+  Analysis so the decompiler sees their actual control flow.
 
 The `branch-flow.py` fixture and `C6000FlowTargetTest.java` check seven direct
 branch/call forms in both endian modes, including conditional versus
@@ -409,14 +411,24 @@ unpredicated return retains a fall-through edge.
 Ghidra's generic Basic Constant Reference Analyzer can exhaust the heap while
 exploring the stage 2 control-flow graph. The C6000-specific analyzer bounds
 each propagation walk to 512 bytes, still recovering nearby register-built
-targets. A fresh stage 2 raw import with the default analyzers completed in
-104 seconds on Ghidra 12.1.3: 37,171 instructions, 136 functions, and zero
-`const:` flow-error bookmarks. Decompiler Switch Analysis used about 93 of
-those seconds. Function `0xc0047758` then decompiled with structured
-conditionals. Its earlier RAM-range error came from a predicated `LDW` whose
-address simplified to `0xffffffff`; the aligned-word p-code now
-keeps that load's RAM varnode in range. A 60-second-per-function audit
-completed all 136 recovered stage 2 functions; the slowest took about 35 seconds.
+targets. A fresh stage 2 raw import with the default analyzers recovered 144
+functions with zero `const:` flow-error bookmarks; a 60-second-per-function
+audit decompiled all 144. In a separate full-payload sweep followed by
+autoanalysis, Decompiler Switch Analysis took about 53 seconds and Stack took
+about 4 seconds. The reported `0xc001dd80` merger did not recur.
+
+### Floating-point decompilation
+
+The default `C6000:LE:32:default` and `C6000:BE:32:default` languages retain
+the detailed floating-point rounding and status-register model. For reading
+float-heavy functions, explicitly select `C6000:LE:32:analysis` or
+`C6000:BE:32:analysis` when importing a program. This variant uses native
+single-precision p-code for `INTSP`, `INTSPU`, `MPYSP`, `ADDSP`, `SUBSP`, and
+the SP comparisons. It represents status-register effects with the opaque
+`c6000_fp_status` userop, so its flag values and special rounding cases are
+not suitable for emulation. The same stage 2 function at `0xc0008c44`
+decompiled to 36 lines with the analysis language versus 219 with the exact
+language; the `fVar1 < 1.0` branch was visible in the shorter output.
 
 ## Calling convention
 

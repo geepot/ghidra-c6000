@@ -2156,6 +2156,13 @@ macro c6000_sem_dpsp(a, d, side) {
   <done> FADCR = FADCR | (flags << sideShift);
 }
 # SEM: MPYSP
+@if FP_MODEL == "analysis"
+macro c6000_sem_mpysp(a, b, d, side) {
+  local sideShift:4 = side;
+  d = a f* b;
+  FMCR = c6000_fp_status(FMCR, a, b, sideShift);
+}
+@else
 macro c6000_sem_mpysp(a, b, d, side) {
   local product:8 = 0;
   c6000_sem_mpysp2dp(a, b, product, side);
@@ -2175,10 +2182,27 @@ macro c6000_sem_mpysp(a, b, d, side) {
   <finite> c6000_sem_round_dp_to_sp(product, d, roundMode, flags);
   <done> FMCR = FMCR | (flags << sideShift);
 }
+@endif
 # SEM: ADDSP
 # SEM: SUBSP
 # reverse selects SUBSP's machine src2 - src1 encoding. Warning bits still
 # refer to the encoded src1/src2 ports, regardless of displayed operand order.
+@if FP_MODEL == "analysis"
+macro c6000_sem_addsub_sp(a, b, d, side, subtract, reverse) {
+  local sideShift:4 = side;
+  local subtracting:4 = subtract;
+  local reversed:4 = reverse;
+  if (subtracting != 0) goto <doSub>;
+  d = a f+ b;
+  goto <status>;
+  <doSub>
+  if (reversed != 0) goto <doReverse>;
+  d = a f- b;
+  goto <status>;
+  <doReverse> d = b f- a;
+  <status> FADCR = c6000_fp_status(FADCR, a, b, sideShift);
+}
+@else
 macro c6000_sem_addsub_sp(a, b, d, side, subtract, reverse) {
   local aRaw:4 = a;
   local bRaw:4 = b;
@@ -2313,8 +2337,23 @@ macro c6000_sem_addsub_sp(a, b, d, side, subtract, reverse) {
   <canceledNegative> d = 0x80000000;
   <done> FADCR = FADCR | (flags << sideShift);
 }
+@endif
 # SEM: INTSP
 # SEM: INTSPU
+@if FP_MODEL == "analysis"
+macro c6000_sem_int_to_sp(a, d, side, unsignedMode) {
+  local sideShift:4 = side;
+  local useUnsigned:4 = unsignedMode;
+  if (useUnsigned != 0) goto <unsigned>;
+  d = int2float(a);
+  goto <status>;
+  <unsigned>
+  local widened:8 = zext(a);
+  local converted:8 = int2float(widened);
+  d = float2float(converted);
+  <status> FADCR = c6000_fp_status(FADCR, a, sideShift, useUnsigned);
+}
+@else
 macro c6000_sem_int_to_sp(a, d, side, unsignedMode) {
   local wide:8 = sext(a);
   local useUnsigned:4 = unsignedMode;
@@ -2328,6 +2367,7 @@ macro c6000_sem_int_to_sp(a, d, side, unsignedMode) {
   c6000_sem_round_dp_to_sp(exact, d, roundMode, flags);
   FADCR = FADCR | (flags << sideShift);
 }
+@endif
 # The .L1 and .L2 conversion units use separate FADCR halves.  RMODE is at
 # bits 10:9/26:25; source flags are in the corresponding low/high half.
 # SPRUFE8B sections 2.10.1 and 3.12, SPINT/SPTRUNC execution blocks.
@@ -2475,6 +2515,20 @@ macro c6000_sem_dp_to_int(a, d, side, forceTrunc) {
 # SEM: CMPLTSP
 # kind: equality=0, greater-than=1, less-than=2. Denormals compare as
 # signed zero; NaN comparisons are unordered, with INVAL for ordered tests.
+@if FP_MODEL == "analysis"
+macro c6000_sem_compare_sp(a, b, d, side, kind) {
+  local sideShift:4 = side;
+  local operation:4 = kind;
+  if (operation == 0) goto <equal>;
+  if (operation == 1) goto <greater>;
+  d = zext(a f< b);
+  goto <status>;
+  <equal> d = zext(a f== b);
+  goto <status>;
+  <greater> d = zext(a f> b);
+  <status> FAUCR = c6000_fp_status(FAUCR, a, b, sideShift);
+}
+@else
 macro c6000_sem_compare_sp(a, b, d, side, kind) {
   local left:4 = a;
   local right:4 = b;
@@ -2516,6 +2570,7 @@ macro c6000_sem_compare_sp(a, b, d, side, kind) {
   flags = flags | 0x10;
   <done> FAUCR = FAUCR | (flags << sideShift);
 }
+@endif
 # SEM: CMPEQDP
 # SEM: CMPGTDP
 # SEM: CMPLTDP
