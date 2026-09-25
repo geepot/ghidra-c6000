@@ -51,7 +51,7 @@ Full-payload linear sweeps also completed with no zero-width p-code operands:
 
 | Corpus | Payload bytes | Bytes decoded | Instructions | Unimplemented p-code | Undecoded slots | Byte coverage |
 |---|---:|---:|---:|---:|---:|---:|
-| Stage 1 | 55,120 | 40,168 | 10,412 | 34 (<1%) | 3,738 | **72.9%** |
+| Stage 1 | 55,120 | 40,168 | 10,412 | 24 (<1%) | 3,738 | **72.9%** |
 | Stage 2 | 361,248 | 336,000 | 91,490 | 23 (<1%) | 6,312 | **93.0%** |
 
 The sweeps found 24 paired software loops and 43 buffer masks in stage 1,
@@ -155,6 +155,10 @@ destination order, cross-path sources, signed and lane saturation, and
 `C6000MpyidTest.java <cases.tsv>` check four signed 32-by-32 multiplication
 cases per endian mode. They cover 64-bit register-pair results, a cross-path
 source, and signed five-bit constants.
+`tests/fixtures/rounded-mpy.py <image.bin> <cases.tsv> [be]` and
+`C6000RoundedMultiplyTest.java <cases.tsv>` check eight `MPYHIR`/`MPYILR`
+cases per endian mode, including TI's worked examples, cross-path operands,
+signed boundaries and the `0x4000` rounding bias.
 
 `tests/fixtures/sat-arith.py <image.bin> <cases.tsv> [be]` and
 `C6000SatArithmeticTest.java <cases.tsv>` execute 15 `SADD` and `SSUB` cases

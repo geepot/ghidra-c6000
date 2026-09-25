@@ -577,8 +577,8 @@
 :MPYHI.M1 Src1, Src2, DstPair is i2=0 & i3=0 & i4=1 & i5=1 & i6=0 & i7=0 & i8=1 & i9=0 & i10=1 & i11=0 & i1=0 & c_is16=0 & Cond & creg!=7 & Src1 & Src2 & DstPair { if (Cond == 0) goto <skip>; c6000_sem_mpyhi(Src1, Src2, DstPair); <skip> }
 :MPYHI.M2 Src1, Src2, DstPair is i2=0 & i3=0 & i4=1 & i5=1 & i6=0 & i7=0 & i8=1 & i9=0 & i10=1 & i11=0 & i1=1 & c_is16=0 & Cond & creg!=7 & Src1 & Src2 & DstPair { if (Cond == 0) goto <skip>; c6000_sem_mpyhi(Src1, Src2, DstPair); <skip> }
 
-:MPYHIR.M1 Src1, Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=0 & i7=0 & i8=0 & i9=0 & i10=1 & i11=0 & i1=0 & c_is16=0 & Cond & creg!=7 & Src1 & Src2 & Dst { if (Cond == 0) goto <skip>; c6000_unimpl_mpyhir(); <skip> }
-:MPYHIR.M2 Src1, Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=0 & i7=0 & i8=0 & i9=0 & i10=1 & i11=0 & i1=1 & c_is16=0 & Cond & creg!=7 & Src1 & Src2 & Dst { if (Cond == 0) goto <skip>; c6000_unimpl_mpyhir(); <skip> }
+:MPYHIR.M1 Src1, Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=0 & i7=0 & i8=0 & i9=0 & i10=1 & i11=0 & i1=0 & c_is16=0 & Cond & creg!=7 & Src1 & Src2 & Dst { if (Cond == 0) goto <skip>; c6000_sem_mpyhir(Src1, Src2, Dst); <skip> }
+:MPYHIR.M2 Src1, Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=0 & i7=0 & i8=0 & i9=0 & i10=1 & i11=0 & i1=1 & c_is16=0 & Cond & creg!=7 & Src1 & Src2 & Dst { if (Cond == 0) goto <skip>; c6000_sem_mpyhir(Src1, Src2, Dst); <skip> }
 
 :MPYHL.M1 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=0 & i6=0 & i7=1 & i8=0 & i9=0 & i10=1 & i11=0 & i1=0 & c_is16=0 & Cond & creg!=7 & Src1 & Src2 & Dst { if (Cond == 0) goto <skip>; c6000_sem_mpyhl(Src1, Src2, Dst); <skip> }
 :MPYHL.M2 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=0 & i6=0 & i7=1 & i8=0 & i9=0 & i10=1 & i11=0 & i1=1 & c_is16=0 & Cond & creg!=7 & Src1 & Src2 & Dst { if (Cond == 0) goto <skip>; c6000_sem_mpyhl(Src1, Src2, Dst); <skip> }
@@ -612,8 +612,8 @@
 :MPYID.M2 SCst5, Src2, DstPair is i2=0 & i3=0 & i4=0 & i5=0 & i6=0 & i11=0 & i10=1 & i9=1 & i8=0 & i7=0 & i1=1 & c_is16=0 & Cond & creg!=7 & SCst5 & Src2 & DstPair { if (Cond == 0) goto <skip>; c6000_sem_mpyid(SCst5, Src2, DstPair); <skip> }
 
 
-:MPYILR.M1 Src2, Src1, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=0 & i7=1 & i8=1 & i9=1 & i10=0 & i11=0 & i1=0 & c_is16=0 & Cond & creg!=7 & Src2 & Src1 & Dst { if (Cond == 0) goto <skip>; c6000_unimpl_mpyilr(); <skip> }
-:MPYILR.M2 Src2, Src1, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=0 & i7=1 & i8=1 & i9=1 & i10=0 & i11=0 & i1=1 & c_is16=0 & Cond & creg!=7 & Src2 & Src1 & Dst { if (Cond == 0) goto <skip>; c6000_unimpl_mpyilr(); <skip> }
+:MPYILR.M1 Src2, Src1, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=0 & i7=1 & i8=1 & i9=1 & i10=0 & i11=0 & i1=0 & c_is16=0 & Cond & creg!=7 & Src2 & Src1 & Dst { if (Cond == 0) goto <skip>; c6000_sem_mpyilr(Src2, Src1, Dst); <skip> }
+:MPYILR.M2 Src2, Src1, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=0 & i7=1 & i8=1 & i9=1 & i10=0 & i11=0 & i1=1 & c_is16=0 & Cond & creg!=7 & Src2 & Src1 & Dst { if (Cond == 0) goto <skip>; c6000_sem_mpyilr(Src2, Src1, Dst); <skip> }
 
 :MPYLH.M1 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=0 & i6=0 & i7=1 & i8=0 & i9=0 & i10=0 & i11=1 & i1=0 & c_is16=0 & Cond & creg!=7 & Src1 & Src2 & Dst { if (Cond == 0) goto <skip>; c6000_sem_mpylh(Src1, Src2, Dst); <skip> }
 :MPYLH.M2 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=0 & i6=0 & i7=1 & i8=0 & i9=0 & i10=0 & i11=1 & i1=1 & c_is16=0 & Cond & creg!=7 & Src1 & Src2 & Dst { if (Cond == 0) goto <skip>; c6000_sem_mpylh(Src1, Src2, Dst); <skip> }

@@ -534,6 +534,21 @@ macro c6000_sem_mpyu4(a, b, d) {
 }
 # SEM: MPYHLU
 macro c6000_sem_mpyhlu(a, b, d) { d = (a >> 16) * (b & 0xffff); }
+# SEM: MPYHIR
+macro c6000_sem_mpyhir(a, b, d) {
+  local half:8 = sext(a s>> 16);
+  local word:8 = sext(b);
+  local rounded:8 = ((half * word) + 0x4000) s>> 15;
+  d = rounded:4;
+}
+# SEM: MPYILR
+# This pseudo-operation spells the encoded MPYLIR with src2 before src1.
+macro c6000_sem_mpyilr(word, half_source, d) {
+  local half:8 = sext((half_source << 16) s>> 16);
+  local signed_word:8 = sext(word);
+  local rounded:8 = ((half * signed_word) + 0x4000) s>> 15;
+  d = rounded:4;
+}
 # SEM: MPYLH
 macro c6000_sem_mpylh(a, b, d) {
   local x:4 = (a << 16) s>> 16;
