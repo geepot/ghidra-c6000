@@ -384,7 +384,8 @@ it produces.
   `MPYSP2DP` handles signed special values and FMCR warning bits. `MPYSP`
   uses the same input handling and rounds its result using FMCR. `ADDSP` and
   `SUBSP` use FADCR rounding and warning bits, including the reversed `SUBSP`
-  opcodes and both `.L` and `.S` unit forms.
+  opcodes and both `.L` and `.S` unit forms. `INTSP` and `INTSPU` also use
+  FADCR rounding and set INEX for rounded integer conversions.
   The reciprocal estimate
   instructions implement TI's special cases and FAUCR flags, and return an
   eight-bit-accurate seed. TI does not publish the seed lookup table, so ordinary

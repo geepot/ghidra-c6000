@@ -1636,10 +1636,6 @@ macro c6000_sem_recip_dp(a, d, side, rsqrt) {
   flags = 0x10;
   <done> FAUCR = FAUCR | (flags << sideShift);
 }
-# SEM: INTSP
-macro c6000_sem_intsp(a, d) { d = int2float(a); }
-# SEM: INTSPU
-macro c6000_sem_intspu(a, d) { local unsigned:8 = zext(a); d = int2float(unsigned); }
 # SEM: INTDP
 macro c6000_sem_intdp(a, d) { d = int2float(a); }
 # SEM: INTDPU
@@ -1918,6 +1914,21 @@ macro c6000_sem_addsub_sp(a, b, d, side, subtract, reverse) {
   goto <done>;
   <canceledNegative> d = 0x80000000;
   <done> FADCR = FADCR | (flags << sideShift);
+}
+# SEM: INTSP
+# SEM: INTSPU
+macro c6000_sem_int_to_sp(a, d, side, unsignedMode) {
+  local wide:8 = sext(a);
+  local useUnsigned:4 = unsignedMode;
+  if (useUnsigned == 0) goto <convert>;
+  wide = zext(a);
+  <convert>
+  local exact:8 = int2float(wide);
+  local sideShift:4 = side;
+  local roundMode:4 = (FADCR >> (9 + sideShift)) & 3;
+  local flags:4 = 0;
+  c6000_sem_round_dp_to_sp(exact, d, roundMode, flags);
+  FADCR = FADCR | (flags << sideShift);
 }
 # The .L1 and .L2 conversion units use separate FADCR halves.  RMODE is at
 # bits 10:9/26:25; source flags are in the corresponding low/high half.

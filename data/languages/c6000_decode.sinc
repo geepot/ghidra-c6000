@@ -326,11 +326,11 @@
 :INTDPU.L1 Src2, DstPair is i2=0 & i3=1 & i4=1 & i5=1 & i6=1 & i7=0 & i8=1 & i9=1 & i10=1 & i11=0 & i13=0 & i14=0 & i15=0 & i16=0 & i17=0 & i1=0 & c_is16=0 & Cond & creg!=7 & Src2 & DstPair { if (Cond == 0) goto <skip>; c6000_sem_intdpu(Src2, DstPair); <skip> }
 :INTDPU.L2 Src2, DstPair is i2=0 & i3=1 & i4=1 & i5=1 & i6=1 & i7=0 & i8=1 & i9=1 & i10=1 & i11=0 & i13=0 & i14=0 & i15=0 & i16=0 & i17=0 & i1=1 & c_is16=0 & Cond & creg!=7 & Src2 & DstPair { if (Cond == 0) goto <skip>; c6000_sem_intdpu(Src2, DstPair); <skip> }
 
-:INTSP.L1 Src2, Dst is i2=0 & i3=1 & i4=1 & i5=0 & i6=1 & i7=0 & i8=1 & i9=0 & i10=0 & i11=1 & i13=0 & i14=0 & i15=0 & i16=0 & i17=0 & i1=0 & c_is16=0 & Cond & creg!=7 & Src2 & Dst { if (Cond == 0) goto <skip>; c6000_sem_intsp(Src2, Dst); <skip> }
-:INTSP.L2 Src2, Dst is i2=0 & i3=1 & i4=1 & i5=0 & i6=1 & i7=0 & i8=1 & i9=0 & i10=0 & i11=1 & i13=0 & i14=0 & i15=0 & i16=0 & i17=0 & i1=1 & c_is16=0 & Cond & creg!=7 & Src2 & Dst { if (Cond == 0) goto <skip>; c6000_sem_intsp(Src2, Dst); <skip> }
+:INTSP.L1 Src2, Dst is i2=0 & i3=1 & i4=1 & i5=0 & i6=1 & i7=0 & i8=1 & i9=0 & i10=0 & i11=1 & i13=0 & i14=0 & i15=0 & i16=0 & i17=0 & i1=0 & c_is16=0 & Cond & creg!=7 & Src2 & Dst { if (Cond == 0) goto <skip>; c6000_sem_int_to_sp(Src2, Dst, 0, 0); <skip> }
+:INTSP.L2 Src2, Dst is i2=0 & i3=1 & i4=1 & i5=0 & i6=1 & i7=0 & i8=1 & i9=0 & i10=0 & i11=1 & i13=0 & i14=0 & i15=0 & i16=0 & i17=0 & i1=1 & c_is16=0 & Cond & creg!=7 & Src2 & Dst { if (Cond == 0) goto <skip>; c6000_sem_int_to_sp(Src2, Dst, 16, 0); <skip> }
 
-:INTSPU.L1 Src2, Dst is i2=0 & i3=1 & i4=1 & i5=1 & i6=0 & i7=0 & i8=1 & i9=0 & i10=0 & i11=1 & i13=0 & i14=0 & i15=0 & i16=0 & i17=0 & i1=0 & c_is16=0 & Cond & creg!=7 & Src2 & Dst { if (Cond == 0) goto <skip>; c6000_sem_intspu(Src2, Dst); <skip> }
-:INTSPU.L2 Src2, Dst is i2=0 & i3=1 & i4=1 & i5=1 & i6=0 & i7=0 & i8=1 & i9=0 & i10=0 & i11=1 & i13=0 & i14=0 & i15=0 & i16=0 & i17=0 & i1=1 & c_is16=0 & Cond & creg!=7 & Src2 & Dst { if (Cond == 0) goto <skip>; c6000_sem_intspu(Src2, Dst); <skip> }
+:INTSPU.L1 Src2, Dst is i2=0 & i3=1 & i4=1 & i5=1 & i6=0 & i7=0 & i8=1 & i9=0 & i10=0 & i11=1 & i13=0 & i14=0 & i15=0 & i16=0 & i17=0 & i1=0 & c_is16=0 & Cond & creg!=7 & Src2 & Dst { if (Cond == 0) goto <skip>; c6000_sem_int_to_sp(Src2, Dst, 0, 1); <skip> }
+:INTSPU.L2 Src2, Dst is i2=0 & i3=1 & i4=1 & i5=1 & i6=0 & i7=0 & i8=1 & i9=0 & i10=0 & i11=1 & i13=0 & i14=0 & i15=0 & i16=0 & i17=0 & i1=1 & c_is16=0 & Cond & creg!=7 & Src2 & Dst { if (Cond == 0) goto <skip>; c6000_sem_int_to_sp(Src2, Dst, 16, 1); <skip> }
 
 :LDB.D1 MemRegB, Dst is i2=1 & i3=0 & i6=0 & i5=1 & i4=0 & i8=0 & mode=0x0 & i7=0 & c_is16=0 & Cond & creg!=7 & MemRegB & Dst { if (Cond == 0) goto <skip>; c6000_sem_ldb(MemRegB, Dst); <skip> }
 :LDB.D2 MemRegB, Dst is i2=1 & i3=0 & i6=0 & i5=1 & i4=0 & i8=0 & mode=0x0 & i7=1 & c_is16=0 & Cond & creg!=7 & MemRegB & Dst { if (Cond == 0) goto <skip>; c6000_sem_ldb(MemRegB, Dst); <skip> }
