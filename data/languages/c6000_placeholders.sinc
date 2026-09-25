@@ -14,7 +14,6 @@ define pcodeop c6000_unimpl_dotpnrus2;
 define pcodeop c6000_unimpl_dpack2;
 define pcodeop c6000_unimpl_dpackx2;
 define pcodeop c6000_unimpl_gmpy;
-define pcodeop c6000_unimpl_gmpy4;
 define pcodeop c6000_unimpl_mpy2ir;
 define pcodeop c6000_unimpl_mpyihr;
 define pcodeop c6000_unimpl_mpylir;

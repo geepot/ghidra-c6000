@@ -544,6 +544,50 @@ macro c6000_sem_ddotp4(a, b, d) {
   local odd:4 = a1 * b3 + a0 * b2;
   d = (zext(odd) << 32) | zext(even);
 }
+# GFPGFR.SIZE encodes the field degree minus one; POLY is the low byte of
+# the reduction polynomial (SPRUFE8B sections 2.7 and 2.8.5).
+macro c6000_sem_gf8_step(x, y, mask, top, poly, product) {
+  if ((y & 1) == 0) goto <no_product>;
+  product = product ^ x;
+  <no_product>
+  local carry:1 = (x & top) != 0;
+  x = (x << 1) & mask;
+  if (carry == 0) goto <no_reduce>;
+  x = x ^ (poly & mask);
+  <no_reduce>
+  y = y >> 1;
+}
+macro c6000_sem_gf_mul8(a, b, poly, size, d) {
+  local bits:4 = (size & 7) + 1;
+  local mask:4 = (1 << bits) - 1;
+  local top:4 = 1 << (bits - 1);
+  local x:4 = a & mask;
+  local y:4 = b & mask;
+  local product:4 = 0;
+  c6000_sem_gf8_step(x, y, mask, top, poly, product);
+  c6000_sem_gf8_step(x, y, mask, top, poly, product);
+  c6000_sem_gf8_step(x, y, mask, top, poly, product);
+  c6000_sem_gf8_step(x, y, mask, top, poly, product);
+  c6000_sem_gf8_step(x, y, mask, top, poly, product);
+  c6000_sem_gf8_step(x, y, mask, top, poly, product);
+  c6000_sem_gf8_step(x, y, mask, top, poly, product);
+  c6000_sem_gf8_step(x, y, mask, top, poly, product);
+  d = product & mask;
+}
+# SEM: GMPY4
+macro c6000_sem_gmpy4(a, b, d) {
+  local size:4 = (GFPGFR >> 24) & 7;
+  local poly:4 = GFPGFR & 0xff;
+  local r0:4 = 0;
+  local r1:4 = 0;
+  local r2:4 = 0;
+  local r3:4 = 0;
+  c6000_sem_gf_mul8(a & 0xff, b & 0xff, poly, size, r0);
+  c6000_sem_gf_mul8((a >> 8) & 0xff, (b >> 8) & 0xff, poly, size, r1);
+  c6000_sem_gf_mul8((a >> 16) & 0xff, (b >> 16) & 0xff, poly, size, r2);
+  c6000_sem_gf_mul8(a >> 24, b >> 24, poly, size, r3);
+  d = r0 | (r1 << 8) | (r2 << 16) | (r3 << 24);
+}
 # The DDOTPH2/DDOTPL2 family reads adjacent 32-bit words as d3:d2:d1:d0.
 # Work in 64 bits so the two signed dot products and rounding bias cannot
 # overflow before the instruction's 32-bit saturation step.
