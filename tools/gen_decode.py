@@ -460,7 +460,6 @@ def main():
                             sem = "c6000_sem_mvk%s(%s);" % (width, args)
                     else:
                         sem = "c6000_unimpl_%s();" % mnem.lower()
-                        placeholder_mnemonics.add(mnem)
                     if short_memory:
                         mem = memory_operand(mnem, fields)
                         if mem_mode in (0xA, 0xB, 0xE, 0xF):
@@ -478,6 +477,8 @@ def main():
                             dropped.append((mnem, seen_patterns[key]))
                         continue
                     seen_patterns[key] = mnem
+                    if "c6000_unimpl_" in sem:
+                        placeholder_mnemonics.add(mnem)
                     w(":%s is %s { %s }" % (disp, " & ".join(pat), sem))
                     n += 1
         w("")
