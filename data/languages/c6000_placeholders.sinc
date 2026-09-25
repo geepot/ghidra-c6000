@@ -9,8 +9,6 @@ define pcodeop c6000_unimpl_abs2;
 define pcodeop c6000_unimpl_absdp;
 define pcodeop c6000_unimpl_bitc4;
 define pcodeop c6000_unimpl_bitr;
-define pcodeop c6000_unimpl_cmpyr;
-define pcodeop c6000_unimpl_cmpyr1;
 define pcodeop c6000_unimpl_deal;
 define pcodeop c6000_unimpl_dotpnrus2;
 define pcodeop c6000_unimpl_dpack2;

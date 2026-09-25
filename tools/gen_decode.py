@@ -419,7 +419,7 @@ def main():
                             macro += "40" if ops[-1] == "DstPair" else "32"
                         if mnem == "SADDSUB":
                             args += ", %d" % (1 if suffix == ".1" else 2)
-                        if mnem in {"CMPY", "DDOTPH2", "DDOTPH2R", "DDOTPL2", "DDOTPL2R"}:
+                        if mnem in {"CMPY", "CMPYR", "CMPYR1", "DDOTPH2", "DDOTPH2R", "DDOTPL2", "DDOTPL2R"}:
                             args += ", %d" % (0x10 if suffix == ".1" else 0x20)
                         if mnem in {"CLR", "EXT", "EXTU", "SET"} and "src1" in names:
                             macro += "_r"
