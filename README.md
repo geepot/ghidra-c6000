@@ -24,7 +24,7 @@ below show both the decoded instructions and the remaining gaps.
 | Instruction lengths and execute-packet framing | 2/4-byte lengths and compact layout context; execute packets are not atomic |
 | Branch / call targets (`B`, `BNOP`, `CALLP`, `BDEC`, `BPOS`) | modelled, PCE1-relative per the manual |
 | Compact 16-bit fetch packets | most observed slots decode, driven by packet-header context (see below) |
-| P-code semantics | integer ALU and common multiplies, compact saturating arithmetic, immediates, bit-field operations, linear address arithmetic, scalar and doubleword loads/stores, single-precision arithmetic and conversions, selected double-precision arithmetic and conversions, compares, shifts, branches/calls, `MVC` |
+| P-code semantics | integer ALU and common multiplies, compact saturating arithmetic, immediates, bit-field operations, linear and AMR circular address arithmetic, scalar and doubleword loads/stores, single-precision arithmetic and conversions, selected double-precision arithmetic and conversions, compares, shifts, branches/calls, `MVC` |
 | Other decoded instructions | no generated `c6000_unimpl_<mnemonic>` calls remain; software-loop controls and `IDLE` use named event userops; `DINT`/`RINT` update `TSR` and `CSR` interrupt-enable bits |
 | Function ID | generation script shipped; database not shipped (TI licence) |
 | Software loop controls | decoded and annotated; a separate cycle scheduler replays buffered packets and stage-boundary `ILC` changes, including predicate-driven `SPLOOPW` |
@@ -80,6 +80,18 @@ The full-payload sweeps used `-noanalysis`; normal Ghidra autoanalysis completed
 on the stage 2 code window. Running autoanalysis after a full stage 2 linear
 sweep exceeded the available Ghidra 12.1.3 heap, so the full-payload numbers
 are decode and p-code checks rather than a whole-image decompiler test.
+
+`tests/fixtures/circular-addressing.py <image.bin> <cases.tsv> [be]` and
+`C6000CircularAddressTest.java <cases.tsv>` execute 14 cases per endian mode.
+They check BK0/BK1 wraparound, underflow, pre/post updates, noneligible base
+registers, a full-width BK0 field, and byte/halfword store truncation. The register
+forms of ADDAB/ADDAH/ADDAW/ADDAD and SUBAB/SUBAH/SUBAW use the local `.D`
+source register, as the opcode map specifies.
+`tests/fixtures/nonalign-circular.py <image.bin> <cases.tsv> [be]` and
+`C6000NonalignedCircularTest.java <cases.tsv>` execute six cases per endian
+mode. They verify that `LDNW`/`LDNDW` and `STNW`/`STNDW` wrap every transferred
+byte across a circular-buffer edge and remain linear when AMR is disabled or
+the base register cannot use circular addressing.
 
 The stage images are **not** in this repository. The test accepts an external
 image path and base address, so private firmware can be measured without being
@@ -380,10 +392,12 @@ it produces.
   undefined instead of guessing an instruction.
 * **Execute packets are not modelled as units** — see above.
 * **No delay-slot modelling** in p-code.
-* **Circular AMR addressing is not modelled.** `.D` address arithmetic and
-  load/store effective addresses use linear mode, with size scaling and
-  pre/post register updates. Base writes occur after the memory transfer so a
-  store using the same register for its source and base reads the old value.
+* **AMR updates are instruction-level.** `.D` effective addresses and
+  ADDA/SUBA results wrap for A4-A7/B4-B7, including BK0/BK1 selection and
+  bytewise wrapping of nonaligned transfers. Base writes occur after the
+  memory transfer so a store using the same register for its source and base
+  reads the old value. Packet timing for writes to AMR still needs a
+  cycle-aware execution model.
 * **Floating-point fidelity remains incomplete.** Some arithmetic still lacks
   status-register side effects. `SPDP` and `DPSP` model their documented
   special values and status flags; `DPSP` also uses the FADCR rounding mode.

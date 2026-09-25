@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Generate size-aware .D-unit memory operands for c6000_memory.sinc.
 
-The addressing modes and offset scaling follow SPRUFE8B section 3.9.3 and
-Table C-3. Circular AMR addressing is not modelled here.
+The addressing modes and offset scaling follow SPRUFE8B sections 3.9.2-3.9.3
+and Table C-3. The common wrap macro in c6000.sinc applies AMR to eligible
+base registers.
 """
 from pathlib import Path
 
@@ -122,12 +123,17 @@ for suffix, default_shift in (("B", 0), ("H", 1), ("W", 2), ("D", 3), ("N", 0)):
             bracket = left if update != "post" else f"{sign}{sign}{left}"
             display = f'"{prefix}" ^ BaseReg ^ "{bracket}" ^ {off} ^ "{right}"'
             field = "ucst5" if off == "UCst5" else "offr"
-            pattern = f"mode=0x{mode:x} & {field} & BaseReg & {off}"
+            pattern = f"mode=0x{mode:x} & {field} & BaseReg & {off} & base_idx & i7"
             if sc is not None:
                 pattern += f" & scbit={sc}"
-            delta = offset(off, shift)
             # The constructor commits pre/post updates after the transfer.
-            sem = f"local a:4 = BaseReg {sign} {delta}; export a;"
+            sem = f"local delta:4 = {off};"
+            if shift:
+                sem += f" delta = delta << {shift};"
+            if sign == "-":
+                sem += " delta = 0 - delta;"
+            sem += (" local a:4 = BaseReg; c6000_wrap_address(BaseReg, "
+                    "delta, base_idx, i7, a); export a;")
             lines.append(f"{table}: {display} is {pattern} {{ {sem} }}")
     lines.append("")
 

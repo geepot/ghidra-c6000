@@ -303,6 +303,11 @@ def main():
                 ops = ["AKPCDisp", "Dst", "AKPCNop"]
             if mnem in {"ADDAB", "ADDAH", "ADDAW"} and "ucst15" in names:
                 ops = ["BaseLong", "UCst15", "Dst"]
+            if mnem in {"ADDAB", "ADDAH", "ADDAW", "ADDAD",
+                        "SUBAB", "SUBAH", "SUBAW"} and "ucst15" not in names:
+                # These .D opcode maps have no x field. Bit 12 belongs to
+                # the opfield, so src2 must stay on the unit's local side.
+                ops[0] = "Src2Local"
             if mnem in {"SHR2", "SHRU2"} and "cst form" in heading:
                 ops[1] = "UCst5"
 
@@ -402,6 +407,11 @@ def main():
                         # select it before CPKT and then fail inside Cond,
                         # instead of trying the packet-header constructor.
                         pat.append("creg!=7")
+                    if mnem in {"ADDAB", "ADDAH", "ADDAW", "ADDAD",
+                                "SUBAB", "SUBAH", "SUBAW"} and "ucst15" not in names:
+                        pat.append("src2_idx")
+                    if short_memory and mnem in {"LDNW", "LDNDW", "STNW", "STNDW"}:
+                        pat.append("base_idx")
                     # SLEIGH links a display operand to its family symbol only
                     # when the symbol also occurs in the bit pattern.
                     for op in ops or []:
@@ -485,6 +495,12 @@ def main():
                             macro += "_r"
                         if mnem == "NORM":
                             macro += "40" if v == "1100000" else "32"
+                        if mnem in {"ADDAB", "ADDAH", "ADDAW", "ADDAD",
+                                    "SUBAB", "SUBAH", "SUBAW"} and "ucst15" not in names:
+                            macro += "_circ"
+                            args += ", src2_idx, %d" % (0 if suffix == ".1" else 1)
+                        if short_memory and mnem in {"LDNW", "LDNDW", "STNW", "STNDW"}:
+                            args += ", base_idx, %d" % (0 if suffix == ".1" else 1)
                         if mnem == "B" and ops and ops[0] != "BranchTarget":
                             macro = "c6000_sem_b_ind"
                         sem = "%s(%s);" % (macro, args)

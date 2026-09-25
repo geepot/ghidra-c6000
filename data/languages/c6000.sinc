@@ -136,6 +136,7 @@ define token insn32 (32)
   ra_src2=(18,22) rb_src2=(18,22)
   ra_src=(18,22)  rb_src=(18,22)
   ra_base=(18,22) rb_base=(18,22)
+  base_idx=(18,22) src2_idx=(18,22)
   ra_off=(13,17)  rb_off=(13,17)
   crf=(18,22)
 
@@ -403,6 +404,34 @@ OffReg: rb_off is rb_off & i7=1 { export rb_off; }
 # Size-specific addressing, including pre/post updates, is generated from
 # SPRUFE8B section 3.9.3 and Table C-3. Long forms use B14/B15 selected by
 # y, while short forms select the .D unit and base register file by y.
+# SPRUFE8B sections 2.8.3 and 3.9.2: AMR selects circular arithmetic only
+# for A4-A7/B4-B7. BK0/BK1 encode the log2 block size minus one. The
+# high bits of the original base remain fixed across the calculation.
+macro c6000_circular_mask(index, side, mask) {
+  local selected:4 = index;
+  local file:4 = side;
+  mask = 0xffffffff;
+  if (selected < 4 || selected > 7) goto <done>;
+  local modeShift:4 = ((selected - 4) << 1) + (file << 3);
+  local addressMode:4 = (AMR >> modeShift) & 3;
+  if (addressMode == 0 || addressMode == 3) goto <done>;
+  local blockBits:4 = ((AMR >> 16) & 31) + 1;
+  if (addressMode == 2) goto <bk1>;
+  goto <haveBits>;
+  <bk1> blockBits = ((AMR >> 21) & 31) + 1;
+  <haveBits>
+  mask = (1 << blockBits) - 1;
+  <done>
+}
+
+macro c6000_wrap_address(base, delta, index, side, result) {
+  local original:4 = base;
+  local mask:4;
+  c6000_circular_mask(index, side, mask);
+  result = original + delta;
+  result = (original & ~mask) | (result & mask);
+}
+
 @include "c6000_memory.sinc"
 
 # ---------------------------------------------------------------------------

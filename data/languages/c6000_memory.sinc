@@ -361,82 +361,82 @@ Src2PairDpsp: "B27:B26" is src2_pair_index=13 & i18=1 & i1=1 & i12=0 { export B2
 Src2PairDpsp: "B29:B28" is src2_pair_index=14 & i18=1 & i1=1 & i12=0 { export B29_B28; }
 Src2PairDpsp: "B31:B30" is src2_pair_index=15 & i18=1 & i1=1 & i12=0 { export B31_B30; }
 
-MemRegB: "*-" ^ BaseReg ^ "[" ^ UCst5 ^ "]" is mode=0x0 & ucst5 & BaseReg & UCst5 { local a:4 = BaseReg - UCst5; export a; }
-MemRegB: "*+" ^ BaseReg ^ "[" ^ UCst5 ^ "]" is mode=0x1 & ucst5 & BaseReg & UCst5 { local a:4 = BaseReg + UCst5; export a; }
-MemRegB: "*-" ^ BaseReg ^ "[" ^ OffReg ^ "]" is mode=0x4 & offr & BaseReg & OffReg { local a:4 = BaseReg - OffReg; export a; }
-MemRegB: "*+" ^ BaseReg ^ "[" ^ OffReg ^ "]" is mode=0x5 & offr & BaseReg & OffReg { local a:4 = BaseReg + OffReg; export a; }
-MemRegB: "*--" ^ BaseReg ^ "[" ^ UCst5 ^ "]" is mode=0x8 & ucst5 & BaseReg & UCst5 { local a:4 = BaseReg - UCst5; export a; }
-MemRegB: "*++" ^ BaseReg ^ "[" ^ UCst5 ^ "]" is mode=0x9 & ucst5 & BaseReg & UCst5 { local a:4 = BaseReg + UCst5; export a; }
-MemRegB: "*" ^ BaseReg ^ "--[" ^ UCst5 ^ "]" is mode=0xa & ucst5 & BaseReg & UCst5 { local a:4 = BaseReg - UCst5; export a; }
-MemRegB: "*" ^ BaseReg ^ "++[" ^ UCst5 ^ "]" is mode=0xb & ucst5 & BaseReg & UCst5 { local a:4 = BaseReg + UCst5; export a; }
-MemRegB: "*--" ^ BaseReg ^ "[" ^ OffReg ^ "]" is mode=0xc & offr & BaseReg & OffReg { local a:4 = BaseReg - OffReg; export a; }
-MemRegB: "*++" ^ BaseReg ^ "[" ^ OffReg ^ "]" is mode=0xd & offr & BaseReg & OffReg { local a:4 = BaseReg + OffReg; export a; }
-MemRegB: "*" ^ BaseReg ^ "--[" ^ OffReg ^ "]" is mode=0xe & offr & BaseReg & OffReg { local a:4 = BaseReg - OffReg; export a; }
-MemRegB: "*" ^ BaseReg ^ "++[" ^ OffReg ^ "]" is mode=0xf & offr & BaseReg & OffReg { local a:4 = BaseReg + OffReg; export a; }
+MemRegB: "*-" ^ BaseReg ^ "[" ^ UCst5 ^ "]" is mode=0x0 & ucst5 & BaseReg & UCst5 & base_idx & i7 { local delta:4 = UCst5; delta = 0 - delta; local a:4 = BaseReg; c6000_wrap_address(BaseReg, delta, base_idx, i7, a); export a; }
+MemRegB: "*+" ^ BaseReg ^ "[" ^ UCst5 ^ "]" is mode=0x1 & ucst5 & BaseReg & UCst5 & base_idx & i7 { local delta:4 = UCst5; local a:4 = BaseReg; c6000_wrap_address(BaseReg, delta, base_idx, i7, a); export a; }
+MemRegB: "*-" ^ BaseReg ^ "[" ^ OffReg ^ "]" is mode=0x4 & offr & BaseReg & OffReg & base_idx & i7 { local delta:4 = OffReg; delta = 0 - delta; local a:4 = BaseReg; c6000_wrap_address(BaseReg, delta, base_idx, i7, a); export a; }
+MemRegB: "*+" ^ BaseReg ^ "[" ^ OffReg ^ "]" is mode=0x5 & offr & BaseReg & OffReg & base_idx & i7 { local delta:4 = OffReg; local a:4 = BaseReg; c6000_wrap_address(BaseReg, delta, base_idx, i7, a); export a; }
+MemRegB: "*--" ^ BaseReg ^ "[" ^ UCst5 ^ "]" is mode=0x8 & ucst5 & BaseReg & UCst5 & base_idx & i7 { local delta:4 = UCst5; delta = 0 - delta; local a:4 = BaseReg; c6000_wrap_address(BaseReg, delta, base_idx, i7, a); export a; }
+MemRegB: "*++" ^ BaseReg ^ "[" ^ UCst5 ^ "]" is mode=0x9 & ucst5 & BaseReg & UCst5 & base_idx & i7 { local delta:4 = UCst5; local a:4 = BaseReg; c6000_wrap_address(BaseReg, delta, base_idx, i7, a); export a; }
+MemRegB: "*" ^ BaseReg ^ "--[" ^ UCst5 ^ "]" is mode=0xa & ucst5 & BaseReg & UCst5 & base_idx & i7 { local delta:4 = UCst5; delta = 0 - delta; local a:4 = BaseReg; c6000_wrap_address(BaseReg, delta, base_idx, i7, a); export a; }
+MemRegB: "*" ^ BaseReg ^ "++[" ^ UCst5 ^ "]" is mode=0xb & ucst5 & BaseReg & UCst5 & base_idx & i7 { local delta:4 = UCst5; local a:4 = BaseReg; c6000_wrap_address(BaseReg, delta, base_idx, i7, a); export a; }
+MemRegB: "*--" ^ BaseReg ^ "[" ^ OffReg ^ "]" is mode=0xc & offr & BaseReg & OffReg & base_idx & i7 { local delta:4 = OffReg; delta = 0 - delta; local a:4 = BaseReg; c6000_wrap_address(BaseReg, delta, base_idx, i7, a); export a; }
+MemRegB: "*++" ^ BaseReg ^ "[" ^ OffReg ^ "]" is mode=0xd & offr & BaseReg & OffReg & base_idx & i7 { local delta:4 = OffReg; local a:4 = BaseReg; c6000_wrap_address(BaseReg, delta, base_idx, i7, a); export a; }
+MemRegB: "*" ^ BaseReg ^ "--[" ^ OffReg ^ "]" is mode=0xe & offr & BaseReg & OffReg & base_idx & i7 { local delta:4 = OffReg; delta = 0 - delta; local a:4 = BaseReg; c6000_wrap_address(BaseReg, delta, base_idx, i7, a); export a; }
+MemRegB: "*" ^ BaseReg ^ "++[" ^ OffReg ^ "]" is mode=0xf & offr & BaseReg & OffReg & base_idx & i7 { local delta:4 = OffReg; local a:4 = BaseReg; c6000_wrap_address(BaseReg, delta, base_idx, i7, a); export a; }
 
-MemRegH: "*-" ^ BaseReg ^ "[" ^ UCst5 ^ "]" is mode=0x0 & ucst5 & BaseReg & UCst5 { local a:4 = BaseReg - (UCst5 << 1); export a; }
-MemRegH: "*+" ^ BaseReg ^ "[" ^ UCst5 ^ "]" is mode=0x1 & ucst5 & BaseReg & UCst5 { local a:4 = BaseReg + (UCst5 << 1); export a; }
-MemRegH: "*-" ^ BaseReg ^ "[" ^ OffReg ^ "]" is mode=0x4 & offr & BaseReg & OffReg { local a:4 = BaseReg - (OffReg << 1); export a; }
-MemRegH: "*+" ^ BaseReg ^ "[" ^ OffReg ^ "]" is mode=0x5 & offr & BaseReg & OffReg { local a:4 = BaseReg + (OffReg << 1); export a; }
-MemRegH: "*--" ^ BaseReg ^ "[" ^ UCst5 ^ "]" is mode=0x8 & ucst5 & BaseReg & UCst5 { local a:4 = BaseReg - (UCst5 << 1); export a; }
-MemRegH: "*++" ^ BaseReg ^ "[" ^ UCst5 ^ "]" is mode=0x9 & ucst5 & BaseReg & UCst5 { local a:4 = BaseReg + (UCst5 << 1); export a; }
-MemRegH: "*" ^ BaseReg ^ "--[" ^ UCst5 ^ "]" is mode=0xa & ucst5 & BaseReg & UCst5 { local a:4 = BaseReg - (UCst5 << 1); export a; }
-MemRegH: "*" ^ BaseReg ^ "++[" ^ UCst5 ^ "]" is mode=0xb & ucst5 & BaseReg & UCst5 { local a:4 = BaseReg + (UCst5 << 1); export a; }
-MemRegH: "*--" ^ BaseReg ^ "[" ^ OffReg ^ "]" is mode=0xc & offr & BaseReg & OffReg { local a:4 = BaseReg - (OffReg << 1); export a; }
-MemRegH: "*++" ^ BaseReg ^ "[" ^ OffReg ^ "]" is mode=0xd & offr & BaseReg & OffReg { local a:4 = BaseReg + (OffReg << 1); export a; }
-MemRegH: "*" ^ BaseReg ^ "--[" ^ OffReg ^ "]" is mode=0xe & offr & BaseReg & OffReg { local a:4 = BaseReg - (OffReg << 1); export a; }
-MemRegH: "*" ^ BaseReg ^ "++[" ^ OffReg ^ "]" is mode=0xf & offr & BaseReg & OffReg { local a:4 = BaseReg + (OffReg << 1); export a; }
+MemRegH: "*-" ^ BaseReg ^ "[" ^ UCst5 ^ "]" is mode=0x0 & ucst5 & BaseReg & UCst5 & base_idx & i7 { local delta:4 = UCst5; delta = delta << 1; delta = 0 - delta; local a:4 = BaseReg; c6000_wrap_address(BaseReg, delta, base_idx, i7, a); export a; }
+MemRegH: "*+" ^ BaseReg ^ "[" ^ UCst5 ^ "]" is mode=0x1 & ucst5 & BaseReg & UCst5 & base_idx & i7 { local delta:4 = UCst5; delta = delta << 1; local a:4 = BaseReg; c6000_wrap_address(BaseReg, delta, base_idx, i7, a); export a; }
+MemRegH: "*-" ^ BaseReg ^ "[" ^ OffReg ^ "]" is mode=0x4 & offr & BaseReg & OffReg & base_idx & i7 { local delta:4 = OffReg; delta = delta << 1; delta = 0 - delta; local a:4 = BaseReg; c6000_wrap_address(BaseReg, delta, base_idx, i7, a); export a; }
+MemRegH: "*+" ^ BaseReg ^ "[" ^ OffReg ^ "]" is mode=0x5 & offr & BaseReg & OffReg & base_idx & i7 { local delta:4 = OffReg; delta = delta << 1; local a:4 = BaseReg; c6000_wrap_address(BaseReg, delta, base_idx, i7, a); export a; }
+MemRegH: "*--" ^ BaseReg ^ "[" ^ UCst5 ^ "]" is mode=0x8 & ucst5 & BaseReg & UCst5 & base_idx & i7 { local delta:4 = UCst5; delta = delta << 1; delta = 0 - delta; local a:4 = BaseReg; c6000_wrap_address(BaseReg, delta, base_idx, i7, a); export a; }
+MemRegH: "*++" ^ BaseReg ^ "[" ^ UCst5 ^ "]" is mode=0x9 & ucst5 & BaseReg & UCst5 & base_idx & i7 { local delta:4 = UCst5; delta = delta << 1; local a:4 = BaseReg; c6000_wrap_address(BaseReg, delta, base_idx, i7, a); export a; }
+MemRegH: "*" ^ BaseReg ^ "--[" ^ UCst5 ^ "]" is mode=0xa & ucst5 & BaseReg & UCst5 & base_idx & i7 { local delta:4 = UCst5; delta = delta << 1; delta = 0 - delta; local a:4 = BaseReg; c6000_wrap_address(BaseReg, delta, base_idx, i7, a); export a; }
+MemRegH: "*" ^ BaseReg ^ "++[" ^ UCst5 ^ "]" is mode=0xb & ucst5 & BaseReg & UCst5 & base_idx & i7 { local delta:4 = UCst5; delta = delta << 1; local a:4 = BaseReg; c6000_wrap_address(BaseReg, delta, base_idx, i7, a); export a; }
+MemRegH: "*--" ^ BaseReg ^ "[" ^ OffReg ^ "]" is mode=0xc & offr & BaseReg & OffReg & base_idx & i7 { local delta:4 = OffReg; delta = delta << 1; delta = 0 - delta; local a:4 = BaseReg; c6000_wrap_address(BaseReg, delta, base_idx, i7, a); export a; }
+MemRegH: "*++" ^ BaseReg ^ "[" ^ OffReg ^ "]" is mode=0xd & offr & BaseReg & OffReg & base_idx & i7 { local delta:4 = OffReg; delta = delta << 1; local a:4 = BaseReg; c6000_wrap_address(BaseReg, delta, base_idx, i7, a); export a; }
+MemRegH: "*" ^ BaseReg ^ "--[" ^ OffReg ^ "]" is mode=0xe & offr & BaseReg & OffReg & base_idx & i7 { local delta:4 = OffReg; delta = delta << 1; delta = 0 - delta; local a:4 = BaseReg; c6000_wrap_address(BaseReg, delta, base_idx, i7, a); export a; }
+MemRegH: "*" ^ BaseReg ^ "++[" ^ OffReg ^ "]" is mode=0xf & offr & BaseReg & OffReg & base_idx & i7 { local delta:4 = OffReg; delta = delta << 1; local a:4 = BaseReg; c6000_wrap_address(BaseReg, delta, base_idx, i7, a); export a; }
 
-MemRegW: "*-" ^ BaseReg ^ "[" ^ UCst5 ^ "]" is mode=0x0 & ucst5 & BaseReg & UCst5 { local a:4 = BaseReg - (UCst5 << 2); export a; }
-MemRegW: "*+" ^ BaseReg ^ "[" ^ UCst5 ^ "]" is mode=0x1 & ucst5 & BaseReg & UCst5 { local a:4 = BaseReg + (UCst5 << 2); export a; }
-MemRegW: "*-" ^ BaseReg ^ "[" ^ OffReg ^ "]" is mode=0x4 & offr & BaseReg & OffReg { local a:4 = BaseReg - (OffReg << 2); export a; }
-MemRegW: "*+" ^ BaseReg ^ "[" ^ OffReg ^ "]" is mode=0x5 & offr & BaseReg & OffReg { local a:4 = BaseReg + (OffReg << 2); export a; }
-MemRegW: "*--" ^ BaseReg ^ "[" ^ UCst5 ^ "]" is mode=0x8 & ucst5 & BaseReg & UCst5 { local a:4 = BaseReg - (UCst5 << 2); export a; }
-MemRegW: "*++" ^ BaseReg ^ "[" ^ UCst5 ^ "]" is mode=0x9 & ucst5 & BaseReg & UCst5 { local a:4 = BaseReg + (UCst5 << 2); export a; }
-MemRegW: "*" ^ BaseReg ^ "--[" ^ UCst5 ^ "]" is mode=0xa & ucst5 & BaseReg & UCst5 { local a:4 = BaseReg - (UCst5 << 2); export a; }
-MemRegW: "*" ^ BaseReg ^ "++[" ^ UCst5 ^ "]" is mode=0xb & ucst5 & BaseReg & UCst5 { local a:4 = BaseReg + (UCst5 << 2); export a; }
-MemRegW: "*--" ^ BaseReg ^ "[" ^ OffReg ^ "]" is mode=0xc & offr & BaseReg & OffReg { local a:4 = BaseReg - (OffReg << 2); export a; }
-MemRegW: "*++" ^ BaseReg ^ "[" ^ OffReg ^ "]" is mode=0xd & offr & BaseReg & OffReg { local a:4 = BaseReg + (OffReg << 2); export a; }
-MemRegW: "*" ^ BaseReg ^ "--[" ^ OffReg ^ "]" is mode=0xe & offr & BaseReg & OffReg { local a:4 = BaseReg - (OffReg << 2); export a; }
-MemRegW: "*" ^ BaseReg ^ "++[" ^ OffReg ^ "]" is mode=0xf & offr & BaseReg & OffReg { local a:4 = BaseReg + (OffReg << 2); export a; }
+MemRegW: "*-" ^ BaseReg ^ "[" ^ UCst5 ^ "]" is mode=0x0 & ucst5 & BaseReg & UCst5 & base_idx & i7 { local delta:4 = UCst5; delta = delta << 2; delta = 0 - delta; local a:4 = BaseReg; c6000_wrap_address(BaseReg, delta, base_idx, i7, a); export a; }
+MemRegW: "*+" ^ BaseReg ^ "[" ^ UCst5 ^ "]" is mode=0x1 & ucst5 & BaseReg & UCst5 & base_idx & i7 { local delta:4 = UCst5; delta = delta << 2; local a:4 = BaseReg; c6000_wrap_address(BaseReg, delta, base_idx, i7, a); export a; }
+MemRegW: "*-" ^ BaseReg ^ "[" ^ OffReg ^ "]" is mode=0x4 & offr & BaseReg & OffReg & base_idx & i7 { local delta:4 = OffReg; delta = delta << 2; delta = 0 - delta; local a:4 = BaseReg; c6000_wrap_address(BaseReg, delta, base_idx, i7, a); export a; }
+MemRegW: "*+" ^ BaseReg ^ "[" ^ OffReg ^ "]" is mode=0x5 & offr & BaseReg & OffReg & base_idx & i7 { local delta:4 = OffReg; delta = delta << 2; local a:4 = BaseReg; c6000_wrap_address(BaseReg, delta, base_idx, i7, a); export a; }
+MemRegW: "*--" ^ BaseReg ^ "[" ^ UCst5 ^ "]" is mode=0x8 & ucst5 & BaseReg & UCst5 & base_idx & i7 { local delta:4 = UCst5; delta = delta << 2; delta = 0 - delta; local a:4 = BaseReg; c6000_wrap_address(BaseReg, delta, base_idx, i7, a); export a; }
+MemRegW: "*++" ^ BaseReg ^ "[" ^ UCst5 ^ "]" is mode=0x9 & ucst5 & BaseReg & UCst5 & base_idx & i7 { local delta:4 = UCst5; delta = delta << 2; local a:4 = BaseReg; c6000_wrap_address(BaseReg, delta, base_idx, i7, a); export a; }
+MemRegW: "*" ^ BaseReg ^ "--[" ^ UCst5 ^ "]" is mode=0xa & ucst5 & BaseReg & UCst5 & base_idx & i7 { local delta:4 = UCst5; delta = delta << 2; delta = 0 - delta; local a:4 = BaseReg; c6000_wrap_address(BaseReg, delta, base_idx, i7, a); export a; }
+MemRegW: "*" ^ BaseReg ^ "++[" ^ UCst5 ^ "]" is mode=0xb & ucst5 & BaseReg & UCst5 & base_idx & i7 { local delta:4 = UCst5; delta = delta << 2; local a:4 = BaseReg; c6000_wrap_address(BaseReg, delta, base_idx, i7, a); export a; }
+MemRegW: "*--" ^ BaseReg ^ "[" ^ OffReg ^ "]" is mode=0xc & offr & BaseReg & OffReg & base_idx & i7 { local delta:4 = OffReg; delta = delta << 2; delta = 0 - delta; local a:4 = BaseReg; c6000_wrap_address(BaseReg, delta, base_idx, i7, a); export a; }
+MemRegW: "*++" ^ BaseReg ^ "[" ^ OffReg ^ "]" is mode=0xd & offr & BaseReg & OffReg & base_idx & i7 { local delta:4 = OffReg; delta = delta << 2; local a:4 = BaseReg; c6000_wrap_address(BaseReg, delta, base_idx, i7, a); export a; }
+MemRegW: "*" ^ BaseReg ^ "--[" ^ OffReg ^ "]" is mode=0xe & offr & BaseReg & OffReg & base_idx & i7 { local delta:4 = OffReg; delta = delta << 2; delta = 0 - delta; local a:4 = BaseReg; c6000_wrap_address(BaseReg, delta, base_idx, i7, a); export a; }
+MemRegW: "*" ^ BaseReg ^ "++[" ^ OffReg ^ "]" is mode=0xf & offr & BaseReg & OffReg & base_idx & i7 { local delta:4 = OffReg; delta = delta << 2; local a:4 = BaseReg; c6000_wrap_address(BaseReg, delta, base_idx, i7, a); export a; }
 
-MemRegD: "*-" ^ BaseReg ^ "[" ^ UCst5 ^ "]" is mode=0x0 & ucst5 & BaseReg & UCst5 { local a:4 = BaseReg - (UCst5 << 3); export a; }
-MemRegD: "*+" ^ BaseReg ^ "[" ^ UCst5 ^ "]" is mode=0x1 & ucst5 & BaseReg & UCst5 { local a:4 = BaseReg + (UCst5 << 3); export a; }
-MemRegD: "*-" ^ BaseReg ^ "[" ^ OffReg ^ "]" is mode=0x4 & offr & BaseReg & OffReg { local a:4 = BaseReg - (OffReg << 3); export a; }
-MemRegD: "*+" ^ BaseReg ^ "[" ^ OffReg ^ "]" is mode=0x5 & offr & BaseReg & OffReg { local a:4 = BaseReg + (OffReg << 3); export a; }
-MemRegD: "*--" ^ BaseReg ^ "[" ^ UCst5 ^ "]" is mode=0x8 & ucst5 & BaseReg & UCst5 { local a:4 = BaseReg - (UCst5 << 3); export a; }
-MemRegD: "*++" ^ BaseReg ^ "[" ^ UCst5 ^ "]" is mode=0x9 & ucst5 & BaseReg & UCst5 { local a:4 = BaseReg + (UCst5 << 3); export a; }
-MemRegD: "*" ^ BaseReg ^ "--[" ^ UCst5 ^ "]" is mode=0xa & ucst5 & BaseReg & UCst5 { local a:4 = BaseReg - (UCst5 << 3); export a; }
-MemRegD: "*" ^ BaseReg ^ "++[" ^ UCst5 ^ "]" is mode=0xb & ucst5 & BaseReg & UCst5 { local a:4 = BaseReg + (UCst5 << 3); export a; }
-MemRegD: "*--" ^ BaseReg ^ "[" ^ OffReg ^ "]" is mode=0xc & offr & BaseReg & OffReg { local a:4 = BaseReg - (OffReg << 3); export a; }
-MemRegD: "*++" ^ BaseReg ^ "[" ^ OffReg ^ "]" is mode=0xd & offr & BaseReg & OffReg { local a:4 = BaseReg + (OffReg << 3); export a; }
-MemRegD: "*" ^ BaseReg ^ "--[" ^ OffReg ^ "]" is mode=0xe & offr & BaseReg & OffReg { local a:4 = BaseReg - (OffReg << 3); export a; }
-MemRegD: "*" ^ BaseReg ^ "++[" ^ OffReg ^ "]" is mode=0xf & offr & BaseReg & OffReg { local a:4 = BaseReg + (OffReg << 3); export a; }
+MemRegD: "*-" ^ BaseReg ^ "[" ^ UCst5 ^ "]" is mode=0x0 & ucst5 & BaseReg & UCst5 & base_idx & i7 { local delta:4 = UCst5; delta = delta << 3; delta = 0 - delta; local a:4 = BaseReg; c6000_wrap_address(BaseReg, delta, base_idx, i7, a); export a; }
+MemRegD: "*+" ^ BaseReg ^ "[" ^ UCst5 ^ "]" is mode=0x1 & ucst5 & BaseReg & UCst5 & base_idx & i7 { local delta:4 = UCst5; delta = delta << 3; local a:4 = BaseReg; c6000_wrap_address(BaseReg, delta, base_idx, i7, a); export a; }
+MemRegD: "*-" ^ BaseReg ^ "[" ^ OffReg ^ "]" is mode=0x4 & offr & BaseReg & OffReg & base_idx & i7 { local delta:4 = OffReg; delta = delta << 3; delta = 0 - delta; local a:4 = BaseReg; c6000_wrap_address(BaseReg, delta, base_idx, i7, a); export a; }
+MemRegD: "*+" ^ BaseReg ^ "[" ^ OffReg ^ "]" is mode=0x5 & offr & BaseReg & OffReg & base_idx & i7 { local delta:4 = OffReg; delta = delta << 3; local a:4 = BaseReg; c6000_wrap_address(BaseReg, delta, base_idx, i7, a); export a; }
+MemRegD: "*--" ^ BaseReg ^ "[" ^ UCst5 ^ "]" is mode=0x8 & ucst5 & BaseReg & UCst5 & base_idx & i7 { local delta:4 = UCst5; delta = delta << 3; delta = 0 - delta; local a:4 = BaseReg; c6000_wrap_address(BaseReg, delta, base_idx, i7, a); export a; }
+MemRegD: "*++" ^ BaseReg ^ "[" ^ UCst5 ^ "]" is mode=0x9 & ucst5 & BaseReg & UCst5 & base_idx & i7 { local delta:4 = UCst5; delta = delta << 3; local a:4 = BaseReg; c6000_wrap_address(BaseReg, delta, base_idx, i7, a); export a; }
+MemRegD: "*" ^ BaseReg ^ "--[" ^ UCst5 ^ "]" is mode=0xa & ucst5 & BaseReg & UCst5 & base_idx & i7 { local delta:4 = UCst5; delta = delta << 3; delta = 0 - delta; local a:4 = BaseReg; c6000_wrap_address(BaseReg, delta, base_idx, i7, a); export a; }
+MemRegD: "*" ^ BaseReg ^ "++[" ^ UCst5 ^ "]" is mode=0xb & ucst5 & BaseReg & UCst5 & base_idx & i7 { local delta:4 = UCst5; delta = delta << 3; local a:4 = BaseReg; c6000_wrap_address(BaseReg, delta, base_idx, i7, a); export a; }
+MemRegD: "*--" ^ BaseReg ^ "[" ^ OffReg ^ "]" is mode=0xc & offr & BaseReg & OffReg & base_idx & i7 { local delta:4 = OffReg; delta = delta << 3; delta = 0 - delta; local a:4 = BaseReg; c6000_wrap_address(BaseReg, delta, base_idx, i7, a); export a; }
+MemRegD: "*++" ^ BaseReg ^ "[" ^ OffReg ^ "]" is mode=0xd & offr & BaseReg & OffReg & base_idx & i7 { local delta:4 = OffReg; delta = delta << 3; local a:4 = BaseReg; c6000_wrap_address(BaseReg, delta, base_idx, i7, a); export a; }
+MemRegD: "*" ^ BaseReg ^ "--[" ^ OffReg ^ "]" is mode=0xe & offr & BaseReg & OffReg & base_idx & i7 { local delta:4 = OffReg; delta = delta << 3; delta = 0 - delta; local a:4 = BaseReg; c6000_wrap_address(BaseReg, delta, base_idx, i7, a); export a; }
+MemRegD: "*" ^ BaseReg ^ "++[" ^ OffReg ^ "]" is mode=0xf & offr & BaseReg & OffReg & base_idx & i7 { local delta:4 = OffReg; delta = delta << 3; local a:4 = BaseReg; c6000_wrap_address(BaseReg, delta, base_idx, i7, a); export a; }
 
-MemRegN: "*-" ^ BaseReg ^ "(" ^ UCst5 ^ ")" is mode=0x0 & ucst5 & BaseReg & UCst5 & scbit=0 { local a:4 = BaseReg - UCst5; export a; }
-MemRegN: "*+" ^ BaseReg ^ "(" ^ UCst5 ^ ")" is mode=0x1 & ucst5 & BaseReg & UCst5 & scbit=0 { local a:4 = BaseReg + UCst5; export a; }
-MemRegN: "*-" ^ BaseReg ^ "(" ^ OffReg ^ ")" is mode=0x4 & offr & BaseReg & OffReg & scbit=0 { local a:4 = BaseReg - OffReg; export a; }
-MemRegN: "*+" ^ BaseReg ^ "(" ^ OffReg ^ ")" is mode=0x5 & offr & BaseReg & OffReg & scbit=0 { local a:4 = BaseReg + OffReg; export a; }
-MemRegN: "*--" ^ BaseReg ^ "(" ^ UCst5 ^ ")" is mode=0x8 & ucst5 & BaseReg & UCst5 & scbit=0 { local a:4 = BaseReg - UCst5; export a; }
-MemRegN: "*++" ^ BaseReg ^ "(" ^ UCst5 ^ ")" is mode=0x9 & ucst5 & BaseReg & UCst5 & scbit=0 { local a:4 = BaseReg + UCst5; export a; }
-MemRegN: "*" ^ BaseReg ^ "--(" ^ UCst5 ^ ")" is mode=0xa & ucst5 & BaseReg & UCst5 & scbit=0 { local a:4 = BaseReg - UCst5; export a; }
-MemRegN: "*" ^ BaseReg ^ "++(" ^ UCst5 ^ ")" is mode=0xb & ucst5 & BaseReg & UCst5 & scbit=0 { local a:4 = BaseReg + UCst5; export a; }
-MemRegN: "*--" ^ BaseReg ^ "(" ^ OffReg ^ ")" is mode=0xc & offr & BaseReg & OffReg & scbit=0 { local a:4 = BaseReg - OffReg; export a; }
-MemRegN: "*++" ^ BaseReg ^ "(" ^ OffReg ^ ")" is mode=0xd & offr & BaseReg & OffReg & scbit=0 { local a:4 = BaseReg + OffReg; export a; }
-MemRegN: "*" ^ BaseReg ^ "--(" ^ OffReg ^ ")" is mode=0xe & offr & BaseReg & OffReg & scbit=0 { local a:4 = BaseReg - OffReg; export a; }
-MemRegN: "*" ^ BaseReg ^ "++(" ^ OffReg ^ ")" is mode=0xf & offr & BaseReg & OffReg & scbit=0 { local a:4 = BaseReg + OffReg; export a; }
-MemRegN: "*-" ^ BaseReg ^ "[" ^ UCst5 ^ "]" is mode=0x0 & ucst5 & BaseReg & UCst5 & scbit=1 { local a:4 = BaseReg - (UCst5 << 3); export a; }
-MemRegN: "*+" ^ BaseReg ^ "[" ^ UCst5 ^ "]" is mode=0x1 & ucst5 & BaseReg & UCst5 & scbit=1 { local a:4 = BaseReg + (UCst5 << 3); export a; }
-MemRegN: "*-" ^ BaseReg ^ "[" ^ OffReg ^ "]" is mode=0x4 & offr & BaseReg & OffReg & scbit=1 { local a:4 = BaseReg - (OffReg << 3); export a; }
-MemRegN: "*+" ^ BaseReg ^ "[" ^ OffReg ^ "]" is mode=0x5 & offr & BaseReg & OffReg & scbit=1 { local a:4 = BaseReg + (OffReg << 3); export a; }
-MemRegN: "*--" ^ BaseReg ^ "[" ^ UCst5 ^ "]" is mode=0x8 & ucst5 & BaseReg & UCst5 & scbit=1 { local a:4 = BaseReg - (UCst5 << 3); export a; }
-MemRegN: "*++" ^ BaseReg ^ "[" ^ UCst5 ^ "]" is mode=0x9 & ucst5 & BaseReg & UCst5 & scbit=1 { local a:4 = BaseReg + (UCst5 << 3); export a; }
-MemRegN: "*" ^ BaseReg ^ "--[" ^ UCst5 ^ "]" is mode=0xa & ucst5 & BaseReg & UCst5 & scbit=1 { local a:4 = BaseReg - (UCst5 << 3); export a; }
-MemRegN: "*" ^ BaseReg ^ "++[" ^ UCst5 ^ "]" is mode=0xb & ucst5 & BaseReg & UCst5 & scbit=1 { local a:4 = BaseReg + (UCst5 << 3); export a; }
-MemRegN: "*--" ^ BaseReg ^ "[" ^ OffReg ^ "]" is mode=0xc & offr & BaseReg & OffReg & scbit=1 { local a:4 = BaseReg - (OffReg << 3); export a; }
-MemRegN: "*++" ^ BaseReg ^ "[" ^ OffReg ^ "]" is mode=0xd & offr & BaseReg & OffReg & scbit=1 { local a:4 = BaseReg + (OffReg << 3); export a; }
-MemRegN: "*" ^ BaseReg ^ "--[" ^ OffReg ^ "]" is mode=0xe & offr & BaseReg & OffReg & scbit=1 { local a:4 = BaseReg - (OffReg << 3); export a; }
-MemRegN: "*" ^ BaseReg ^ "++[" ^ OffReg ^ "]" is mode=0xf & offr & BaseReg & OffReg & scbit=1 { local a:4 = BaseReg + (OffReg << 3); export a; }
+MemRegN: "*-" ^ BaseReg ^ "(" ^ UCst5 ^ ")" is mode=0x0 & ucst5 & BaseReg & UCst5 & base_idx & i7 & scbit=0 { local delta:4 = UCst5; delta = 0 - delta; local a:4 = BaseReg; c6000_wrap_address(BaseReg, delta, base_idx, i7, a); export a; }
+MemRegN: "*+" ^ BaseReg ^ "(" ^ UCst5 ^ ")" is mode=0x1 & ucst5 & BaseReg & UCst5 & base_idx & i7 & scbit=0 { local delta:4 = UCst5; local a:4 = BaseReg; c6000_wrap_address(BaseReg, delta, base_idx, i7, a); export a; }
+MemRegN: "*-" ^ BaseReg ^ "(" ^ OffReg ^ ")" is mode=0x4 & offr & BaseReg & OffReg & base_idx & i7 & scbit=0 { local delta:4 = OffReg; delta = 0 - delta; local a:4 = BaseReg; c6000_wrap_address(BaseReg, delta, base_idx, i7, a); export a; }
+MemRegN: "*+" ^ BaseReg ^ "(" ^ OffReg ^ ")" is mode=0x5 & offr & BaseReg & OffReg & base_idx & i7 & scbit=0 { local delta:4 = OffReg; local a:4 = BaseReg; c6000_wrap_address(BaseReg, delta, base_idx, i7, a); export a; }
+MemRegN: "*--" ^ BaseReg ^ "(" ^ UCst5 ^ ")" is mode=0x8 & ucst5 & BaseReg & UCst5 & base_idx & i7 & scbit=0 { local delta:4 = UCst5; delta = 0 - delta; local a:4 = BaseReg; c6000_wrap_address(BaseReg, delta, base_idx, i7, a); export a; }
+MemRegN: "*++" ^ BaseReg ^ "(" ^ UCst5 ^ ")" is mode=0x9 & ucst5 & BaseReg & UCst5 & base_idx & i7 & scbit=0 { local delta:4 = UCst5; local a:4 = BaseReg; c6000_wrap_address(BaseReg, delta, base_idx, i7, a); export a; }
+MemRegN: "*" ^ BaseReg ^ "--(" ^ UCst5 ^ ")" is mode=0xa & ucst5 & BaseReg & UCst5 & base_idx & i7 & scbit=0 { local delta:4 = UCst5; delta = 0 - delta; local a:4 = BaseReg; c6000_wrap_address(BaseReg, delta, base_idx, i7, a); export a; }
+MemRegN: "*" ^ BaseReg ^ "++(" ^ UCst5 ^ ")" is mode=0xb & ucst5 & BaseReg & UCst5 & base_idx & i7 & scbit=0 { local delta:4 = UCst5; local a:4 = BaseReg; c6000_wrap_address(BaseReg, delta, base_idx, i7, a); export a; }
+MemRegN: "*--" ^ BaseReg ^ "(" ^ OffReg ^ ")" is mode=0xc & offr & BaseReg & OffReg & base_idx & i7 & scbit=0 { local delta:4 = OffReg; delta = 0 - delta; local a:4 = BaseReg; c6000_wrap_address(BaseReg, delta, base_idx, i7, a); export a; }
+MemRegN: "*++" ^ BaseReg ^ "(" ^ OffReg ^ ")" is mode=0xd & offr & BaseReg & OffReg & base_idx & i7 & scbit=0 { local delta:4 = OffReg; local a:4 = BaseReg; c6000_wrap_address(BaseReg, delta, base_idx, i7, a); export a; }
+MemRegN: "*" ^ BaseReg ^ "--(" ^ OffReg ^ ")" is mode=0xe & offr & BaseReg & OffReg & base_idx & i7 & scbit=0 { local delta:4 = OffReg; delta = 0 - delta; local a:4 = BaseReg; c6000_wrap_address(BaseReg, delta, base_idx, i7, a); export a; }
+MemRegN: "*" ^ BaseReg ^ "++(" ^ OffReg ^ ")" is mode=0xf & offr & BaseReg & OffReg & base_idx & i7 & scbit=0 { local delta:4 = OffReg; local a:4 = BaseReg; c6000_wrap_address(BaseReg, delta, base_idx, i7, a); export a; }
+MemRegN: "*-" ^ BaseReg ^ "[" ^ UCst5 ^ "]" is mode=0x0 & ucst5 & BaseReg & UCst5 & base_idx & i7 & scbit=1 { local delta:4 = UCst5; delta = delta << 3; delta = 0 - delta; local a:4 = BaseReg; c6000_wrap_address(BaseReg, delta, base_idx, i7, a); export a; }
+MemRegN: "*+" ^ BaseReg ^ "[" ^ UCst5 ^ "]" is mode=0x1 & ucst5 & BaseReg & UCst5 & base_idx & i7 & scbit=1 { local delta:4 = UCst5; delta = delta << 3; local a:4 = BaseReg; c6000_wrap_address(BaseReg, delta, base_idx, i7, a); export a; }
+MemRegN: "*-" ^ BaseReg ^ "[" ^ OffReg ^ "]" is mode=0x4 & offr & BaseReg & OffReg & base_idx & i7 & scbit=1 { local delta:4 = OffReg; delta = delta << 3; delta = 0 - delta; local a:4 = BaseReg; c6000_wrap_address(BaseReg, delta, base_idx, i7, a); export a; }
+MemRegN: "*+" ^ BaseReg ^ "[" ^ OffReg ^ "]" is mode=0x5 & offr & BaseReg & OffReg & base_idx & i7 & scbit=1 { local delta:4 = OffReg; delta = delta << 3; local a:4 = BaseReg; c6000_wrap_address(BaseReg, delta, base_idx, i7, a); export a; }
+MemRegN: "*--" ^ BaseReg ^ "[" ^ UCst5 ^ "]" is mode=0x8 & ucst5 & BaseReg & UCst5 & base_idx & i7 & scbit=1 { local delta:4 = UCst5; delta = delta << 3; delta = 0 - delta; local a:4 = BaseReg; c6000_wrap_address(BaseReg, delta, base_idx, i7, a); export a; }
+MemRegN: "*++" ^ BaseReg ^ "[" ^ UCst5 ^ "]" is mode=0x9 & ucst5 & BaseReg & UCst5 & base_idx & i7 & scbit=1 { local delta:4 = UCst5; delta = delta << 3; local a:4 = BaseReg; c6000_wrap_address(BaseReg, delta, base_idx, i7, a); export a; }
+MemRegN: "*" ^ BaseReg ^ "--[" ^ UCst5 ^ "]" is mode=0xa & ucst5 & BaseReg & UCst5 & base_idx & i7 & scbit=1 { local delta:4 = UCst5; delta = delta << 3; delta = 0 - delta; local a:4 = BaseReg; c6000_wrap_address(BaseReg, delta, base_idx, i7, a); export a; }
+MemRegN: "*" ^ BaseReg ^ "++[" ^ UCst5 ^ "]" is mode=0xb & ucst5 & BaseReg & UCst5 & base_idx & i7 & scbit=1 { local delta:4 = UCst5; delta = delta << 3; local a:4 = BaseReg; c6000_wrap_address(BaseReg, delta, base_idx, i7, a); export a; }
+MemRegN: "*--" ^ BaseReg ^ "[" ^ OffReg ^ "]" is mode=0xc & offr & BaseReg & OffReg & base_idx & i7 & scbit=1 { local delta:4 = OffReg; delta = delta << 3; delta = 0 - delta; local a:4 = BaseReg; c6000_wrap_address(BaseReg, delta, base_idx, i7, a); export a; }
+MemRegN: "*++" ^ BaseReg ^ "[" ^ OffReg ^ "]" is mode=0xd & offr & BaseReg & OffReg & base_idx & i7 & scbit=1 { local delta:4 = OffReg; delta = delta << 3; local a:4 = BaseReg; c6000_wrap_address(BaseReg, delta, base_idx, i7, a); export a; }
+MemRegN: "*" ^ BaseReg ^ "--[" ^ OffReg ^ "]" is mode=0xe & offr & BaseReg & OffReg & base_idx & i7 & scbit=1 { local delta:4 = OffReg; delta = delta << 3; delta = 0 - delta; local a:4 = BaseReg; c6000_wrap_address(BaseReg, delta, base_idx, i7, a); export a; }
+MemRegN: "*" ^ BaseReg ^ "++[" ^ OffReg ^ "]" is mode=0xf & offr & BaseReg & OffReg & base_idx & i7 & scbit=1 { local delta:4 = OffReg; delta = delta << 3; local a:4 = BaseReg; c6000_wrap_address(BaseReg, delta, base_idx, i7, a); export a; }
 
 MemLongB: "*+B14[" ^ UCst15 ^ "]" is i7=0 & ucst15 & UCst15 { local a:4 = B14 + UCst15; export a; }
 MemLongB: "*+B15[" ^ UCst15 ^ "]" is i7=1 & ucst15 & UCst15 { local a:4 = B15 + UCst15; export a; }

@@ -629,9 +629,9 @@ macro c6000_sem_mvkh(v, d) { d = (d & 0xffff) | (zext(v) << 16); }
 # SEM: ADDKPC
 macro c6000_sem_addkpc(v, d, n) { d = (inst_start & 0xffffffe0) + (v << 2); }
 
-# .D-unit address arithmetic in linear mode - SPRUFE8B section 3.9.3 and
-# the ADDAB/ADDAH/ADDAW/ADDAD and SUBAB/SUBAH/SUBAW execution blocks.
-# Circular AMR addressing for A4-A7/B4-B7 is not yet modelled.
+# .D-unit address arithmetic - SPRUFE8B sections 3.9.1-3.9.2 and the
+# ADDAB/ADDAH/ADDAW/ADDAD and SUBAB/SUBAH/SUBAW execution blocks. The
+# long-immediate forms use B14/B15, which cannot have circular AMR modes.
 # SEM: ADDAB
 macro c6000_sem_addab(b, a, d) { d = b + a; }
 # SEM: ADDAH
@@ -646,6 +646,28 @@ macro c6000_sem_subab(b, a, d) { d = b - a; }
 macro c6000_sem_subah(b, a, d) { d = b - (a << 1); }
 # SEM: SUBAW
 macro c6000_sem_subaw(b, a, d) { d = b - (a << 2); }
+
+macro c6000_sem_addab_circ(b, a, d, index, side) {
+  c6000_wrap_address(b, a, index, side, d);
+}
+macro c6000_sem_addah_circ(b, a, d, index, side) {
+  c6000_wrap_address(b, a << 1, index, side, d);
+}
+macro c6000_sem_addaw_circ(b, a, d, index, side) {
+  c6000_wrap_address(b, a << 2, index, side, d);
+}
+macro c6000_sem_addad_circ(b, a, d, index, side) {
+  c6000_wrap_address(b, a << 3, index, side, d);
+}
+macro c6000_sem_subab_circ(b, a, d, index, side) {
+  c6000_wrap_address(b, 0 - a, index, side, d);
+}
+macro c6000_sem_subah_circ(b, a, d, index, side) {
+  c6000_wrap_address(b, 0 - (a << 1), index, side, d);
+}
+macro c6000_sem_subaw_circ(b, a, d, index, side) {
+  c6000_wrap_address(b, 0 - (a << 2), index, side, d);
+}
 
 # SEM: SUBC
 macro c6000_sem_subc(a, b, d) {
@@ -2273,10 +2295,11 @@ macro c6000_sem_cmpgtu(a, b, d) { local t = (a > b); if (t) goto <y>; d = 0; got
 macro c6000_sem_ldw(a, d) { d = *[ram]:4 a; }
 # SEM: LDDW
 macro c6000_sem_lddw(a, d) { d = *[ram]:8 a; }
-# SEM: LDNDW
-macro c6000_sem_ldndw(a, d) { d = *[ram]:8 a; }
 # SEM: LDNW
-macro c6000_sem_ldnw(a, d) { d = *[ram]:4 a; }
+# SEM: LDNDW
+# SEM: STNW
+# SEM: STNDW
+@include "c6000_nonalign.sinc"
 # SEM: LDB
 macro c6000_sem_ldb(a, d) { d = sext(*[ram]:1 a); }
 # SEM: LDBU
@@ -2290,14 +2313,10 @@ macro c6000_sem_ldhu(a, d) { d = zext(*[ram]:2 a); }
 macro c6000_sem_stw(s, a) { *[ram]:4 a = s; }
 # SEM: STDW
 macro c6000_sem_stdw(s, a) { *[ram]:8 a = s; }
-# SEM: STNDW
-macro c6000_sem_stndw(s, a) { *[ram]:8 a = s; }
-# SEM: STNW
-macro c6000_sem_stnw(s, a) { *[ram]:4 a = s; }
 # SEM: STB
-macro c6000_sem_stb(s, a) { *[ram]:1 a = s; }
+macro c6000_sem_stb(s, a) { *[ram]:1 a = s:1; }
 # SEM: STH
-macro c6000_sem_sth(s, a) { *[ram]:2 a = s; }
+macro c6000_sem_sth(s, a) { *[ram]:2 a = s:2; }
 
 # ---------------------------------------------------------------------------
 # Branches - SPRUFE8B section 3.12, B / CALLP, and section 3.4 for the delay
