@@ -51,7 +51,7 @@ Full-payload linear sweeps also completed with no zero-width p-code operands:
 
 | Corpus | Payload bytes | Bytes decoded | Instructions | Unimplemented p-code | Undecoded slots | Byte coverage |
 |---|---:|---:|---:|---:|---:|---:|
-| Stage 1 | 55,120 | 40,192 | 10,418 | 167 (1%) | 3,732 | **72.9%** |
+| Stage 1 | 55,120 | 40,188 | 10,417 | 123 (1%) | 3,733 | **72.9%** |
 | Stage 2 | 361,248 | 336,000 | 91,490 | 23 (<1%) | 6,312 | **93.0%** |
 
 The sweeps found 24 paired software loops and 43 buffer masks in stage 1,
@@ -124,10 +124,11 @@ decoder accepts both variants; see
 [binutils gas/15094](https://lists.gnu.org/archive/html/bug-binutils/2013-02/msg00037.html).
 
 `tests/fixtures/packed-arith.py <image.bin> <cases.tsv> [be]` and
-`C6000PackedArithmeticTest.java <cases.tsv>` execute 88 packed arithmetic,
+`C6000PackedArithmeticTest.java <cases.tsv>` execute 114 packed arithmetic,
 comparison, average, saturating multiply, min/max, byte merge, and pack cases
 per endian mode. They cover cross-path sources, signed/unsigned lane boundaries,
-the signed and mixed-sign high/low halfword multiplies, and
+the signed and mixed-sign high/low halfword multiplies, signed and unsigned
+dot products (including rounded variants), and
 `SPACK2`/`SPACKU4` clamping without changing `CSR.SAT`.
 
 `tests/fixtures/mpy2.py <image.bin> <cases.tsv> [be]` and
@@ -135,7 +136,9 @@ the signed and mixed-sign high/low halfword multiplies, and
 cases per endian mode. They verify that the two 32-bit products go to the
 correct halves of a 64-bit destination pair. The same script executes four
 `MPYHI` cases per endian mode from `tests/fixtures/mpyhi.py`, checking a
-signed upper-halfword times signed 32-bit product in a register pair.
+signed upper-halfword times signed 32-bit product in a register pair. Four
+`DOTP2` pair cases from `tests/fixtures/dotp2-pair.py` cover the full-width
+signed dot product, including the positive `0x80000000` boundary.
 
 `tests/fixtures/mpyid.py <image.bin> <cases.tsv> [be]` and
 `C6000MpyidTest.java <cases.tsv>` check four signed 32-by-32 multiplication

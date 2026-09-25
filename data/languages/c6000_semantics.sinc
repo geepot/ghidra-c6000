@@ -500,6 +500,67 @@ macro c6000_sem_mpy32us(a, b, d) {
 }
 # SEM: MPYI
 macro c6000_sem_mpyi(a, b, d) { d = a * b; }
+
+# Packed dot products (SPRUFE8B DOTP2, DOTPN2, DOTPSU4, DOTPU4).
+# SEM: DOTP2
+macro c6000_sem_dotp2_32(a, b, d) {
+  local a_lo:4 = (a << 16) s>> 16;
+  local b_lo:4 = (b << 16) s>> 16;
+  d = (a s>> 16) * (b s>> 16) + a_lo * b_lo;
+}
+macro c6000_sem_dotp2_64(a, b, d) {
+  local a_hi:8 = sext(a s>> 16);
+  local b_hi:8 = sext(b s>> 16);
+  local a_low:4 = (a << 16) s>> 16;
+  local b_low:4 = (b << 16) s>> 16;
+  local a_lo:8 = sext(a_low);
+  local b_lo:8 = sext(b_low);
+  d = a_hi * b_hi + a_lo * b_lo;
+}
+# SEM: DOTPN2
+macro c6000_sem_dotpn2(a, b, d) {
+  local a_lo:4 = (a << 16) s>> 16;
+  local b_lo:4 = (b << 16) s>> 16;
+  d = (a s>> 16) * (b s>> 16) - a_lo * b_lo;
+}
+# SEM: DOTPNRSU2
+macro c6000_sem_dotpnrsu2(a, b, d) {
+  local a_hi:8 = sext(a s>> 16);
+  local b_hi:8 = zext(b >> 16);
+  local a_low:4 = (a << 16) s>> 16;
+  local a_lo:8 = sext(a_low);
+  local b_lo:8 = zext(b & 0xffff);
+  local result:8 = a_hi * b_hi - a_lo * b_lo + 0x8000;
+  local shifted:8 = result s>> 16;
+  d = shifted:4;
+}
+# SEM: DOTPRSU2
+macro c6000_sem_dotprsu2(a, b, d) {
+  local a_hi:8 = sext(a s>> 16);
+  local b_hi:8 = zext(b >> 16);
+  local a_low:4 = (a << 16) s>> 16;
+  local a_lo:8 = sext(a_low);
+  local b_lo:8 = zext(b & 0xffff);
+  local result:8 = a_hi * b_hi + a_lo * b_lo + 0x8000;
+  local shifted:8 = result s>> 16;
+  d = shifted:4;
+}
+# SEM: DOTPSU4
+macro c6000_sem_dotpsu4(a, b, d) {
+  local a0:4 = (a << 24) s>> 24;
+  local a1:4 = (a << 16) s>> 24;
+  local a2:4 = (a << 8) s>> 24;
+  local a3:4 = a s>> 24;
+  d = a0 * (b & 0xff) + a1 * ((b >> 8) & 0xff) +
+      a2 * ((b >> 16) & 0xff) + a3 * (b >> 24);
+}
+# SEM: DOTPU4
+macro c6000_sem_dotpu4(a, b, d) {
+  d = (a & 0xff) * (b & 0xff) +
+      ((a >> 8) & 0xff) * ((b >> 8) & 0xff) +
+      ((a >> 16) & 0xff) * ((b >> 16) & 0xff) +
+      (a >> 24) * (b >> 24);
+}
 # SEM: PACK2
 macro c6000_sem_pack2(a, b, d) { d = ((a & 0xffff) << 16) | (b & 0xffff); }
 # SEM: PACKH2

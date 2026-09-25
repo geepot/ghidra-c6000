@@ -299,6 +299,8 @@ def main():
                         ops = ["SCst5", "Src2", "Dst"]
                     elif v == "0101100":
                         ops = ["SCst5", "Src2PairLocal", "DstPair"]
+                if mnem == "DOTP2" and v == "01011":
+                    ops = ["Src1", "Src2", "DstPair"]
                 if mnem == "ROTL" and v == "11110":
                     ops[1] = "UCst5"
                 if mnem == "LMBD" and v == "1101010":
@@ -393,6 +395,8 @@ def main():
                                 0 if suffix == ".1" else 16,
                                 0 if mnem == "DPINT" else 1)
                         if mnem == "MPY32":
+                            macro += "_64" if ops[-1] == "DstPair" else "_32"
+                        if mnem == "DOTP2":
                             macro += "_64" if ops[-1] == "DstPair" else "_32"
                         if mnem in {"SADD", "SSUB"}:
                             macro += "40" if ops[-1] == "DstPair" else "32"
