@@ -1457,10 +1457,71 @@ macro c6000_sem_mpyspdp(a, b, d) {
   d = converted f* b;
 }
 # SEM: MPYSP2DP
-macro c6000_sem_mpysp2dp(a, b, d) {
+# A product of two normalized 24-bit SP significands fits exactly in the
+# 53-bit DP significand; the exponent range also fits DP, so normal inputs
+# need neither rounding nor result underflow/overflow handling here.
+macro c6000_sem_mpysp2dp(a, b, d, side) {
+  local leftRaw:4 = a;
+  local rightRaw:4 = b;
+  local leftExp:4 = (leftRaw >> 23) & 255;
+  local rightExp:4 = (rightRaw >> 23) & 255;
+  local leftFrac:4 = leftRaw & 0x7fffff;
+  local rightFrac:4 = rightRaw & 0x7fffff;
+  local sign:4 = (leftRaw ^ rightRaw) & 0x80000000;
+  local signWide:8 = zext(sign);
+  local signedResult:8 = signWide << 32;
+  local flags:4 = 0;
+  local sideShift:4 = side;
+  if (leftExp == 255 && leftFrac != 0) goto <leftNaN>;
+  if (leftExp == 0 && leftFrac != 0) goto <leftDenormal>;
+  goto <classifyRight>;
+  <leftNaN> flags = flags | 1;
+  if ((leftFrac & 0x400000) != 0) goto <classifyRight>;
+  flags = flags | 0x10;
+  goto <classifyRight>;
+  <leftDenormal> flags = flags | 4;
+  <classifyRight>
+  if (rightExp == 255 && rightFrac != 0) goto <rightNaN>;
+  if (rightExp == 0 && rightFrac != 0) goto <rightDenormal>;
+  goto <choose>;
+  <rightNaN> flags = flags | 2;
+  if ((rightFrac & 0x400000) != 0) goto <choose>;
+  flags = flags | 0x10;
+  goto <choose>;
+  <rightDenormal> flags = flags | 8;
+  <choose>
+  if ((flags & 3) != 0) goto <nan>;
+  if (leftExp == 255) goto <leftInfinity>;
+  if (rightExp == 255) goto <rightInfinity>;
+  if ((flags & 4) == 0) goto <checkRightDenormal>;
+  if (rightExp != 255 && (rightExp != 0 || rightFrac != 0)) goto <leftInexact>;
+  goto <checkRightDenormal>;
+  <leftInexact> flags = flags | 0x80;
+  <checkRightDenormal>
+  if ((flags & 8) == 0) goto <multiply>;
+  if (leftExp != 255 && (leftExp != 0 || leftFrac != 0)) goto <rightInexact>;
+  goto <multiply>;
+  <rightInexact> flags = flags | 0x80;
+  <multiply>
+  if (leftExp == 0) goto <zero>;
+  if (rightExp == 0) goto <zero>;
   local left:8 = float2float(a);
   local right:8 = float2float(b);
   d = left f* right;
+  goto <done>;
+  <zero> d = signedResult;
+  goto <done>;
+  <leftInfinity>
+  if (rightExp == 0) goto <invalid>;
+  goto <infinity>;
+  <rightInfinity>
+  if (leftExp == 0) goto <invalid>;
+  <infinity> d = signedResult | 0x7ff0000000000000;
+  flags = flags | 0x20; # INFO
+  goto <done>;
+  <invalid> flags = flags | 0x10;
+  <nan> d = signedResult | 0x7fffffffffffffff;
+  <done> FMCR = FMCR | (flags << sideShift);
 }
 # SPRUFE8B RCPSP/RSQRSP/RCPDP/RSQRDP: special values and FAUCR status
 # are specified exactly. The ordinary seed is guaranteed only through the
