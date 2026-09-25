@@ -307,8 +307,13 @@ def main():
                 ops[1] = "UCst5"
 
             base_ops = ops
+            variant_units = {
+                o["opfield"]: unit_letter(o.get("unit_cell", ""))
+                for o in u["opcodes"]
+            }
             for v, mem_mode in variants:
                 ops = list(base_ops) if base_ops is not None else None
+                variant_ul = variant_units.get(v) or ul
                 if mnem == "NORM" and v == "1100000":
                     # This opfield is the 64-bit src2_h:src2_l form.
                     ops = ["Src2Pair", "Dst"]
@@ -340,6 +345,9 @@ def main():
                     ops = ["Src2PairLocal", "Src1PairX", "DstPair"]
                 if mnem == "SUBDP" and v == "1110111":
                     ops = ["Src2Pair", "Src1Pair", "DstPair"]
+                if mnem == "SUBSP" and v in {"0010101", "1110101"}:
+                    # Reverse encoding computes machine src2 - machine src1.
+                    ops = ["Src2", "Src1", "Dst"]
                 base = pattern_of(fields, v)
                 if base is None:
                     continue
@@ -404,7 +412,7 @@ def main():
                         # after the transfer so src == baseR reads the old
                         # value.  Post modes use the old base as the address.
                         pat.append("BaseReg")
-                    disp = mnem + (("." + ul + suffix[1:]) if ul else "")
+                    disp = mnem + (("." + variant_ul + suffix[1:]) if variant_ul else "")
                     if ops:
                         disp += " " + ", ".join(ops)
                     if mnem in {"BDEC", "BPOS"}:
@@ -435,6 +443,14 @@ def main():
                             args += ", %d" % (0 if suffix == ".1" else 16)
                         if mnem in {"MPYSP", "MPYSP2DP"}:
                             args += ", %d" % (0 if suffix == ".1" else 16)
+                        if mnem in {"ADDSP", "SUBSP"}:
+                            macro = "c6000_sem_addsub_sp"
+                            # Source status bits name the encoded source
+                            # ports, including SUBSP's reverse forms.
+                            args = "Src1, Src2, Dst, %d, %d, %d" % (
+                                0 if suffix == ".1" else 16,
+                                1 if mnem == "SUBSP" else 0,
+                                1 if mnem == "SUBSP" and v in {"0010101", "1110101"} else 0)
                         if mnem in {"CMPEQSP", "CMPGTSP", "CMPLTSP",
                                     "CMPEQDP", "CMPGTDP", "CMPLTDP"}:
                             macro = ("c6000_sem_compare_dp" if mnem.endswith("DP")
