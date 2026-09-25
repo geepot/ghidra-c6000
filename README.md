@@ -58,7 +58,7 @@ Full-payload linear sweeps also completed with no zero-width p-code operands:
 
 | Corpus | Payload bytes | Bytes decoded | Instructions | Unimplemented p-code | Undecoded slots | Byte coverage |
 |---|---:|---:|---:|---:|---:|---:|
-| Stage 1 | 55,120 | 39,756 | 10,309 | 0 | 3,841 | **72.1%** |
+| Stage 1 | 55,120 | 39,580 | 10,265 | 0 | 3,885 | **71.8%** |
 | Stage 2 | 361,248 | 336,000 | 91,490 | 0 | 6,312 | **93.0%** |
 
 The sweeps found 24 paired software loops and 43 buffer masks in stage 1,
@@ -70,9 +70,11 @@ placeholders.
 
 `CPKT` headers decode as named 4-byte rows. The 328 undecoded slots in the
 stage 1 code region (through `0x11805aff`) and all 6,312 in the full stage 2
-payload are `0xffffffff` fill. The full stage 1 payload has 2,651 nonfill
+payload are `0xffffffff` fill. The full stage 1 payload has 2,695 nonfill
 undecoded 4-byte slots, first at `0x11805b04`, in its pointer and constant
-tables. The corpus test reports nonfill undecoded slots separately. Byte coverage is a
+tables. Forty-four of these had previously been mistaken for `CPKT` headers
+outside the eighth word of a fetch packet. The corpus test reports nonfill
+undecoded slots separately. Byte coverage is a
 linear sweep of the stated windows or payloads, not a claim that every byte is
 code. The full stage 1 image in particular contains substantial fill/data;
 some repeating table bytes resemble compact instructions, so full-image
@@ -151,6 +153,11 @@ with the BR header bit set. The processor
 spec declares a synthetic `PC` for Ghidra's emulator; architectural `PCE1`
 remains a separate control register. P-code updates `CSR.SAT` as an instruction
 effect; cycle-accurate placement of that write belongs to a pipeline model.
+
+`tests/fixtures/compact-header-collision.py <image.bin> [be]` and
+`C6000CompactHeaderTest.java` verify that an E-prefixed word outside the header
+position stays undefined, while a compact word containing an E-prefixed upper
+halfword still decodes as two 16-bit instructions. Both endian variants pass.
 
 `tests/fixtures/long-arith.py <image.bin> [be]` and
 `C6000LongArithmeticTest.java` check both endian variants of 32-bit `NORM`
@@ -329,7 +336,7 @@ at word 7 would have to declare every compact instruction 32 bytes long. The
 decode context is therefore primed out of band:
 
 * `c6000.C6000PacketAnalyzer` runs before Ghidra's disassembly pass and writes
-  the per-slot context (`c_is16`, `c_rs`, `c_dsz`, `c_sat`, `c_br`, `c_prot`)
+  the per-slot context (`c_is16`, `c_isheader`, `c_rs`, `c_dsz`, `c_sat`, `c_br`, `c_prot`)
   for every compact packet.
 * `c6000.C6000PacketContext.prime(program, monitor)` is the same logic as a
   static helper, so scripts and headless runs can call it directly; the corpus
@@ -337,9 +344,9 @@ decode context is therefore primed out of band:
 * With no context primed, every word decodes as a normal 32-bit instruction — a
   graceful fallback rather than a hard failure.
 
-The header word itself decodes as a 4-byte `CPKT` instruction. That is
-unambiguous: `1110` in bits 31..28 is the reserved predication encoding
-`creg=7, z=0` (Table 3-9), so no valid 32-bit instruction matches it.
+Only the eighth word of a compact fetch packet decodes as a 4-byte `CPKT`
+instruction. The `1110` prefix in bits 31..28 is the reserved predication
+encoding `creg=7, z=0` (Table 3-9), so no valid 32-bit instruction matches it.
 
 ## Execute packets, delay slots and parallel semantics
 
@@ -415,6 +422,19 @@ Ghidra-only words use an `x` bit exposed by TI's `MVK`/`NORM` diagrams, and
 one `SPMASK` word violates its execute-packet placement rule. No disagreement
 in that sample remains unexplained. These samples do not prove exhaustive ISA
 coverage.
+
+`tools/sample_encodings.py scratch/predicated.bin 32768 0xC674 --predicated`
+samples valid conditional predicate encodings. Its GNU comparison had no
+unexplained difference among 25,367 mutually decoded words. The compact
+counterpart, `tools/sample_compact_encodings.py <image.bin> [header_expansion]`,
+places every 16-bit value in a header-based packet. Sweeps across all eight
+`DSZ` values with `BR=SAT=RS=0`, plus an all-ones expansion field, each had
+91,552 mutually decoded rows and no mnemonic, functional-unit or length
+mismatches. `tools/audit_compact_oracle.py IMAGE BASE LISTING` reports zero
+unexplained disagreements for each sweep. GNU also decoded eight `MVC .S1`
+forms whose `s=0` violates SPRUFE8B Figure F-31's `s=1` constraint; it left
+64 `SPKERNEL` rows undefined in each synthetic image. The first compact sweep
+exposed and verified the `CPKT` slot collision fixed above.
 
 ### Known Ghidra 12.1.3 pitfall
 

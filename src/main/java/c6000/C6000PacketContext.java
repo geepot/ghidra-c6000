@@ -118,6 +118,7 @@ public final class C6000PacketContext {
 						Address word = cursor.add(i * 4);
 						if (word.compareTo(start) >= 0 && word.compareTo(end) <= 0) {
 							setField(program, "c_is16", word, 0);
+							setField(program, "c_isheader", word, 0);
 						}
 					}
 					cursor = cursor.add(FETCH_PACKET_SIZE);
@@ -144,6 +145,7 @@ public final class C6000PacketContext {
 				}
 				// The header is a 32-bit CPKT instruction, not a compact slot.
 				setField(program, "c_is16", hdrAddr, 0);
+				setField(program, "c_isheader", hdrAddr, 1);
 				cursor = cursor.add(FETCH_PACKET_SIZE);
 			}
 		}
@@ -159,6 +161,7 @@ public final class C6000PacketContext {
 	private static void setSlot(Program program, Address at,
 			boolean is16, int rs, int dsz, int prot, int br, int sat) throws Exception {
 		setField(program, "c_is16", at, is16 ? 1 : 0);
+		setField(program, "c_isheader", at, 0);
 		setField(program, "c_rs", at, rs);
 		setField(program, "c_dsz", at, dsz);
 		setField(program, "c_prot", at, prot);

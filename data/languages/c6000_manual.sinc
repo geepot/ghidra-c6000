@@ -165,4 +165,5 @@ LoopII: value is ii [ value = ii + 1; ] { export *[const]:4 value; }
 # ---------------------------------------------------------------------------
 
 :CPKT hdr_layout, hdr_exp, hdr_pbits is
-  i31=1 & i30=1 & i29=1 & i28=0 & hdr_layout & hdr_exp & hdr_pbits { }
+  c_is16=0 & c_isheader=1 & i31=1 & i30=1 & i29=1 & i28=0
+  & hdr_layout & hdr_exp & hdr_pbits { }
