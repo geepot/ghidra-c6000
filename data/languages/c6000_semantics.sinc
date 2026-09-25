@@ -419,6 +419,16 @@ macro c6000_sem_mpyhl(a, b, d) {
   local y:4 = (b << 16) s>> 16;
   d = (a s>> 16) * y;
 }
+# SEM: MPYH
+macro c6000_sem_mpyh(a, b, d) {
+  d = (a s>> 16) * (b s>> 16);
+}
+# SEM: MPY2
+macro c6000_sem_mpy2(a, b, d) {
+  local low:4 = ((a << 16) s>> 16) * ((b << 16) s>> 16);
+  local high:4 = (a s>> 16) * (b s>> 16);
+  d = (zext(high) << 32) | zext(low);
+}
 # SEM: MPYHLU
 macro c6000_sem_mpyhlu(a, b, d) { d = (a >> 16) * (b & 0xffff); }
 # SEM: MPYLH

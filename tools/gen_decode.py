@@ -223,6 +223,8 @@ def main():
                 ops = ["BdecTgt", "Dst"]
             if mnem == "MPYLI":
                 ops = ["Src1", "Src2", "DstPair"]
+            if mnem == "MPY2":
+                ops = ["Src1", "Src2", "DstPair"]
             if mnem == "MPYID":
                 ops = ["Src1", "Src2", "DstPair"]
             if mnem in {"MPY32U", "MPY32SU", "MPY32US"}:
