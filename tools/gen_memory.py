@@ -81,8 +81,8 @@ for unit_side in (0, 1):
             )
 lines.append("")
 
-# DPSP's 1_or_2_src format encodes the odd/high word in src2 and the
-# even/low word in src1. Both fields must name the same register pair.
+# The 1_or_2_src format for DPINT, DPTRUNC and DPSP encodes the odd/high word
+# in src2 and the even/low word in src1. Both fields name the same pair.
 # The format has no cross-path variant (binutils tic6x opcode table).
 for side, file in ((0, "A"), (1, "B")):
     for pair in range(16):

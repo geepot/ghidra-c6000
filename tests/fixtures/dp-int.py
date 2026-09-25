@@ -37,7 +37,9 @@ CASES = [
 
 def opcode(mnemonic, side):
     low = 0x118 if mnemonic == "DPINT" else 0x38
-    return (2 << 23) | low | (side << 1)
+    # 1_or_2_src encodes the odd/high half of A1:A0 or B1:B0 in src2
+    # and the even/low half in src1.
+    return (2 << 23) | (1 << 18) | low | (side << 1)
 
 
 def main():

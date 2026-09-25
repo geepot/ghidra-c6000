@@ -115,7 +115,10 @@ warning bits.
 `tests/fixtures/dp-int.py <image.bin> <cases.tsv> [be]` and
 `C6000DpConvertTest.java <cases.tsv>` check `DPINT` and `DPTRUNC` with
 register-pair sources. The 17 cases per mode cover rounding, exceptions,
-warning bits, and the signed 32-bit result limits.
+warning bits, and the signed 32-bit result limits. Their 64-bit source pair is
+encoded through both the `src2` (high word) and `src1` (low word) fields, as in
+GNU tic6x's `1_or_2_src` format; SPRUFE8B's opcode diagrams print zeros in
+the `src1` field despite describing a read from that port.
 
 The generated 32-bit decode table can be rebuilt from the public TI PDF:
 run `pdftotext -layout sprufe8b.pdf /tmp/c6000ref/sprufe8b.txt`, then

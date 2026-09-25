@@ -235,7 +235,7 @@ def main():
             if mnem in {"INTDP", "INTDPU", "SPDP"}:
                 ops = ["Src2", "DstPair"]
             if mnem in {"DPINT", "DPTRUNC"}:
-                ops = ["Src2Pair", "Dst"]
+                ops = ["Src2PairDpsp", "Dst"]
             if mnem == "DPSP":
                 ops = ["Src2PairDpsp", "Dst"]
             if mnem in {"ADDDP", "MPYDP"}:
@@ -286,11 +286,12 @@ def main():
                 base = pattern_of(fields, v)
                 if base is None:
                     continue
-                if mnem == "DPSP":
+                if mnem in {"DPSP", "DPINT", "DPTRUNC"}:
                     # SPRUFE8B's printed opcode diagram shows zeros in
                     # bits 17..13, but its execution text uses both source
-                    # ports. The 1_or_2_src encoding stores the low word of
-                    # the double in src1. Src2PairDpsp checks both fields.
+                    # ports. GNU tic6x's 1_or_2_src encoding stores the low
+                    # word of the double in src1. Src2PairDpsp checks both
+                    # halves of the register pair.
                     base = [bit for bit in base if not any(
                         bit.startswith(f"i{i}=") for i in range(13, 18))]
                 if short_memory:
