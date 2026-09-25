@@ -648,6 +648,29 @@ macro c6000_sem_ddotpl2r(a, b, d, ssr_bit) {
   SSR = SSR | ssr_bit;
   <done>
 }
+# SEM: CMPY
+# SPRUFE8B's third example marks CSR/SSR unchanged for the all-0x8000
+# overflow case, contrary to both its own description and the general SSR
+# rule. Model the stated saturation rule; the example still fixes the result.
+macro c6000_sem_cmpy(a, b, d, ssr_bit) {
+  local ah:8 = sext(a s>> 16);
+  local bh:8 = sext(b s>> 16);
+  local al32:4 = (a << 16) s>> 16;
+  local bl32:4 = (b << 16) s>> 16;
+  local al:8 = sext(al32);
+  local bl:8 = sext(bl32);
+  local real_wide:8 = ah * bh - al * bl;
+  local imag_wide:8 = al * bh + ah * bl;
+  local real:4 = real_wide:4;
+  local imag:4 = 0;
+  local saturated:1 = 0;
+  c6000_sem_ddot_sat32(imag_wide, imag, saturated);
+  d = (zext(real) << 32) | zext(imag);
+  if (saturated == 0) goto <done>;
+  CSR = CSR | 0x200;
+  SSR = SSR | ssr_bit;
+  <done>
+}
 # SEM: MPYHLU
 macro c6000_sem_mpyhlu(a, b, d) { d = (a >> 16) * (b & 0xffff); }
 # SEM: MPYHIR
