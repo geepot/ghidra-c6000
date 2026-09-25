@@ -356,6 +356,26 @@ def main():
                     ops[1] = "UCst5"
                 if mnem == "LMBD" and v == "1101010":
                     ops[0] = "Cst5"
+                if mnem in {"SHL", "SHR", "SHRU"} and ul == "S":
+                    shift_op = int(v, 2)
+                    # SPRUFE8B SHL/SHR/SHRU opcode maps distinguish a
+                    # register count from ucst5, and a 32-bit destination
+                    # from the 40-bit local register-pair forms.
+                    immediate = shift_op in {
+                        "SHL": {0x32, 0x30, 0x12},
+                        "SHR": {0x36, 0x34},
+                        "SHRU": {0x26, 0x24},
+                    }[mnem]
+                    pair_source = shift_op in {
+                        "SHL": {0x31, 0x30},
+                        "SHR": {0x35, 0x34},
+                        "SHRU": {0x25, 0x24},
+                    }[mnem]
+                    pair_destination = pair_source or (
+                        mnem == "SHL" and shift_op in {0x13, 0x12})
+                    ops = ["Src2PairLocal" if pair_source else "Src2",
+                           "UCst5" if immediate else "Src1",
+                           "DstPair" if pair_destination else "Dst"]
                 if mnem == "SUBDP" and v == "0011101":
                     ops = ["Src2PairLocal", "Src1PairX", "DstPair"]
                 if mnem == "SUBDP" and v == "1110111":
@@ -378,6 +398,9 @@ def main():
                         bit.startswith(f"i{i}=") for i in range(13, 18))]
                 if mnem in {"SADD", "SSUB"} and ops[-1] == "DstPair" \
                         and ops[0] == "SCst5":
+                    base.append("i12=0")
+                if mnem in {"SHL", "SHR", "SHRU"} and ul == "S" \
+                        and ops[0] == "Src2PairLocal":
                     base.append("i12=0")
                 if short_memory:
                     base.append("mode=0x%x" % mem_mode)
@@ -447,6 +470,12 @@ def main():
                     elif mnem in SEMANTIC_MNEMONICS:
                         args = ", ".join(o for o in (ops or []) if not o.startswith(chr(34)))
                         macro = "c6000_sem_%s" % mnem.lower()
+                        if mnem in {"SHL", "SHR", "SHRU"} and ul == "S" \
+                                and ops[0] == "Src2PairLocal":
+                            macro += "40"
+                        elif mnem == "SHL" and ul == "S" \
+                                and ops[-1] == "DstPair":
+                            macro += "_to40"
                         if mnem in {"SPINT", "SPTRUNC"}:
                             macro = "c6000_sem_sp_to_int"
                             args += ", %d, %d" % (

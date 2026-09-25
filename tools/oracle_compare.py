@@ -25,7 +25,7 @@ OBJDUMP_NAMES = ("tic6x-unknown-elf-objdump", "tic6x-linux-gnu-objdump",
 
 # GNU often prints the underlying arithmetic opcode where Ghidra chooses a
 # documented pseudo-op with the same result.  Keep these visible separately.
-ALIASES = {("MV", "OR"), ("MV", "ADD"), ("NEG", "SUB"),
+ALIASES = {("MV", "OR"), ("MV", "ADD"), ("NEG", "SUB"), ("NOT", "XOR"),
            ("STBU", "STB"), ("STHU", "STH")}
 
 

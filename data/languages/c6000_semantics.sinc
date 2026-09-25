@@ -2519,10 +2519,44 @@ macro c6000_sem_compare_dp(a, b, d, side, kind) {
 
 # SEM: SHL
 macro c6000_sem_shl(v, c, d) { d = v << c; }
+# The architecture's long shift operands use only the low 40 bits of a
+# register pair. The upper 24 bits of the high register are cleared on write.
+macro c6000_sem_shl40(v, c, d) {
+  local count:4 = c & 63;
+  if (count < 40) goto <shift>;
+  count = 40;
+  <shift>
+  d = ((v & 0xffffffffff) << count) & 0xffffffffff;
+}
+macro c6000_sem_shl_to40(v, c, d) {
+  local count:4 = c & 63;
+  if (count < 40) goto <shift>;
+  count = 40;
+  <shift>
+  d = (zext(v) << count) & 0xffffffffff;
+}
 # SEM: SHR
 macro c6000_sem_shr(v, c, d) { d = v s>> c; }
+macro c6000_sem_shr40(v, c, d) {
+  local count:4 = c & 63;
+  if (count < 40) goto <shift>;
+  count = 40;
+  <shift>
+  local value:8 = v & 0xffffffffff;
+  if ((value & 0x8000000000) == 0) goto <positive>;
+  value = value | 0xffffff0000000000;
+  <positive>
+  d = (value s>> count) & 0xffffffffff;
+}
 # SEM: SHRU
 macro c6000_sem_shru(v, c, d) { d = v >> c; }
+macro c6000_sem_shru40(v, c, d) {
+  local count:4 = c & 63;
+  if (count < 40) goto <shift>;
+  count = 40;
+  <shift>
+  d = ((v & 0xffffffffff) >> count) & 0xffffffffff;
+}
 # SEM: SHLMB
 macro c6000_sem_shlmb(a, b, d) {
   d = (b << 8) | (a >> 24);

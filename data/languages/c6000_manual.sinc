@@ -4,16 +4,16 @@
 #
 #  Every constructor here names the figure or section it implements.
 
-# SUB .S cross-path reverse-operand form, SPRUFE8B section 3.12 SUB,
+# SUB .S reverse-operand form, SPRUFE8B section 3.12 SUB,
 # "src2 - src1" encoding (separate from the .S opcode-map table).
-# The x bit is fixed to one: src2 is read from the opposite register file.
+# The x bit selects local or cross-path src2 (SPRUFE8B p. 529).
 :^Cond^"SUB.S1" Src2, Src1, Dst is c_is16=0 & Cond & creg!=7 & Src2 & Src1 & Dst
-  & i1=0 & i12=1 & i11=1 & i10=1 & i9=0 & i8=1 & i7=0 & i6=1
+  & i1=0 & i11=1 & i10=1 & i9=0 & i8=1 & i7=0 & i6=1
   & i5=1 & i4=1 & i3=0 & i2=0
 { if (Cond == 0) goto <skip>; c6000_sem_sub(Src2, Src1, Dst); <skip> }
 
 :^Cond^"SUB.S2" Src2, Src1, Dst is c_is16=0 & Cond & creg!=7 & Src2 & Src1 & Dst
-  & i1=1 & i12=1 & i11=1 & i10=1 & i9=0 & i8=1 & i7=0 & i6=1
+  & i1=1 & i11=1 & i10=1 & i9=0 & i8=1 & i7=0 & i6=1
   & i5=1 & i4=1 & i3=0 & i2=0
 { if (Cond == 0) goto <skip>; c6000_sem_sub(Src2, Src1, Dst); <skip> }
 
