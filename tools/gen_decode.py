@@ -215,6 +215,11 @@ def main():
             else:
                 mnem = re.split(r"[(\s]", syntax)[0]
                 ops = operands_for(syntax, fields, mnem)
+            if mnem == "SADDSU2":
+                # TI lists this reversed-operand pseudo-operation before
+                # the encoded SADDUS2 form. Display the canonical opcode.
+                mnem = "SADDUS2"
+                ops = ["Src1", "Src2", "Dst"]
             if name in {"CLR", "EXT", "EXTU", "SET"} and "src1" in names:
                 # The primary syntax line is the immediate form; the sibling
                 # opcode diagram uses a packed register instead of csta/cstb.
@@ -223,7 +228,7 @@ def main():
                 ops = ["BdecTgt", "Dst"]
             if mnem == "MPYLI":
                 ops = ["Src1", "Src2", "DstPair"]
-            if mnem == "MPY2":
+            if mnem in {"MPY2", "SMPY2"}:
                 ops = ["Src1", "Src2", "DstPair"]
             if mnem == "MPYHI":
                 ops = ["Src1", "Src2", "DstPair"]
@@ -429,11 +434,12 @@ def main():
                     if not fixed_pred:
                         sem = "if (Cond == 0) goto <skip>; %s <skip>" % sem
                     key = tuple(sorted(pat))
-                    if key in seen_patterns and seen_patterns[key] != mnem:
-                        # Same encoding documented for two mnemonics; the
-                        # manual lists one as the canonical form.  Keep the
-                        # first (manual order) and record the alias.
-                        dropped.append((mnem, seen_patterns[key]))
+                    if key in seen_patterns:
+                        # Same encoding can be listed again as a pseudo-op.
+                        # Keep the first (manual order), even when both
+                        # spellings were normalized to the same mnemonic.
+                        if seen_patterns[key] != mnem:
+                            dropped.append((mnem, seen_patterns[key]))
                         continue
                     seen_patterns[key] = mnem
                     w(":%s is %s { %s }" % (disp, " & ".join(pat), sem))

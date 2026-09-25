@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // @category C6000
-// Execute MPY2/MPYHI/DOTP2 paired-result cases. Usage: <cases.tsv>.
+// Execute MPY2/MPYHI/DOTP2/SMPY2 paired-result cases. Usage: <cases.tsv>.
 
 import java.io.BufferedReader;
 import java.io.FileReader;
@@ -46,6 +46,7 @@ public class C6000Mpy2Test extends GhidraScript {
                 try {
                     emulator.writeRegister(f[2], Long.parseUnsignedLong(f[5], 16));
                     emulator.writeRegister(f[3], Long.parseUnsignedLong(f[6], 16));
+                    emulator.writeRegister("CSR", 0);
                     emulator.getEmulator().setExecuteAddress(offset);
                     if (!emulator.step(monitor)) {
                         throw new AssertionError(f[0] + ": " + emulator.getLastError());
@@ -55,6 +56,15 @@ public class C6000Mpy2Test extends GhidraScript {
                     if (actual != expected) {
                         throw new AssertionError(f[0] + ": got 0x" +
                             Long.toHexString(actual) + " expected 0x" + f[7]);
+                    }
+                    if (f.length > 8) {
+                        long sat = emulator.readRegister("CSR").longValue() & 0x200;
+                        long expectedSat = Integer.parseInt(f[8]) != 0 ? 0x200 : 0;
+                        if (sat != expectedSat) {
+                            throw new AssertionError(f[0] + ": SAT=0x" +
+                                Long.toHexString(sat) + " expected 0x" +
+                                Long.toHexString(expectedSat));
+                        }
                     }
                 } finally {
                     emulator.dispose();

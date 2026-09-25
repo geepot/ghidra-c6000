@@ -263,6 +263,12 @@ macro c6000_sem_smpy16(a, b, d) {
   CSR = CSR | 0x200;
   <done>
 }
+# SEM: SMPY
+macro c6000_sem_smpy(a, b, d) {
+  local x:4 = (a << 16) s>> 16;
+  local y:4 = (b << 16) s>> 16;
+  c6000_sem_smpy16(x, y, d);
+}
 # SEM: SMPYH
 macro c6000_sem_smpyh(a, b, d) {
   local x:4 = a s>> 16;
@@ -274,6 +280,30 @@ macro c6000_sem_smpyh(a, b, d) {
   <sat> d = 0x7fffffff;
   CSR = CSR | 0x200;
   <done>
+}
+# SEM: SMPYHL
+macro c6000_sem_smpyhl(a, b, d) {
+  local x:4 = a s>> 16;
+  local y:4 = (b << 16) s>> 16;
+  c6000_sem_smpy16(x, y, d);
+}
+# SEM: SMPYLH
+macro c6000_sem_smpylh(a, b, d) {
+  local x:4 = (a << 16) s>> 16;
+  local y:4 = b s>> 16;
+  c6000_sem_smpy16(x, y, d);
+}
+# SEM: SMPY2
+macro c6000_sem_smpy2(a, b, d) {
+  local a_lo:4 = (a << 16) s>> 16;
+  local b_lo:4 = (b << 16) s>> 16;
+  local a_hi:4 = a s>> 16;
+  local b_hi:4 = b s>> 16;
+  local low:4 = 0;
+  local high:4 = 0;
+  c6000_sem_smpy16(a_lo, b_lo, low);
+  c6000_sem_smpy16(a_hi, b_hi, high);
+  d = (zext(high) << 32) | zext(low);
 }
 macro c6000_sem_sshl32(v, c, d) {
   local count:4 = c & 63;
@@ -580,7 +610,7 @@ macro c6000_sem_packhl2(a, b, d) {
 macro c6000_sem_packlh2(a, b, d) {
   d = (a << 16) | (b >> 16);
 }
-# SPACK2/SPACKU4 clamp lanes independently and leave CSR.SAT unchanged.
+# Packed saturation helpers clamp lanes independently and leave CSR.SAT unchanged.
 macro c6000_sem_clamp_s16(v, d) {
   d = v;
   if (v s> 0x7fff) goto <positive>;
@@ -600,6 +630,71 @@ macro c6000_sem_clamp_u8(v, d) {
   goto <done>;
   <negative> d = 0;
   <done>
+}
+macro c6000_sem_clamp_u16(v, d) {
+  d = v;
+  if (v s< 0) goto <negative>;
+  if (v s> 0xffff) goto <positive>;
+  goto <done>;
+  <positive> d = 0xffff;
+  goto <done>;
+  <negative> d = 0;
+  <done>
+}
+# SEM: SADD2
+macro c6000_sem_sadd2(a, b, d) {
+  local hi:4 = (a s>> 16) + (b s>> 16);
+  local lo:4 = ((a << 16) s>> 16) + ((b << 16) s>> 16);
+  c6000_sem_clamp_s16(hi, hi);
+  c6000_sem_clamp_s16(lo, lo);
+  d = ((hi & 0xffff) << 16) | (lo & 0xffff);
+}
+# SEM: SADDUS2
+macro c6000_sem_saddus2(a, b, d) {
+  local hi:4 = (a >> 16) + (b s>> 16);
+  local lo:4 = (a & 0xffff) + ((b << 16) s>> 16);
+  c6000_sem_clamp_u16(hi, hi);
+  c6000_sem_clamp_u16(lo, lo);
+  d = ((hi & 0xffff) << 16) | (lo & 0xffff);
+}
+# SEM: SADDU4
+macro c6000_sem_saddu4(a, b, d) {
+  local r0:4 = (a & 0xff) + (b & 0xff);
+  local r1:4 = ((a >> 8) & 0xff) + ((b >> 8) & 0xff);
+  local r2:4 = ((a >> 16) & 0xff) + ((b >> 16) & 0xff);
+  local r3:4 = (a >> 24) + (b >> 24);
+  c6000_sem_clamp_u8(r0, r0);
+  c6000_sem_clamp_u8(r1, r1);
+  c6000_sem_clamp_u8(r2, r2);
+  c6000_sem_clamp_u8(r3, r3);
+  d = r0 | (r1 << 8) | (r2 << 16) | (r3 << 24);
+}
+# SEM: SSUB2
+macro c6000_sem_ssub2(a, b, d) {
+  local hi:4 = (a s>> 16) - (b s>> 16);
+  local lo:4 = ((a << 16) s>> 16) - ((b << 16) s>> 16);
+  c6000_sem_clamp_s16(hi, hi);
+  c6000_sem_clamp_s16(lo, lo);
+  d = ((hi & 0xffff) << 16) | (lo & 0xffff);
+}
+macro c6000_sem_absdiff8(a, b, d) {
+  d = a - b;
+  if (d s< 0) goto <negative>;
+  goto <done>;
+  <negative> d = -d;
+  <done>
+}
+# SEM: SUBABS4
+macro c6000_sem_subabs4(a, b, d) {
+  local r0:4 = 0;
+  local r1:4 = 0;
+  local r2:4 = 0;
+  local r3:4 = 0;
+  c6000_sem_absdiff8(a & 0xff, b & 0xff, r0);
+  c6000_sem_absdiff8((a >> 8) & 0xff, (b >> 8) & 0xff, r1);
+  c6000_sem_absdiff8((a >> 16) & 0xff, (b >> 16) & 0xff, r2);
+  c6000_sem_absdiff8(a >> 24, b >> 24, r3);
+  d = r0 | (r1 << 8) | (r2 << 16) | (r3 << 24);
 }
 # SEM: SPACK2
 macro c6000_sem_spack2(a, b, d) {

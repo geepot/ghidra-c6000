@@ -67,6 +67,19 @@ CASES = [
     ("DOTPSU4", "M", 0x6A321193, 0xB1746CA4, 0x0000214A),
     ("DOTPU4", "M", 0x6A321193, 0xB1746CA4, 0x0000C54A),
     ("DOTPU4", "M", 0xFFFFFFFF, 0xFFFFFFFF, 0x0003F804),
+    ("SMPY", "M", 0x00000123, 0x01E0FA81, 0xFFF38146, 0),
+    ("SMPY", "M", 0x00008000, 0x00008000, 0x7FFFFFFF, 1),
+    ("SMPYHL", "M", 0x008A0000, 0x000000A7, 0x0000B40C, 0),
+    ("SMPYHL", "M", 0x80000000, 0x00008000, 0x7FFFFFFF, 1),
+    ("SMPYLH", "M", 0x000000A7, 0x008A0000, 0x0000B40C, 0),
+    ("SMPYLH", "M", 0x00008000, 0x80000000, 0x7FFFFFFF, 1),
+    ("SADD2", "S", 0x5789F23A, 0x74B84975, 0x7FFF3BAF),
+    ("SADD2", "S", 0x0124847C, 0x01A6A051, 0x02CA8000),
+    ("SADDUS2", "S", 0x5789F23A, 0x74B84975, 0xCC41FFFF),
+    ("SADDUS2", "S", 0x147C0124, 0xA05101A6, 0x000002CA),
+    ("SADDU4", "S", 0x5789F23A, 0x74B84975, 0xCBFFFFAF),
+    ("SSUB2", "L", 0x00070005, 0x8000FFFF, 0x7FFF0006),
+    ("SUBABS4", "L", 0x3789F23A, 0x04B84975, 0x332FA93B),
 ]
 
 
@@ -92,13 +105,16 @@ def main():
     image.parent.mkdir(parents=True, exist_ok=True)
     with image.open("wb") as out, manifest.open("w") as rows:
         index = 0
-        for mnemonic, unit, a, b, expected in CASES:
+        for case in CASES:
+            mnemonic, unit, a, b, expected, *sat_override = case
+            sat = sat_override[0] if sat_override else int(
+                mnemonic == "SMPYH" and a == 0x80000000)
             for side, cross in ((1, 0), (2, 1)):
                 out.write(struct.pack(endian + "I", opcode(mnemonic, unit, side, cross)))
                 out.write(bytes(28))
                 rows.write(f"{index}\t{mnemonic}\t{unit}{side}\t{a:08x}\t"
                            f"{b:08x}\t{expected:08x}\t"
-                           f"{int(mnemonic == 'SMPYH' and a == 0x80000000)}\n")
+                           f"{sat}\n")
                 index += 1
 
 
