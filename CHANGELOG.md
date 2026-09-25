@@ -31,6 +31,8 @@ First public release.
   run-time library built with the TI C6000 code generation tools.
 
 ### Fixed
+* `DPINT` and `DPTRUNC` now read a double-precision register pair and perform
+  FADCR-aware integer conversion, including ties-to-even and warning bits.
 * `SPINT` and `SPTRUNC` now use the `.L1`/`.L2` FADCR rounding mode and update
   conversion warning bits, including exceptional inputs. `SPINT` no longer
   lifts to an unimplemented-operation placeholder.

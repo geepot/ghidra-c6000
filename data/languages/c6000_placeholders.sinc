@@ -38,8 +38,6 @@ define pcodeop c6000_unimpl_dotpsu4;
 define pcodeop c6000_unimpl_dotpu4;
 define pcodeop c6000_unimpl_dpack2;
 define pcodeop c6000_unimpl_dpackx2;
-define pcodeop c6000_unimpl_dpint;
-define pcodeop c6000_unimpl_dptrunc;
 define pcodeop c6000_unimpl_gmpy;
 define pcodeop c6000_unimpl_gmpy4;
 define pcodeop c6000_unimpl_max2;

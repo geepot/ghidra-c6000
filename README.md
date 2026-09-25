@@ -51,7 +51,7 @@ Full-payload linear sweeps also completed with no zero-width p-code operands:
 
 | Corpus | Payload bytes | Bytes decoded | Instructions | Unimplemented p-code | Undecoded slots | Byte coverage |
 |---|---:|---:|---:|---:|---:|---:|
-| Stage 1 | 55,120 | 40,328 | 10,452 | 842 (8%) | 3,698 | **73.2%** |
+| Stage 1 | 55,120 | 40,328 | 10,452 | 838 (8%) | 3,698 | **73.2%** |
 | Stage 2 | 361,248 | 335,972 | 91,483 | 23 (<1%) | 6,319 | **93.0%** |
 
 The sweeps found 24 paired software loops and 43 buffer masks in stage 1,
@@ -111,6 +111,11 @@ boundaries, and a negative 40-bit subtraction result.
 endian modes. The 23 cases per mode cover all FADCR rounding modes, ties to
 even, signed overflow, NaN, infinity, denormals, and the separate `.L1`/`.L2`
 warning bits.
+
+`tests/fixtures/dp-int.py <image.bin> <cases.tsv> [be]` and
+`C6000DpConvertTest.java <cases.tsv>` check `DPINT` and `DPTRUNC` with
+register-pair sources. The 17 cases per mode cover rounding, exceptions,
+warning bits, and the signed 32-bit result limits.
 
 The generated 32-bit decode table can be rebuilt from the public TI PDF:
 run `pdftotext -layout sprufe8b.pdf /tmp/c6000ref/sprufe8b.txt`, then

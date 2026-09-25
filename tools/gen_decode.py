@@ -234,6 +234,8 @@ def main():
                 ops = ["Src1", "Src2", "DstPair"]
             if mnem in {"INTDP", "INTDPU", "SPDP"}:
                 ops = ["Src2", "DstPair"]
+            if mnem in {"DPINT", "DPTRUNC"}:
+                ops = ["Src2Pair", "Dst"]
             if mnem == "DPSP":
                 ops = ["Src2PairDpsp", "Dst"]
             if mnem in {"ADDDP", "MPYDP"}:
@@ -357,6 +359,11 @@ def main():
                             args += ", %d, %d" % (
                                 0 if suffix == ".1" else 16,
                                 0 if mnem == "SPINT" else 1)
+                        if mnem in {"DPINT", "DPTRUNC"}:
+                            macro = "c6000_sem_dp_to_int"
+                            args += ", %d, %d" % (
+                                0 if suffix == ".1" else 16,
+                                0 if mnem == "DPINT" else 1)
                         if mnem == "MPY32":
                             macro += "_64" if ops[-1] == "DstPair" else "_32"
                         if mnem in {"CLR", "EXT", "EXTU", "SET"} and "src1" in names:
