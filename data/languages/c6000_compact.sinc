@@ -296,13 +296,13 @@ CimmS3i: CimmS3iv is q_r3=7 [ CimmS3iv = 8; ] { export *[const]:4 CimmS3iv; }
 # ---------------------------------------------------------------------------
 
 CTgt7: reloc is cq_scst7 [ reloc = (inst_start & 0xffffffe0) + (cq_scst7 << 1); ]
-  { export *[const]:4 reloc; }
+  { export *[ram]:4 reloc; }
 
 CTgt8: reloc is cq_ucst8 [ reloc = (inst_start & 0xffffffe0) + (cq_ucst8 << 1); ]
-  { export *[const]:4 reloc; }
+  { export *[ram]:4 reloc; }
 
 CTgt10: reloc is cq_scst10 [ reloc = (inst_start & 0xffffffe0) + (cq_scst10 << 1); ]
-  { export *[const]:4 reloc; }
+  { export *[ram]:4 reloc; }
 
 # ---------------------------------------------------------------------------
 # Figure C-8. Doff4 - SPRUFE8B appendix C.4.
@@ -890,4 +890,3 @@ CTgt10: reloc is cq_scst10 [ reloc = (inst_start & 0xffffffe0) + (cq_scst10 << 1
 # ---------------------------------------------------------------------------
 
 :NOP CN3 is c_is16=1 & j12=0 & j11=1 & j10=1 & j9=0 & j8=0 & j7=0 & j6=1 & j5=1 & j4=0 & j3=1 & j2=1 & j1=1 & j0=0 & CN3 {  }
-

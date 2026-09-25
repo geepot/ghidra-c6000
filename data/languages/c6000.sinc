@@ -426,15 +426,15 @@ Nbit:   nbit   is nbit   { export *[const]:4 nbit; }
 # the address of the first instruction of the fetch packet that contains the
 # branch (SPRUFE8B B/CALLP execution blocks).
 BranchTarget: reloc is cst21
-  [ reloc = (inst_start & 0xffffffe0) + (cst21 << 2); ] { export *[const]:4 reloc; }
+  [ reloc = (inst_start & 0xffffffe0) + (cst21 << 2); ] { export *[ram]:4 reloc; }
 
 # BNOP displacement target (SPRUFE8B figure F-10, BNOP execution block).
 BnopTgt: reloc is bnopd
-  [ reloc = (inst_start & 0xffffffe0) + (bnopd * 4); ] { export *[const]:4 reloc; }
+  [ reloc = (inst_start & 0xffffffe0) + (bnopd * 4); ] { export *[ram]:4 reloc; }
 
 # BDEC/BPOS encode a signed ten-bit fetch-packet-relative branch displacement.
 BdecTgt: reloc is scst10
-  [ reloc = (inst_start & 0xffffffe0) + (scst10 << 2); ] { export *[const]:4 reloc; }
+  [ reloc = (inst_start & 0xffffffe0) + (scst10 << 2); ] { export *[ram]:4 reloc; }
 
 # ---------------------------------------------------------------------------
 # .D unit addressing modes - SPRUFE8B Table C-3 / section 3.9.3

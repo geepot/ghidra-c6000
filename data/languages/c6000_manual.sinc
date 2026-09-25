@@ -59,12 +59,18 @@
 # address held in a register.
 # ---------------------------------------------------------------------------
 
-:^Cond^"BNOP.S1" BnopTgt, bnopc is c_is16=0 & Cond & creg!=7 & BnopTgt & bnopc
+:"BNOP.S1" BnopTgt, bnopc is c_is16=0 & creg=0 & z=0 & BnopTgt & bnopc
+  & i1=0 & i12=0 & i11=0 & i10=0 & i9=0 & i8=1 & i7=0 & i6=0 & i5=1 & i4=0 & i3=0 & i2=0
+{ goto BnopTgt; }
+:^Cond^"BNOP.S1" BnopTgt, bnopc is c_is16=0 & Cond & creg!=0 & creg!=7 & BnopTgt & bnopc
   & i1=0 & i12=0 & i11=0 & i10=0 & i9=0 & i8=1 & i7=0 & i6=0 & i5=1 & i4=0 & i3=0 & i2=0
 {
   if (Cond != 0) goto BnopTgt;
 }
-:^Cond^"BNOP.S2" BnopTgt, bnopc is c_is16=0 & Cond & creg!=7 & BnopTgt & bnopc
+:"BNOP.S2" BnopTgt, bnopc is c_is16=0 & creg=0 & z=0 & BnopTgt & bnopc
+  & i1=1 & i12=0 & i11=0 & i10=0 & i9=0 & i8=1 & i7=0 & i6=0 & i5=1 & i4=0 & i3=0 & i2=0
+{ goto BnopTgt; }
+:^Cond^"BNOP.S2" BnopTgt, bnopc is c_is16=0 & Cond & creg!=0 & creg!=7 & BnopTgt & bnopc
   & i1=1 & i12=0 & i11=0 & i10=0 & i9=0 & i8=1 & i7=0 & i6=0 & i5=1 & i4=0 & i3=0 & i2=0
 {
   if (Cond != 0) goto BnopTgt;

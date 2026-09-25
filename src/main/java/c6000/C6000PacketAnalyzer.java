@@ -41,7 +41,11 @@ public class C6000PacketAnalyzer extends AbstractAnalyzer {
 	public C6000PacketAnalyzer() {
 		super(NAME, DESCRIPTION, AnalyzerType.BYTE_ANALYZER);
 		setDefaultEnablement(true);
-		setPriority(AnalysisPriority.DISASSEMBLY.before());
+		// Ghidra's Disassemble Entry Points analyzer runs at BLOCK_ANALYSIS.
+		// Context must be written before it creates any instruction; otherwise
+		// ProgramContext rejects the slot change and compact flow targets decode
+		// with the wrong width.
+		setPriority(AnalysisPriority.BLOCK_ANALYSIS.before());
 	}
 
 	@Override

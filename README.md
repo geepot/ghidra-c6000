@@ -22,7 +22,7 @@ below show both the decoded instructions and the remaining gaps.
 |---|---|
 | 32-bit instruction decode (mnemonic, unit, operands, length) | broad SPRUFE8B §3.12 coverage, legacy `MVC`, and C64x+ linked-word `LL`/`SL`/`CMTL`; no nonfill gaps in the measured stage 2 payload or the stage 1 code region |
 | Instruction lengths and execute-packet framing | 2/4-byte lengths and compact layout context; execute packets are not atomic |
-| Branch / call targets (`B`, `BNOP`, `CALLP`, `BDEC`, `BPOS`) | modelled, PCE1-relative per the manual |
+| Branch / call targets (`B`, `BNOP`, `CALLP`, `BDEC`, `BPOS`) | modelled in the RAM address space, PCE1-relative per the manual; delayed `B` + `ADDKPC` calls recovered by an analyzer |
 | Compact 16-bit fetch packets | most observed slots decode, driven by packet-header context (see below) |
 | P-code semantics | integer ALU and common multiplies, compact saturating arithmetic, immediates, bit-field operations, linear and AMR circular address arithmetic, scalar and doubleword loads/stores, single-precision arithmetic and conversions, selected double-precision arithmetic and conversions, compares, shifts, branches/calls, `MVC` |
 | Other decoded instructions | no generated `c6000_unimpl_<mnemonic>` calls remain; software-loop controls, `IDLE`, and C64x+ linked-word operations use named event userops; `DINT`/`RINT` update `TSR` and `CSR` interrupt-enable bits |
@@ -382,7 +382,22 @@ encoding `creg=7, z=0` (Table 3-9), so no valid 32-bit instruction matches it.
 * Branch targets are **PCE1-relative** — relative to the first instruction of
   the containing fetch packet, not to the branch itself. `B`/`CALLP`/`BNOP`/
   `BDEC`/`BPOS`/`ADDKPC` all use `inst_start & 0xFFFFFFE0`, exactly as the
-  manual's Execution blocks specify.
+  manual's Execution blocks specify. Direct branch and call targets export in
+  RAM, so Ghidra's flow references and disassembler follow the code address.
+  The delayed-call analyzer recognizes a `B` followed by `ADDKPC` writing `B3`
+  within five execute packets and classifies the branch as a call.
+
+The `branch-flow.py` fixture and `C6000FlowTargetTest.java` check seven direct
+branch/call forms in both endian modes, including conditional versus
+unconditional flow types. Ten stage 2 firmware branch/call sites, including
+compact forms, also passed the RAM flow check. On a fresh stage 1 raw import
+with entry `0x11801da0`, auto-analysis found functions at `0x11804280`,
+`0x118048a0`, and `0x11804360`, with zero `const:` flow-error bookmarks. A raw
+binary needs an entry point; `C6000SetEntry.java` supplies it for headless
+tests. The packet-context analyzer runs before Ghidra's entry-point
+disassembler so compact target slots get their width context in time. A fresh
+stage 2 import also created a function at the checked `CALLP` target
+`0xc0012720`.
 
 ## Calling convention
 
@@ -488,6 +503,18 @@ it produces.
   its monitor-provided success value through a userop. Ghidra's instruction
   emulator cannot decide another core's link state by itself.
 * **No delay-slot modelling** in p-code.
+* **The Basic Constant Reference Analyzer can exhaust the heap** on the stage 2
+  image even with RAM branch targets and packet context fixed. A fresh headless
+  import with it disabled completed; `C6000DisableBasicConstant.java` is a
+  headless pre-script for that case. Disabling it loses some computed-reference
+  recovery. Smaller stage 1 imports complete with it enabled.
+* **Some large functions still fail to decompile.** Stage 2 function
+  `0xc0047758` currently reports `Trying to construct memory range beyond end
+  of address space: ram`. Its `firstpass` p-code completes, while the
+  `normalize` and full `decompile` passes fail. A smaller conditional function
+  at `0xc0000220` decompiles with structured control flow. The large-function
+  failure needs further investigation; the RAM flow fix alone does not resolve
+  it.
 * **AMR updates are instruction-level.** `.D` effective addresses and
   ADDA/SUBA results wrap for A4-A7/B4-B7, including BK0/BK1 selection and
   bytewise wrapping of nonaligned transfers. Base writes occur after the

@@ -707,6 +707,19 @@ def main():
                             sem += f" BaseReg = {mem};"
                     if not fixed_pred:
                         sem = "if (Cond == 0) goto <skip>; %s <skip>" % sem
+                    if mnem == "B" and ops and ops[0] == "BranchTarget":
+                        # Emit an unguarded direct branch for the always-true
+                        # predicate. A constant Cond export inside a p-code
+                        # branch still makes Ghidra classify the instruction
+                        # as a conditional jump.
+                        plain_pat = [term for term in pat
+                                     if term not in {"Cond", "creg!=7"}]
+                        plain_pat += ["creg=0", "z=0"]
+                        plain_disp = "B." + variant_ul + suffix[1:] + " BranchTarget"
+                        w(":%s is %s { goto BranchTarget; }" %
+                          (plain_disp, " & ".join(plain_pat)))
+                        n += 1
+                        pat.append("creg!=0")
                     key = tuple(sorted(pat))
                     if key in seen_patterns:
                         # Same encoding can be listed again as a pseudo-op.
