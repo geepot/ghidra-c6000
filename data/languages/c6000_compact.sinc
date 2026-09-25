@@ -178,15 +178,15 @@ CRet: cq_ret is cq_ret { export cq_ret; }
 
 # Predicate prefixes for the predicated compact forms (Figures F-20/F-21
 # and G-3).  A display-only table must start the display, hence the table.
-CPred20: "[A0] " is q_s=0 & j4=0 { }
-CPred20: "[!A0] " is q_s=0 & j4=1 { }
-CPred20: "[B0] " is q_s=1 & j4=0 { }
-CPred20: "[!B0] " is q_s=1 & j4=1 { }
+CPred20: "[A0]" is q_s=0 & j4=0 { }
+CPred20: "[!A0]" is q_s=0 & j4=1 { }
+CPred20: "[B0]" is q_s=1 & j4=0 { }
+CPred20: "[!B0]" is q_s=1 & j4=1 { }
 
-CPredCC: "[A0] " is j15=0 & j14=0 { }
-CPredCC: "[!A0] " is j15=0 & j14=1 { }
-CPredCC: "[B0] " is j15=1 & j14=0 { }
-CPredCC: "[!B0] " is j15=1 & j14=1 { }
+CPredCC: "[A0]" is j15=0 & j14=0 { }
+CPredCC: "[!A0]" is j15=0 & j14=1 { }
+CPredCC: "[B0]" is j15=1 & j14=0 { }
+CPredCC: "[!B0]" is j15=1 & j14=1 { }
 
 # ---------------------------------------------------------------------------
 # Immediate operands.  Compact immediate fields are scattered across the
@@ -724,14 +724,14 @@ CTgt10: reloc is cq_scst10 [ reloc = (inst_start & 0xffffffe0) + (cq_scst10 << 1
 # is inverted when z = 1.
 # ---------------------------------------------------------------------------
 
-:CPred20^"BNOP"^CUnitS CTgt7, CN3 is c_is16=1 & CPred20 & CUnitS & c_br=1 & q_s=0 & j4=0 & j5=1 & j3=1 & j2=0 & j1=1 & CTgt7 & CN3 { if (A0 != 0) goto CTgt7; }
-:CPred20^"BNOP"^CUnitS CTgt8, 5 is c_is16=1 & CPred20 & CUnitS & c_br=1 & q_s=0 & j4=0 & j15=1 & j14=1 & j5=1 & j3=1 & j2=0 & j1=1 & CTgt8 { if (A0 != 0) goto CTgt8; }
-:CPred20^"BNOP"^CUnitS CTgt7, CN3 is c_is16=1 & CPred20 & CUnitS & c_br=1 & q_s=1 & j4=0 & j5=1 & j3=1 & j2=0 & j1=1 & CTgt7 & CN3 { if (B0 != 0) goto CTgt7; }
-:CPred20^"BNOP"^CUnitS CTgt8, 5 is c_is16=1 & CPred20 & CUnitS & c_br=1 & q_s=1 & j4=0 & j15=1 & j14=1 & j5=1 & j3=1 & j2=0 & j1=1 & CTgt8 { if (B0 != 0) goto CTgt8; }
-:CPred20^"BNOP"^CUnitS CTgt7, CN3 is c_is16=1 & CPred20 & CUnitS & c_br=1 & q_s=0 & j4=1 & j5=1 & j3=1 & j2=0 & j1=1 & CTgt7 & CN3 { if (A0 == 0) goto CTgt7; }
-:CPred20^"BNOP"^CUnitS CTgt8, 5 is c_is16=1 & CPred20 & CUnitS & c_br=1 & q_s=0 & j4=1 & j15=1 & j14=1 & j5=1 & j3=1 & j2=0 & j1=1 & CTgt8 { if (A0 == 0) goto CTgt8; }
-:CPred20^"BNOP"^CUnitS CTgt7, CN3 is c_is16=1 & CPred20 & CUnitS & c_br=1 & q_s=1 & j4=1 & j5=1 & j3=1 & j2=0 & j1=1 & CTgt7 & CN3 { if (B0 == 0) goto CTgt7; }
-:CPred20^"BNOP"^CUnitS CTgt8, 5 is c_is16=1 & CPred20 & CUnitS & c_br=1 & q_s=1 & j4=1 & j15=1 & j14=1 & j5=1 & j3=1 & j2=0 & j1=1 & CTgt8 { if (B0 == 0) goto CTgt8; }
+:^CPred20^"BNOP"^CUnitS CTgt7, CN3 is c_is16=1 & CPred20 & CUnitS & c_br=1 & q_s=0 & j4=0 & j5=1 & j3=1 & j2=0 & j1=1 & CTgt7 & CN3 { if (A0 != 0) goto CTgt7; }
+:^CPred20^"BNOP"^CUnitS CTgt8, 5 is c_is16=1 & CPred20 & CUnitS & c_br=1 & q_s=0 & j4=0 & j15=1 & j14=1 & j5=1 & j3=1 & j2=0 & j1=1 & CTgt8 { if (A0 != 0) goto CTgt8; }
+:^CPred20^"BNOP"^CUnitS CTgt7, CN3 is c_is16=1 & CPred20 & CUnitS & c_br=1 & q_s=1 & j4=0 & j5=1 & j3=1 & j2=0 & j1=1 & CTgt7 & CN3 { if (B0 != 0) goto CTgt7; }
+:^CPred20^"BNOP"^CUnitS CTgt8, 5 is c_is16=1 & CPred20 & CUnitS & c_br=1 & q_s=1 & j4=0 & j15=1 & j14=1 & j5=1 & j3=1 & j2=0 & j1=1 & CTgt8 { if (B0 != 0) goto CTgt8; }
+:^CPred20^"BNOP"^CUnitS CTgt7, CN3 is c_is16=1 & CPred20 & CUnitS & c_br=1 & q_s=0 & j4=1 & j5=1 & j3=1 & j2=0 & j1=1 & CTgt7 & CN3 { if (A0 == 0) goto CTgt7; }
+:^CPred20^"BNOP"^CUnitS CTgt8, 5 is c_is16=1 & CPred20 & CUnitS & c_br=1 & q_s=0 & j4=1 & j15=1 & j14=1 & j5=1 & j3=1 & j2=0 & j1=1 & CTgt8 { if (A0 == 0) goto CTgt8; }
+:^CPred20^"BNOP"^CUnitS CTgt7, CN3 is c_is16=1 & CPred20 & CUnitS & c_br=1 & q_s=1 & j4=1 & j5=1 & j3=1 & j2=0 & j1=1 & CTgt7 & CN3 { if (B0 == 0) goto CTgt7; }
+:^CPred20^"BNOP"^CUnitS CTgt8, 5 is c_is16=1 & CPred20 & CUnitS & c_br=1 & q_s=1 & j4=1 & j15=1 & j14=1 & j5=1 & j3=1 & j2=0 & j1=1 & CTgt8 { if (B0 == 0) goto CTgt8; }
 
 # ---------------------------------------------------------------------------
 # Figure F-22. S3 - SPRUFE8B appendix F.4.  BR must be 0 for the
@@ -843,10 +843,10 @@ CTgt10: reloc is cq_scst10 [ reloc = (inst_start & 0xffffffe0) + (cq_scst10 << 1
 # 1-bit constant; CC selects [A0], [!A0], [B0] or [!B0].
 # ---------------------------------------------------------------------------
 
-:CPredCC^"MVK"^CUnitLSD " " Cucst1f^", "^RA97 is c_is16=1 & CPredCC & CUnitLSD & j12=0 & j11=1 & j10=0 & j6=1 & j5=1 & j2=1 & j1=1 & j15=0 & j14=0 & Cucst1f & RA97 { if (A0 != 0) goto <cskip>; RA97 = Cucst1f; <cskip> }
-:CPredCC^"MVK"^CUnitLSD " " Cucst1f^", "^RA97 is c_is16=1 & CPredCC & CUnitLSD & j12=0 & j11=1 & j10=0 & j6=1 & j5=1 & j2=1 & j1=1 & j15=0 & j14=1 & Cucst1f & RA97 { if (A0 == 0) goto <cskip>; RA97 = Cucst1f; <cskip> }
-:CPredCC^"MVK"^CUnitLSD " " Cucst1f^", "^RA97 is c_is16=1 & CPredCC & CUnitLSD & j12=0 & j11=1 & j10=0 & j6=1 & j5=1 & j2=1 & j1=1 & j15=1 & j14=0 & Cucst1f & RA97 { if (B0 != 0) goto <cskip>; RA97 = Cucst1f; <cskip> }
-:CPredCC^"MVK"^CUnitLSD " " Cucst1f^", "^RA97 is c_is16=1 & CPredCC & CUnitLSD & j12=0 & j11=1 & j10=0 & j6=1 & j5=1 & j2=1 & j1=1 & j15=1 & j14=1 & Cucst1f & RA97 { if (B0 == 0) goto <cskip>; RA97 = Cucst1f; <cskip> }
+:^CPredCC^"MVK"^CUnitLSD " " Cucst1f^", "^RA97 is c_is16=1 & CPredCC & CUnitLSD & j12=0 & j11=1 & j10=0 & j6=1 & j5=1 & j2=1 & j1=1 & j15=0 & j14=0 & Cucst1f & RA97 { if (A0 != 0) goto <cskip>; RA97 = Cucst1f; <cskip> }
+:^CPredCC^"MVK"^CUnitLSD " " Cucst1f^", "^RA97 is c_is16=1 & CPredCC & CUnitLSD & j12=0 & j11=1 & j10=0 & j6=1 & j5=1 & j2=1 & j1=1 & j15=0 & j14=1 & Cucst1f & RA97 { if (A0 == 0) goto <cskip>; RA97 = Cucst1f; <cskip> }
+:^CPredCC^"MVK"^CUnitLSD " " Cucst1f^", "^RA97 is c_is16=1 & CPredCC & CUnitLSD & j12=0 & j11=1 & j10=0 & j6=1 & j5=1 & j2=1 & j1=1 & j15=1 & j14=0 & Cucst1f & RA97 { if (B0 != 0) goto <cskip>; RA97 = Cucst1f; <cskip> }
+:^CPredCC^"MVK"^CUnitLSD " " Cucst1f^", "^RA97 is c_is16=1 & CPredCC & CUnitLSD & j12=0 & j11=1 & j10=0 & j6=1 & j5=1 & j2=1 & j1=1 & j15=1 & j14=1 & Cucst1f & RA97 { if (B0 == 0) goto <cskip>; RA97 = Cucst1f; <cskip> }
 
 # ---------------------------------------------------------------------------
 # Figure G-4. LSDx1 - SPRUFE8B appendix G.3.  op = 010/011/100/110 defer

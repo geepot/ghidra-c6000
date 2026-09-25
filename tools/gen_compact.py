@@ -357,15 +357,15 @@ w("CRet: cq_ret is cq_ret { export cq_ret; }")
 w("")
 w("# Predicate prefixes for the predicated compact forms (Figures F-20/F-21")
 w("# and G-3).  A display-only table must start the display, hence the table.")
-w('CPred20: "[A0] " is q_s=0 & j4=0 { }')
-w('CPred20: "[!A0] " is q_s=0 & j4=1 { }')
-w('CPred20: "[B0] " is q_s=1 & j4=0 { }')
-w('CPred20: "[!B0] " is q_s=1 & j4=1 { }')
+w('CPred20: "[A0]" is q_s=0 & j4=0 { }')
+w('CPred20: "[!A0]" is q_s=0 & j4=1 { }')
+w('CPred20: "[B0]" is q_s=1 & j4=0 { }')
+w('CPred20: "[!B0]" is q_s=1 & j4=1 { }')
 w("")
-w('CPredCC: "[A0] " is j15=0 & j14=0 { }')
-w('CPredCC: "[!A0] " is j15=0 & j14=1 { }')
-w('CPredCC: "[B0] " is j15=1 & j14=0 { }')
-w('CPredCC: "[!B0] " is j15=1 & j14=1 { }')
+w('CPredCC: "[A0]" is j15=0 & j14=0 { }')
+w('CPredCC: "[!A0]" is j15=0 & j14=1 { }')
+w('CPredCC: "[B0]" is j15=1 & j14=0 { }')
+w('CPredCC: "[!B0]" is j15=1 & j14=1 { }')
 w("")
 
 # ===========================================================================
@@ -915,7 +915,7 @@ for z in (0, 1):
                 ("F-20", ["j5=1", "j3=1", "j2=0", "j1=1"], "CTgt7", "CN3", ["CN3"]),
                 ("F-21", ["j15=1", "j14=1", "j5=1", "j3=1", "j2=0", "j1=1"], "CTgt8", "5", [])):
             condition = "%s %s 0" % (r, "==" if z else "!=")
-            con('CPred20^"BNOP"^CUnitS %s, %s' % (tgt, ndisp),
+            con('^CPred20^"BNOP"^CUnitS %s, %s' % (tgt, ndisp),
                 ["c_br=1", "q_s=%d" % sp, "j4=%d" % z] + pat + [tgt] + ntab,
                 "if (%s) goto %s;" % (condition, tgt))
 w("")
@@ -1101,7 +1101,7 @@ w("# ---------------------------------------------------------------------------
 w("")
 for cc, pred, cond in ((0, "[A0]", "A0 != 0"), (1, "[!A0]", "A0 == 0"),
                        (2, "[B0]", "B0 != 0"), (3, "[!B0]", "B0 == 0")):
-    con('CPredCC^"MVK"^CUnitLSD^" "^Cucst1f^", "^RA97',
+    con('^CPredCC^"MVK"^CUnitLSD^" "^Cucst1f^", "^RA97',
         ["j12=0", "j11=1", "j10=0", "j6=1", "j5=1", "j2=1", "j1=1",
          "j15=%d" % ((cc >> 1) & 1), "j14=%d" % (cc & 1), "Cucst1f", "RA97"],
         "if (%s) goto <cskip>; RA97 = Cucst1f; <cskip>" % cond)

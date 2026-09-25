@@ -171,6 +171,13 @@ def main():
             unit_syn = rec.get("unit_syntax", "")
             ul = unit_letter(heading) or unit_letter(unit_syn)
             names = {f["name"] for f in fields}
+            # The PDF extractor folds the following MVKH/MVKLH page into
+            # MVK's record.  Its h=1 encoding is MVKH on the .S unit; h=0
+            # is the already emitted MVK/MVKL low-half encoding.  Letting
+            # the h field float creates a bogus, broad MVK.L constructor.
+            upper_half_move = name == "MVK" and "h" in names
+            if upper_half_move:
+                ul = "S"
             if "baseR" in names and not name.startswith(("LD", "ST")):
                 raise ValueError(
                     f"{name}: memory opcode diagram attached to a nonmemory "
@@ -215,6 +222,9 @@ def main():
             else:
                 mnem = re.split(r"[(\s]", syntax)[0]
                 ops = operands_for(syntax, fields, mnem)
+            if upper_half_move:
+                mnem = "MVKH"
+                ops = ["Cst16", "Dst"]
             if mnem == "SADDSU2":
                 # TI lists this reversed-operand pseudo-operation before
                 # the encoded SADDUS2 form. Display the canonical opcode.
@@ -356,6 +366,8 @@ def main():
                 base = pattern_of(fields, v)
                 if base is None:
                     continue
+                if upper_half_move:
+                    base.append("i6=1")
                 if mnem in {"DPSP", "DPINT", "DPTRUNC"}:
                     # SPRUFE8B's printed opcode diagram shows zeros in
                     # bits 17..13, but its execution text uses both source
@@ -423,6 +435,8 @@ def main():
                         # value.  Post modes use the old base as the address.
                         pat.append("BaseReg")
                     disp = mnem + (("." + variant_ul + suffix[1:]) if variant_ul else "")
+                    if not fixed_pred:
+                        disp = '^Cond^"' + disp + '"'
                     if ops:
                         disp += " " + ", ".join(ops)
                     if mnem in {"BDEC", "BPOS"}:
