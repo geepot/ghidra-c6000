@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build ABS2, ABSDP, BITC4, and BITR cases. IMAGE CASES.tsv [be]."""
+"""Build packed unary and bit permutation cases. IMAGE CASES.tsv [be]."""
 import re
 import struct
 import sys
@@ -18,6 +18,14 @@ CASES = [
     ("BITR", 2, 0xa6e2c179, 0x9e834765, 0, 0),
     ("BITR", 1, 0x80000001, 0x80000001, 0, 0),
     ("BITR", 2, 0x0000000f, 0xf0000000, 0, 0),
+    ("DEAL", 1, 0x9e526e30, 0xb1746ca4, 0, 0),
+    ("DEAL", 2, 0x55555555, 0x0000ffff, 0, 0),
+    ("SHFL", 1, 0xb1746ca4, 0x9e526e30, 0, 0),
+    ("SHFL", 2, 0x0000ffff, 0x55555555, 0, 0),
+    ("SWAP4", 1, 0x9e526e30, 0x529e306e, 0, 0),
+    ("SWAP4", 2, 0x11223344, 0x22114433, 0, 0),
+    ("UNPKHU4", 1, 0x9e526e30, 0x009e0052, 0, 0),
+    ("UNPKHU4", 2, 0x11056934, 0x00110005, 0, 0),
     ("ABSDP", 1, 0xc004000000000000, 0x4004000000000000, 0, 0),
     ("ABSDP", 2, 0x8000000000000000, 0x0000000000000000, 0, 0),
     ("ABSDP", 1, 0xfff0000000000000, 0x7ff0000000000000, 0x20, 0),
@@ -29,7 +37,7 @@ CASES = [
 
 def opcode(mnemonic, side):
     decode = Path(__file__).resolve().parents[2] / "data/languages/c6000_decode.sinc"
-    unit = "L" if mnemonic == "ABS2" else "S" if mnemonic == "ABSDP" else "M"
+    unit = "L" if mnemonic in {"ABS2", "SWAP4", "UNPKHU4"} else "S" if mnemonic == "ABSDP" else "M"
     prefix = f":{mnemonic}.{unit}{side} "
     line = next(line for line in decode.read_text().splitlines()
                 if line.startswith(prefix))

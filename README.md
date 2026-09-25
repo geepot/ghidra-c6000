@@ -377,7 +377,7 @@ it produces.
   load/store effective addresses use linear mode, with size scaling and
   pre/post register updates. Base writes occur after the memory transfer so a
   store using the same register for its source and base reads the old value.
-* **Eighteen instruction mnemonics still have placeholder semantics** outside
+* **Fourteen instruction mnemonics still have placeholder semantics** outside
   the measured firmware instructions, including packed rearrangements and
   selected integer and Galois operations. Some implemented floating-point
   arithmetic still lacks status-register side effects. The reciprocal estimate

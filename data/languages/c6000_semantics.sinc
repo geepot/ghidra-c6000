@@ -391,6 +391,42 @@ macro c6000_sem_bitr(a, d) {
   x = ((x & 0x00ff00ff) << 8) | ((x >> 8) & 0x00ff00ff);
   d = (x << 16) | (x >> 16);
 }
+# SEM: SHFL
+macro c6000_sem_shfl(a, d) {
+  local even:4 = a & 0xffff;
+  local odd:4 = (a >> 16) & 0xffff;
+  even = (even | (even << 8)) & 0x00ff00ff;
+  even = (even | (even << 4)) & 0x0f0f0f0f;
+  even = (even | (even << 2)) & 0x33333333;
+  even = (even | (even << 1)) & 0x55555555;
+  odd = (odd | (odd << 8)) & 0x00ff00ff;
+  odd = (odd | (odd << 4)) & 0x0f0f0f0f;
+  odd = (odd | (odd << 2)) & 0x33333333;
+  odd = (odd | (odd << 1)) & 0x55555555;
+  d = even | (odd << 1);
+}
+# SEM: DEAL
+macro c6000_sem_deal(a, d) {
+  local even:4 = a & 0x55555555;
+  local odd:4 = (a >> 1) & 0x55555555;
+  even = (even | (even >> 1)) & 0x33333333;
+  even = (even | (even >> 2)) & 0x0f0f0f0f;
+  even = (even | (even >> 4)) & 0x00ff00ff;
+  even = (even | (even >> 8)) & 0x0000ffff;
+  odd = (odd | (odd >> 1)) & 0x33333333;
+  odd = (odd | (odd >> 2)) & 0x0f0f0f0f;
+  odd = (odd | (odd >> 4)) & 0x00ff00ff;
+  odd = (odd | (odd >> 8)) & 0x0000ffff;
+  d = even | (odd << 16);
+}
+# SEM: SWAP4
+macro c6000_sem_swap4(a, d) {
+  d = ((a & 0x00ff00ff) << 8) | ((a >> 8) & 0x00ff00ff);
+}
+# SEM: UNPKHU4
+macro c6000_sem_unpkhu4(a, d) {
+  d = ((a >> 8) & 0x00ff0000) | ((a >> 16) & 0xff);
+}
 # SEM: ABSDP
 macro c6000_sem_absdp(a, d, side) {
   local raw:8 = a;
