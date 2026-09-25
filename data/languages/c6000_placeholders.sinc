@@ -12,7 +12,6 @@ define pcodeop c6000_unimpl_bitr;
 define pcodeop c6000_unimpl_cmpy;
 define pcodeop c6000_unimpl_cmpyr;
 define pcodeop c6000_unimpl_cmpyr1;
-define pcodeop c6000_unimpl_ddotp4;
 define pcodeop c6000_unimpl_ddotph2;
 define pcodeop c6000_unimpl_ddotph2r;
 define pcodeop c6000_unimpl_ddotpl2;

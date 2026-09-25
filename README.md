@@ -51,7 +51,7 @@ Full-payload linear sweeps also completed with no zero-width p-code operands:
 
 | Corpus | Payload bytes | Bytes decoded | Instructions | Unimplemented p-code | Undecoded slots | Byte coverage |
 |---|---:|---:|---:|---:|---:|---:|
-| Stage 1 | 55,120 | 40,168 | 10,412 | 24 (<1%) | 3,738 | **72.9%** |
+| Stage 1 | 55,120 | 40,168 | 10,412 | 23 (<1%) | 3,738 | **72.9%** |
 | Stage 2 | 361,248 | 336,000 | 91,490 | 23 (<1%) | 6,312 | **93.0%** |
 
 The sweeps found 24 paired software loops and 43 buffer masks in stage 1,
@@ -144,6 +144,8 @@ signed dot product, including the positive `0x80000000` boundary. Four
 pair and `CSR.SAT` when either lane saturates.
 Four `MPYSU4`/`MPYU4` cases from `tests/fixtures/packed-byte-mul.py` check all
 four 16-bit products in a 64-bit pair, including signed byte boundaries.
+Four `DDOTP4` cases from `tests/fixtures/ddotp4.py` check both signed
+halfword-by-byte dot products and their placement in a 64-bit pair.
 
 `tests/fixtures/paired-alu.py <image.bin> <cases.tsv> [be]` and
 `C6000PairAluTest.java <cases.tsv>` execute 13 `ADDSUB`, `ADDSUB2`, `SADDSUB`,
