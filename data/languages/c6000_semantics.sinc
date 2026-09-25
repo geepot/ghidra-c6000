@@ -1461,12 +1461,274 @@ macro c6000_sem_abssp(a, d, side) {
   flags = 0x12; # INVAL | NAN2
   <done> FAUCR = FAUCR | (flags << sideShift);
 }
+# Round a finite quad-precision intermediate to a C6000 DP result.  A quad
+# significand retains the exact product of two DP significands and all but
+# the most widely separated DP additions; the add/sub caller handles those.
+macro c6000_sem_round_qp_to_dp(exact, d, mode, flags) {
+  local zeroDP:8 = 0;
+  local zeroQP:16 = float2float(zeroDP);
+  local high:16 = exact >> 64;
+  local sign:8 = high:8 & 0x8000000000000000;
+  local magnitude:16 = exact;
+  local roundMode:4 = mode;
+  if (sign == 0) goto <bounds>;
+  magnitude = zeroQP f- exact;
+  <bounds>
+  local maxDP:8 = 0x7fefffffffffffff;
+  local minDP:8 = 0x0010000000000000;
+  local maxQP:16 = float2float(maxDP);
+  local minQP:16 = float2float(minDP);
+  if (magnitude f> maxQP) goto <overflow>;
+  if (magnitude f< minQP && magnitude f!= zeroQP) goto <underflow>;
+  d = float2float(exact);
+  local rounded:16 = float2float(d);
+  if (rounded f== exact) goto <done>;
+  flags = flags | 0x80;
+  if (roundMode == 0) goto <done>;
+  if (roundMode == 1) goto <towardZero>;
+  if (roundMode == 2) goto <towardPositive>;
+  if (rounded f> exact) goto <stepNegative>;
+  goto <done>;
+  <towardZero>
+  if (sign == 0) goto <zeroPositive>;
+  if (rounded f< exact) goto <stepPositive>;
+  goto <done>;
+  <zeroPositive>
+  if (rounded f> exact) goto <stepNegative>;
+  goto <done>;
+  <towardPositive>
+  if (rounded f< exact) goto <stepPositive>;
+  goto <done>;
+  <stepPositive>
+  if (sign == 0) goto <increment>;
+  goto <decrement>;
+  <stepNegative>
+  if (sign == 0) goto <decrement>;
+  <increment> d = d + 1;
+  goto <done>;
+  <decrement> d = d - 1;
+  goto <done>;
+  <overflow>
+  flags = flags | 0xc0;
+  d = sign | 0x7ff0000000000000;
+  if (roundMode == 1) goto <largest>;
+  if (roundMode == 2 && sign != 0) goto <largest>;
+  if (roundMode == 3 && sign == 0) goto <largest>;
+  goto <done>;
+  <largest> d = sign | 0x7fefffffffffffff;
+  goto <done>;
+  <underflow>
+  flags = flags | 0x180;
+  d = sign;
+  if (roundMode == 2 && sign == 0) goto <smallest>;
+  if (roundMode == 3 && sign != 0) goto <smallest>;
+  goto <done>;
+  <smallest> d = sign | 0x0010000000000000;
+  <done>
+}
 # SEM: ADDDP
-macro c6000_sem_adddp(a, b, d) { d = a f+ b; }
 # SEM: SUBDP
-macro c6000_sem_subdp(a, b, d) { d = a f- b; }
+# a and b are the encoded source ports.  Reverse SUBDP forms compute b-a.
+macro c6000_sem_addsub_dp(a, b, d, side, subtract, reverse) {
+  local aRaw:8 = a;
+  local bRaw:8 = b;
+  local aExp:8 = (aRaw >> 52) & 2047;
+  local bExp:8 = (bRaw >> 52) & 2047;
+  local aFrac:8 = aRaw & 0xfffffffffffff;
+  local bFrac:8 = bRaw & 0xfffffffffffff;
+  local aClean:8 = aRaw;
+  local bClean:8 = bRaw;
+  local flags:4 = 0;
+  local sideShift:4 = side;
+  local roundMode:4 = (FADCR >> (9 + sideShift)) & 3;
+  local subtracting:4 = subtract;
+  local reversed:4 = reverse;
+  if (aExp == 2047 && aFrac != 0) goto <aNaN>;
+  if (aExp == 0 && aFrac != 0) goto <aDenormal>;
+  goto <classifyB>;
+  <aNaN> flags = flags | 1;
+  if ((aFrac & 0x8000000000000) != 0) goto <classifyB>;
+  flags = flags | 0x10;
+  goto <classifyB>;
+  <aDenormal> flags = flags | 4;
+  aClean = aRaw & 0x8000000000000000;
+  <classifyB>
+  if (bExp == 2047 && bFrac != 0) goto <bNaN>;
+  if (bExp == 0 && bFrac != 0) goto <bDenormal>;
+  goto <prepare>;
+  <bNaN> flags = flags | 2;
+  if ((bFrac & 0x8000000000000) != 0) goto <prepare>;
+  flags = flags | 0x10;
+  goto <prepare>;
+  <bDenormal> flags = flags | 8;
+  bClean = bRaw & 0x8000000000000000;
+  <prepare>
+  if ((flags & 4) != 0 && bExp != 2047) goto <aInexact>;
+  goto <checkBInexact>;
+  <aInexact> flags = flags | 0x80;
+  <checkBInexact>
+  if ((flags & 8) != 0 && aExp != 2047) goto <bInexact>;
+  goto <checkNaN>;
+  <bInexact> flags = flags | 0x80;
+  <checkNaN>
+  if ((flags & 3) != 0) goto <nan>;
+  local leftRaw:8 = aClean;
+  local rightRaw:8 = bClean;
+  if (reversed == 0) goto <direction>;
+  leftRaw = bClean;
+  rightRaw = aClean;
+  <direction>
+  if (subtracting == 0) goto <special>;
+  rightRaw = rightRaw ^ 0x8000000000000000;
+  <special>
+  local leftExp:8 = (leftRaw >> 52) & 2047;
+  local rightExp:8 = (rightRaw >> 52) & 2047;
+  if (leftExp == 2047) goto <leftInfinity>;
+  if (rightExp == 2047) goto <rightInfinity>;
+  if ((leftRaw & 0x7fffffffffffffff) != 0) goto <finite>;
+  if ((rightRaw & 0x7fffffffffffffff) != 0) goto <finite>;
+  if (((leftRaw ^ rightRaw) & 0x8000000000000000) != 0) goto <oppositeZero>;
+  d = leftRaw & 0x8000000000000000;
+  goto <done>;
+  <oppositeZero> d = 0;
+  if (roundMode == 3) goto <negativeZero>;
+  goto <done>;
+  <negativeZero> d = 0x8000000000000000;
+  goto <done>;
+  <leftInfinity>
+  if (rightExp != 2047) goto <leftInfiniteResult>;
+  if (((leftRaw ^ rightRaw) & 0x8000000000000000) != 0) goto <invalid>;
+  <leftInfiniteResult> d = leftRaw;
+  flags = flags | 0x20;
+  goto <done>;
+  <rightInfinity> d = rightRaw;
+  flags = flags | 0x20;
+  goto <done>;
+  <invalid> flags = flags | 0x10;
+  <nan> d = 0x7fffffffffffffff;
+  goto <done>;
+  <finite>
+  local left:16 = float2float(leftRaw);
+  local right:16 = float2float(rightRaw);
+  local sum:16 = left f+ right;
+  local zeroDP:8 = 0;
+  local zeroQP:16 = float2float(zeroDP);
+  if (sum f== zeroQP) goto <canceled>;
+  local lost:4 = 0;
+  local lostSign:8 = 0;
+  if ((leftRaw & 0x7fffffffffffffff) == 0) goto <round>;
+  if ((rightRaw & 0x7fffffffffffffff) == 0) goto <round>;
+  if (sum f== left) goto <lostRight>;
+  if (sum f== right) goto <lostLeft>;
+  goto <round>;
+  <lostRight> lost = 1;
+  lostSign = rightRaw & 0x8000000000000000;
+  goto <round>;
+  <lostLeft> lost = 1;
+  lostSign = leftRaw & 0x8000000000000000;
+  <round>
+  c6000_sem_round_qp_to_dp(sum, d, roundMode, flags);
+  if (lost == 0) goto <done>;
+  flags = flags | 0x80;
+  local resultSign:8 = d & 0x8000000000000000;
+  if ((d & 0x7fffffffffffffff) != 0x7fefffffffffffff) goto <lostRound>;
+  if (resultSign == lostSign) goto <lostOverflow>;
+  <lostRound>
+  if (roundMode == 0) goto <done>;
+  if (roundMode == 1) goto <lostTowardZero>;
+  if (roundMode == 2) goto <lostTowardPositive>;
+  if (lostSign == 0) goto <done>;
+  if (resultSign == 0) goto <decrement>;
+  goto <increment>;
+  <lostTowardZero>
+  if (resultSign == lostSign) goto <done>;
+  goto <decrement>;
+  <lostTowardPositive>
+  if (lostSign != 0) goto <done>;
+  if (resultSign == 0) goto <increment>;
+  goto <decrement>;
+  <increment> d = d + 1;
+  goto <done>;
+  <decrement> d = d - 1;
+  goto <done>;
+  <lostOverflow>
+  flags = flags | 0xc0;
+  if (roundMode == 1) goto <done>;
+  if (roundMode == 2 && resultSign != 0) goto <done>;
+  if (roundMode == 3 && resultSign == 0) goto <done>;
+  d = resultSign | 0x7ff0000000000000;
+  goto <done>;
+  <canceled> d = 0;
+  if (roundMode == 3) goto <canceledNegative>;
+  goto <done>;
+  <canceledNegative> d = 0x8000000000000000;
+  <done> FADCR = FADCR | (flags << sideShift);
+}
 # SEM: MPYDP
-macro c6000_sem_mpydp(a, b, d) { d = a f* b; }
+macro c6000_sem_mpydp(a, b, d, side) {
+  local aRaw:8 = a;
+  local bRaw:8 = b;
+  local aExp:8 = (aRaw >> 52) & 2047;
+  local bExp:8 = (bRaw >> 52) & 2047;
+  local aFrac:8 = aRaw & 0xfffffffffffff;
+  local bFrac:8 = bRaw & 0xfffffffffffff;
+  local sign:8 = (aRaw ^ bRaw) & 0x8000000000000000;
+  local aClean:8 = aRaw;
+  local bClean:8 = bRaw;
+  local flags:4 = 0;
+  local sideShift:4 = side;
+  local roundMode:4 = (FMCR >> (9 + sideShift)) & 3;
+  if (aExp == 2047 && aFrac != 0) goto <aNaN>;
+  if (aExp == 0 && aFrac != 0) goto <aDenormal>;
+  goto <classifyB>;
+  <aNaN> flags = flags | 1;
+  if ((aFrac & 0x8000000000000) != 0) goto <classifyB>;
+  flags = flags | 0x10;
+  goto <classifyB>;
+  <aDenormal> flags = flags | 4;
+  aClean = aRaw & 0x8000000000000000;
+  <classifyB>
+  if (bExp == 2047 && bFrac != 0) goto <bNaN>;
+  if (bExp == 0 && bFrac != 0) goto <bDenormal>;
+  goto <prepare>;
+  <bNaN> flags = flags | 2;
+  if ((bFrac & 0x8000000000000) != 0) goto <prepare>;
+  flags = flags | 0x10;
+  goto <prepare>;
+  <bDenormal> flags = flags | 8;
+  bClean = bRaw & 0x8000000000000000;
+  <prepare>
+  if ((flags & 4) != 0 && bExp != 2047 && (bRaw & 0x7fffffffffffffff) != 0) goto <aInexact>;
+  goto <checkBInexact>;
+  <aInexact> flags = flags | 0x80;
+  <checkBInexact>
+  if ((flags & 8) != 0 && aExp != 2047 && (aRaw & 0x7fffffffffffffff) != 0) goto <bInexact>;
+  goto <checkNaN>;
+  <bInexact> flags = flags | 0x80;
+  <checkNaN>
+  if ((flags & 3) != 0) goto <nan>;
+  if (aExp == 2047) goto <aInfinity>;
+  if (bExp == 2047) goto <bInfinity>;
+  if ((aClean & 0x7fffffffffffffff) == 0) goto <zero>;
+  if ((bClean & 0x7fffffffffffffff) == 0) goto <zero>;
+  local left:16 = float2float(aClean);
+  local right:16 = float2float(bClean);
+  local product:16 = left f* right;
+  c6000_sem_round_qp_to_dp(product, d, roundMode, flags);
+  goto <done>;
+  <aInfinity>
+  if ((bClean & 0x7fffffffffffffff) == 0) goto <invalid>;
+  goto <infinity>;
+  <bInfinity>
+  if ((aClean & 0x7fffffffffffffff) == 0) goto <invalid>;
+  <infinity> d = sign | 0x7ff0000000000000;
+  goto <done>;
+  <invalid> flags = flags | 0x10;
+  <nan> d = sign | 0x7fffffffffffffff;
+  goto <done>;
+  <zero> d = sign;
+  <done> FMCR = FMCR | (flags << sideShift);
+}
 # SEM: MPYSPDP
 macro c6000_sem_mpyspdp(a, b, d) {
   local converted:8 = float2float(a);

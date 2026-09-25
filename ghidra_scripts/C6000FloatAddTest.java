@@ -52,7 +52,7 @@ public class C6000FloatAddTest extends GhidraScript {
                     if (!emulator.step(monitor)) {
                         throw new AssertionError(f[0] + ": " + emulator.getLastError());
                     }
-                    long actual = emulator.readRegister(f[4]).longValue();
+                    long actual = emulator.readRegister(f[4].replace(':', '_')).longValue();
                     long expected = Long.parseUnsignedLong(f[9], 16);
                     long flags = emulator.readRegister("FADCR").longValue();
                     long expectedFlags = Long.parseUnsignedLong(f[11], 16);

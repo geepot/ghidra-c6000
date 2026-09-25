@@ -93,6 +93,13 @@ mode. They verify that `LDNW`/`LDNDW` and `STNW`/`STNDW` wrap every transferred
 byte across a circular-buffer edge and remain linear when AMR is disabled or
 the base register cannot use circular addressing.
 
+`tests/fixtures/float-dp-arithmetic.py <image.bin> <add.tsv> <mul.tsv> [be]`
+generates exact-rational `ADDDP`/`SUBDP`/`MPYDP` results and FADCR/FMCR flags.
+`C6000FloatAddTest.java <add.tsv>` and
+`C6000FloatMultiplyTest.java <mul.tsv>` exercise 840 add/subtract and 304
+multiply cases per endian mode, including all four rounding modes, reversed
+`SUBDP` forms, special values, and widely separated operands.
+
 The stage images are **not** in this repository. The test accepts an external
 image path and base address, so private firmware can be measured without being
 committed; regenerate the images with
@@ -101,8 +108,9 @@ committed; regenerate the images with
 
 Compact decode is driven by the packet header through the `noflow` context
 fields described below. The 32-bit table covers the documented opcode maps;
-the compact table covers appendices C.4, D.4, E.4, F.4, G.3 and H.4, with
-unresolved patterns still visible in the corpus. SPRUFE8B's figure D-6
+the compact table covers appendices C.4, D.4, E.4, F.4, G.3 and H.4. No
+undecoded nonfill slots remain in the measured firmware code regions, although
+architecture-wide compact encoding coverage is not established. SPRUFE8B's figure D-6
 (`Ltbd`) has blank field cells and no instruction description to resolve it.
 
 The generic, redistributable half of the corpus is generated at test time from
@@ -404,7 +412,10 @@ it produces.
   `MPYSP2DP` handles signed special values and FMCR warning bits. `MPYSP`
   uses the same input handling and rounds its result using FMCR. `ADDSP` and
   `SUBSP` use FADCR rounding and warning bits, including the reversed `SUBSP`
-  opcodes and both `.L` and `.S` unit forms. `INTSP` and `INTSPU` also use
+  opcodes and both `.L` and `.S` unit forms. `ADDDP` and `SUBDP` use FADCR;
+  `MPYDP` uses FMCR. Their finite arithmetic uses a quad-precision intermediate
+  to preserve DP rounding, and their status flags include denormal, NaN,
+  invalid, inexact, overflow, and underflow. `INTSP` and `INTSPU` also use
   FADCR rounding and set INEX for rounded integer conversions.
   The reciprocal estimate
   instructions implement TI's special cases and FAUCR flags, and return an

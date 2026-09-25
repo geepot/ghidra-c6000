@@ -458,6 +458,21 @@ def main():
                                 1 if mnem == "INTSPU" else 0)
                         if mnem in {"MPYSP", "MPYSP2DP"}:
                             args += ", %d" % (0 if suffix == ".1" else 16)
+                        if mnem == "MPYDP":
+                            args += ", %d" % (0 if suffix == ".1" else 16)
+                        if mnem in {"ADDDP", "SUBDP"}:
+                            macro = "c6000_sem_addsub_dp"
+                            # Status bits refer to encoded source ports even
+                            # for the SUBDP forms that compute src2-src1.
+                            if mnem == "SUBDP" and v in {"0011101", "1110111"}:
+                                source1, source2 = ops[1], ops[0]
+                            else:
+                                source1, source2 = ops[0], ops[1]
+                            args = "%s, %s, DstPair, %d, %d, %d" % (
+                                source1, source2,
+                                0 if suffix == ".1" else 16,
+                                1 if mnem == "SUBDP" else 0,
+                                1 if mnem == "SUBDP" and v in {"0011101", "1110111"} else 0)
                         if mnem in {"ADDSP", "SUBSP"}:
                             macro = "c6000_sem_addsub_sp"
                             # Source status bits name the encoded source
