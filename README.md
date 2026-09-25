@@ -123,9 +123,14 @@ decoder accepts both variants; see
 [binutils gas/15094](https://lists.gnu.org/archive/html/bug-binutils/2013-02/msg00037.html).
 
 `tests/fixtures/packed-arith.py <image.bin> <cases.tsv> [be]` and
-`C6000PackedArithmeticTest.java <cases.tsv>` execute 24 packed arithmetic,
-comparison, and min/max cases per endian mode, including cross-path `.S2`
-sources and signed/unsigned lane boundaries.
+`C6000PackedArithmeticTest.java <cases.tsv>` execute 32 packed arithmetic,
+comparison, average, saturating multiply, and min/max cases per endian mode,
+including cross-path sources and signed/unsigned lane boundaries.
+
+`tests/fixtures/mpyid.py <image.bin> <cases.tsv> [be]` and
+`C6000MpyidTest.java <cases.tsv>` check four signed 32-by-32 multiplication
+cases per endian mode. They cover 64-bit register-pair results, a cross-path
+source, and signed five-bit constants.
 
 The generated 32-bit decode table can be rebuilt from the public TI PDF:
 run `pdftotext -layout sprufe8b.pdf /tmp/c6000ref/sprufe8b.txt`, then

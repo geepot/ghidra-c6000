@@ -223,6 +223,8 @@ def main():
                 ops = ["BdecTgt", "Dst"]
             if mnem == "MPYLI":
                 ops = ["Src1", "Src2", "DstPair"]
+            if mnem == "MPYID":
+                ops = ["Src1", "Src2", "DstPair"]
             if mnem in {"MPY32U", "MPY32SU", "MPY32US"}:
                 ops = ["Src1", "Src2", "DstPair"]
             if mnem == "SUBU":
@@ -275,6 +277,8 @@ def main():
                     ops = ["Src2Pair", "Dst"]
                 if mnem in {"MPY", "MPYSU"} and v in {"11000", "11110"}:
                     ops[0] = "SCst5"
+                if mnem == "MPYID":
+                    ops[0] = "SCst5" if v == "01100" else "Src1"
                 if mnem == "ROTL" and v == "11110":
                     ops[1] = "UCst5"
                 if mnem == "LMBD" and v == "1101010":

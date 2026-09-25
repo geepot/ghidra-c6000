@@ -22,6 +22,10 @@ CASES = [
     ("MAX2", "L", 0x80017FFF, 0x7FFF8000, 0x7FFF7FFF),
     ("MINU4", "L", 0x807F00FF, 0x7F800001, 0x7F7F0001),
     ("MAXU4", "L", 0x807F00FF, 0x7F800001, 0x808000FF),
+    ("AVG2", "M", 0x7FFF8000, 0x7FFF8001, 0x7FFF8001),
+    ("AVGU4", "M", 0xFF00FF00, 0xFF010201, 0xFF018101),
+    ("SMPYH", "M", 0x40000000, 0x40000000, 0x20000000),
+    ("SMPYH", "M", 0x80000000, 0x80000000, 0x7FFFFFFF),
 ]
 
 
@@ -52,7 +56,8 @@ def main():
                 out.write(struct.pack(endian + "I", opcode(mnemonic, unit, side, cross)))
                 out.write(bytes(28))
                 rows.write(f"{index}\t{mnemonic}\t{unit}{side}\t{a:08x}\t"
-                           f"{b:08x}\t{expected:08x}\n")
+                           f"{b:08x}\t{expected:08x}\t"
+                           f"{int(mnemonic == 'SMPYH' and a == 0x80000000)}\n")
                 index += 1
 
 
