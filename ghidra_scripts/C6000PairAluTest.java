@@ -67,7 +67,7 @@ public class C6000PairAluTest extends GhidraScript {
                     long expected = Long.parseUnsignedLong(f[7], 16);
                     long csrSat = emulator.readRegister("CSR").longValue() & 0x200;
                     long expectedSat = Integer.parseInt(f[8]) != 0 ? 0x200 : 0;
-                    long ssr = emulator.readRegister("SSR").longValue() & 0x33;
+                    long ssr = emulator.readRegister("SSR").longValue() & 0x3f;
                     long expectedSsr = Integer.parseInt(f[9]);
                     if (actual != expected || csrSat != expectedSat || ssr != expectedSsr) {
                         throw new AssertionError(f[0] + ": result=0x" +

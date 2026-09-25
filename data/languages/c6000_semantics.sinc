@@ -449,6 +449,79 @@ macro c6000_sem_dpackx2(a, b, d) {
   local odd:4 = ((b & 0xffff) << 16) | ((a >> 16) & 0xffff);
   d = (zext(odd) << 32) | zext(even);
 }
+# SEM: RPACK2
+# The SPRUFE8B worked example prints FDBA for FEDCBA98 << 1, whereas its
+# Execution rule yields FDB9. Model the stated saturating-shift operation.
+macro c6000_sem_rpack2(a, b, d, ssr_bit) {
+  local x:8 = sext(a);
+  local y:8 = sext(b);
+  local sx:8 = x << 1;
+  local sy:8 = y << 1;
+  local saturated:1 = 0;
+  if (sx s> 0x7fffffff) goto <xPositive>;
+  if (sx s< -0x80000000) goto <xNegative>;
+  goto <xDone>;
+  <xPositive> sx = 0x7fffffff;
+  saturated = 1;
+  goto <xDone>;
+  <xNegative> sx = -0x80000000;
+  saturated = 1;
+  <xDone>
+  if (sy s> 0x7fffffff) goto <yPositive>;
+  if (sy s< -0x80000000) goto <yNegative>;
+  goto <yDone>;
+  <yPositive> sy = 0x7fffffff;
+  saturated = 1;
+  goto <yDone>;
+  <yNegative> sy = -0x80000000;
+  saturated = 1;
+  <yDone>
+  d = ((sx:4 & 0xffff0000) | ((sy:4 >> 16) & 0xffff));
+  if (saturated == 0) goto <done>;
+  CSR = CSR | 0x200;
+  SSR = SSR | ssr_bit;
+  <done>
+}
+# SEM: MPY2IR
+macro c6000_sem_mpy2ir(a, b, d, ssr_bit) {
+  local hi:8 = sext(a s>> 16);
+  local lo:8 = sext((a << 16) s>> 16);
+  local multiplier:8 = sext(b);
+  local oddWide:8 = (hi * multiplier + 0x4000) s>> 15;
+  local evenWide:8 = (lo * multiplier + 0x4000) s>> 15;
+  local odd:4 = oddWide:4;
+  local even:4 = evenWide:4;
+  local saturated:1 = 0;
+  if (b != 0x80000000) goto <pack>;
+  if ((a >> 16) != 0x8000) goto <lowCheck>;
+  odd = 0x7fffffff;
+  saturated = 1;
+  <lowCheck>
+  if ((a & 0xffff) != 0x8000) goto <pack>;
+  even = 0x7fffffff;
+  saturated = 1;
+  <pack>
+  d = (zext(odd) << 32) | zext(even);
+  if (saturated == 0) goto <done>;
+  CSR = CSR | 0x200;
+  SSR = SSR | ssr_bit;
+  <done>
+}
+# SEM: SMPY32
+macro c6000_sem_smpy32(a, b, d, ssr_bit) {
+  if (a != 0x80000000) goto <normal>;
+  if (b != 0x80000000) goto <normal>;
+  d = 0x7fffffff;
+  CSR = CSR | 0x200;
+  SSR = SSR | ssr_bit;
+  goto <done>;
+  <normal>
+  local product:8 = sext(a) * sext(b);
+  local shifted:8 = product << 1;
+  local upper:8 = shifted >> 32;
+  d = upper:4;
+  <done>
+}
 # SEM: SAT
 # The long register stores a signed 40-bit value in a 64-bit pair.
 macro c6000_sem_sat(a, d, ssr_bit) {

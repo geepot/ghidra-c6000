@@ -269,6 +269,8 @@ def main():
                 ops = ["Src1", "Src2", "DstPair"]
             if mnem in {"DPACK2", "DPACKX2"}:
                 ops = ["Src1", "Src2", "DstPair"]
+            if mnem == "MPY2IR":
+                ops = ["Src1", "Src2", "DstPair"]
             if mnem in {"DPINT", "DPTRUNC"}:
                 ops = ["Src2PairDpsp", "Dst"]
             if mnem == "DPSP":
@@ -435,6 +437,10 @@ def main():
                             args += ", %d" % (1 if suffix == ".1" else 2)
                         if mnem == "GMPY":
                             args += ", %d" % (1 if suffix == ".1" else 2)
+                        if mnem in {"MPY2IR", "SMPY32"}:
+                            args += ", %d" % (0x10 if suffix == ".1" else 0x20)
+                        if mnem == "RPACK2":
+                            args += ", %d" % (4 if suffix == ".1" else 8)
                         if mnem == "MPY32":
                             macro += "_64" if ops[-1] == "DstPair" else "_32"
                         if mnem == "DOTP2":

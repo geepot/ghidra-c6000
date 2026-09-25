@@ -5,8 +5,5 @@
 #  explicit, greppable markers rather than silently wrong data
 #  flow.  The corpus test counts how often each is reached.
 
-define pcodeop c6000_unimpl_mpy2ir;
-define pcodeop c6000_unimpl_rpack2;
-define pcodeop c6000_unimpl_smpy32;
 define pcodeop c6000_unimpl_swe;
 define pcodeop c6000_unimpl_swenr;

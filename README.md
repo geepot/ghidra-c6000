@@ -377,7 +377,7 @@ it produces.
   load/store effective addresses use linear mode, with size scaling and
   pre/post register updates. Base writes occur after the memory transfer so a
   store using the same register for its source and base reads the old value.
-* **Five instruction mnemonics still have placeholder semantics** outside
+* **Two instruction mnemonics still have placeholder semantics** outside
   the measured firmware instructions, including packed rearrangements and
   selected integer and Galois operations. Some implemented floating-point
   arithmetic still lacks status-register side effects. The reciprocal estimate
@@ -386,6 +386,10 @@ it produces.
   estimates are not yet proven bit-exact against hardware. `MVC` uses
   distinct control registers in its 32-bit forms; the compact `MVC` to `ILC`
   is also modelled.
+* **RPACK2 documentation differs from its example:** the published execution
+  rule and compiler guide specify a saturating left shift, which yields
+  `0xFDB9` for the upper halfword of the sample `0xFEDCBA98`; the worked
+  example prints `0xFDBA`. The implementation follows the stated operation.
 * **Software loops:** `SPLOOP`, `SPLOOPD`, `SPLOOPW`, `SPKERNEL`,
   `SPKERNELR`, `SPMASK`, and `SPMASKR` lift to named p-code userops with their
   interval, encoded predicate selector, delay field, or unit mask. The selector
