@@ -107,6 +107,8 @@ public class C6000CorpusTest extends GhidraScript {
 		int calls = 0;
 		int undecoded = 0;
 		int undecodedBytes = 0;
+		int nonfillUndecoded = 0;
+		Address firstNonfill = null;
 		int invalidPcode = 0;
 
 		String outPath = System.getenv("C6000_LISTING");
@@ -141,12 +143,20 @@ public class C6000CorpusTest extends GhidraScript {
 				int step = BigInteger.ONE.equals(is16) ? 2 : 4;
 				undecoded++;
 				undecodedBytes += step;
+				long raw = step == 2
+					? currentProgram.getMemory().getShort(cursor) & 0xffffL
+					: currentProgram.getMemory().getInt(cursor) & 0xffffffffL;
+				if (raw != (step == 2 ? 0xffffL : 0xffffffffL)) {
+					nonfillUndecoded++;
+					if (firstNonfill == null) firstNonfill = cursor;
+					if (nonfillUndecoded <= 8) {
+						println("C6000_NONFILL_UNDECODED " + cursor + " bytes=" + step +
+							" word=0x" + Long.toHexString(raw));
+					}
+				}
 				if (undecoded <= 8) {
-					String raw = step == 2
-						? Integer.toHexString(currentProgram.getMemory().getShort(cursor) & 0xffff)
-						: Integer.toHexString(currentProgram.getMemory().getInt(cursor));
 					println("C6000_UNDECODED " + cursor + " bytes=" + step + " word=0x" +
-						raw);
+						Long.toHexString(raw));
 				}
 				cursor = cursor.add(step);
 				continue;
@@ -204,7 +214,8 @@ public class C6000CorpusTest extends GhidraScript {
 			" bytes=" + bytes + " compact16=" + compact + " headerWords=" +
 			headerWords + " placeholders=" + placeholders + " (" + pct +
 			"%) loopCommands=" + loopCommands + " branches=" + branches + " calls=" + calls +
-			" undecoded=" + undecoded + " undecodedBytes=" + undecodedBytes);
+			" undecoded=" + undecoded + " undecodedBytes=" + undecodedBytes +
+			" nonfillUndecoded=" + nonfillUndecoded + " firstNonfill=" + firstNonfill);
 		if (invalidPcode != 0) {
 			throw new IllegalStateException(invalidPcode +
 				" decoded instructions contain zero-width p-code operands");

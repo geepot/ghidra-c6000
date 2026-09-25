@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build MPYHIR/MPYILR rounding fixtures. IMAGE CASES.tsv [be]."""
+"""Build MPYHIR/MPYLIR rounding fixtures. IMAGE CASES.tsv [be]."""
 import re
 import struct
 import sys
@@ -14,18 +14,18 @@ CASES = [
     ("MPYHIR", 1, 1, 0x80000000, 0x7FFFFFFF, 0x80000001),
     ("MPYHIR", 2, 1, 0x7FFF0000, 0x7FFFFFFF, 0x7FFEFFFF),
     ("MPYHIR", 1, 0, 0xFFFF0000, 0x00004000, 0x00000000),
-    ("MPYILR", 2, 0, 0x12343497, 0x21FF50A7, 0x0DF7D3F5),
-    ("MPYILR", 1, 1, 0x00008000, 0x7FFFFFFF, 0x80000001),
-    ("MPYILR", 2, 1, 0x00007FFF, 0x80000000, 0x80010000),
-    ("MPYILR", 1, 0, 0x0000FFFF, 0x00004000, 0x00000000),
+    ("MPYLIR", 2, 0, 0x12343497, 0x21FF50A7, 0x0DF7D3F5),
+    ("MPYLIR", 1, 1, 0x00008000, 0x7FFFFFFF, 0x80000001),
+    ("MPYLIR", 2, 1, 0x00007FFF, 0x80000000, 0x80010000),
+    ("MPYLIR", 1, 0, 0x0000FFFF, 0x00004000, 0x00000000),
 ]
 
 
 def opcode(mnemonic, side, cross):
     decode = Path(__file__).resolve().parents[2] / "data/languages/c6000_decode.sinc"
-    prefix = f":{mnemonic}.M{side} "
+    spelling = f'"{mnemonic}.M{side}" '
     line = next(line for line in decode.read_text().splitlines()
-                if line.startswith(prefix))
+                if spelling in line)
     fixed = {int(bit): int(value) for bit, value in
              re.findall(r"\bi(\d+)=(\d)\b", line)}
     word = sum(value << bit for bit, value in fixed.items())
@@ -46,12 +46,8 @@ def main():
             out.write(struct.pack(endian + "I", opcode(mnemonic, side, cross)))
             out.write(bytes(28))
             own, other = ("A", "B") if side == 1 else ("B", "A")
-            if mnemonic == "MPYILR":
-                first, second = f"{other if cross else own}2", f"{own}1"
-                first_value, second_value = src2, src1
-            else:
-                first, second = f"{own}1", f"{other if cross else own}2"
-                first_value, second_value = src1, src2
+            first, second = f"{own}1", f"{other if cross else own}2"
+            first_value, second_value = src1, src2
             rows.write(f"{index}\t{mnemonic}.M{side}\t{first}\t{second}\t{own}3\t"
                        f"{first_value:08x}\t{second_value:08x}\t{expected:08x}\n")
 

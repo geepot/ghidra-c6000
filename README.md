@@ -58,7 +58,7 @@ Full-payload linear sweeps also completed with no zero-width p-code operands:
 
 | Corpus | Payload bytes | Bytes decoded | Instructions | Unimplemented p-code | Undecoded slots | Byte coverage |
 |---|---:|---:|---:|---:|---:|---:|
-| Stage 1 | 55,120 | 40,000 | 10,370 | 0 | 3,780 | **72.6%** |
+| Stage 1 | 55,120 | 39,756 | 10,309 | 0 | 3,841 | **72.1%** |
 | Stage 2 | 361,248 | 336,000 | 91,490 | 0 | 6,312 | **93.0%** |
 
 The sweeps found 24 paired software loops and 43 buffer masks in stage 1,
@@ -68,10 +68,11 @@ stage 1 loops and all 224 stage 2 loops, with no body decode gaps.
 The loop-control userops are counted separately from unimplemented instruction
 placeholders.
 
-`CPKT` headers decode as named 4-byte rows. The 240 undecoded slots in the
-stage 1 window and all 6,312 in the full stage 2 payload are `0xffffffff`
-fill. The full stage 1 payload has nonfill undecoded slots only from
-`0x11805b00` onward, where pointer and constant tables begin. Byte coverage is a
+`CPKT` headers decode as named 4-byte rows. The 328 undecoded slots in the
+stage 1 code region (through `0x11805aff`) and all 6,312 in the full stage 2
+payload are `0xffffffff` fill. The full stage 1 payload has 2,651 nonfill
+undecoded 4-byte slots, first at `0x11805b04`, in its pointer and constant
+tables. The corpus test reports nonfill undecoded slots separately. Byte coverage is a
 linear sweep of the stated windows or payloads, not a claim that every byte is
 code. The full stage 1 image in particular contains substantial fill/data;
 some repeating table bytes resemble compact instructions, so full-image
@@ -223,9 +224,16 @@ destination order, cross-path sources, signed and lane saturation, and
 cases per endian mode. They cover 64-bit register-pair results, a cross-path
 source, and signed five-bit constants.
 `tests/fixtures/rounded-mpy.py <image.bin> <cases.tsv> [be]` and
-`C6000RoundedMultiplyTest.java <cases.tsv>` check eight `MPYHIR`/`MPYILR`
+`C6000RoundedMultiplyTest.java <cases.tsv>` check eight `MPYHIR`/`MPYLIR`
 cases per endian mode, including TI's worked examples, cross-path operands,
 signed boundaries and the `0x4000` rounding bias.
+
+`tests/fixtures/arithmetic-forms.py`, `compare-forms.py`, and
+`mvc-control.py` with their matching `C6000*Test.java` scripts check signed
+and unsigned 40-bit ADD/SUB/compare forms, operand ports, and the direction
+and high address bits of 32-bit `MVC` control-register encodings in both
+endian modes. The rounded multiply test displays the encoded `MPYLIR` name
+and source order; `MPYILR` is its reversed-operand assembler pseudo-op.
 
 `tests/fixtures/sat-arith.py <image.bin> <cases.tsv> [be]` and
 `C6000SatArithmeticTest.java <cases.tsv>` execute 15 `SADD` and `SSUB` cases
@@ -392,9 +400,10 @@ decode bug described above. Note that
 
 `tools/sample_encodings.py scratch/sample.bin` makes a reproducible sample of
 32,768 unpredicated 32-bit words for the same comparison workflow. The sample
-includes illegal encodings. It exposed the reverse `SUB.S` and long-shift form
-bugs; remaining GNU/Ghidra differences must be checked against SPRUFE8B before
-they are classified as decoder gaps or overbroad matches.
+includes illegal encodings. It exposed the reverse `SUB.S`, long-shift,
+ADD/SUB/compare port, and `MVC` control-register form bugs. The current sample
+has 97 GNU-only and four Ghidra-only decodes outside the measured firmware;
+those encodings still need independent architecture validation.
 
 ### Known Ghidra 12.1.3 pitfall
 

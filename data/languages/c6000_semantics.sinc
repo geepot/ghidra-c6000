@@ -16,10 +16,30 @@
 
 # SEM: ADD
 macro c6000_sem_add(a, b, d) { d = a + b; }
+# Long .L results are signed 40-bit values stored with zero in the upper
+# 24 bits of the high register. The source pair's upper 24 bits are ignored.
+macro c6000_sem_add40_32(a, b, d) {
+  d = (sext(a) + sext(b)) & 0xffffffffff;
+}
+macro c6000_sem_add40_pair(a, b, d) {
+  d = (sext(a) + (b & 0xffffffffff)) & 0xffffffffff;
+}
 # SEM: ADDU
 macro c6000_sem_addu(a, b, d) { d = a + b; }
+macro c6000_sem_addu40_32(a, b, d) {
+  d = (zext(a) + zext(b)) & 0xffffffffff;
+}
+macro c6000_sem_addu40_pair(a, b, d) {
+  d = (zext(a) + (b & 0xffffffffff)) & 0xffffffffff;
+}
 # SEM: SUB
 macro c6000_sem_sub(a, b, d) { d = a - b; }
+macro c6000_sem_sub40_32(a, b, d) {
+  d = (sext(a) - sext(b)) & 0xffffffffff;
+}
+macro c6000_sem_sub40_pair(a, b, d) {
+  d = (sext(a) - (b & 0xffffffffff)) & 0xffffffffff;
+}
 # SEM: ADDSUB
 macro c6000_sem_addsub(a, b, d) {
   local sum:4 = a + b;
@@ -1083,13 +1103,15 @@ macro c6000_sem_mpyhir(a, b, d) {
   local rounded:8 = ((half * word) + 0x4000) s>> 15;
   d = rounded:4;
 }
-# SEM: MPYILR
-# This pseudo-operation spells the encoded MPYLIR with src2 before src1.
+# SEM: MPYLIR
 macro c6000_sem_mpyilr(word, half_source, d) {
   local half:8 = sext((half_source << 16) s>> 16);
   local signed_word:8 = sext(word);
   local rounded:8 = ((half * signed_word) + 0x4000) s>> 15;
   d = rounded:4;
+}
+macro c6000_sem_mpylir(half_source, word, d) {
+  c6000_sem_mpyilr(word, half_source, d);
 }
 # SEM: MPYLH
 macro c6000_sem_mpylh(a, b, d) {
@@ -2638,14 +2660,62 @@ macro c6000_sem_sshl(v, c, d) { local neg = (c s< 0); if (neg) goto <r>; d = v <
 
 # SEM: CMPEQ
 macro c6000_sem_cmpeq(a, b, d) { local t = (a == b); if (t) goto <y>; d = 0; goto <e>; <y> d = 1; <e> }
+macro c6000_sem_cmpeq40(a, b, d) {
+  local left:8 = sext(a);
+  local right:8 = b & 0xffffffffff;
+  d = 0;
+  if ((left & 0xffffffffff) != right) goto <done>;
+  d = 1;
+  <done>
+}
+# Signed long comparisons sign-extend bit 39 of the register-pair source.
+macro c6000_sem_cmplt40(a, b, d) {
+  local left:8 = sext(a);
+  local right:8 = b & 0xffffffffff;
+  if ((right & 0x8000000000) == 0) goto <compare>;
+  right = right | 0xffffff0000000000;
+  <compare>
+  d = 0;
+  if (!(left s< right)) goto <done>;
+  d = 1;
+  <done>
+}
 # SEM: CMPLT
 macro c6000_sem_cmplt(a, b, d) { local t = (a s< b); if (t) goto <y>; d = 0; goto <e>; <y> d = 1; <e> }
 # SEM: CMPGT
 macro c6000_sem_cmpgt(a, b, d) { local t = (a s> b); if (t) goto <y>; d = 0; goto <e>; <y> d = 1; <e> }
+macro c6000_sem_cmpgt40(a, b, d) {
+  local left:8 = sext(a);
+  local right:8 = b & 0xffffffffff;
+  if ((right & 0x8000000000) == 0) goto <compare>;
+  right = right | 0xffffff0000000000;
+  <compare>
+  d = 0;
+  if (!(left s> right)) goto <done>;
+  d = 1;
+  <done>
+}
+# Unsigned long comparisons ignore the pair's unused upper 24 bits.
+macro c6000_sem_cmpltu40(a, b, d) {
+  local left:8 = zext(a);
+  local right:8 = b & 0xffffffffff;
+  d = 0;
+  if (!(left < right)) goto <done>;
+  d = 1;
+  <done>
+}
 # SEM: CMPLTU
 macro c6000_sem_cmpltu(a, b, d) { local t = (a < b); if (t) goto <y>; d = 0; goto <e>; <y> d = 1; <e> }
 # SEM: CMPGTU
 macro c6000_sem_cmpgtu(a, b, d) { local t = (a > b); if (t) goto <y>; d = 0; goto <e>; <y> d = 1; <e> }
+macro c6000_sem_cmpgtu40(a, b, d) {
+  local left:8 = zext(a);
+  local right:8 = b & 0xffffffffff;
+  d = 0;
+  if (!(left > right)) goto <done>;
+  d = 1;
+  <done>
+}
 
 # ---------------------------------------------------------------------------
 # Loads and stores - SPRUFE8B section 3.12 and Table 3-11.  The memory

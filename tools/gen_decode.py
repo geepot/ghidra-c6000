@@ -230,6 +230,12 @@ def main():
                 # the encoded SADDUS2 form. Display the canonical opcode.
                 mnem = "SADDUS2"
                 ops = ["Src1", "Src2", "Dst"]
+            if mnem == "MPYILR":
+                # The manual lists this reversed-operand pseudo-operation
+                # before the encoded MPYLIR instruction. Keep the canonical
+                # spelling and its encoded source order.
+                mnem = "MPYLIR"
+                ops = ["Src1", "Src2", "Dst"]
             if name in {"CLR", "EXT", "EXTU", "SET"} and "src1" in names:
                 # The primary syntax line is the immediate form; the sibling
                 # opcode diagram uses a packed register instead of csta/cstb.
@@ -356,6 +362,52 @@ def main():
                     ops[1] = "UCst5"
                 if mnem == "LMBD" and v == "1101010":
                     ops[0] = "Cst5"
+                if mnem in {"ADD", "SUB"}:
+                    if ul == "L":
+                        op = int(v, 2)
+                        if mnem == "ADD":
+                            ops = {
+                                0x03: ["Src1", "Src2", "Dst"],
+                                0x23: ["Src1", "Src2", "DstPair"],
+                                0x21: ["Src1X", "Src2PairLocal", "DstPair"],
+                                0x02: ["SCst5", "Src2", "Dst"],
+                                0x20: ["SCst5", "Src2PairLocal", "DstPair"],
+                            }[op]
+                        else:
+                            ops = {
+                                0x07: ["Src1", "Src2", "Dst"],
+                                0x17: ["Src1X", "Src2Local", "Dst"],
+                                0x27: ["Src1", "Src2", "DstPair"],
+                                0x37: ["Src1X", "Src2Local", "DstPair"],
+                                0x06: ["SCst5", "Src2", "Dst"],
+                                0x24: ["SCst5", "Src2PairLocal", "DstPair"],
+                            }[op]
+                    elif ul == "S":
+                        if v in {"000110", "010110"}:
+                            ops[0] = "SCst5"
+                    elif ul == "D":
+                        if "cross path" in heading and "not used" not in heading:
+                            if mnem == "ADD" and "with a constant" in heading:
+                                ops = ["Src2", "SCst5", "Dst"]
+                            else:
+                                ops = ["Src1", "Src2", "Dst"]
+                        else:
+                            ops = ["Src2Local", "UCst5" if v in
+                                   {"010010", "010011"} else "Src1", "Dst"]
+                if ul == "L" and mnem in {
+                        "ADDU", "CMPEQ", "CMPGT", "CMPLT", "CMPGTU", "CMPLTU"}:
+                    op = int(v, 2)
+                    if mnem == "ADDU":
+                        ops = (["Src1", "Src2", "DstPair"] if op == 0x2b
+                               else ["Src1X", "Src2PairLocal", "DstPair"])
+                    else:
+                        signed = mnem in {"CMPEQ", "CMPGT", "CMPLT"}
+                        immediate = (op & 1) == 0
+                        pair_source = (op & 3) in {0, 1}
+                        ops = ["SCst5" if signed else "UCst5"] if immediate \
+                            else ["Src1X" if pair_source else "Src1"]
+                        ops += ["Src2PairLocal" if pair_source else "Src2",
+                                "Dst"]
                 if mnem in {"SHL", "SHR", "SHRU"} and ul == "S":
                     shift_op = int(v, 2)
                     # SPRUFE8B SHL/SHR/SHRU opcode maps distinguish a
@@ -401,6 +453,15 @@ def main():
                     base.append("i12=0")
                 if mnem in {"SHL", "SHR", "SHRU"} and ul == "S" \
                         and ops[0] == "Src2PairLocal":
+                    base.append("i12=0")
+                if mnem in {"ADD", "SUB"} and ul == "L" \
+                        and ops[1] == "Src2PairLocal" \
+                        and ops[0] == "SCst5":
+                    base.append("i12=0")
+                if ul == "L" and mnem in {
+                        "CMPEQ", "CMPGT", "CMPLT", "CMPGTU", "CMPLTU"} \
+                        and ops[1] == "Src2PairLocal" \
+                        and ops[0] in {"SCst5", "UCst5"}:
                     base.append("i12=0")
                 if short_memory:
                     base.append("mode=0x%x" % mem_mode)
@@ -470,6 +531,17 @@ def main():
                     elif mnem in SEMANTIC_MNEMONICS:
                         args = ", ".join(o for o in (ops or []) if not o.startswith(chr(34)))
                         macro = "c6000_sem_%s" % mnem.lower()
+                        if mnem in {"ADD", "SUB"} and ul == "L" \
+                                and ops[-1] == "DstPair":
+                            macro += "40_pair" if ops[1] == "Src2PairLocal" \
+                                else "40_32"
+                        if mnem == "ADDU" and ul == "L":
+                            macro += "40_pair" if ops[1] == "Src2PairLocal" \
+                                else "40_32"
+                        if mnem in {"CMPEQ", "CMPGT", "CMPLT",
+                                    "CMPGTU", "CMPLTU"} and ul == "L" \
+                                and ops[1] == "Src2PairLocal":
+                            macro += "40"
                         if mnem in {"SHL", "SHR", "SHRU"} and ul == "S" \
                                 and ops[0] == "Src2PairLocal":
                             macro += "40"

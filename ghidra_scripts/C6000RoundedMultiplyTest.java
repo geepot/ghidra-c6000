@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // @category C6000
-// Execute MPYHIR/MPYILR cases. Usage: <cases.tsv>.
+// Execute MPYHIR/MPYLIR cases. Usage: <cases.tsv>.
 
 import java.io.BufferedReader;
 import java.io.FileReader;

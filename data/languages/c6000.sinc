@@ -138,7 +138,7 @@ define token insn32 (32)
   ra_base=(18,22) rb_base=(18,22)
   base_idx=(18,22) src2_idx=(18,22)
   ra_off=(13,17)  rb_off=(13,17)
-  crf=(18,22)
+  crf=(18,22) crhi=(13,17)
 
   # opcode / selector fields
   op7=(5,11)  op6=(6,11)  op5=(7,11)  op4=(6,9)  op3=(4,6)
@@ -226,13 +226,6 @@ attach variables [ rb_dst rb_src1 rb_src2 rb_src rb_base rb_off ]
     B8  B9  B10 B11 B12 B13 B14 B15
     B16 B17 B18 B19 B20 B21 B22 B23
     B24 B25 B26 B27 B28 B29 B30 B31 ];
-
-# MVC control-register select (SPRUFE8B Table 3-27).  `_` marks encodings
-# that are reserved or that select no single register.
-attach variables [ crf crf_dst ]
-  [ AMR CSR IFR ICR IER ISTP IRP NRP PCE1 _ TSCL TSCH _ ILC RILC REP
-    PCE1 DNUM FADCR FAUCR FMCR SSR GPLYA GPLYB GFPGFR DIER TSR ITSR
-    NTSR ECR _ IERR ];
 
 # Compact-instruction register fields (SPRUFE8B section 3.10.2.2).  Each
 # (slot, file, register-set) combination has its own attached register
@@ -350,8 +343,64 @@ Src2: ra_src2 is ra_src2 & i1=1 & i12=1 { export ra_src2; }
 Src2Local: ra_src2 is ra_src2 & i1=0 { export ra_src2; }
 Src2Local: rb_src2 is rb_src2 & i1=1 { export rb_src2; }
 
-CtlReg: crf is crf { export crf; }
-CtlDst: crf_dst is crf_dst { export crf_dst; }
+# MVC control-file addressing, SPRUFE8B Table 3-27.  The crhi field accepts
+# 0xxxx aliases for the first eight control addresses, but read and write
+# directions differ at IFR/ISR and EFR/ECR.  Reserved or inaccessible entries
+# have no constructor, so they remain undefined instead of naming a register.
+CtlReg: "AMR"    is crf=0  & i17=0 { export AMR; }
+CtlReg: "CSR"    is crf=1  & i17=0 { export CSR; }
+CtlReg: "IFR"    is crf=2  & crhi=0 { export IFR; }
+CtlReg: "IFR"    is crf=2  & crhi=2 { export IFR; }
+CtlReg: "IER"    is crf=4  & i17=0 { export IER; }
+CtlReg: "ISTP"   is crf=5  & i17=0 { export ISTP; }
+CtlReg: "IRP"    is crf=6  & i17=0 { export IRP; }
+CtlReg: "NRP"    is crf=7  & i17=0 { export NRP; }
+CtlReg: "TSCL"   is crf=10 & crhi=0 { export TSCL; }
+CtlReg: "TSCH"   is crf=11 & crhi=0 { export TSCH; }
+CtlReg: "ILC"    is crf=13 & crhi=0 { export ILC; }
+CtlReg: "RILC"   is crf=14 & crhi=0 { export RILC; }
+CtlReg: "REP"    is crf=15 & crhi=0 { export REP; }
+CtlReg: "PCE1"   is crf=16 & crhi=0 { export PCE1; }
+CtlReg: "PCE1"   is crf=16 & crhi=16 { export PCE1; }
+CtlReg: "DNUM"   is crf=17 & crhi=0 { export DNUM; }
+CtlReg: "FADCR"  is crf=18 & crhi=0 { export FADCR; }
+CtlReg: "FAUCR"  is crf=19 & crhi=0 { export FAUCR; }
+CtlReg: "FMCR"   is crf=20 & crhi=0 { export FMCR; }
+CtlReg: "SSR"    is crf=21 & crhi=0 { export SSR; }
+CtlReg: "GPLYA"  is crf=22 & crhi=0 { export GPLYA; }
+CtlReg: "GPLYB"  is crf=23 & crhi=0 { export GPLYB; }
+CtlReg: "GFPGFR" is crf=24 & crhi=0 { export GFPGFR; }
+CtlReg: "DIER"   is crf=25 & crhi=0 { export DIER; }
+CtlReg: "TSR"    is crf=26 & crhi=0 { export TSR; }
+CtlReg: "ITSR"   is crf=27 & crhi=0 { export ITSR; }
+CtlReg: "NTSR"   is crf=28 & crhi=0 { export NTSR; }
+CtlReg: "EFR"    is crf=29 & crhi=0 { export EFR; }
+CtlReg: "IERR"   is crf=31 & crhi=0 { export IERR; }
+
+CtlDst: "AMR"    is crf_dst=0  & i17=0 { export AMR; }
+CtlDst: "CSR"    is crf_dst=1  & i17=0 { export CSR; }
+CtlDst: "ISR"    is crf_dst=2  & i17=0 { export ISR; }
+CtlDst: "ICR"    is crf_dst=3  & i17=0 { export ICR; }
+CtlDst: "IER"    is crf_dst=4  & i17=0 { export IER; }
+CtlDst: "ISTP"   is crf_dst=5  & i17=0 { export ISTP; }
+CtlDst: "IRP"    is crf_dst=6  & i17=0 { export IRP; }
+CtlDst: "NRP"    is crf_dst=7  & i17=0 { export NRP; }
+CtlDst: "ILC"    is crf_dst=13 & crhi=0 { export ILC; }
+CtlDst: "RILC"   is crf_dst=14 & crhi=0 { export RILC; }
+CtlDst: "REP"    is crf_dst=15 & crhi=0 { export REP; }
+CtlDst: "FADCR"  is crf_dst=18 & crhi=0 { export FADCR; }
+CtlDst: "FAUCR"  is crf_dst=19 & crhi=0 { export FAUCR; }
+CtlDst: "FMCR"   is crf_dst=20 & crhi=0 { export FMCR; }
+CtlDst: "SSR"    is crf_dst=21 & crhi=0 { export SSR; }
+CtlDst: "GPLYA"  is crf_dst=22 & crhi=0 { export GPLYA; }
+CtlDst: "GPLYB"  is crf_dst=23 & crhi=0 { export GPLYB; }
+CtlDst: "GFPGFR" is crf_dst=24 & crhi=0 { export GFPGFR; }
+CtlDst: "DIER"   is crf_dst=25 & crhi=0 { export DIER; }
+CtlDst: "TSR"    is crf_dst=26 & crhi=0 { export TSR; }
+CtlDst: "ITSR"   is crf_dst=27 & crhi=0 { export ITSR; }
+CtlDst: "NTSR"   is crf_dst=28 & crhi=0 { export NTSR; }
+CtlDst: "ECR"    is crf_dst=29 & crhi=0 { export ECR; }
+CtlDst: "IERR"   is crf_dst=31 & crhi=0 { export IERR; }
 
 # ---------------------------------------------------------------------------
 # Immediates
