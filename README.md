@@ -51,7 +51,7 @@ Full-payload linear sweeps also completed with no zero-width p-code operands:
 
 | Corpus | Payload bytes | Bytes decoded | Instructions | Unimplemented p-code | Undecoded slots | Byte coverage |
 |---|---:|---:|---:|---:|---:|---:|
-| Stage 1 | 55,120 | 40,188 | 10,417 | 55 (<1%) | 3,733 | **72.9%** |
+| Stage 1 | 55,120 | 40,180 | 10,415 | 43 (<1%) | 3,735 | **72.9%** |
 | Stage 2 | 361,248 | 336,000 | 91,490 | 23 (<1%) | 6,312 | **93.0%** |
 
 The sweeps found 24 paired software loops and 43 buffer masks in stage 1,

@@ -232,6 +232,8 @@ def main():
                 ops = ["Src1", "Src2", "DstPair"]
             if mnem == "MPYHI":
                 ops = ["Src1", "Src2", "DstPair"]
+            if mnem in {"MPYSU4", "MPYU4"}:
+                ops = ["Src1", "Src2", "DstPair"]
             if mnem == "MPYID":
                 ops = ["Src1", "Src2", "DstPair"]
             if mnem in {"MPY32U", "MPY32SU", "MPY32US"}:

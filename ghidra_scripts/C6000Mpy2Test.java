@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // @category C6000
-// Execute MPY2/MPYHI/DOTP2/SMPY2 paired-result cases. Usage: <cases.tsv>.
+// Execute paired multiply/dot-product cases. Usage: <cases.tsv>.
 
 import java.io.BufferedReader;
 import java.io.FileReader;

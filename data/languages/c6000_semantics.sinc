@@ -496,6 +496,26 @@ macro c6000_sem_mpy2(a, b, d) {
   local high:4 = (a s>> 16) * (b s>> 16);
   d = (zext(high) << 32) | zext(low);
 }
+# SEM: MPYSU4
+macro c6000_sem_mpysu4(a, b, d) {
+  local a0:4 = (a << 24) s>> 24;
+  local a1:4 = (a << 16) s>> 24;
+  local a2:4 = (a << 8) s>> 24;
+  local a3:4 = a s>> 24;
+  local p0:4 = (a0 * (b & 0xff)) & 0xffff;
+  local p1:4 = (a1 * ((b >> 8) & 0xff)) & 0xffff;
+  local p2:4 = (a2 * ((b >> 16) & 0xff)) & 0xffff;
+  local p3:4 = (a3 * (b >> 24)) & 0xffff;
+  d = zext(p0) | (zext(p1) << 16) | (zext(p2) << 32) | (zext(p3) << 48);
+}
+# SEM: MPYU4
+macro c6000_sem_mpyu4(a, b, d) {
+  local p0:4 = ((a & 0xff) * (b & 0xff)) & 0xffff;
+  local p1:4 = (((a >> 8) & 0xff) * ((b >> 8) & 0xff)) & 0xffff;
+  local p2:4 = (((a >> 16) & 0xff) * ((b >> 16) & 0xff)) & 0xffff;
+  local p3:4 = ((a >> 24) * (b >> 24)) & 0xffff;
+  d = zext(p0) | (zext(p1) << 16) | (zext(p2) << 32) | (zext(p3) << 48);
+}
 # SEM: MPYHLU
 macro c6000_sem_mpyhlu(a, b, d) { d = (a >> 16) * (b & 0xffff); }
 # SEM: MPYLH
@@ -724,6 +744,20 @@ macro c6000_sem_spacku4(a, b, d) {
 macro c6000_sem_packl4(a, b, d) {
   d = ((a & 0x00ff0000) << 8) | ((a & 0xff) << 16) |
       ((b & 0x00ff0000) >> 8) | (b & 0xff);
+}
+# SEM: XPND2
+macro c6000_sem_xpnd2(v, d) {
+  local lo:4 = (0 - (v & 1)) & 0xffff;
+  local hi:4 = (0 - ((v >> 1) & 1)) & 0xffff;
+  d = (hi << 16) | lo;
+}
+# SEM: XPND4
+macro c6000_sem_xpnd4(v, d) {
+  local b0:4 = (0 - (v & 1)) & 0xff;
+  local b1:4 = (0 - ((v >> 1) & 1)) & 0xff;
+  local b2:4 = (0 - ((v >> 2) & 1)) & 0xff;
+  local b3:4 = (0 - ((v >> 3) & 1)) & 0xff;
+  d = (b3 << 24) | (b2 << 16) | (b1 << 8) | b0;
 }
 
 # ---------------------------------------------------------------------------
