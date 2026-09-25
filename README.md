@@ -45,14 +45,14 @@ C6000CorpusTest.java stage1   # or stage2
 | Corpus (first 12,288 / 131,072 bytes) | Bytes decoded | Instructions | Compact 16-bit | Headers | Unimplemented p-code | Undecoded slots | Byte coverage |
 |---|---:|---:|---:|---:|---:|---:|---:|
 | CDJ-2000NXS stage 1, base `0x11801da0` | 11,328 | 3,179 | 694 | 162 | 0 | 240 | **92.2%** |
-| CDJ-2000NXS stage 2, base `0xC0000000` | 131,072 | 36,605 | 7,674 | 2,214 | 9 (<1%) | 0 | **100%** |
+| CDJ-2000NXS stage 2, base `0xC0000000` | 131,072 | 36,605 | 7,674 | 2,214 | 0 | 0 | **100%** |
 
 Full-payload linear sweeps also completed with no zero-width p-code operands:
 
 | Corpus | Payload bytes | Bytes decoded | Instructions | Unimplemented p-code | Undecoded slots | Byte coverage |
 |---|---:|---:|---:|---:|---:|---:|
-| Stage 1 | 55,120 | 40,120 | 10,400 | 1 (<1%) | 3,750 | **72.8%** |
-| Stage 2 | 361,248 | 336,000 | 91,490 | 23 (<1%) | 6,312 | **93.0%** |
+| Stage 1 | 55,120 | 40,120 | 10,400 | 0 | 3,750 | **72.8%** |
+| Stage 2 | 361,248 | 336,000 | 91,490 | 0 | 6,312 | **93.0%** |
 
 The sweeps found 24 paired software loops and 43 buffer masks in stage 1,
 and 224 paired loops and 470 buffer masks in stage 2. No detected loop
@@ -377,12 +377,13 @@ it produces.
   load/store effective addresses use linear mode, with size scaling and
   pre/post register updates. Base writes occur after the memory transfer so a
   store using the same register for its source and base reads the old value.
-* **Advanced integer `.M` multiply, remaining double-precision floating point,
-  remaining packed 8/16-bit, and Galois semantics** are placeholders. Common 16-bit signed,
-  unsigned and mixed-sign multiplies and `MPYLI` are modelled. Doubleword
-  loads and stores transfer an overlapping 64-bit register pair. Selected
-  double-precision arithmetic, comparisons and conversions use the same pair
-  views; floating-point status register side effects remain unmodelled. `MVC` uses
+* **Twenty-two instruction mnemonics still have placeholder semantics** outside
+  the measured firmware instructions, including packed rearrangements and
+  selected integer and Galois operations. Some implemented floating-point
+  arithmetic still lacks status-register side effects. The reciprocal estimate
+  instructions implement TI's special cases and FAUCR flags, and return an
+  eight-bit-accurate seed. TI does not publish the seed lookup table, so ordinary
+  estimates are not yet proven bit-exact against hardware. `MVC` uses
   distinct control registers in its 32-bit forms; the compact `MVC` to `ILC`
   is also modelled.
 * **Software loops:** `SPLOOP`, `SPLOOPD`, `SPLOOPW`, `SPKERNEL`,
