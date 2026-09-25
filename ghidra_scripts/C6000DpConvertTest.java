@@ -40,7 +40,9 @@ public class C6000DpConvertTest extends GhidraScript {
 					insn = currentProgram.getListing().getInstructionAt(address);
 				}
 				String side = f[3].equals("0") ? "1" : "2";
-				String pair = side.equals("1") ? "A1:A0" : "B1:B0";
+				int pairLow = Integer.parseInt(f[8]);
+				String file = side.equals("1") ? "A" : "B";
+				String pair = file + (pairLow + 1) + ":" + file + pairLow;
 				if (insn == null || insn.getLength() != 4 ||
 					!insn.getMnemonicString().equals(f[2] + ".L" + side) ||
 					!insn.toString().contains(pair)) {
@@ -54,8 +56,8 @@ public class C6000DpConvertTest extends GhidraScript {
 				EmulatorHelper emulator = new EmulatorHelper(currentProgram);
 				try {
 					long raw = hex(f[4]);
-					String lo = side.equals("1") ? "A0" : "B0";
-					String hi = side.equals("1") ? "A1" : "B1";
+					String lo = file + pairLow;
+					String hi = file + (pairLow + 1);
 					String dst = side.equals("1") ? "A2" : "B2";
 					emulator.writeRegister(lo, raw & MASK32);
 					emulator.writeRegister(hi, raw >>> 32);

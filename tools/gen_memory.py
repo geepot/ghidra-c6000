@@ -81,16 +81,16 @@ for unit_side in (0, 1):
             )
 lines.append("")
 
-# The 1_or_2_src format for DPINT, DPTRUNC and DPSP encodes the odd/high word
-# in src2 and the even/low word in src1. Both fields name the same pair.
-# The format has no cross-path variant (binutils tic6x opcode table).
+# The 1_or_2_src format for DPINT, DPTRUNC and DPSP identifies the pair by
+# the odd/high register in src2. TI's assembler zeroes src1; older GNU tic6x
+# encoded the even/low register there. Decode the pair from src2 to accept
+# both documented variants (binutils gas/15094). There is no cross-path form.
 for side, file in ((0, "A"), (1, "B")):
     for pair in range(16):
         even = pair * 2
         lines.append(
             f'Src2PairDpsp: "{file}{even + 1}:{file}{even}" is '
-            f'src2_pair_index={pair} & i18=1 & src1_pair_index={pair} & '
-            f'i13=0 & i1={side} & i12=0 '
+            f'src2_pair_index={pair} & i18=1 & i1={side} & i12=0 '
             f'{{ export {file}{even + 1}_{file}{even}; }}'
         )
 lines.append("")

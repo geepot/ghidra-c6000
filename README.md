@@ -114,11 +114,18 @@ warning bits.
 
 `tests/fixtures/dp-int.py <image.bin> <cases.tsv> [be]` and
 `C6000DpConvertTest.java <cases.tsv>` check `DPINT` and `DPTRUNC` with
-register-pair sources. The 17 cases per mode cover rounding, exceptions,
-warning bits, and the signed 32-bit result limits. Their 64-bit source pair is
-encoded through both the `src2` (high word) and `src1` (low word) fields, as in
-GNU tic6x's `1_or_2_src` format; SPRUFE8B's opcode diagrams print zeros in
-the `src1` field despite describing a read from that port.
+register-pair sources. The 17 original cases per mode cover rounding,
+exceptions, warning bits, and the signed 32-bit result limits; six more cases
+cover both pair encodings for `DPINT`, `DPTRUNC`, and `DPSP`. The odd/high
+register in `src2` selects the 64-bit pair. TI's assembler sets `src1` to zero,
+whereas older GNU tic6x assemblers encoded the even/low register there. The
+decoder accepts both variants; see
+[binutils gas/15094](https://lists.gnu.org/archive/html/bug-binutils/2013-02/msg00037.html).
+
+`tests/fixtures/packed-arith.py <image.bin> <cases.tsv> [be]` and
+`C6000PackedArithmeticTest.java <cases.tsv>` execute 24 packed arithmetic,
+comparison, and min/max cases per endian mode, including cross-path `.S2`
+sources and signed/unsigned lane boundaries.
 
 The generated 32-bit decode table can be rebuilt from the public TI PDF:
 run `pdftotext -layout sprufe8b.pdf /tmp/c6000ref/sprufe8b.txt`, then
@@ -304,7 +311,7 @@ it produces.
   pre/post register updates. Base writes occur after the memory transfer so a
   store using the same register for its source and base reads the old value.
 * **Advanced integer `.M` multiply, remaining double-precision floating point,
-  packed 8/16-bit, and Galois semantics** are placeholders. Common 16-bit signed,
+  remaining packed 8/16-bit, and Galois semantics** are placeholders. Common 16-bit signed,
   unsigned and mixed-sign multiplies and `MPYLI` are modelled. Doubleword
   loads and stores transfer an overlapping 64-bit register pair. Selected
   double-precision arithmetic, comparisons and conversions use the same pair

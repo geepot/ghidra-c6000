@@ -34,12 +34,24 @@ CASES = [
     ("unit-two-truncate", "DPTRUNC", 1, f64(8.6), 0, 8, 0x80),
 ]
 
+# The TI assembler and older GNU tic6x assembler use different src1 fields
+# for nonzero source pairs (binutils gas/15094). Both select the same pair.
+PAIR_VARIANTS = [
+    (("ti-pair4", "DPINT", 0, f64(8.6), 0, 9, 0x80), 4, False),
+    (("gnu-pair4", "DPINT", 0, f64(8.6), 0, 9, 0x80), 4, True),
+    (("ti-pair4-trunc", "DPTRUNC", 1, f64(8.6), 0, 8, 0x80), 4, False),
+    (("gnu-pair4-trunc", "DPTRUNC", 1, f64(8.6), 0, 8, 0x80), 4, True),
+    (("ti-pair4-dpsp", "DPSP", 0, f64(8.6), 0, 0x4109999a, 0), 4, False),
+    (("gnu-pair4-dpsp", "DPSP", 0, f64(8.6), 0, 0x4109999a, 0), 4, True),
+]
 
-def opcode(mnemonic, side):
-    low = 0x118 if mnemonic == "DPINT" else 0x38
-    # 1_or_2_src encodes the odd/high half of A1:A0 or B1:B0 in src2
-    # and the even/low half in src1.
-    return (2 << 23) | (1 << 18) | low | (side << 1)
+
+def opcode(mnemonic, side, pair_low=0, legacy=False):
+    low = {"DPINT": 0x118, "DPTRUNC": 0x38, "DPSP": 0x138}[mnemonic]
+    # src2 names the odd/high register; TI zeroes src1, while older GNU
+    # tic6x put the even/low register there.
+    return ((2 << 23) | ((pair_low + 1) << 18) |
+            ((pair_low if legacy else 0) << 13) | low | (side << 1))
 
 
 def main():
@@ -48,14 +60,16 @@ def main():
     endian = ">" if len(sys.argv) > 3 and sys.argv[3] == "be" else "<"
     image.parent.mkdir(parents=True, exist_ok=True)
     with image.open("wb") as out, cases.open("w") as manifest:
-        for index, (name, mnemonic, side, raw, fadcr, result, flags) in enumerate(CASES):
-            out.write(struct.pack(endian + "I", opcode(mnemonic, side)))
+        variants = [(case, 0, False) for case in CASES] + PAIR_VARIANTS
+        for index, (case, pair_low, legacy) in enumerate(variants):
+            name, mnemonic, side, raw, fadcr, result, flags = case
+            out.write(struct.pack(endian + "I", opcode(mnemonic, side, pair_low, legacy)))
             out.write(bytes(28))
             expected_flags = fadcr | (flags << (16 if side else 0))
             manifest.write(
                 f"{index}\t{name}\t{mnemonic}\t{side}\t{raw:016x}\t"
                 f"{fadcr:08x}\t{result & 0xffffffff:08x}\t"
-                f"{expected_flags:08x}\n"
+                f"{expected_flags:08x}\t{pair_low}\n"
             )
 
 
