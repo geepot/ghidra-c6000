@@ -7,10 +7,8 @@
 
 define pcodeop c6000_unimpl_dpack2;
 define pcodeop c6000_unimpl_dpackx2;
-define pcodeop c6000_unimpl_gmpy;
 define pcodeop c6000_unimpl_mpy2ir;
 define pcodeop c6000_unimpl_rpack2;
 define pcodeop c6000_unimpl_smpy32;
 define pcodeop c6000_unimpl_swe;
 define pcodeop c6000_unimpl_swenr;
-define pcodeop c6000_unimpl_xormpy;

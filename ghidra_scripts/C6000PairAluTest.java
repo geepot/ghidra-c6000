@@ -53,6 +53,12 @@ public class C6000PairAluTest extends GhidraScript {
                     if (f.length > 10) {
                         emulator.writeRegister("GFPGFR", Long.parseUnsignedLong(f[10], 16));
                     }
+                    if (f.length > 11) {
+                        emulator.writeRegister("GPLYA", Long.parseUnsignedLong(f[11], 16));
+                    }
+                    if (f.length > 12) {
+                        emulator.writeRegister("GPLYB", Long.parseUnsignedLong(f[12], 16));
+                    }
                     emulator.getEmulator().setExecuteAddress(offset);
                     if (!emulator.step(monitor)) {
                         throw new AssertionError(f[0] + ": " + emulator.getLastError());

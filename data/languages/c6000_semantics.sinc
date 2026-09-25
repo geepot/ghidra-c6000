@@ -720,6 +720,43 @@ macro c6000_sem_gmpy4(a, b, d) {
   c6000_sem_gf_mul8(a >> 24, b >> 24, poly, size, r3);
   d = r0 | (r1 << 8) | (r2 << 16) | (r3 << 24);
 }
+# GMPY/XORMPY use a nine-bit multiplier and reduce each left shift with
+# the selected 32-bit polynomial. SPRUFE8B GMPY and XORMPY execution blocks.
+macro c6000_sem_gmpy_poly(a, b, poly, d) {
+  local product:4 = 0;
+  local mask:4 = 0x100;
+  local count:4 = 0;
+  <next>
+  if (count >= 8) goto <last>;
+  if ((b & mask) == 0) goto <shift>;
+  product = product ^ a;
+  <shift>
+  mask = mask >> 1;
+  local carry:1 = (product & 0x80000000) != 0;
+  product = product << 1;
+  if (carry == 0) goto <continue>;
+  product = product ^ poly;
+  <continue>
+  count = count + 1;
+  goto <next>;
+  <last>
+  if ((b & 1) == 0) goto <done>;
+  product = product ^ a;
+  <done> d = product;
+}
+# SEM: GMPY
+macro c6000_sem_gmpy(a, b, d, side) {
+  local sideNum:4 = side;
+  local poly:4 = GPLYA;
+  if (sideNum == 1) goto <calculate>;
+  poly = GPLYB;
+  <calculate> c6000_sem_gmpy_poly(a, b, poly, d);
+}
+# SEM: XORMPY
+macro c6000_sem_xormpy(a, b, d) {
+  local zeroPoly:4 = 0;
+  c6000_sem_gmpy_poly(a, b, zeroPoly, d);
+}
 # The DDOTPH2/DDOTPL2 family reads adjacent 32-bit words as d3:d2:d1:d0.
 # Work in 64 bits so the two signed dot products and rounding bias cannot
 # overflow before the instruction's 32-bit saturation step.

@@ -431,6 +431,8 @@ def main():
                             args += ", %d" % (0 if suffix == ".1" else 16)
                         if mnem == "SAT":
                             args += ", %d" % (1 if suffix == ".1" else 2)
+                        if mnem == "GMPY":
+                            args += ", %d" % (1 if suffix == ".1" else 2)
                         if mnem == "MPY32":
                             macro += "_64" if ops[-1] == "DstPair" else "_32"
                         if mnem == "DOTP2":
