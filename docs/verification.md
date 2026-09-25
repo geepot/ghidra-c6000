@@ -15,6 +15,23 @@ instruction emulator does not itself suspend until an interrupt. The
 `DINT`/`RINT` register transitions, nested sequence, and `IDLE` event in both
 endian modes.
 
+## Importing the CDJ-2000NXS DSP payloads
+
+Extract the two payloads from the decompressed MAIN image using your own
+firmware tooling. Import each as a **Raw Binary** with the
+`C6000:LE:32:default` language and `default` compiler specification. Use
+these DSP execution addresses rather than the addresses of the payloads
+inside MAIN or the stage-2 staging window:
+
+| Payload | Load base | Analysis entry |
+|---|---:|---:|
+| stage 1 | `0x11801da0` | `0x11801da0` |
+| stage 2 | `0xc0000000` | `0xc0000220` (after the vector table) |
+
+Add the analysis entry before auto-analysis. In headless Ghidra, run
+`-preScript C6000SetEntry.java <entry>`; in the GUI, navigate to the entry
+address and run `C6000SetEntry.java` from Script Manager.
+
 ## Firmware coverage
 
 Command used for every row (see [below](#running-the-corpus-test-and-oracles)):

@@ -34,8 +34,11 @@ release targets 12.1.3); rebuild it for any other 12.x release.
 | `C6000:BE:32:default` | big-endian variant |
 | `C6000:LE:32:analysis` / `C6000:BE:32:analysis` | simplified single-precision p-code for *reading* float-heavy code; flag values are not suitable for emulation |
 
-A raw binary also needs an entry point before auto-analysis finds code
-(add one by hand, or use `ghidra_scripts/C6000SetEntry.java` headless).
+A raw binary also needs an entry point before auto-analysis finds code. In
+the GUI, navigate to the address and run `C6000SetEntry.java` from Script
+Manager; in headless Ghidra, use `-preScript C6000SetEntry.java <hexaddr>`.
+The script rejects headless imports without an address or an address outside
+loaded memory.
 Compact packets decode only after the packet analyzer has primed the decode
 context, which auto-analysis does before disassembly.
 
@@ -84,8 +87,8 @@ Set `GHIDRA_INSTALL_DIR` and `JAVA_HOME` if Ghidra and JDK 21 are not in
 Homebrew's default locations. The script exists because Gradle's
 `buildExtension` does **not** compile SLEIGH: a zip built without the `.sla`
 files installs cleanly and then fails at import with `Unsupported language`.
-`build.sh` compiles every `.slaspec` first and checks that the zip contains the
-compiled languages and the loader opinion.
+`build.sh` compiles every `.slaspec` first and checks that the zip contains all
+four compiled language variants and the loader opinion.
 
 ## Testing
 

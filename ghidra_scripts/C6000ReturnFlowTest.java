@@ -31,6 +31,9 @@ public class C6000ReturnFlowTest extends GhidraScript {
 			else if (instruction.getFlowType().hasFallthrough()) unpredicatedFallthrough++;
 			if (instruction.getFlowOverride() == FlowOverride.RETURN &&
 				instruction.getFlowType().isTerminal()) recovered++;
+			else println("C6000_RETURN_MISSING address=" + instruction.getAddress() +
+				" mnemonic=" + name + " flow=" + instruction.getFlowType() +
+				" override=" + instruction.getFlowOverride());
 		}
 		if (candidates == 0 || recovered != candidates ||
 			predicatedFallthrough != predicated || unpredicatedFallthrough != 0) {

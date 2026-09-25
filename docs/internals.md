@@ -85,20 +85,24 @@ unconditional flow types. Ten stage 2 firmware branch/call sites, including
 compact forms, also passed the RAM flow check. On a fresh stage 1 raw import
 with entry `0x11801da0`, auto-analysis found functions at `0x11804280`,
 `0x118048a0`, and `0x11804360`, with zero `const:` flow-error bookmarks. A raw
-binary needs an entry point; `C6000SetEntry.java` supplies it for headless
-tests. The packet-context analyzer runs before Ghidra's entry-point
+binary needs an entry point; `C6000SetEntry.java` supplies it in the GUI and
+headless tests. The packet-context analyzer runs before Ghidra's entry-point
 disassembler so compact target slots get their width context in time. A fresh
 stage 2 import also created a function at the checked `CALLP` target
-`0xc0012720`. The return-flow regression checks 450 stage 2 `B3` branches,
-including 24 predicated returns that retain their fall-through edge; no
-unpredicated return retains a fall-through edge.
+`0xc0012720`. The return-flow regression checks 480 stage 2 `B3` branches,
+including 31 predicated returns that retain their fall-through edge; no
+unpredicated return retains a fall-through edge. A late branch analyzer
+revisits code discovered during switch analysis; without it, three `BNOP B3`
+returns were left as computed jumps.
 
 Ghidra's generic Basic Constant Reference Analyzer can exhaust the heap while
 exploring the stage 2 control-flow graph. The C6000-specific analyzer bounds
 each propagation walk to 512 bytes, still recovering nearby register-built
 targets. A fresh stage 2 raw import with the default analyzers recovered 144
 functions with zero `const:` flow-error bookmarks; a 60-second-per-function
-audit decompiled all 144. In a separate full-payload sweep followed by
+audit decompiled all 144. Three remaining Error bookmarks are one branch
+into `0xffffffff` fill and two odd-address disassembly attempts, not failures
+to decode aligned firmware code. In a separate full-payload sweep followed by
 autoanalysis, Decompiler Switch Analysis took about 53 seconds and Stack took
 about 4 seconds. The reported `0xc001dd80` merger did not recur.
 

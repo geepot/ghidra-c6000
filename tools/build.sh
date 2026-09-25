@@ -77,7 +77,7 @@ DIST="$(ls -t "$ROOT"/dist/*_C6000.zip 2>/dev/null | head -1)"
 [ -n "$DIST" ] || die "buildExtension produced no zip"
 
 note "verifying zip contents"
-for sla in c6000_le c6000_be; do
+for sla in c6000_le c6000_be c6000_le_analysis c6000_be_analysis; do
   unzip -t "$DIST" "C6000/data/languages/$sla.sla" >/dev/null || \
     die "built zip is missing data/languages/$sla.sla"
 done
