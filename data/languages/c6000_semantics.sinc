@@ -437,6 +437,18 @@ macro c6000_sem_shfl3(a, b, d) {
   goto <next>;
   <done> d = result;
 }
+# SEM: DPACK2
+macro c6000_sem_dpack2(a, b, d) {
+  local even:4 = ((a & 0xffff) << 16) | (b & 0xffff);
+  local odd:4 = (a & 0xffff0000) | ((b >> 16) & 0xffff);
+  d = (zext(odd) << 32) | zext(even);
+}
+# SEM: DPACKX2
+macro c6000_sem_dpackx2(a, b, d) {
+  local even:4 = ((a & 0xffff) << 16) | ((b >> 16) & 0xffff);
+  local odd:4 = ((b & 0xffff) << 16) | ((a >> 16) & 0xffff);
+  d = (zext(odd) << 32) | zext(even);
+}
 # SEM: SAT
 # The long register stores a signed 40-bit value in a 64-bit pair.
 macro c6000_sem_sat(a, d, ssr_bit) {

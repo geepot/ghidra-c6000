@@ -267,6 +267,8 @@ def main():
                 ops = ["Src2Pair", "Dst"]
             if mnem == "SHFL3":
                 ops = ["Src1", "Src2", "DstPair"]
+            if mnem in {"DPACK2", "DPACKX2"}:
+                ops = ["Src1", "Src2", "DstPair"]
             if mnem in {"DPINT", "DPTRUNC"}:
                 ops = ["Src2PairDpsp", "Dst"]
             if mnem == "DPSP":
