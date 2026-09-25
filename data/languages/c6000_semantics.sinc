@@ -191,6 +191,7 @@ macro c6000_sem_norm40(a, d) {
 # Compact saturating arithmetic (SPRUFE8B Figures D-4, E-5, F-22, F-25,
 # F-26).  P-code records the final CSR.SAT value; the CPU's one-cycle-later
 # flag write belongs to the execute-packet/pipeline model.
+# SEM: SADD
 macro c6000_sem_sadd32(a, b, d) {
   local x:8 = sext(a);
   local y:8 = sext(b);
@@ -206,6 +207,7 @@ macro c6000_sem_sadd32(a, b, d) {
   CSR = CSR | 0x200;
   <done>
 }
+# SEM: SSUB
 macro c6000_sem_ssub32(a, b, d) {
   local x:8 = sext(a);
   local y:8 = sext(b);
@@ -218,6 +220,36 @@ macro c6000_sem_ssub32(a, b, d) {
   CSR = CSR | 0x200;
   goto <done>;
   <negative> d = 0x80000000;
+  CSR = CSR | 0x200;
+  <done>
+}
+macro c6000_sem_sadd40(a, b, d) {
+  local lhs:8 = sext(a);
+  local rhs:8 = (b << 24) s>> 24;
+  local result:8 = lhs + rhs;
+  if (result s> 0x7fffffffff) goto <positive>;
+  if (result s< -0x8000000000) goto <negative>;
+  d = result & 0xffffffffff;
+  goto <done>;
+  <positive> d = 0x7fffffffff;
+  CSR = CSR | 0x200;
+  goto <done>;
+  <negative> d = 0x8000000000;
+  CSR = CSR | 0x200;
+  <done>
+}
+macro c6000_sem_ssub40(a, b, d) {
+  local lhs:8 = sext(a);
+  local rhs:8 = (b << 24) s>> 24;
+  local result:8 = lhs - rhs;
+  if (result s> 0x7fffffffff) goto <positive>;
+  if (result s< -0x8000000000) goto <negative>;
+  d = result & 0xffffffffff;
+  goto <done>;
+  <positive> d = 0x7fffffffff;
+  CSR = CSR | 0x200;
+  goto <done>;
+  <negative> d = 0x8000000000;
   CSR = CSR | 0x200;
   <done>
 }

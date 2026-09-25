@@ -279,6 +279,20 @@ def main():
                     ops[0] = "SCst5"
                 if mnem == "MPYID":
                     ops[0] = "SCst5" if v == "01100" else "Src1"
+                if mnem == "SADD":
+                    if v == "0110001":
+                        ops = ["Src1X", "Src2PairLocal", "DstPair"]
+                    elif v == "0110000":
+                        ops = ["SCst5", "Src2PairLocal", "DstPair"]
+                    elif v == "0010010":
+                        ops = ["SCst5", "Src2", "Dst"]
+                if mnem == "SSUB":
+                    if v == "0011111":
+                        ops = ["Src1X", "Src2Local", "Dst"]
+                    elif v == "0001110":
+                        ops = ["SCst5", "Src2", "Dst"]
+                    elif v == "0101100":
+                        ops = ["SCst5", "Src2PairLocal", "DstPair"]
                 if mnem == "ROTL" and v == "11110":
                     ops[1] = "UCst5"
                 if mnem == "LMBD" and v == "1101010":
@@ -298,6 +312,9 @@ def main():
                     # halves of the register pair.
                     base = [bit for bit in base if not any(
                         bit.startswith(f"i{i}=") for i in range(13, 18))]
+                if mnem in {"SADD", "SSUB"} and ops[-1] == "DstPair" \
+                        and ops[0] == "SCst5":
+                    base.append("i12=0")
                 if short_memory:
                     base.append("mode=0x%x" % mem_mode)
                 # Only use the predicate field when creg/z are真 fields.
@@ -371,6 +388,8 @@ def main():
                                 0 if mnem == "DPINT" else 1)
                         if mnem == "MPY32":
                             macro += "_64" if ops[-1] == "DstPair" else "_32"
+                        if mnem in {"SADD", "SSUB"}:
+                            macro += "40" if ops[-1] == "DstPair" else "32"
                         if mnem in {"CLR", "EXT", "EXTU", "SET"} and "src1" in names:
                             macro += "_r"
                         if mnem == "NORM":

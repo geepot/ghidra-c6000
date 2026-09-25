@@ -1,0 +1,72 @@
+// SPDX-License-Identifier: Apache-2.0
+// @category C6000
+// Execute the SADD/SSUB cases from sat-arith.py. Usage: <cases.tsv>.
+
+import java.io.BufferedReader;
+import java.io.FileReader;
+
+import ghidra.app.cmd.disassemble.DisassembleCommand;
+import ghidra.app.emulator.EmulatorHelper;
+import ghidra.app.script.GhidraScript;
+import ghidra.program.model.address.Address;
+import ghidra.program.model.listing.Instruction;
+import ghidra.program.model.pcode.PcodeOp;
+
+public class C6000SatArithmeticTest extends GhidraScript {
+    @Override
+    protected void run() throws Exception {
+        String[] args = getScriptArgs();
+        if (args.length != 1) {
+            throw new IllegalArgumentException("expected cases.tsv path");
+        }
+        int checked = 0;
+        try (BufferedReader rows = new BufferedReader(new FileReader(args[0]))) {
+            String row;
+            while ((row = rows.readLine()) != null) {
+                String[] f = row.split("\\t");
+                long offset = 0x1000L + 32L * Integer.parseInt(f[0]);
+                Address address = toAddr(offset);
+                Instruction insn = currentProgram.getListing().getInstructionAt(address);
+                if (insn == null) {
+                    new DisassembleCommand(address, null, false).applyTo(currentProgram, monitor);
+                    insn = currentProgram.getListing().getInstructionAt(address);
+                }
+                if (insn == null || insn.getLength() != 4 ||
+                    !insn.getMnemonicString().equals(f[2])) {
+                    throw new AssertionError(f[1] + ": decoded as " + insn);
+                }
+                for (PcodeOp op : insn.getPcode()) {
+                    if (op.getOpcode() == PcodeOp.CALLOTHER) {
+                        throw new AssertionError(f[1] + ": placeholder " + op);
+                    }
+                }
+                EmulatorHelper emulator = new EmulatorHelper(currentProgram);
+                try {
+                    if (!f[3].equals("-")) {
+                        emulator.writeRegister(f[3], Long.parseUnsignedLong(f[6], 16));
+                    }
+                    emulator.writeRegister(f[4], Long.parseUnsignedLong(f[7], 16));
+                    emulator.writeRegister("CSR", 0);
+                    emulator.getEmulator().setExecuteAddress(offset);
+                    if (!emulator.step(monitor)) {
+                        throw new AssertionError(f[1] + ": " + emulator.getLastError());
+                    }
+                    long actual = emulator.readRegister(f[5]).longValue();
+                    long expected = Long.parseUnsignedLong(f[8], 16);
+                    long sat = emulator.readRegister("CSR").longValue() & 0x200;
+                    long expectedSat = Integer.parseInt(f[9]) != 0 ? 0x200 : 0;
+                    if (actual != expected || sat != expectedSat) {
+                        throw new AssertionError(f[1] + ": got 0x" +
+                            Long.toHexString(actual) + "/SAT=0x" +
+                            Long.toHexString(sat) + " expected 0x" + f[8] +
+                            "/SAT=0x" + Long.toHexString(expectedSat));
+                    }
+                } finally {
+                    emulator.dispose();
+                }
+                checked++;
+            }
+        }
+        println("C6000_SAT_ARITHMETIC_OK cases=" + checked);
+    }
+}

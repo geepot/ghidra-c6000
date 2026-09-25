@@ -20,7 +20,7 @@ below show both the decoded instructions and the remaining gaps.
 
 | Area | State |
 |---|---|
-| 32-bit instruction decode (mnemonic, unit, operands, length) | broad SPRUFE8B §3.12 coverage, plus legacy `MVC`; some words remain undecoded |
+| 32-bit instruction decode (mnemonic, unit, operands, length) | broad SPRUFE8B §3.12 coverage, plus legacy `MVC`; no nonfill gaps in the measured stage 2 payload or the stage 1 code region |
 | Instruction lengths and execute-packet framing | 2/4-byte lengths and compact layout context; execute packets are not atomic |
 | Branch / call targets (`B`, `BNOP`, `CALLP`, `BDEC`, `BPOS`) | modelled, PCE1-relative per the manual |
 | Compact 16-bit fetch packets | most observed slots decode, driven by packet-header context (see below) |
@@ -28,7 +28,7 @@ below show both the decoded instructions and the remaining gaps.
 | Other decoded instructions | 32-bit forms lift to explicit `c6000_unimpl_<mnemonic>` userops; every decoded compact form has p-code |
 | Function ID | generation script shipped; database not shipped (TI licence) |
 | Software loop controls | decoded and annotated; a separate cycle scheduler replays buffered packets and stage-boundary `ILC` changes, including predicate-driven `SPLOOPW` |
-| Remaining double-precision floating point, advanced integer `.M` multiply, packed 8/16-bit arithmetic, Galois | decode only |
+| Remaining double-precision floating point, advanced integer `.M` multiply, packed 8/16-bit arithmetic, Galois | decode only where no p-code semantics are implemented |
 
 Unimplemented instructions are **explicit, greppable placeholders**, not
 silently wrong data flow. `C6000CorpusTest.java` counts how often each is
@@ -45,14 +45,14 @@ C6000CorpusTest.java stage1   # or stage2
 | Corpus (first 12,288 / 131,072 bytes) | Bytes decoded | Instructions | Compact 16-bit | Headers | Unimplemented p-code | Undecoded slots | Byte coverage |
 |---|---:|---:|---:|---:|---:|---:|---:|
 | CDJ-2000NXS stage 1, base `0x11801da0` | 11,328 | 3,179 | 694 | 162 | 1 (<1%) | 240 | **92.2%** |
-| CDJ-2000NXS stage 2, base `0xC0000000` | 131,052 | 36,600 | 7,674 | 2,214 | 9 (<1%) | 5 | **99.98%** |
+| CDJ-2000NXS stage 2, base `0xC0000000` | 131,072 | 36,605 | 7,674 | 2,214 | 9 (<1%) | 0 | **100%** |
 
 Full-payload linear sweeps also completed with no zero-width p-code operands:
 
 | Corpus | Payload bytes | Bytes decoded | Instructions | Unimplemented p-code | Undecoded slots | Byte coverage |
 |---|---:|---:|---:|---:|---:|---:|
-| Stage 1 | 55,120 | 40,328 | 10,452 | 838 (8%) | 3,698 | **73.2%** |
-| Stage 2 | 361,248 | 335,972 | 91,483 | 23 (<1%) | 6,319 | **93.0%** |
+| Stage 1 | 55,120 | 40,232 | 10,428 | 453 (4%) | 3,722 | **73.0%** |
+| Stage 2 | 361,248 | 336,000 | 91,490 | 23 (<1%) | 6,312 | **93.0%** |
 
 The sweeps found 24 paired software loops and 43 buffer masks in stage 1,
 and 224 paired loops and 470 buffer masks in stage 2. No detected loop
@@ -61,9 +61,10 @@ stage 1 loops and all 224 stage 2 loops, with no body decode gaps.
 The loop-control userops are counted separately from unimplemented instruction
 placeholders.
 
-`CPKT` headers now decode as named 4-byte rows. Undecoded slots remain: the
-stage 1 window is mostly `0xffffffff` fill/data. The stage 2 window
-has five 32-bit gaps; its compact halfwords now decode. Byte coverage is a
+`CPKT` headers decode as named 4-byte rows. The 240 undecoded slots in the
+stage 1 window and all 6,312 in the full stage 2 payload are `0xffffffff`
+fill. The full stage 1 payload has nonfill undecoded slots only from
+`0x11805b00` onward, where pointer and constant tables begin. Byte coverage is a
 linear sweep of the stated windows or payloads, not a claim that every byte is
 code. The full stage 1 image in particular contains substantial fill/data;
 some repeating table bytes resemble compact instructions, so full-image
@@ -131,6 +132,11 @@ including cross-path sources and signed/unsigned lane boundaries.
 `C6000MpyidTest.java <cases.tsv>` check four signed 32-by-32 multiplication
 cases per endian mode. They cover 64-bit register-pair results, a cross-path
 source, and signed five-bit constants.
+
+`tests/fixtures/sat-arith.py <image.bin> <cases.tsv> [be]` and
+`C6000SatArithmeticTest.java <cases.tsv>` execute 15 `SADD` and `SSUB` cases
+per endian mode. They cover 32-bit and 40-bit saturation, signed constants,
+register-pair results, and both `src1` and `src2` cross paths.
 
 The generated 32-bit decode table can be rebuilt from the public TI PDF:
 run `pdftotext -layout sprufe8b.pdf /tmp/c6000ref/sprufe8b.txt`, then
@@ -307,7 +313,9 @@ it produces.
   so a compact slot reached by fall-through is not decoded with the previous
   instruction's parameters; the price is that a tool which disassembles
   without priming the context will not decode compact packets at all.
-* **Some compact and 32-bit words remain undecoded.** The decoder leaves them
+* **Some architecture encodings may remain uncovered.** The measured stage 2
+  payload and stage 1 code region have no undecoded nonfill slots, but those
+  images are not an exhaustive encoding test. The decoder leaves unknown words
   undefined instead of guessing an instruction.
 * **Execute packets are not modelled as units** — see above.
 * **No delay-slot modelling** in p-code.

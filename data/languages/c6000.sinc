@@ -325,6 +325,12 @@ Cond: "[A0]"  is z=0 & creg=6 { local p:1 = (A0 != 0); export p; }
 Src1: ra_src1 is ra_src1 & i1=0 { export ra_src1; }
 Src1: rb_src1 is rb_src1 & i1=1 { export rb_src1; }
 
+# A few .L subtraction/saturation formats apply x to src1 rather than src2.
+Src1X: ra_src1 is ra_src1 & i1=0 & i12=0 { export ra_src1; }
+Src1X: rb_src1 is rb_src1 & i1=0 & i12=1 { export rb_src1; }
+Src1X: rb_src1 is rb_src1 & i1=1 & i12=0 { export rb_src1; }
+Src1X: ra_src1 is ra_src1 & i1=1 & i12=1 { export ra_src1; }
+
 Dst: ra_dst is ra_dst & i1=0 { export ra_dst; }
 Dst: rb_dst is rb_dst & i1=1 { export rb_dst; }
 
@@ -339,6 +345,9 @@ Src2: ra_src2 is ra_src2 & i1=0 & i12=0 { export ra_src2; }
 Src2: rb_src2 is rb_src2 & i1=0 & i12=1 { export rb_src2; }
 Src2: rb_src2 is rb_src2 & i1=1 & i12=0 { export rb_src2; }
 Src2: ra_src2 is ra_src2 & i1=1 & i12=1 { export ra_src2; }
+
+Src2Local: ra_src2 is ra_src2 & i1=0 { export ra_src2; }
+Src2Local: rb_src2 is rb_src2 & i1=1 { export rb_src2; }
 
 CtlReg: crf is crf { export crf; }
 CtlDst: crf_dst is crf_dst { export crf_dst; }
