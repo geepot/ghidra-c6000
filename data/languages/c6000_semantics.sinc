@@ -1618,7 +1618,83 @@ macro c6000_sem_spdp(a, d, side) {
   <done> FAUCR = FAUCR | (flags << sideShift);
 }
 # SEM: DPSP
-macro c6000_sem_dpsp(a, d) { d = float2float(a); }
+macro c6000_sem_dpsp(a, d, side) {
+  local raw:8 = a;
+  local sign:8 = raw & 0x8000000000000000;
+  local magnitude:8 = raw & 0x7fffffffffffffff;
+  local exponent:8 = (raw >> 52) & 2047;
+  local fraction:8 = raw & 0xfffffffffffff;
+  local high:8 = raw >> 32;
+  local signSP:4 = high:4 & 0x80000000;
+  local sideShift:4 = side;
+  local roundMode:4 = (FADCR >> (9 + sideShift)) & 3;
+  local flags:4 = 0;
+  if (exponent == 2047) goto <special>;
+  if (exponent != 0) goto <range>;
+  if (fraction == 0) goto <convert>;
+  d = signSP;
+  flags = 0x88; # INEX | DEN2
+  goto <done>;
+  <special>
+  if (fraction != 0) goto <nan>;
+  d = signSP | 0x7f800000;
+  flags = 0x20; # INFO
+  goto <done>;
+  <nan> d = 0x7fffffff;
+  flags = 2; # NAN2
+  if ((fraction & 0x8000000000000) != 0) goto <done>;
+  flags = 0x12; # INVAL | NAN2
+  goto <done>;
+  <range>
+  if (magnitude > 0x47efffffe0000000) goto <overflow>;
+  if (magnitude < 0x3810000000000000) goto <underflow>;
+  <convert>
+  d = float2float(a);
+  local rounded:8 = float2float(d);
+  if (rounded f== a) goto <done>;
+  flags = 0x80; # INEX
+  if (roundMode == 0) goto <done>;
+  if (roundMode == 1) goto <towardZero>;
+  if (roundMode == 2) goto <towardPositive>;
+  if (rounded f> a) goto <stepNegative>;
+  goto <done>;
+  <towardZero>
+  if (sign == 0) goto <zeroPositive>;
+  if (rounded f< a) goto <stepPositive>;
+  goto <done>;
+  <zeroPositive>
+  if (rounded f> a) goto <stepNegative>;
+  goto <done>;
+  <towardPositive>
+  if (rounded f< a) goto <stepPositive>;
+  goto <done>;
+  <stepPositive>
+  if (sign == 0) goto <increment>;
+  goto <decrement>;
+  <stepNegative>
+  if (sign == 0) goto <decrement>;
+  <increment> d = d + 1;
+  goto <done>;
+  <decrement> d = d - 1;
+  goto <done>;
+  <overflow>
+  flags = 0xc0; # INEX | OVER
+  d = signSP | 0x7f800000;
+  if (roundMode == 1) goto <largest>;
+  if (roundMode == 2 && sign != 0) goto <largest>;
+  if (roundMode == 3 && sign == 0) goto <largest>;
+  goto <done>;
+  <largest> d = signSP | 0x7f7fffff;
+  goto <done>;
+  <underflow>
+  flags = 0x180; # INEX | UNDER
+  d = signSP;
+  if (roundMode == 2 && sign == 0) goto <smallest>;
+  if (roundMode == 3 && sign != 0) goto <smallest>;
+  goto <done>;
+  <smallest> d = signSP | 0x00800000;
+  <done> FADCR = FADCR | (flags << sideShift);
+}
 # The .L1 and .L2 conversion units use separate FADCR halves.  RMODE is at
 # bits 10:9/26:25; source flags are in the corresponding low/high half.
 # SPRUFE8B sections 2.10.1 and 3.12, SPINT/SPTRUNC execution blocks.

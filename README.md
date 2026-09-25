@@ -379,7 +379,9 @@ it produces.
   pre/post register updates. Base writes occur after the memory transfer so a
   store using the same register for its source and base reads the old value.
 * **Floating-point fidelity remains incomplete.** Some arithmetic still lacks
-  status-register side effects. The reciprocal estimate
+  status-register side effects. `SPDP` and `DPSP` model their documented
+  special values and status flags; `DPSP` also uses the FADCR rounding mode.
+  The reciprocal estimate
   instructions implement TI's special cases and FAUCR flags, and return an
   eight-bit-accurate seed. TI does not publish the seed lookup table, so ordinary
   estimates are not yet proven bit-exact against hardware. `MVC` uses
