@@ -69,19 +69,37 @@ encoding `creg=7, z=0` (Table 3-9), so no valid 32-bit instruction matches it.
 * Branch targets are **PCE1-relative** — relative to the first instruction of
   the containing fetch packet, not to the branch itself. `B`/`CALLP`/`BNOP`/
   `BDEC`/`BPOS`/`ADDKPC` all use `inst_start & 0xFFFFFFE0`, exactly as the
-  manual's Execution blocks specify. Direct branch and call targets export in
-  RAM, so Ghidra's flow references and disassembler follow the code address.
-  The delayed-call analyzer recognizes a `B` followed by `ADDKPC` writing `B3`
-  within five execute packets and classifies the branch as a call. A separate
+  manual's Execution blocks specify. A 32-bit `BNOP` displacement counts
+  words in an ordinary fetch packet but halfwords in a header-based (compact)
+  one, so it can reach 16-bit instructions; the `c_hdrpkt` context bit, primed
+  with the rest of the packet context, selects the scale. Direct branch and
+  call targets export in RAM, so Ghidra's flow references and disassembler
+  follow the code address.
+  The delayed-call analyzer treats a `B` (immediate or register) as a call
+  when its five delay cycles write `B3` with `ADDKPC` or with an `MVK`/`MVKH`
+  pair (the `MVK` may precede the branch) to a return address just past the
+  delay window. It decodes the delay slots itself when Ghidra has not, gives
+  the branch a CALL flow override and a fall-through into its delay slots,
+  adds a call reference for a register target loaded by `MVK`/`MVKH` in the
+  preceding straight-line code, and recomputes the caller's body. Predicated
+  calls stay conditional; `B B3` stays a return. It only reclassifies
+  branches with no flow override: when Ghidra's non-returning-function
+  analysis has already made a call `CALL_RETURN`, it is left alone, since
+  overriding it back makes the two analyzers loop. A separate
   early analyzer classifies branches through the ABI return register `B3` as
   returns before Ghidra's switch analysis. Unpredicated `B`/`BNOP` register
   branches retain conservative fall-through during code discovery; an analyzer
   redecodes them as terminal branches or returns before Decompiler Switch
   Analysis so the decompiler sees their actual control flow.
 
-The `branch-flow.py` fixture and `C6000FlowTargetTest.java` check seven direct
+The `branch-flow.py` fixture and `C6000FlowTargetTest.java` check eight direct
 branch/call forms in both endian modes, including conditional versus
-unconditional flow types. Ten stage 2 firmware branch/call sites, including
+unconditional flow types and a `BNOP` in a header-based packet. The
+`delayed-call.py` fixture and `C6000DelayedCallTest.java` check, after
+auto-analysis in both endian modes, an `ADDKPC` immediate call and an
+`MVK`/`MVKH` register call: both fall through into their delay slots, keep
+the code after the return point in the caller, and make the callee a
+function. Ten stage 2 firmware branch/call sites, including
 compact forms, also passed the RAM flow check. On a fresh stage 1 raw import
 with entry `0x11801da0`, auto-analysis found functions at `0x11804280`,
 `0x118048a0`, and `0x11804360`, with zero `const:` flow-error bookmarks. A raw

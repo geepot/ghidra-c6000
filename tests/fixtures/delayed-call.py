@@ -1,0 +1,64 @@
+#!/usr/bin/env python3
+"""Build a B-with-B3 call image. Usage: IMAGE [be].
+
+Load at 0x1000 with entry 0x1000 and auto-analysis. Words are encoded from
+SPRUFE8B's MVK/MVKH, B, ADDKPC and NOP opcode diagrams:
+
+  1000  MVK.S2  0x1100,B5        1018  B.S1    0x1100        (call)
+  1004  MVKH.S2 0x0,B5           101c  ADDKPC.S2 0x1020,B3,4
+  1008  B.S2    B5      (call)   1020  B.S2    B3            (return)
+  100c  MVK.S2  0x1018,B3        1024  NOP     5
+  1010  MVKH.S2 0x0,B3           ...
+  1014  NOP     3                1100  B.S2 B3 ; NOP 5       (callee)
+
+C6000DelayedCallTest.java checks both B forms become calls that fall through
+into their delay slots and that 0x1100 becomes a function.
+"""
+
+from pathlib import Path
+import struct
+import sys
+
+
+def mvk(cst, reg):
+    return 0x2A | ((cst & 0xFFFF) << 7) | (reg << 23)
+
+
+def mvkh(cst, reg):
+    return 0x6A | ((cst & 0xFFFF) << 7) | (reg << 23)
+
+
+def nop(count):
+    return (count - 1) << 13
+
+
+B_B3 = 0x362 | (3 << 18)
+
+WORDS = {
+    0x1000: mvk(0x1100, 5),
+    0x1004: mvkh(0, 5),
+    0x1008: 0x362 | (5 << 18),              # B.S2 B5
+    0x100C: mvk(0x1018, 3),
+    0x1010: mvkh(0, 3),
+    0x1014: nop(3),
+    0x1018: 0x10 | (0x40 << 7),             # B.S1 packet+0x100
+    0x101C: 0x162 | (8 << 16) | (4 << 13) | (3 << 23),  # ADDKPC.S2 0x1020,B3,4
+    0x1020: B_B3,
+    0x1024: nop(5),
+    0x1100: B_B3,
+    0x1104: nop(5),
+}
+
+
+def main():
+    if len(sys.argv) not in (2, 3) or (len(sys.argv) == 3 and sys.argv[2] != "be"):
+        raise SystemExit(__doc__)
+    endian = ">" if len(sys.argv) == 3 else "<"
+    image = bytearray(0x120)
+    for address, word in WORDS.items():
+        struct.pack_into(endian + "I", image, address - 0x1000, word)
+    Path(sys.argv[1]).write_bytes(image)
+
+
+if __name__ == "__main__":
+    main()

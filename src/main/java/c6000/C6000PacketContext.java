@@ -120,6 +120,7 @@ public final class C6000PacketContext {
 							setField(program, "c_is16", word, 0);
 							setField(program, "c_isheader", word, 0);
 							setField(program, "c_pfollow", word, 0);
+							setField(program, "c_hdrpkt", word, 0);
 							primeBranchMode(program, word);
 						}
 					}
@@ -154,6 +155,7 @@ public final class C6000PacketContext {
 				setField(program, "c_is16", hdrAddr, 0);
 				setField(program, "c_isheader", hdrAddr, 1);
 				setField(program, "c_pfollow", hdrAddr, 0);
+				setField(program, "c_hdrpkt", hdrAddr, 1);
 				primeBranchMode(program, hdrAddr);
 				cursor = cursor.add(FETCH_PACKET_SIZE);
 			}
@@ -171,6 +173,7 @@ public final class C6000PacketContext {
 			boolean is16, int rs, int dsz, int prot, int br, int sat) throws Exception {
 		setField(program, "c_is16", at, is16 ? 1 : 0);
 		setField(program, "c_isheader", at, 0);
+		setField(program, "c_hdrpkt", at, 1);
 		primeBranchMode(program, at);
 		setField(program, "c_rs", at, rs);
 		setField(program, "c_dsz", at, dsz);

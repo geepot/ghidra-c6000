@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+### Fixed
+* A 32-bit `BNOP` in a header-based (compact) fetch packet scaled its
+  displacement by four instead of two, sending its CFG edge into the middle
+  of an instruction.
+* `B` calls whose delay slots set `B3` are modelled as returning calls: the
+  register form (`B reg` after `MVKL`/`MVKH`), the `MVK`/`MVKH` return-address
+  form, and unconditional immediate calls, which previously had no
+  fall-through and left their delay slots and the code after the return
+  point undecoded.
+
 ### Documentation
 * The README is now a short overview (install, quick start, features and
   limitations, build, testing). Measured coverage and test fixtures moved to

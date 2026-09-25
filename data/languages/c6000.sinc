@@ -103,6 +103,7 @@ define context contextreg
   c_isheader = (8,8) noflow # eighth word of a compact fetch packet
   c_branch_terminal = (9,9) noflow # selected register branches after code discovery
   c_pfollow = (10,13) noflow # instructions parallel after this compact branch
+  c_hdrpkt = (14,14) noflow # slot lies in a header-based (compact) fetch packet
 ;
 
 # ---------------------------------------------------------------------------
@@ -453,8 +454,12 @@ BranchTarget: reloc is cst21
   [ reloc = (inst_start & 0xffffffe0) + (cst21 << 2); ] { export *[ram]:4 reloc; }
 
 # BNOP displacement target (SPRUFE8B figure F-10, BNOP execution block).
-BnopTgt: reloc is bnopd
+# Inside a header-based fetch packet the displacement counts halfwords, so a
+# 32-bit BNOP can reach 16-bit instructions; elsewhere it counts words.
+BnopTgt: reloc is c_hdrpkt=0 & bnopd
   [ reloc = (inst_start & 0xffffffe0) + (bnopd * 4); ] { export *[ram]:4 reloc; }
+BnopTgt: reloc is c_hdrpkt=1 & bnopd
+  [ reloc = (inst_start & 0xffffffe0) + (bnopd * 2); ] { export *[ram]:4 reloc; }
 
 # BDEC/BPOS encode a signed ten-bit fetch-packet-relative branch displacement.
 BdecTgt: reloc is scst10

@@ -26,7 +26,7 @@ import ghidra.util.exception.CancelledException;
 import ghidra.util.task.TaskMonitor;
 
 /**
- * Revisit return branches after decompiler switch analysis discovers new code.
+ * Revisit calls and return branches after decompiler switch analysis discovers new code.
  * The early analyzers must still run before switch analysis to keep branch
  * thunks from merging into large fall-through functions.
  */
@@ -48,6 +48,9 @@ public class C6000LateBranchAnalyzer extends AbstractAnalyzer {
 	public boolean added(Program program, AddressSetView set, TaskMonitor monitor,
 			MessageLog log) throws CancelledException {
 		AddressSet all = new AddressSet(program.getMinAddress(), program.getMaxAddress());
+		// Calls need only the new code; the whole-program walk runs once per
+		// analysis cycle and dominated firmware analysis time.
+		new C6000CallAnalyzer().added(program, set, monitor, log);
 		new C6000ReturnAnalyzer().added(program, all, monitor, log);
 		new C6000RegisterBranchAnalyzer().added(program, all, monitor, log);
 		return true;
