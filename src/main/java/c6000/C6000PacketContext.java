@@ -119,6 +119,7 @@ public final class C6000PacketContext {
 						if (word.compareTo(start) >= 0 && word.compareTo(end) <= 0) {
 							setField(program, "c_is16", word, 0);
 							setField(program, "c_isheader", word, 0);
+							primeBranchMode(program, word);
 						}
 					}
 					cursor = cursor.add(FETCH_PACKET_SIZE);
@@ -146,6 +147,7 @@ public final class C6000PacketContext {
 				// The header is a 32-bit CPKT instruction, not a compact slot.
 				setField(program, "c_is16", hdrAddr, 0);
 				setField(program, "c_isheader", hdrAddr, 1);
+				primeBranchMode(program, hdrAddr);
 				cursor = cursor.add(FETCH_PACKET_SIZE);
 			}
 		}
@@ -162,11 +164,19 @@ public final class C6000PacketContext {
 			boolean is16, int rs, int dsz, int prot, int br, int sat) throws Exception {
 		setField(program, "c_is16", at, is16 ? 1 : 0);
 		setField(program, "c_isheader", at, 0);
+		primeBranchMode(program, at);
 		setField(program, "c_rs", at, rs);
 		setField(program, "c_dsz", at, dsz);
 		setField(program, "c_prot", at, prot);
 		setField(program, "c_br", at, br);
 		setField(program, "c_sat", at, sat);
+	}
+
+	private static void primeBranchMode(Program program, Address at) throws Exception {
+		Register field = program.getRegister("c_branch_terminal");
+		if (program.getProgramContext().getValue(field, at, false) == null) {
+			setField(program, "c_branch_terminal", at, 0);
+		}
 	}
 
 	private static void setField(Program program, String name, Address at, int value)

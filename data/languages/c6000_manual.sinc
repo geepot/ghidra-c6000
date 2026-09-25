@@ -76,7 +76,13 @@
   if (Cond != 0) goto BnopTgt;
 }
 
-:^Cond^"BNOP.S2" Src2, bnopc is c_is16=0 & Cond & creg!=7 & Src2 & bnopc
+:"BNOP.S2" Src2, bnopc is c_is16=0 & creg=0 & z=0 & c_branch_terminal=1 & Src2 & bnopc
+  & i27=0 & i26=0 & i25=0 & i24=0 & i23=1 & i17=0 & i16=0
+  & i11=0 & i10=0 & i9=1 & i8=1 & i7=0 & i6=1 & i5=1 & i4=0 & i3=0 & i2=0 & i1=1
+{
+  goto [Src2];
+}
+:^Cond^"BNOP.S2" Src2, bnopc is c_is16=0 & Cond & creg!=7 & c_branch_terminal=0 & Src2 & bnopc
   & i27=0 & i26=0 & i25=0 & i24=0 & i23=1 & i17=0 & i16=0
   & i11=0 & i10=0 & i9=1 & i8=1 & i7=0 & i6=1 & i5=1 & i4=0 & i3=0 & i2=0 & i1=1
 {

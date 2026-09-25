@@ -2767,7 +2767,14 @@ macro c6000_sem_cmpgtu40(a, b, d) {
 # ---------------------------------------------------------------------------
 
 # SEM: LDW
-macro c6000_sem_ldw(a, d) { d = *[ram]:4 a; }
+# LDW requires a word-aligned address (SPRUFE8B). Keeping the p-code LOAD
+# aligned also prevents a misaligned address propagated on a predicated path,
+# such as 0xffffffff in the firmware, from crashing Ghidra's decompiler
+# when it folds the LOAD to a RAM varnode. Valid LDW addresses are unchanged.
+macro c6000_sem_ldw(a, d) {
+  local aligned:4 = a & 0xfffffffc;
+  d = *[ram]:4 aligned;
+}
 # SEM: LDDW
 macro c6000_sem_lddw(a, d) { d = *[ram]:8 a; }
 # SEM: LDNW

@@ -101,6 +101,7 @@ define context contextreg
   c_br   = (6,6)   noflow  # header BR  : S-unit compact opcodes are branches
   c_prot = (7,7)   noflow  # header PROT: protected loads (pipeline timing only)
   c_isheader = (8,8) noflow # eighth word of a compact fetch packet
+  c_branch_terminal = (9,9) noflow # selected register branches after code discovery
 ;
 
 # ---------------------------------------------------------------------------
