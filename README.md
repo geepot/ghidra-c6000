@@ -25,14 +25,15 @@ below show both the decoded instructions and the remaining gaps.
 | Branch / call targets (`B`, `BNOP`, `CALLP`, `BDEC`, `BPOS`) | modelled, PCE1-relative per the manual |
 | Compact 16-bit fetch packets | most observed slots decode, driven by packet-header context (see below) |
 | P-code semantics | integer ALU and common multiplies, compact saturating arithmetic, immediates, bit-field operations, linear address arithmetic, scalar and doubleword loads/stores, single-precision arithmetic and conversions, selected double-precision arithmetic and conversions, compares, shifts, branches/calls, `MVC` |
-| Other decoded instructions | 32-bit forms lift to explicit `c6000_unimpl_<mnemonic>` userops; every decoded compact form has p-code |
+| Other decoded instructions | no generated `c6000_unimpl_<mnemonic>` calls remain; software-loop controls use named event userops |
 | Function ID | generation script shipped; database not shipped (TI licence) |
 | Software loop controls | decoded and annotated; a separate cycle scheduler replays buffered packets and stage-boundary `ILC` changes, including predicate-driven `SPLOOPW` |
-| Remaining double-precision floating point, advanced integer `.M` multiply, packed 8/16-bit arithmetic, Galois | decode only where no p-code semantics are implemented |
+| Architecture-wide fidelity | not yet established by firmware coverage; packet timing, selected floating-point status, and exact reciprocal seeds need further verification |
 
-Unimplemented instructions are **explicit, greppable placeholders**, not
-silently wrong data flow. `C6000CorpusTest.java` counts how often each is
-reached, so the number in the table below is a measurement, not a claim.
+The generator uses **explicit, greppable placeholders** if an instruction
+lacks semantics. None remain in the generated table. `C6000CorpusTest.java`
+counts placeholder occurrences in a firmware image; zero observed occurrences
+alone would not establish architecture-wide fidelity.
 
 ## Measured coverage
 
@@ -377,15 +378,17 @@ it produces.
   load/store effective addresses use linear mode, with size scaling and
   pre/post register updates. Base writes occur after the memory transfer so a
   store using the same register for its source and base reads the old value.
-* **Two instruction mnemonics still have placeholder semantics** outside
-  the measured firmware instructions, including packed rearrangements and
-  selected integer and Galois operations. Some implemented floating-point
-  arithmetic still lacks status-register side effects. The reciprocal estimate
+* **Floating-point fidelity remains incomplete.** Some arithmetic still lacks
+  status-register side effects. The reciprocal estimate
   instructions implement TI's special cases and FAUCR flags, and return an
   eight-bit-accurate seed. TI does not publish the seed lookup table, so ordinary
   estimates are not yet proven bit-exact against hardware. `MVC` uses
   distinct control registers in its 32-bit forms; the compact `MVC` to `ILC`
   is also modelled.
+* **SWE/SWENR exception transitions are instruction-level models.** For SWE,
+  `NRP = inst_next` is exact when SWE ends its execute packet. A packet-aware
+  executor is needed when SWE runs in parallel with NOP, and simultaneous
+  exception priority is not represented in p-code.
 * **RPACK2 documentation differs from its example:** the published execution
   rule and compiler guide specify a saturating left shift, which yields
   `0xFDB9` for the upper halfword of the sample `0xFEDCBA98`; the worked

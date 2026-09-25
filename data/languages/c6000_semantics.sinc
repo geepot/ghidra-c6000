@@ -522,6 +522,34 @@ macro c6000_sem_smpy32(a, b, d, ssr_bit) {
   d = upper:4;
   <done>
 }
+# SWE/SWENR raise EFR.SXF in E1 and clear NTSR.HWE. When GEE is set,
+# SWE saves context and branches to the ISTP NMI/exception vector; SWENR
+# leaves NTSR/NRP alone and branches to REP. This instruction-level model
+# uses inst_next for NRP, exact for a SWE that ends its execute packet.
+# A packet interpreter must compute the next execute-packet address when SWE
+# is issued in parallel with NOP and handle simultaneous exceptions.
+# SEM: SWE
+macro c6000_sem_swe() {
+  EFR = EFR | 1;
+  NTSR = NTSR & 0xfffeffff;
+  if ((TSR & 4) == 0) goto <done>;
+  NTSR = TSR & 0x0000ffff;
+  NRP = inst_next;
+  TSR = (TSR & 0x14) | 0x400;
+  local vector:4 = (ISTP & 0xfffffc00) + 0x20;
+  goto [vector];
+  <done>
+}
+# SEM: SWENR
+macro c6000_sem_swenr() {
+  EFR = EFR | 1;
+  NTSR = NTSR & 0xfffeffff;
+  TSR = TSR | 0x8000;
+  if ((TSR & 4) == 0) goto <done>;
+  TSR = (TSR & 0x14) | 0x400;
+  goto [REP];
+  <done>
+}
 # SEM: SAT
 # The long register stores a signed 40-bit value in a 64-bit pair.
 macro c6000_sem_sat(a, d, ssr_bit) {

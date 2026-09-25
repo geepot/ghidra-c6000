@@ -502,7 +502,9 @@ def main():
         f.write("#  semantics are not yet modelled.  tools/gen_decode.py emits a\n")
         f.write("#  call to the matching op so that unmodelled instructions are\n")
         f.write("#  explicit, greppable markers rather than silently wrong data\n")
-        f.write("#  flow.  The corpus test counts how often each is reached.\n\n")
+        f.write("#  flow.  The corpus test counts how often each is reached.\n")
+        if placeholder_mnemonics:
+            f.write("\n")
         for m in sorted(placeholder_mnemonics):
             f.write("define pcodeop c6000_unimpl_%s;\n" % m.lower())
     sys.stderr.write("wrote %s: %d constructors, %d skipped\n"

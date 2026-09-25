@@ -4,6 +4,3 @@
 #  call to the matching op so that unmodelled instructions are
 #  explicit, greppable markers rather than silently wrong data
 #  flow.  The corpus test counts how often each is reached.
-
-define pcodeop c6000_unimpl_swe;
-define pcodeop c6000_unimpl_swenr;
