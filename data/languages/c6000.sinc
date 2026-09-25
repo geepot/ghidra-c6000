@@ -415,6 +415,7 @@ OffReg: rb_off is rb_off & i7=1 { export rb_off; }
 # ---------------------------------------------------------------------------
 
 @include "c6000_placeholders.sinc"
+define pcodeop c6000_idle;
 @include "c6000_semantics.sinc"
 @include "c6000_decode.sinc"
 define pcodeop c6000_sploop;

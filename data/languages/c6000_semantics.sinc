@@ -2323,8 +2323,16 @@ macro c6000_sem_b_ind(t) { goto [t]; }
 # SEM: NOP
 macro c6000_sem_nop(n) { }
 # SEM: IDLE
-macro c6000_sem_idle() { }
+macro c6000_sem_idle() { c6000_idle(); }
 # SEM: DINT
-macro c6000_sem_dint() { }
+macro c6000_sem_dint() {
+  local gie:4 = TSR & 1;
+  TSR = (TSR & 0xfffffffc) | (gie << 1);
+  CSR = CSR & 0xfffffffe;
+}
 # SEM: RINT
-macro c6000_sem_rint() { }
+macro c6000_sem_rint() {
+  local saved:4 = (TSR >> 1) & 1;
+  TSR = (TSR & 0xfffffffc) | saved;
+  CSR = (CSR & 0xfffffffe) | saved;
+}

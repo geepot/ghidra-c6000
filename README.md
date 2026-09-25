@@ -25,7 +25,7 @@ below show both the decoded instructions and the remaining gaps.
 | Branch / call targets (`B`, `BNOP`, `CALLP`, `BDEC`, `BPOS`) | modelled, PCE1-relative per the manual |
 | Compact 16-bit fetch packets | most observed slots decode, driven by packet-header context (see below) |
 | P-code semantics | integer ALU and common multiplies, compact saturating arithmetic, immediates, bit-field operations, linear address arithmetic, scalar and doubleword loads/stores, single-precision arithmetic and conversions, selected double-precision arithmetic and conversions, compares, shifts, branches/calls, `MVC` |
-| Other decoded instructions | no generated `c6000_unimpl_<mnemonic>` calls remain; software-loop controls use named event userops |
+| Other decoded instructions | no generated `c6000_unimpl_<mnemonic>` calls remain; software-loop controls and `IDLE` use named event userops; `DINT`/`RINT` update `TSR` and `CSR` interrupt-enable bits |
 | Function ID | generation script shipped; database not shipped (TI licence) |
 | Software loop controls | decoded and annotated; a separate cycle scheduler replays buffered packets and stage-boundary `ILC` changes, including predicate-driven `SPLOOPW` |
 | Architecture-wide fidelity | not yet established by firmware coverage; packet timing, selected floating-point status, and exact reciprocal seeds need further verification |
@@ -34,6 +34,12 @@ The generator uses **explicit, greppable placeholders** if an instruction
 lacks semantics. None remain in the generated table. `C6000CorpusTest.java`
 counts placeholder occurrences in a firmware image; zero observed occurrences
 alone would not establish architecture-wide fidelity.
+
+`IDLE` emits a `c6000_idle` event for a cycle-aware scheduler to handle. Ghidra's
+instruction emulator does not itself suspend until an interrupt. The
+`interrupt-control.py` fixture and `C6000InterruptControlTest.java` verify the
+`DINT`/`RINT` register transitions, nested sequence, and `IDLE` event in both
+endian modes.
 
 ## Measured coverage
 
