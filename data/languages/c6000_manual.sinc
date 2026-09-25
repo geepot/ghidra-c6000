@@ -1,6 +1,6 @@
 #  Hand-written C6000 instructions whose encoding is not a simple opcode-map
 #  entry, plus the software-pipelined-loop control instructions.
-#  Apache-2.0; encodings from TI SPRUFE8B (see NOTICE.md).
+#  Apache-2.0; encodings from TI SPRUFE8B and SPRU732J (see NOTICE.md).
 #
 #  Every constructor here names the figure or section it implements.
 
@@ -28,6 +28,25 @@
   & i1=1 & i2=0 & i3=0 & i4=0 & i5=1 & i6=1 & i7=1 & i8=1 & i9=1 & i10=0 & i11=0
   & i12=0
 { if (Cond == 0) goto <skip>; Dst = CtlReg; <skip> }
+
+# C64x+ linked-word operations, SPRU732J Figure C-4 and the LL/SL/CMTL
+# descriptions. These execute only on .D2 with the T2 data path. The named
+# userops carry the linked-memory event to a system-aware emulator; CMTL's
+# output is the monitor's success flag.
+:^Cond^"LL.D2T2" "*"^rb_base, rb_dst is c_is16=0 & Cond & creg!=7 & rb_base & rb_dst
+  & i1=1 & i2=0 & i3=0 & i4=0 & op7=0x32
+  & i12=0 & i13=0 & i14=0 & i15=0 & i16=0 & i17=0
+{ if (Cond == 0) goto <skip>; rb_dst = *[ram]:4 rb_base; c6000_link_load(rb_base); <skip> }
+
+:^Cond^"SL.D2T2" rb_dst, "*"^rb_base is c_is16=0 & Cond & creg!=7 & rb_base & rb_dst
+  & i1=1 & i2=0 & i3=0 & i4=0 & op7=0x36
+  & i12=0 & i13=0 & i14=0 & i15=0 & i16=0 & i17=0
+{ if (Cond == 0) goto <skip>; c6000_link_store(rb_base, rb_dst); *[ram]:4 rb_base = rb_dst; <skip> }
+
+:^Cond^"CMTL.D2T2" "*"^rb_base, rb_dst is c_is16=0 & Cond & creg!=7 & rb_base & rb_dst
+  & i1=1 & i2=0 & i3=0 & i4=0 & op7=0x3a
+  & i12=0 & i13=0 & i14=0 & i15=0 & i16=0 & i17=0
+{ if (Cond == 0) goto <skip>; rb_dst = c6000_link_commit(rb_base); <skip> }
 
 # ---------------------------------------------------------------------------
 # BNOP - Branch Using a Displacement with NOP, and Branch Using a Register

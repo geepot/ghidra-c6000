@@ -20,12 +20,12 @@ below show both the decoded instructions and the remaining gaps.
 
 | Area | State |
 |---|---|
-| 32-bit instruction decode (mnemonic, unit, operands, length) | broad SPRUFE8B §3.12 coverage, plus legacy `MVC`; no nonfill gaps in the measured stage 2 payload or the stage 1 code region |
+| 32-bit instruction decode (mnemonic, unit, operands, length) | broad SPRUFE8B §3.12 coverage, legacy `MVC`, and C64x+ linked-word `LL`/`SL`/`CMTL`; no nonfill gaps in the measured stage 2 payload or the stage 1 code region |
 | Instruction lengths and execute-packet framing | 2/4-byte lengths and compact layout context; execute packets are not atomic |
 | Branch / call targets (`B`, `BNOP`, `CALLP`, `BDEC`, `BPOS`) | modelled, PCE1-relative per the manual |
 | Compact 16-bit fetch packets | most observed slots decode, driven by packet-header context (see below) |
 | P-code semantics | integer ALU and common multiplies, compact saturating arithmetic, immediates, bit-field operations, linear and AMR circular address arithmetic, scalar and doubleword loads/stores, single-precision arithmetic and conversions, selected double-precision arithmetic and conversions, compares, shifts, branches/calls, `MVC` |
-| Other decoded instructions | no generated `c6000_unimpl_<mnemonic>` calls remain; software-loop controls and `IDLE` use named event userops; `DINT`/`RINT` update `TSR` and `CSR` interrupt-enable bits |
+| Other decoded instructions | no generated `c6000_unimpl_<mnemonic>` calls remain; software-loop controls, `IDLE`, and C64x+ linked-word operations use named event userops; `DINT`/`RINT` update `TSR` and `CSR` interrupt-enable bits |
 | Function ID | generation script shipped; database not shipped (TI licence) |
 | Software loop controls | decoded and annotated; a separate cycle scheduler replays buffered packets and stage-boundary `ILC` changes, including predicate-driven `SPLOOPW` |
 | Architecture-wide fidelity | not yet established by firmware coverage; packet timing, selected floating-point status, and exact reciprocal seeds need further verification |
@@ -235,6 +235,12 @@ and high address bits of 32-bit `MVC` control-register encodings in both
 endian modes. The rounded multiply test displays the encoded `MPYLIR` name
 and source order; `MPYILR` is its reversed-operand assembler pseudo-op.
 
+`tests/fixtures/pair-unary.py` and `C6000PairUnaryTest.java` check scalar
+`ABS` saturation and 40-bit `ABS`/`NEG`/`MV` operand pairs, upper-bit masking,
+and invalid odd-pair or cross-path forms in both endian modes.
+`tests/fixtures/linked-word.py` and `C6000LinkedWordTest.java` check the
+C64x+ `LL`/`SL`/`CMTL` encodings and linked-memory event p-code.
+
 `tests/fixtures/sat-arith.py <image.bin> <cases.tsv> [be]` and
 `C6000SatArithmeticTest.java <cases.tsv>` execute 15 `SADD` and `SSUB` cases
 per endian mode. They cover 32-bit and 40-bit saturation, signed constants,
@@ -401,9 +407,14 @@ decode bug described above. Note that
 `tools/sample_encodings.py scratch/sample.bin` makes a reproducible sample of
 32,768 unpredicated 32-bit words for the same comparison workflow. The sample
 includes illegal encodings. It exposed the reverse `SUB.S`, long-shift,
-ADD/SUB/compare port, and `MVC` control-register form bugs. The current sample
-has 97 GNU-only and four Ghidra-only decodes outside the measured firmware;
-those encodings still need independent architecture validation.
+ADD/SUB/compare port, `MVC` control-register, and long `ABS`/`NEG`/`MV`
+operand-form bugs. `tools/audit_random_oracle.py IMAGE BASE LISTING` classifies
+disagreements against TI's opcode and operand tables. In an additional
+131,072-word sample, 378 GNU-only decodes violate those constraints; four
+Ghidra-only words use an `x` bit exposed by TI's `MVK`/`NORM` diagrams, and
+one `SPMASK` word violates its execute-packet placement rule. No disagreement
+in that sample remains unexplained. These samples do not prove exhaustive ISA
+coverage.
 
 ### Known Ghidra 12.1.3 pitfall
 
@@ -437,6 +448,10 @@ it produces.
   images are not an exhaustive encoding test. The decoder leaves unknown words
   undefined instead of guessing an instruction.
 * **Execute packets are not modelled as units** — see above.
+* **C64x+ linked-word operations need a memory monitor.** `LL` and `SL`
+  expose their CPU-visible load/store plus named link events. `CMTL` returns
+  its monitor-provided success value through a userop. Ghidra's instruction
+  emulator cannot decide another core's link state by itself.
 * **No delay-slot modelling** in p-code.
 * **AMR updates are instruction-level.** `.D` effective addresses and
   ADDA/SUBA results wrap for A4-A7/B4-B7, including BK0/BK1 selection and

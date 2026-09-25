@@ -19,6 +19,10 @@ numbered figure, table or section of:
   (Table C-3), the control-register addresses (Table 3-27) and the branch
   semantics (the per-instruction Execution blocks).
   <https://www.ti.com/lit/ug/sprufe8b/sprufe8b.pdf>
+* **SPRU732J** - *TMS320C64x/C64x+ DSP CPU and Instruction Set Reference Guide*,
+  Texas Instruments, July 2010. Figure C-4 and the LL, SL, and CMTL instruction
+  descriptions supply the C64x+ linked-word encodings and CPU-visible behavior.
+  <https://www.ti.com/lit/ug/spru732j/spru732j.pdf>
 * **SPRUH91D** - *TMS320C6745/6747 Fixed/Floating-Point DSP Technical Reference
   Manual* and **SPRS590** - *TMS320C6747 data sheet*, for the C6745/C6747
   control-register and memory-map details.

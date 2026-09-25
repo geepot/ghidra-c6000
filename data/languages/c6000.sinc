@@ -494,6 +494,9 @@ macro c6000_wrap_address(base, delta, index, side, result) {
 
 @include "c6000_placeholders.sinc"
 define pcodeop c6000_idle;
+define pcodeop c6000_link_load;
+define pcodeop c6000_link_store;
+define pcodeop c6000_link_commit;
 @include "c6000_semantics.sinc"
 @include "c6000_decode.sinc"
 define pcodeop c6000_sploop;

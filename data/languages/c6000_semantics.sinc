@@ -374,8 +374,33 @@ macro c6000_sem_andn(a, b, d) { d = a & (~b); }
 macro c6000_sem_not(a, d) { d = ~a; }
 # SEM: NEG
 macro c6000_sem_neg(a, d) { d = -a; }
+macro c6000_sem_neg40(a, d) { d = (-a) & 0xffffffffff; }
 # SEM: ABS
-macro c6000_sem_abs(a, d) { local s = (a s< 0); if (s) goto <neg>; d = a; goto <end>; <neg> d = -a; <end> }
+macro c6000_sem_abs(a, d, ssr_bit) {
+  if (a == 0x80000000) goto <sat>;
+  if (a s< 0) goto <neg>;
+  d = a;
+  goto <done>;
+  <neg> d = -a;
+  goto <done>;
+  <sat> d = 0x7fffffff;
+  CSR = CSR | 0x200;
+  SSR = SSR | ssr_bit;
+  <done>
+}
+macro c6000_sem_abs40(a, d, ssr_bit) {
+  local value:8 = (a << 24) s>> 24;
+  if (value == -0x8000000000) goto <sat>;
+  if (value s< 0) goto <neg>;
+  d = value & 0xffffffffff;
+  goto <done>;
+  <neg> d = (-value) & 0xffffffffff;
+  goto <done>;
+  <sat> d = 0x7fffffffff;
+  CSR = CSR | 0x200;
+  SSR = SSR | ssr_bit;
+  <done>
+}
 # SEM: ABS2
 # Each halfword saturates independently. SPRUFE8B explicitly says CSR.SAT
 # is unaffected by this operation.
@@ -624,6 +649,7 @@ macro c6000_sem_absdp(a, d, side) {
 
 # SEM: MV
 macro c6000_sem_mv(a, d) { d = a; }
+macro c6000_sem_mv40(a, d) { d = a & 0xffffffffff; }
 # SEM: MVD
 macro c6000_sem_mvd(a, d) { d = a; }
 # SEM: ZERO

@@ -338,6 +338,13 @@ def main():
                 if mnem == "NORM" and v == "1100000":
                     # This opfield is the 64-bit src2_h:src2_l form.
                     ops = ["Src2Pair", "Dst"]
+                if mnem == "NEG" and ul == "L" and v == "0100100":
+                    ops = ["Src2PairLocal", "DstPair"]
+                if mnem == "ABS" and ul == "L" and v == "0111000":
+                    ops = ["Src2PairLocal", "DstPair"]
+                if mnem == "MV" and ul == "L" and "not used" in heading:
+                    # This fixed .L form moves a 40-bit register pair.
+                    ops = ["Src2PairLocal", "DstPair"]
                 if mnem in {"MPY", "MPYSU"} and v in {"11000", "11110"}:
                     ops[0] = "SCst5"
                 if mnem == "MPYID":
@@ -451,6 +458,9 @@ def main():
                 if mnem in {"SADD", "SSUB"} and ops[-1] == "DstPair" \
                         and ops[0] == "SCst5":
                     base.append("i12=0")
+                if (mnem in {"ABS", "NEG"} and ul == "L" and
+                        ops[0] == "Src2PairLocal") or mnem == "SAT":
+                    base.append("i12=0")
                 if mnem in {"SHL", "SHR", "SHRU"} and ul == "S" \
                         and ops[0] == "Src2PairLocal":
                     base.append("i12=0")
@@ -531,6 +541,11 @@ def main():
                     elif mnem in SEMANTIC_MNEMONICS:
                         args = ", ".join(o for o in (ops or []) if not o.startswith(chr(34)))
                         macro = "c6000_sem_%s" % mnem.lower()
+                        if mnem in {"ABS", "NEG", "MV"} and ul == "L" \
+                                and ops[-1] == "DstPair":
+                            macro += "40"
+                        if mnem == "ABS":
+                            args += ", %d" % (1 if suffix == ".1" else 2)
                         if mnem in {"ADD", "SUB"} and ul == "L" \
                                 and ops[-1] == "DstPair":
                             macro += "40_pair" if ops[1] == "Src2PairLocal" \

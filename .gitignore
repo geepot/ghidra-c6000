@@ -6,6 +6,7 @@ data/languages/*.sla
 /tmp/
 scratch/
 .research/
+__pycache__/
 
 # Editors / OS
 .DS_Store
