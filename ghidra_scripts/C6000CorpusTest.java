@@ -116,6 +116,11 @@ public class C6000CorpusTest extends GhidraScript {
 		if (outPath != null) {
 			listing = new PrintWriter(new File(outPath));
 		}
+		String fullPath = System.getenv("C6000_FULL_LISTING");
+		PrintWriter fullListing = null;
+		if (fullPath != null) {
+			fullListing = new PrintWriter(new File(fullPath));
+		}
 
 		Address cursor = start;
 		while (cursor.compareTo(end) <= 0) {
@@ -201,12 +206,19 @@ public class C6000CorpusTest extends GhidraScript {
 				listing.printf("%08x %d %s%n", cursor.getOffset(),
 					insn.getLength(), mnemonic);
 			}
+			if (fullListing != null) {
+				fullListing.printf("%08x %d %s%n", cursor.getOffset(),
+					insn.getLength(), insn.toString());
+			}
 			instructions++;
 			bytes += insn.getLength();
 			cursor = cursor.add(insn.getLength());
 		}
 		if (listing != null) {
 			listing.close();
+		}
+		if (fullListing != null) {
+			fullListing.close();
 		}
 
 		int pct = instructions == 0 ? 0 : (placeholders * 100) / instructions;

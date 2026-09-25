@@ -5,6 +5,7 @@
 import java.io.BufferedReader;
 import java.io.FileReader;
 
+import c6000.C6000PacketContext;
 import ghidra.app.cmd.disassemble.DisassembleCommand;
 import ghidra.app.emulator.EmulatorHelper;
 import ghidra.app.script.GhidraScript;
@@ -19,6 +20,7 @@ public class C6000FloatAddTest extends GhidraScript {
         if (args.length != 1) {
             throw new IllegalArgumentException("expected cases.tsv path");
         }
+        C6000PacketContext.prime(currentProgram, monitor);
         int checked = 0;
         try (BufferedReader rows = new BufferedReader(new FileReader(args[0]))) {
             String row;

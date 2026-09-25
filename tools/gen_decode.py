@@ -240,6 +240,10 @@ def main():
                 # The primary syntax line is the immediate form; the sibling
                 # opcode diagram uses a packed register instead of csta/cstb.
                 ops = ["Src2", "Src1", "Dst"]
+            if name in {"CLR", "EXT", "EXTU", "SET"} and "csta" in names:
+                # In the immediate format bit 12 belongs to cstb, not to a
+                # cross-path selector. The source is always on the unit side.
+                ops[0] = "Src2Local"
             if mnem in {"BDEC", "BPOS"}:
                 ops = ["BdecTgt", "Dst"]
             if mnem == "MPYLI":
@@ -436,12 +440,44 @@ def main():
                            "UCst5" if immediate else "Src1",
                            "DstPair" if pair_destination else "Dst"]
                 if mnem == "SUBDP" and v == "0011101":
-                    ops = ["Src2PairLocal", "Src1PairX", "DstPair"]
+                    # The second .L form takes encoded src1 over the cross
+                    # path and computes src1 - src2.
+                    ops = ["Src1PairX", "Src2PairLocal", "DstPair"]
                 if mnem == "SUBDP" and v == "1110111":
                     ops = ["Src2Pair", "Src1Pair", "DstPair"]
-                if mnem == "SUBSP" and v in {"0010101", "1110101"}:
-                    # Reverse encoding computes machine src2 - machine src1.
+                if mnem == "SUBSP" and v == "0010101":
+                    # The second .L form routes the cross path to encoded
+                    # src1; the arithmetic order remains src1 - src2.
+                    ops = ["Src1X", "Src2Local", "Dst"]
+                if mnem == "SUBSP" and v == "1110101":
+                    # The second .S form computes encoded src2 - src1.
                     ops = ["Src2", "Src1", "Dst"]
+                if mnem == "SSHL" and v == "100010":
+                    ops[1] = "UCst5"
+                if mnem in {"AND", "OR", "XOR"}:
+                    # All three logical operations have a signed five-bit
+                    # immediate form in each unit. The .D map places it in
+                    # the odd opfield; .L and .S use the even opfield.
+                    immediate = {
+                        "AND": {"L": "1111010", "S": "011110", "D": "0111"},
+                        "OR": {"L": "1111110", "S": "011010", "D": "0011"},
+                        "XOR": {"L": "1101110", "S": "001010", "D": "1111"},
+                    }[mnem][ul]
+                    if v == immediate:
+                        ops[0] = "SCst5"
+                if mnem in {"ADDAB", "ADDAD", "ADDAH", "ADDAW",
+                            "SUBAB", "SUBAH", "SUBAW"} and not long_memory:
+                    # The .D address-arithmetic maps use src1 as either a
+                    # register or an unsigned five-bit element count. The
+                    # immediate opfield varies by operation (SPRUFE8B).
+                    immediate = {
+                        "ADDAB": "110010", "ADDAD": "111101",
+                        "ADDAH": "110110", "ADDAW": "111010",
+                        "SUBAB": "110011", "SUBAH": "110111",
+                        "SUBAW": "111011",
+                    }[mnem]
+                    if v == immediate:
+                        ops[1] = "UCst5"
                 base = pattern_of(fields, v)
                 if base is None:
                     continue
@@ -594,7 +630,7 @@ def main():
                             macro = "c6000_sem_addsub_dp"
                             # Status bits refer to encoded source ports even
                             # for the SUBDP forms that compute src2-src1.
-                            if mnem == "SUBDP" and v in {"0011101", "1110111"}:
+                            if mnem == "SUBDP" and v == "1110111":
                                 source1, source2 = ops[1], ops[0]
                             else:
                                 source1, source2 = ops[0], ops[1]
@@ -602,15 +638,17 @@ def main():
                                 source1, source2,
                                 0 if suffix == ".1" else 16,
                                 1 if mnem == "SUBDP" else 0,
-                                1 if mnem == "SUBDP" and v in {"0011101", "1110111"} else 0)
+                                1 if mnem == "SUBDP" and v == "1110111" else 0)
                         if mnem in {"ADDSP", "SUBSP"}:
                             macro = "c6000_sem_addsub_sp"
                             # Source status bits name the encoded source
                             # ports, including SUBSP's reverse forms.
-                            args = "Src1, Src2, Dst, %d, %d, %d" % (
+                            source_a = "Src1X" if mnem == "SUBSP" and v == "0010101" else "Src1"
+                            source_b = "Src2Local" if mnem == "SUBSP" and v == "0010101" else "Src2"
+                            args = "%s, %s, Dst, %d, %d, %d" % (source_a, source_b,
                                 0 if suffix == ".1" else 16,
                                 1 if mnem == "SUBSP" else 0,
-                                1 if mnem == "SUBSP" and v in {"0010101", "1110101"} else 0)
+                                1 if mnem == "SUBSP" and v == "1110101" else 0)
                         if mnem in {"CMPEQSP", "CMPGTSP", "CMPLTSP",
                                     "CMPEQDP", "CMPGTDP", "CMPLTDP"}:
                             macro = ("c6000_sem_compare_dp" if mnem.endswith("DP")

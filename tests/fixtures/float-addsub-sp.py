@@ -128,9 +128,9 @@ def expected(a, b, subtract, reverse, mode):
 
 def opcode(mnemonic, unit, side, opfield, cross):
     decode = Path(__file__).resolve().parents[2] / "data/languages/c6000_decode.sinc"
-    prefix = f":{mnemonic}.{unit}{side} "
+    name = f'"{mnemonic}.{unit}{side}"'
     for line in decode.read_text().splitlines():
-        if not line.startswith(prefix):
+        if name not in line:
             continue
         fixed = {int(bit): int(v) for bit, v in re.findall(r"\bi(\d+)=(\d)\b", line)}
         bits = "".join(str(fixed[i]) for i in range(11, 4, -1))
@@ -159,16 +159,18 @@ def main():
                         for mode in range(4):
                             for case_index, (a, b) in enumerate(OPERANDS):
                                 cross = case_index in (0, 14)
-                                src1 = f"{bank}1"
-                                src2 = f"{other if cross else bank}2"
+                                cross_src1 = mnemonic == "SUBSP" and unit == "L" and reverse
+                                src1 = f"{other if cross and cross_src1 else bank}1"
+                                src2 = f"{other if cross and not cross_src1 else bank}2"
+                                swapped = reverse and unit == "S"
                                 word = opcode(mnemonic, unit, side, opfield, cross)
-                                result, flags = expected(a, b, mnemonic == "SUBSP", reverse, mode)
+                                result, flags = expected(a, b, mnemonic == "SUBSP", swapped, mode)
                                 out.write(struct.pack(endian + "I", word))
                                 out.write(bytes(28))
                                 preset = (mode << (9 + (16 if side == 2 else 0))) | (1 if side == 2 else 0x10000)
                                 expected_flags = preset | (flags << (16 if side == 2 else 0))
                                 rows.write(f"{index}\t{mnemonic}.{unit}{side}\t"
-                                           f"{src2 if reverse else src1}\t{src1 if reverse else src2}\t{bank}4\t"
+                                           f"{src2 if swapped else src1}\t{src1 if swapped else src2}\t{bank}4\t"
                                            f"{src1}\t{src2}\t{a:x}\t{b:x}\t{result:x}\t"
                                            f"{preset:x}\t{expected_flags:x}\n")
                                 index += 1

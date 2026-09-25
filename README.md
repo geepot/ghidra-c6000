@@ -84,6 +84,16 @@ on the stage 2 code window. Running autoanalysis after a full stage 2 linear
 sweep exceeded the available Ghidra 12.1.3 heap, so the full-payload numbers
 are decode and p-code checks rather than a whole-image decompiler test.
 
+The final full-payload operand audit compares the rendered operands of 770
+stage 1 code instructions and 22,657 stage 2 instructions with GNU tic6x;
+both have zero mismatches. It compares only forms with directly equivalent
+spelling, excluding branch-target notation, memory syntax, known aliases, and
+immediate-display conventions. The mnemonic/unit/length audit compares 3,835
+stage 1 code instructions and 90,946 stage 2 instructions with zero unexplained
+differences. These measurements show no undecoded instruction in the observed
+firmware code, but they do not prove that every architectural encoding or
+instruction behavior is correct.
+
 `tests/fixtures/circular-addressing.py <image.bin> <cases.tsv> [be]` and
 `C6000CircularAddressTest.java <cases.tsv>` execute 14 cases per endian mode.
 They check BK0/BK1 wraparound, underflow, pre/post updates, noneligible base
@@ -102,6 +112,11 @@ generates exact-rational `ADDDP`/`SUBDP`/`MPYDP` results and FADCR/FMCR flags.
 `C6000FloatMultiplyTest.java <mul.tsv>` exercise 840 add/subtract and 640
 multiply cases per endian mode, including `MPYSPDP`, all four rounding modes,
 reversed `SUBDP` forms, special values, and widely separated operands.
+`tests/fixtures/subdp-cross.py <image.bin> <cases.tsv> [be]` and
+`C6000FloatAddTest.java <cases.tsv>` check the cross-path `SUBDP.L` operand
+order and arithmetic on both register sides. `tests/fixtures/sshl.py
+<image.bin> <cases.tsv> [be]` and `C6000SatArithmeticTest.java <cases.tsv>`
+check register and immediate `SSHL.S`, including CSR.SAT, in both endian modes.
 
 The stage images are **not** in this repository. The test accepts an external
 image path and base address, so private firmware can be measured without being

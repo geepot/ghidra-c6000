@@ -96,7 +96,8 @@ def main():
         glength, gname, gunit = gnu[address]
         if length != glength:
             unknown.append((address, "length mismatch", name + unit, word_at(address)))
-        elif (name, unit) != (gname, gunit) and (name, gname) not in ALIASES:
+        elif (name, unit) != (gname, gunit) and not (
+                (name, gname) in ALIASES and unit == gunit):
             unknown.append((address, "name mismatch", name + unit, word_at(address)))
 
     print(f"compared={len(set(ours) & set(gnu))}")

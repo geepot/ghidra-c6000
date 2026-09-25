@@ -2677,7 +2677,24 @@ macro c6000_sem_sshvr(v, c, d) {
   <done>
 }
 # SEM: SSHL
-macro c6000_sem_sshl(v, c, d) { local neg = (c s< 0); if (neg) goto <r>; d = v << c; goto <e>; <r> d = v s>> (-c); <e> }
+macro c6000_sem_sshl(v, c, d) {
+  # The register form uses its low six count bits; the immediate form has
+  # only five. Any nonzero input shifted by more than 31 saturates.
+  local count:4 = c & 63;
+  if (count <= 31) goto <shift>;
+  if (v == 0) goto <zero>;
+  if (v s< 0) goto <negative>;
+  d = 0x7fffffff;
+  CSR = CSR | 0x200;
+  goto <done>;
+  <negative> d = 0x80000000;
+  CSR = CSR | 0x200;
+  goto <done>;
+  <zero> d = 0;
+  goto <done>;
+  <shift> c6000_sem_satleft32(v, count, d);
+  <done>
+}
 
 # ---------------------------------------------------------------------------
 # Comparisons - SPRUFE8B section 3.12, CMPEQ / CMPLT / CMPGT / CMPLTU /
