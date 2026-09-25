@@ -711,6 +711,14 @@ macro c6000_sem_shl(v, c, d) { d = v << c; }
 macro c6000_sem_shr(v, c, d) { d = v s>> c; }
 # SEM: SHRU
 macro c6000_sem_shru(v, c, d) { d = v >> c; }
+# SEM: SHLMB
+macro c6000_sem_shlmb(a, b, d) {
+  d = (b << 8) | (a >> 24);
+}
+# SEM: SHRMB
+macro c6000_sem_shrmb(a, b, d) {
+  d = (b >> 8) | (a << 24);
+}
 # SEM: SHR2
 macro c6000_sem_shr2(v, c, d) {
   local count:4 = c & 31;

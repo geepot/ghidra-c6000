@@ -69,8 +69,6 @@ define pcodeop c6000_unimpl_saddus2;
 define pcodeop c6000_unimpl_sat;
 define pcodeop c6000_unimpl_shfl;
 define pcodeop c6000_unimpl_shfl3;
-define pcodeop c6000_unimpl_shlmb;
-define pcodeop c6000_unimpl_shrmb;
 define pcodeop c6000_unimpl_smpy;
 define pcodeop c6000_unimpl_smpy2;
 define pcodeop c6000_unimpl_smpy32;

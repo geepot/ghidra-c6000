@@ -51,7 +51,7 @@ Full-payload linear sweeps also completed with no zero-width p-code operands:
 
 | Corpus | Payload bytes | Bytes decoded | Instructions | Unimplemented p-code | Undecoded slots | Byte coverage |
 |---|---:|---:|---:|---:|---:|---:|
-| Stage 1 | 55,120 | 40,232 | 10,428 | 371 (3%) | 3,722 | **73.0%** |
+| Stage 1 | 55,120 | 40,232 | 10,428 | 348 (3%) | 3,722 | **73.0%** |
 | Stage 2 | 361,248 | 336,000 | 91,490 | 23 (<1%) | 6,312 | **93.0%** |
 
 The sweeps found 24 paired software loops and 43 buffer masks in stage 1,
@@ -124,9 +124,9 @@ decoder accepts both variants; see
 [binutils gas/15094](https://lists.gnu.org/archive/html/bug-binutils/2013-02/msg00037.html).
 
 `tests/fixtures/packed-arith.py <image.bin> <cases.tsv> [be]` and
-`C6000PackedArithmeticTest.java <cases.tsv>` execute 32 packed arithmetic,
-comparison, average, saturating multiply, and min/max cases per endian mode,
-including cross-path sources and signed/unsigned lane boundaries.
+`C6000PackedArithmeticTest.java <cases.tsv>` execute 40 packed arithmetic,
+comparison, average, saturating multiply, min/max, and byte merge shift cases
+per endian mode, including cross-path sources and signed/unsigned lane boundaries.
 
 `tests/fixtures/mpyid.py <image.bin> <cases.tsv> [be]` and
 `C6000MpyidTest.java <cases.tsv>` check four signed 32-by-32 multiplication
