@@ -431,8 +431,15 @@ def main():
                             args += ", %d, %d" % (
                                 0 if suffix == ".1" else 16,
                                 1 if mnem.startswith("RSQR") else 0)
-                        if mnem == "ABSDP":
+                        if mnem in {"ABSDP", "ABSSP"}:
                             args += ", %d" % (0 if suffix == ".1" else 16)
+                        if mnem in {"CMPEQSP", "CMPGTSP", "CMPLTSP",
+                                    "CMPEQDP", "CMPGTDP", "CMPLTDP"}:
+                            macro = ("c6000_sem_compare_dp" if mnem.endswith("DP")
+                                     else "c6000_sem_compare_sp")
+                            args += ", %d, %d" % (
+                                0 if suffix == ".1" else 16,
+                                {"CMPEQ": 0, "CMPGT": 1, "CMPLT": 2}[mnem[:-2]])
                         if mnem == "SAT":
                             args += ", %d" % (1 if suffix == ".1" else 2)
                         if mnem == "GMPY":

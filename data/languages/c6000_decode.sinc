@@ -18,8 +18,8 @@
 :ABSDP.S1 Src2Pair, DstPair is i2=0 & i3=0 & i4=0 & i5=1 & i6=0 & i7=0 & i8=1 & i9=1 & i10=0 & i11=1 & i13=0 & i14=0 & i15=0 & i16=0 & i17=0 & i1=0 & c_is16=0 & Cond & creg!=7 & Src2Pair & DstPair { if (Cond == 0) goto <skip>; c6000_sem_absdp(Src2Pair, DstPair, 0); <skip> }
 :ABSDP.S2 Src2Pair, DstPair is i2=0 & i3=0 & i4=0 & i5=1 & i6=0 & i7=0 & i8=1 & i9=1 & i10=0 & i11=1 & i13=0 & i14=0 & i15=0 & i16=0 & i17=0 & i1=1 & c_is16=0 & Cond & creg!=7 & Src2Pair & DstPair { if (Cond == 0) goto <skip>; c6000_sem_absdp(Src2Pair, DstPair, 16); <skip> }
 
-:ABSSP.S1 Src2, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i6=0 & i7=0 & i8=1 & i9=1 & i10=1 & i11=1 & i13=0 & i14=0 & i15=0 & i16=0 & i17=0 & i1=0 & c_is16=0 & Cond & creg!=7 & Src2 & Dst { if (Cond == 0) goto <skip>; c6000_sem_abssp(Src2, Dst); <skip> }
-:ABSSP.S2 Src2, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i6=0 & i7=0 & i8=1 & i9=1 & i10=1 & i11=1 & i13=0 & i14=0 & i15=0 & i16=0 & i17=0 & i1=1 & c_is16=0 & Cond & creg!=7 & Src2 & Dst { if (Cond == 0) goto <skip>; c6000_sem_abssp(Src2, Dst); <skip> }
+:ABSSP.S1 Src2, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i6=0 & i7=0 & i8=1 & i9=1 & i10=1 & i11=1 & i13=0 & i14=0 & i15=0 & i16=0 & i17=0 & i1=0 & c_is16=0 & Cond & creg!=7 & Src2 & Dst { if (Cond == 0) goto <skip>; c6000_sem_abssp(Src2, Dst, 0); <skip> }
+:ABSSP.S2 Src2, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i6=0 & i7=0 & i8=1 & i9=1 & i10=1 & i11=1 & i13=0 & i14=0 & i15=0 & i16=0 & i17=0 & i1=1 & c_is16=0 & Cond & creg!=7 & Src2 & Dst { if (Cond == 0) goto <skip>; c6000_sem_abssp(Src2, Dst, 16); <skip> }
 
 :ADD.L1 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=0 & i10=0 & i9=0 & i8=0 & i7=0 & i6=1 & i5=1 & i1=0 & c_is16=0 & Cond & creg!=7 & Src1 & Src2 & Dst { if (Cond == 0) goto <skip>; c6000_sem_add(Src1, Src2, Dst); <skip> }
 :ADD.L2 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=0 & i10=0 & i9=0 & i8=0 & i7=0 & i6=1 & i5=1 & i1=1 & c_is16=0 & Cond & creg!=7 & Src1 & Src2 & Dst { if (Cond == 0) goto <skip>; c6000_sem_add(Src1, Src2, Dst); <skip> }
@@ -174,11 +174,11 @@
 :CMPEQ4.S1 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i6=0 & i7=0 & i8=1 & i9=1 & i10=1 & i11=0 & i1=0 & c_is16=0 & Cond & creg!=7 & Src1 & Src2 & Dst { if (Cond == 0) goto <skip>; c6000_sem_cmpeq4(Src1, Src2, Dst); <skip> }
 :CMPEQ4.S2 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i6=0 & i7=0 & i8=1 & i9=1 & i10=1 & i11=0 & i1=1 & c_is16=0 & Cond & creg!=7 & Src1 & Src2 & Dst { if (Cond == 0) goto <skip>; c6000_sem_cmpeq4(Src1, Src2, Dst); <skip> }
 
-:CMPEQDP.S1 Src1Pair, Src2Pair, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i6=0 & i7=0 & i8=0 & i9=1 & i10=0 & i11=1 & i1=0 & c_is16=0 & Cond & creg!=7 & Src1Pair & Src2Pair & Dst { if (Cond == 0) goto <skip>; c6000_sem_cmpeqdp(Src1Pair, Src2Pair, Dst); <skip> }
-:CMPEQDP.S2 Src1Pair, Src2Pair, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i6=0 & i7=0 & i8=0 & i9=1 & i10=0 & i11=1 & i1=1 & c_is16=0 & Cond & creg!=7 & Src1Pair & Src2Pair & Dst { if (Cond == 0) goto <skip>; c6000_sem_cmpeqdp(Src1Pair, Src2Pair, Dst); <skip> }
+:CMPEQDP.S1 Src1Pair, Src2Pair, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i6=0 & i7=0 & i8=0 & i9=1 & i10=0 & i11=1 & i1=0 & c_is16=0 & Cond & creg!=7 & Src1Pair & Src2Pair & Dst { if (Cond == 0) goto <skip>; c6000_sem_compare_dp(Src1Pair, Src2Pair, Dst, 0, 0); <skip> }
+:CMPEQDP.S2 Src1Pair, Src2Pair, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i6=0 & i7=0 & i8=0 & i9=1 & i10=0 & i11=1 & i1=1 & c_is16=0 & Cond & creg!=7 & Src1Pair & Src2Pair & Dst { if (Cond == 0) goto <skip>; c6000_sem_compare_dp(Src1Pair, Src2Pair, Dst, 16, 0); <skip> }
 
-:CMPEQSP.S1 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i6=0 & i7=0 & i8=0 & i9=1 & i10=1 & i11=1 & i1=0 & c_is16=0 & Cond & creg!=7 & Src1 & Src2 & Dst { if (Cond == 0) goto <skip>; c6000_sem_cmpeqsp(Src1, Src2, Dst); <skip> }
-:CMPEQSP.S2 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i6=0 & i7=0 & i8=0 & i9=1 & i10=1 & i11=1 & i1=1 & c_is16=0 & Cond & creg!=7 & Src1 & Src2 & Dst { if (Cond == 0) goto <skip>; c6000_sem_cmpeqsp(Src1, Src2, Dst); <skip> }
+:CMPEQSP.S1 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i6=0 & i7=0 & i8=0 & i9=1 & i10=1 & i11=1 & i1=0 & c_is16=0 & Cond & creg!=7 & Src1 & Src2 & Dst { if (Cond == 0) goto <skip>; c6000_sem_compare_sp(Src1, Src2, Dst, 0, 0); <skip> }
+:CMPEQSP.S2 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i6=0 & i7=0 & i8=0 & i9=1 & i10=1 & i11=1 & i1=1 & c_is16=0 & Cond & creg!=7 & Src1 & Src2 & Dst { if (Cond == 0) goto <skip>; c6000_sem_compare_sp(Src1, Src2, Dst, 16, 0); <skip> }
 
 :CMPGT.L1 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=1 & i10=0 & i9=0 & i8=0 & i7=1 & i6=1 & i5=1 & i1=0 & c_is16=0 & Cond & creg!=7 & Src1 & Src2 & Dst { if (Cond == 0) goto <skip>; c6000_sem_cmpgt(Src1, Src2, Dst); <skip> }
 :CMPGT.L2 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=1 & i10=0 & i9=0 & i8=0 & i7=1 & i6=1 & i5=1 & i1=1 & c_is16=0 & Cond & creg!=7 & Src1 & Src2 & Dst { if (Cond == 0) goto <skip>; c6000_sem_cmpgt(Src1, Src2, Dst); <skip> }
@@ -192,11 +192,11 @@
 :CMPGT2.S1 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i6=0 & i7=0 & i8=1 & i9=0 & i10=1 & i11=0 & i1=0 & c_is16=0 & Cond & creg!=7 & Src1 & Src2 & Dst { if (Cond == 0) goto <skip>; c6000_sem_cmpgt2(Src1, Src2, Dst); <skip> }
 :CMPGT2.S2 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i6=0 & i7=0 & i8=1 & i9=0 & i10=1 & i11=0 & i1=1 & c_is16=0 & Cond & creg!=7 & Src1 & Src2 & Dst { if (Cond == 0) goto <skip>; c6000_sem_cmpgt2(Src1, Src2, Dst); <skip> }
 
-:CMPGTDP.S1 Src1Pair, Src2Pair, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i6=1 & i7=0 & i8=0 & i9=1 & i10=0 & i11=1 & i1=0 & c_is16=0 & Cond & creg!=7 & Src1Pair & Src2Pair & Dst { if (Cond == 0) goto <skip>; c6000_sem_cmpgtdp(Src1Pair, Src2Pair, Dst); <skip> }
-:CMPGTDP.S2 Src1Pair, Src2Pair, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i6=1 & i7=0 & i8=0 & i9=1 & i10=0 & i11=1 & i1=1 & c_is16=0 & Cond & creg!=7 & Src1Pair & Src2Pair & Dst { if (Cond == 0) goto <skip>; c6000_sem_cmpgtdp(Src1Pair, Src2Pair, Dst); <skip> }
+:CMPGTDP.S1 Src1Pair, Src2Pair, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i6=1 & i7=0 & i8=0 & i9=1 & i10=0 & i11=1 & i1=0 & c_is16=0 & Cond & creg!=7 & Src1Pair & Src2Pair & Dst { if (Cond == 0) goto <skip>; c6000_sem_compare_dp(Src1Pair, Src2Pair, Dst, 0, 1); <skip> }
+:CMPGTDP.S2 Src1Pair, Src2Pair, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i6=1 & i7=0 & i8=0 & i9=1 & i10=0 & i11=1 & i1=1 & c_is16=0 & Cond & creg!=7 & Src1Pair & Src2Pair & Dst { if (Cond == 0) goto <skip>; c6000_sem_compare_dp(Src1Pair, Src2Pair, Dst, 16, 1); <skip> }
 
-:CMPGTSP.S1 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i6=1 & i7=0 & i8=0 & i9=1 & i10=1 & i11=1 & i1=0 & c_is16=0 & Cond & creg!=7 & Src1 & Src2 & Dst { if (Cond == 0) goto <skip>; c6000_sem_cmpgtsp(Src1, Src2, Dst); <skip> }
-:CMPGTSP.S2 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i6=1 & i7=0 & i8=0 & i9=1 & i10=1 & i11=1 & i1=1 & c_is16=0 & Cond & creg!=7 & Src1 & Src2 & Dst { if (Cond == 0) goto <skip>; c6000_sem_cmpgtsp(Src1, Src2, Dst); <skip> }
+:CMPGTSP.S1 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i6=1 & i7=0 & i8=0 & i9=1 & i10=1 & i11=1 & i1=0 & c_is16=0 & Cond & creg!=7 & Src1 & Src2 & Dst { if (Cond == 0) goto <skip>; c6000_sem_compare_sp(Src1, Src2, Dst, 0, 1); <skip> }
+:CMPGTSP.S2 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i6=1 & i7=0 & i8=0 & i9=1 & i10=1 & i11=1 & i1=1 & c_is16=0 & Cond & creg!=7 & Src1 & Src2 & Dst { if (Cond == 0) goto <skip>; c6000_sem_compare_sp(Src1, Src2, Dst, 16, 1); <skip> }
 
 :CMPGTU.L1 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=1 & i10=0 & i9=0 & i8=1 & i7=1 & i6=1 & i5=1 & i1=0 & c_is16=0 & Cond & creg!=7 & Src1 & Src2 & Dst { if (Cond == 0) goto <skip>; c6000_sem_cmpgtu(Src1, Src2, Dst); <skip> }
 :CMPGTU.L2 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=1 & i10=0 & i9=0 & i8=1 & i7=1 & i6=1 & i5=1 & i1=1 & c_is16=0 & Cond & creg!=7 & Src1 & Src2 & Dst { if (Cond == 0) goto <skip>; c6000_sem_cmpgtu(Src1, Src2, Dst); <skip> }
@@ -219,11 +219,11 @@
 :CMPLT.L1 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=1 & i10=0 & i9=1 & i8=0 & i7=1 & i6=0 & i5=0 & i1=0 & c_is16=0 & Cond & creg!=7 & Src1 & Src2 & Dst { if (Cond == 0) goto <skip>; c6000_sem_cmplt(Src1, Src2, Dst); <skip> }
 :CMPLT.L2 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=1 & i10=0 & i9=1 & i8=0 & i7=1 & i6=0 & i5=0 & i1=1 & c_is16=0 & Cond & creg!=7 & Src1 & Src2 & Dst { if (Cond == 0) goto <skip>; c6000_sem_cmplt(Src1, Src2, Dst); <skip> }
 
-:CMPLTDP.S1 Src1Pair, Src2Pair, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i6=0 & i7=1 & i8=0 & i9=1 & i10=0 & i11=1 & i1=0 & c_is16=0 & Cond & creg!=7 & Src1Pair & Src2Pair & Dst { if (Cond == 0) goto <skip>; c6000_sem_cmpltdp(Src1Pair, Src2Pair, Dst); <skip> }
-:CMPLTDP.S2 Src1Pair, Src2Pair, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i6=0 & i7=1 & i8=0 & i9=1 & i10=0 & i11=1 & i1=1 & c_is16=0 & Cond & creg!=7 & Src1Pair & Src2Pair & Dst { if (Cond == 0) goto <skip>; c6000_sem_cmpltdp(Src1Pair, Src2Pair, Dst); <skip> }
+:CMPLTDP.S1 Src1Pair, Src2Pair, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i6=0 & i7=1 & i8=0 & i9=1 & i10=0 & i11=1 & i1=0 & c_is16=0 & Cond & creg!=7 & Src1Pair & Src2Pair & Dst { if (Cond == 0) goto <skip>; c6000_sem_compare_dp(Src1Pair, Src2Pair, Dst, 0, 2); <skip> }
+:CMPLTDP.S2 Src1Pair, Src2Pair, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i6=0 & i7=1 & i8=0 & i9=1 & i10=0 & i11=1 & i1=1 & c_is16=0 & Cond & creg!=7 & Src1Pair & Src2Pair & Dst { if (Cond == 0) goto <skip>; c6000_sem_compare_dp(Src1Pair, Src2Pair, Dst, 16, 2); <skip> }
 
-:CMPLTSP.S1 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i6=0 & i7=1 & i8=0 & i9=1 & i10=1 & i11=1 & i1=0 & c_is16=0 & Cond & creg!=7 & Src1 & Src2 & Dst { if (Cond == 0) goto <skip>; c6000_sem_cmpltsp(Src1, Src2, Dst); <skip> }
-:CMPLTSP.S2 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i6=0 & i7=1 & i8=0 & i9=1 & i10=1 & i11=1 & i1=1 & c_is16=0 & Cond & creg!=7 & Src1 & Src2 & Dst { if (Cond == 0) goto <skip>; c6000_sem_cmpltsp(Src1, Src2, Dst); <skip> }
+:CMPLTSP.S1 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i6=0 & i7=1 & i8=0 & i9=1 & i10=1 & i11=1 & i1=0 & c_is16=0 & Cond & creg!=7 & Src1 & Src2 & Dst { if (Cond == 0) goto <skip>; c6000_sem_compare_sp(Src1, Src2, Dst, 0, 2); <skip> }
+:CMPLTSP.S2 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=1 & i6=0 & i7=1 & i8=0 & i9=1 & i10=1 & i11=1 & i1=1 & c_is16=0 & Cond & creg!=7 & Src1 & Src2 & Dst { if (Cond == 0) goto <skip>; c6000_sem_compare_sp(Src1, Src2, Dst, 16, 2); <skip> }
 
 :CMPLTU.L1 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=1 & i10=0 & i9=1 & i8=1 & i7=1 & i6=1 & i5=1 & i1=0 & c_is16=0 & Cond & creg!=7 & Src1 & Src2 & Dst { if (Cond == 0) goto <skip>; c6000_sem_cmpltu(Src1, Src2, Dst); <skip> }
 :CMPLTU.L2 Src1, Src2, Dst is i2=0 & i3=1 & i4=1 & i11=1 & i10=0 & i9=1 & i8=1 & i7=1 & i6=1 & i5=1 & i1=1 & c_is16=0 & Cond & creg!=7 & Src1 & Src2 & Dst { if (Cond == 0) goto <skip>; c6000_sem_cmpltu(Src1, Src2, Dst); <skip> }

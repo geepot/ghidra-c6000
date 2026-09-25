@@ -1410,11 +1410,35 @@ macro c6000_sem_set_r(s, v, d) {
 # ---------------------------------------------------------------------------
 # Single-precision floating point and integer conversions - SPRUFE8B
 # section 3.12. These operate on one 32-bit register per operand. Double-
-# precision instructions use register pairs and remain explicit placeholders.
+# precision instructions use register pairs.
 # ---------------------------------------------------------------------------
 
 # SEM: ABSSP
-macro c6000_sem_abssp(a, d) { d = abs(a); }
+macro c6000_sem_abssp(a, d, side) {
+  local raw:4 = a;
+  local exponent:4 = (raw >> 23) & 255;
+  local fraction:4 = raw & 0x7fffff;
+  local flags:4 = 0;
+  local sideShift:4 = side;
+  if (exponent == 255) goto <special>;
+  if (exponent != 0) goto <normal>;
+  if (fraction == 0) goto <normal>;
+  d = 0;
+  flags = 0x88; # INEX | DEN2
+  goto <done>;
+  <normal> d = raw & 0x7fffffff;
+  goto <done>;
+  <special>
+  if (fraction != 0) goto <nan>;
+  d = 0x7f800000;
+  flags = 0x20; # INFO
+  goto <done>;
+  <nan> d = 0x7fffffff;
+  flags = 2; # NAN2
+  if ((fraction & 0x400000) != 0) goto <done>;
+  flags = 0x12; # INVAL | NAN2
+  <done> FAUCR = FAUCR | (flags << sideShift);
+}
 # SEM: ADDSP
 macro c6000_sem_addsp(a, b, d) { d = a f+ b; }
 # SEM: ADDDP
@@ -1712,17 +1736,95 @@ macro c6000_sem_dp_to_int(a, d, side, forceTrunc) {
   FADCR = FADCR | (flags << sideShift);
 }
 # SEM: CMPEQSP
-macro c6000_sem_cmpeqsp(a, b, d) { d = zext(a f== b); }
-# SEM: CMPEQDP
-macro c6000_sem_cmpeqdp(a, b, d) { d = zext(a f== b); }
 # SEM: CMPGTSP
-macro c6000_sem_cmpgtsp(a, b, d) { d = zext(a f> b); }
-# SEM: CMPGTDP
-macro c6000_sem_cmpgtdp(a, b, d) { d = zext(a f> b); }
 # SEM: CMPLTSP
-macro c6000_sem_cmpltsp(a, b, d) { d = zext(a f< b); }
+# kind: equality=0, greater-than=1, less-than=2. Denormals compare as
+# signed zero; NaN comparisons are unordered, with INVAL for ordered tests.
+macro c6000_sem_compare_sp(a, b, d, side, kind) {
+  local left:4 = a;
+  local right:4 = b;
+  local lexp:4 = (left >> 23) & 255;
+  local rexp:4 = (right >> 23) & 255;
+  local lfrac:4 = left & 0x7fffff;
+  local rfrac:4 = right & 0x7fffff;
+  local flags:4 = 0;
+  local sideShift:4 = side;
+  local operation:4 = kind;
+  if (lexp == 255 && lfrac != 0) goto <leftnan>;
+  if (lexp == 0 && lfrac != 0) goto <leftden>;
+  goto <rightclass>;
+  <leftnan> flags = flags | 1;
+  goto <rightclass>;
+  <leftden> flags = flags | 4;
+  left = left & 0x80000000;
+  <rightclass>
+  if (rexp == 255 && rfrac != 0) goto <rightnan>;
+  if (rexp == 0 && rfrac != 0) goto <rightden>;
+  goto <compare>;
+  <rightnan> flags = flags | 2;
+  goto <compare>;
+  <rightden> flags = flags | 8;
+  right = right & 0x80000000;
+  <compare>
+  if ((flags & 3) != 0) goto <unordered>;
+  if (operation == 0) goto <equal>;
+  if (operation == 1) goto <greater>;
+  d = zext(left f< right);
+  goto <done>;
+  <equal> d = zext(left f== right);
+  goto <done>;
+  <greater> d = zext(left f> right);
+  goto <done>;
+  <unordered> d = 0;
+  flags = flags | 0x200;
+  if (operation == 0) goto <done>;
+  flags = flags | 0x10;
+  <done> FAUCR = FAUCR | (flags << sideShift);
+}
+# SEM: CMPEQDP
+# SEM: CMPGTDP
 # SEM: CMPLTDP
-macro c6000_sem_cmpltdp(a, b, d) { d = zext(a f< b); }
+macro c6000_sem_compare_dp(a, b, d, side, kind) {
+  local left:8 = a;
+  local right:8 = b;
+  local lexp:8 = (left >> 52) & 2047;
+  local rexp:8 = (right >> 52) & 2047;
+  local lfrac:8 = left & 0xfffffffffffff;
+  local rfrac:8 = right & 0xfffffffffffff;
+  local flags:4 = 0;
+  local sideShift:4 = side;
+  local operation:4 = kind;
+  if (lexp == 2047 && lfrac != 0) goto <leftnan>;
+  if (lexp == 0 && lfrac != 0) goto <leftden>;
+  goto <rightclass>;
+  <leftnan> flags = flags | 1;
+  goto <rightclass>;
+  <leftden> flags = flags | 4;
+  left = left & 0x8000000000000000;
+  <rightclass>
+  if (rexp == 2047 && rfrac != 0) goto <rightnan>;
+  if (rexp == 0 && rfrac != 0) goto <rightden>;
+  goto <compare>;
+  <rightnan> flags = flags | 2;
+  goto <compare>;
+  <rightden> flags = flags | 8;
+  right = right & 0x8000000000000000;
+  <compare>
+  if ((flags & 3) != 0) goto <unordered>;
+  if (operation == 0) goto <equal>;
+  if (operation == 1) goto <greater>;
+  d = zext(left f< right);
+  goto <done>;
+  <equal> d = zext(left f== right);
+  goto <done>;
+  <greater> d = zext(left f> right);
+  goto <done>;
+  <unordered> d = 0;
+  flags = flags | 0x200;
+  if (operation == 0) goto <done>;
+  flags = flags | 0x10;
+  <done> FAUCR = FAUCR | (flags << sideShift);
+}
 
 # ---------------------------------------------------------------------------
 # Shifts - SPRUFE8B section 3.12, SHL / SHR / SHRU / SSHL.

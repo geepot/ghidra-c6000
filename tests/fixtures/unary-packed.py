@@ -32,12 +32,18 @@ CASES = [
     ("ABSDP", 2, 0x8000000000000001, 0x0000000000000000, 0x88, 0),
     ("ABSDP", 1, 0x7ff8000000000001, 0x7fffffffffffffff, 0x2, 0),
     ("ABSDP", 2, 0xfff0000000000001, 0x7fffffffffffffff, 0x12, 0),
+    ("ABSSP", 1, 0xc0200000, 0x40200000, 0, 0),
+    ("ABSSP", 2, 0x80000000, 0x00000000, 0, 0),
+    ("ABSSP", 1, 0xff800000, 0x7f800000, 0x20, 0),
+    ("ABSSP", 2, 0x80000001, 0x00000000, 0x88, 0),
+    ("ABSSP", 1, 0x7fc00001, 0x7fffffff, 0x2, 0),
+    ("ABSSP", 2, 0xff800001, 0x7fffffff, 0x12, 0),
 ]
 
 
 def opcode(mnemonic, side):
     decode = Path(__file__).resolve().parents[2] / "data/languages/c6000_decode.sinc"
-    unit = "L" if mnemonic in {"ABS2", "SWAP4", "UNPKHU4"} else "S" if mnemonic == "ABSDP" else "M"
+    unit = "L" if mnemonic in {"ABS2", "SWAP4", "UNPKHU4"} else "S" if mnemonic in {"ABSDP", "ABSSP"} else "M"
     prefix = f":{mnemonic}.{unit}{side} "
     line = next(line for line in decode.read_text().splitlines()
                 if line.startswith(prefix))
