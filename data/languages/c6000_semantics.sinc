@@ -1101,6 +1101,17 @@ macro c6000_sem_subsp(a, b, d) { d = a f- b; }
 macro c6000_sem_mpysp(a, b, d) { d = a f* b; }
 # SEM: MPYDP
 macro c6000_sem_mpydp(a, b, d) { d = a f* b; }
+# SEM: MPYSPDP
+macro c6000_sem_mpyspdp(a, b, d) {
+  local converted:8 = float2float(a);
+  d = converted f* b;
+}
+# SEM: MPYSP2DP
+macro c6000_sem_mpysp2dp(a, b, d) {
+  local left:8 = float2float(a);
+  local right:8 = float2float(b);
+  d = left f* right;
+}
 # SEM: INTSP
 macro c6000_sem_intsp(a, d) { d = int2float(a); }
 # SEM: INTSPU

@@ -51,7 +51,7 @@ Full-payload linear sweeps also completed with no zero-width p-code operands:
 
 | Corpus | Payload bytes | Bytes decoded | Instructions | Unimplemented p-code | Undecoded slots | Byte coverage |
 |---|---:|---:|---:|---:|---:|---:|
-| Stage 1 | 55,120 | 40,152 | 10,408 | 15 (<1%) | 3,742 | **72.8%** |
+| Stage 1 | 55,120 | 40,120 | 10,400 | 2 (<1%) | 3,750 | **72.8%** |
 | Stage 2 | 361,248 | 336,000 | 91,490 | 23 (<1%) | 6,312 | **93.0%** |
 
 The sweeps found 24 paired software loops and 43 buffer masks in stage 1,
@@ -156,6 +156,9 @@ products, pair result, and M-unit saturation flags in both endian modes.
 Eight `CMPYR`/`CMPYR1` cases from `tests/fixtures/cmpyr.py` check rounding,
 packing, and M-unit saturation against every TI worked example in both
 endian modes.
+Eight `MPYSPDP`/`MPYSP2DP` cases from
+`tests/fixtures/mixed-float-mpy.py` check mixed-precision sources,
+cross-path register pairs, and double-precision outputs in both endian modes.
 
 `tests/fixtures/paired-alu.py <image.bin> <cases.tsv> [be]` and
 `C6000PairAluTest.java <cases.tsv>` execute 13 `ADDSUB`, `ADDSUB2`, `SADDSUB`,

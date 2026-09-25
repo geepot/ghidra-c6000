@@ -18,8 +18,6 @@ define pcodeop c6000_unimpl_gmpy4;
 define pcodeop c6000_unimpl_mpy2ir;
 define pcodeop c6000_unimpl_mpyihr;
 define pcodeop c6000_unimpl_mpylir;
-define pcodeop c6000_unimpl_mpysp2dp;
-define pcodeop c6000_unimpl_mpyspdp;
 define pcodeop c6000_unimpl_rcpdp;
 define pcodeop c6000_unimpl_rcpsp;
 define pcodeop c6000_unimpl_rpack2;

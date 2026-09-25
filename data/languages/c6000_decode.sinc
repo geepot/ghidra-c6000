@@ -634,11 +634,11 @@
 :MPYSP.M1 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=0 & i6=0 & i7=0 & i8=0 & i9=1 & i10=1 & i11=1 & i1=0 & c_is16=0 & Cond & creg!=7 & Src1 & Src2 & Dst { if (Cond == 0) goto <skip>; c6000_sem_mpysp(Src1, Src2, Dst); <skip> }
 :MPYSP.M2 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=0 & i6=0 & i7=0 & i8=0 & i9=1 & i10=1 & i11=1 & i1=1 & c_is16=0 & Cond & creg!=7 & Src1 & Src2 & Dst { if (Cond == 0) goto <skip>; c6000_sem_mpysp(Src1, Src2, Dst); <skip> }
 
-:MPYSPDP.M1 Src1, Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=0 & i7=1 & i8=1 & i9=0 & i10=1 & i11=0 & i1=0 & c_is16=0 & Cond & creg!=7 & Src1 & Src2 & Dst { if (Cond == 0) goto <skip>; c6000_unimpl_mpyspdp(); <skip> }
-:MPYSPDP.M2 Src1, Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=0 & i7=1 & i8=1 & i9=0 & i10=1 & i11=0 & i1=1 & c_is16=0 & Cond & creg!=7 & Src1 & Src2 & Dst { if (Cond == 0) goto <skip>; c6000_unimpl_mpyspdp(); <skip> }
+:MPYSPDP.M1 Src1, Src2Pair, DstPair is i2=0 & i3=0 & i4=1 & i5=1 & i6=0 & i7=1 & i8=1 & i9=0 & i10=1 & i11=0 & i1=0 & c_is16=0 & Cond & creg!=7 & Src1 & Src2Pair & DstPair { if (Cond == 0) goto <skip>; c6000_sem_mpyspdp(Src1, Src2Pair, DstPair); <skip> }
+:MPYSPDP.M2 Src1, Src2Pair, DstPair is i2=0 & i3=0 & i4=1 & i5=1 & i6=0 & i7=1 & i8=1 & i9=0 & i10=1 & i11=0 & i1=1 & c_is16=0 & Cond & creg!=7 & Src1 & Src2Pair & DstPair { if (Cond == 0) goto <skip>; c6000_sem_mpyspdp(Src1, Src2Pair, DstPair); <skip> }
 
-:MPYSP2DP.M1 Src1, Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=1 & i7=1 & i8=1 & i9=0 & i10=1 & i11=0 & i1=0 & c_is16=0 & Cond & creg!=7 & Src1 & Src2 & Dst { if (Cond == 0) goto <skip>; c6000_unimpl_mpysp2dp(); <skip> }
-:MPYSP2DP.M2 Src1, Src2, Dst is i2=0 & i3=0 & i4=1 & i5=1 & i6=1 & i7=1 & i8=1 & i9=0 & i10=1 & i11=0 & i1=1 & c_is16=0 & Cond & creg!=7 & Src1 & Src2 & Dst { if (Cond == 0) goto <skip>; c6000_unimpl_mpysp2dp(); <skip> }
+:MPYSP2DP.M1 Src1, Src2, DstPair is i2=0 & i3=0 & i4=1 & i5=1 & i6=1 & i7=1 & i8=1 & i9=0 & i10=1 & i11=0 & i1=0 & c_is16=0 & Cond & creg!=7 & Src1 & Src2 & DstPair { if (Cond == 0) goto <skip>; c6000_sem_mpysp2dp(Src1, Src2, DstPair); <skip> }
+:MPYSP2DP.M2 Src1, Src2, DstPair is i2=0 & i3=0 & i4=1 & i5=1 & i6=1 & i7=1 & i8=1 & i9=0 & i10=1 & i11=0 & i1=1 & c_is16=0 & Cond & creg!=7 & Src1 & Src2 & DstPair { if (Cond == 0) goto <skip>; c6000_sem_mpysp2dp(Src1, Src2, DstPair); <skip> }
 
 :MPYSU.M1 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=0 & i6=0 & i11=1 & i10=1 & i9=0 & i8=1 & i7=1 & i1=0 & c_is16=0 & Cond & creg!=7 & Src1 & Src2 & Dst { if (Cond == 0) goto <skip>; c6000_sem_mpysu(Src1, Src2, Dst); <skip> }
 :MPYSU.M2 Src1, Src2, Dst is i2=0 & i3=0 & i4=0 & i5=0 & i6=0 & i11=1 & i10=1 & i9=0 & i8=1 & i7=1 & i1=1 & c_is16=0 & Cond & creg!=7 & Src1 & Src2 & Dst { if (Cond == 0) goto <skip>; c6000_sem_mpysu(Src1, Src2, Dst); <skip> }
