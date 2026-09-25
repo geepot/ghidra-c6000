@@ -1,12 +1,26 @@
 # Changelog
 
-## 1.0.0 - unreleased
+## Unreleased
+
+### Documentation
+* The README is now a short overview (install, quick start, features and
+  limitations, build, testing). Measured coverage and test fixtures moved to
+  `docs/verification.md`, packet, delay-slot, branch and ABI internals to
+  `docs/internals.md`, and the detailed limitations (including the
+  software-loop model) to `docs/limitations.md`.
+* Added `CONTRIBUTING.md` and a "wrong decode or semantics" issue template.
+* The ELF loader opinion is documented as matching little-endian files only.
+
+## 1.0.0 - 2026-09-25
 
 First public release.
 
 ### Added
 * `C6000:LE:32:default` and `C6000:BE:32:default` SLEIGH languages for the
   TMS320C674x DSP and, by subsetting, the C64x, C64x+, C67x and C67x+ parts.
+* `C6000:LE:32:analysis` and `C6000:BE:32:analysis` variants with native
+  single-precision p-code and an opaque status userop, for reading
+  float-heavy code.
 * Broad 32-bit instruction decode generated from the SPRUFE8B section 3.12
   opcode tables, with unresolved encodings left undefined for investigation.
 * Compact 16-bit instruction decode driven by the fetch-packet header word,
