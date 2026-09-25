@@ -13,6 +13,17 @@ definitions and generators identify their source figures and tables. See
 disassembler source was copied, which is what makes the Apache-2.0 licence
 below possible.
 
+## Install
+
+1. Download `ghidra_<version>_PUBLIC_<date>_C6000.zip` for your Ghidra version from
+   [Releases](../../releases), or build it (see [Build](#build)).
+2. In Ghidra: *File → Install Extensions*, **+**, pick the zip, restart Ghidra.
+3. Import a C6000 ELF (the loader picks `C6000:LE:32:default` automatically) or a raw
+   image: choose `C6000:LE:32:default` (or `BE`) and set the load address.
+
+The zip is tied to the Ghidra version it was built against; rebuild it for any other
+12.x release.
+
 ## Status
 
 This is a **working decoder with staged semantics**. The firmware measurements
@@ -122,9 +133,8 @@ check register and immediate `SSHL.S`, including CSR.SAT, in both endian modes.
 
 The stage images are **not** in this repository. The test accepts an external
 image path and base address, so private firmware can be measured without being
-committed; regenerate the images with
-`tools/cdj_dsp_image.py` from the CDJ-2000NXS research project and point
-`C6000CorpusTest.java` at them.
+committed; extract the code images from the firmware with your own tooling
+and point `C6000CorpusTest.java` at them.
 
 Compact decode is driven by the packet header through the `noflow` context
 fields described below. The 32-bit table covers the documented opcode maps;
@@ -651,13 +661,14 @@ data/languages/          c6000.sinc (framework), c6000_decode.sinc (generated),
                          c6000_manual.sinc, c6000_compact.sinc, c6000_memory.sinc,
                          c6000_semantics.sinc,
                          c6000_placeholders.sinc (generated), ldefs/pspec/cspec/opinion
-ghidra_scripts/          C6000CorpusTest.java, C6000SoftwareLoopTest.java,
-                         C6000LoopReplay.java, C6000LoopModelTest.java
-src/main/java/c6000/     C6000PacketContext.java, C6000PacketAnalyzer.java,
-                         C6000SoftwareLoops.java, C6000SoftwareLoopAnalyzer.java,
-                         C6000LoopBuffer.java
-tools/                   build.sh, gen_decode.py, gen_memory.py, build_encodings.py,
-                         oracle_compare.py, gen_fid.py
+ghidra_scripts/          C6000*Test.java checks (one per fixture family), C6000CorpusTest.java,
+                         C6000LoopReplay.java, analysis/decompiler audits
+src/main/java/c6000/     packet context, packet/call/return/register-branch/software-loop
+                         analyzers, software-loop model (C6000SoftwareLoops, C6000LoopBuffer)
+tests/fixtures/          generators for the fixture images and expected-result tables
+docs/                    software-loop conformance notes
+tools/                   build.sh, generators (gen_*.py, build_encodings.py, parse_encodings.py),
+                         GNU-oracle comparison and audit scripts
 .github/workflows/       build.yml
 ```
 
@@ -666,6 +677,18 @@ tools/                   build.sh, gen_decode.py, gen_memory.py, build_encodings
 (`tools/build_encodings.py`); `c6000_memory.sinc` comes from
 `tools/gen_memory.py`. They are committed so the extension builds without the
 manual; edit their generators rather than the generated files.
+
+## Contributing
+
+Issues and pull requests are welcome. Keep changes traceable:
+
+- Cite the SPRUFE8B (or SPRU732J) figure, table or section behind every encoding or
+  semantic change, in the code comment and the commit message. Never copy code from
+  another disassembler (see [`NOTICE.md`](NOTICE.md)); binutils and Capstone are oracles only.
+- Edit the generators (`tools/gen_*.py`), not the generated `.sinc` files.
+- Add a fixture under `tests/fixtures/` and a `ghidra_scripts/C6000*Test.java` check for
+  new semantics, and run `tools/build.sh` before opening a PR.
+- Do not commit firmware, TI manuals or text extracted from them.
 
 ## Licence
 
