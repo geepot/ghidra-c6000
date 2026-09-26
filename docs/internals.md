@@ -82,7 +82,11 @@ encoding `creg=7, z=0` (Table 3-9), so no valid 32-bit instruction matches it.
   the branch a CALL flow override and a fall-through into its delay slots,
   adds a call reference for a register target loaded by `MVK`/`MVKH` in the
   preceding straight-line code, and recomputes the caller's body. Predicated
-  calls stay conditional; `B B3` stays a return. It also reclaims
+  calls stay conditional; `B B3` stays a return. The TI compiler's if/else
+  call pairs are recognised: a branch inside the window is allowed when its
+  predicate is the exact opposite of the call's, `B3` may be set before the
+  branch, and reaching the return address `B3` already holds ends the window
+  (compact packets can skew the cycle count). It also reclaims
   `CALL_RETURN` tail calls that Ghidra guessed before the delay slots were
   understood, but never one whose callee is marked no-return or whose call
   form is terminal, since another analyzer would flip it back and the two
@@ -103,7 +107,8 @@ branch/call forms in both endian modes, including conditional versus
 unconditional flow types and a `BNOP` in a header-based packet. The
 `delayed-call.py` fixture and `C6000DelayedCallTest.java` check, after
 auto-analysis in both endian modes, an `ADDKPC` immediate call and an
-`MVK`/`MVKH` register call: both fall through into their delay slots, keep
+`MVK`/`MVKH` register call, plus an if/else pair of predicated calls with
+`B3` set before the first arm: all fall through into their delay slots, keep
 the code after the return point in the caller, and make the callee a
 function. Ten stage 2 firmware branch/call sites, including
 compact forms, also passed the RAM flow check. On a fresh stage 1 raw import

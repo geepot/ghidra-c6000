@@ -197,8 +197,8 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 				back = prior;
 			}
 			for (Instruction insn : before) {
-				if (insn.getFlowType().isJump() || insn.getFlowType().isCall() ||
-					insn.getFlowType().isTerminal()) {
+				if ((insn.getFlowType().isJump() || insn.getFlowType().isCall() ||
+					insn.getFlowType().isTerminal()) && !complementary(insn, branch)) {
 					regs.remove(program.getRegister("B3"));
 				}
 				track(insn, regs);
@@ -213,21 +213,28 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 
 			// The rest of the branch's execute packet, then five delay cycles.
 			Register b3 = program.getRegister("B3");
-			boolean wroteB3 = false;
 			Instruction current = branch;
 			int cycles = 0;
 			int seen = 0;
 			boolean branchPacket = true;
 			try {
-				while (cycles < DELAY_CYCLES) {
+				window: while (cycles < DELAY_CYCLES) {
 					int packetCycles = 1;
 					do {
 						if (branchPacket && !parallelWithNext(current)) break;
 						Instruction next = next(current);
-						if (next == null || ++seen > MAX_WINDOW ||
-							next.getFlowType().isJump() || next.getFlowType().isCall() ||
-							next.getFlowType().isTerminal()) return null;
-						if (track(next, regs) == b3) wroteB3 = true;
+						if (next == null || ++seen > MAX_WINDOW) return null;
+						// Reaching the return address B3 already holds ends the
+						// window, even where compact packets skew the cycle count.
+						long[] ra = regs.get(b3);
+						if (ra != null && ra[1] == FULL &&
+							next.getMinAddress().getOffset() == ra[0]) break window;
+						// A branch in the window must be the other arm of an
+						// if/else call pair: exactly the opposite predicate.
+						if ((next.getFlowType().isJump() || next.getFlowType().isCall() ||
+							next.getFlowType().isTerminal()) &&
+							!complementary(branch, next)) return null;
+						track(next, regs);
 						packetCycles = Math.max(packetCycles, 1 + extraCycles(next));
 						current = next;
 					} while (parallelWithNext(current));
@@ -239,7 +246,9 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 				return null;
 			}
 			long[] ret = regs.get(b3);
-			if (!wroteB3 || ret == null || ret[1] != FULL) return null;
+			// B3 may be set before the branch too; the look-back forgets it at
+			// every earlier branch, so a known value here belongs to this call.
+			if (ret == null || ret[1] != FULL) return null;
 			long branchAt = branch.getMinAddress().getOffset();
 			long windowEnd = current.getMaxAddress().getOffset() + 1;
 			if (ret[0] < branchAt + 4 || ret[0] > windowEnd + 8) return null;
@@ -323,6 +332,20 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 			}
 			return ((header >>> ((address.getOffset() - base) / 2)) & 1) != 0;
 		}
+	}
+
+	/** True when two predicated instructions test the same register with opposite senses. */
+	static boolean complementary(Instruction a, Instruction b) {
+		String p = predicate(a), q = predicate(b);
+		if (p == null || q == null) return false;
+		return p.replace("!", "").equals(q.replace("!", "")) &&
+			p.startsWith("!") != q.startsWith("!");
+	}
+
+	private static String predicate(Instruction insn) {
+		String name = insn.getMnemonicString();
+		int end = name.indexOf(']');
+		return name.startsWith("[") && end > 0 ? name.substring(1, end) : null;
 	}
 
 	/** Cycles beyond the first that an instruction idles its execute packet. */

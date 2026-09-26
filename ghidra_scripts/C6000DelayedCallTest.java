@@ -9,9 +9,14 @@ import ghidra.program.model.symbol.Reference;
 public class C6000DelayedCallTest extends GhidraScript {
 	@Override
 	protected void run() throws Exception {
-		for (long site : new long[] { 0x1008L, 0x1018L }) {
+		// The if/else pair is its own routine; the entry never reaches it.
+		disassemble(toAddr(0x1040L));
+		createFunction(toAddr(0x1040L), null);
+		analyzeChanges(currentProgram);
+		for (long site : new long[] { 0x1008L, 0x1018L, 0x1048L, 0x104cL }) {
 			Instruction call = getInstructionAt(toAddr(site));
 			if (call == null || !call.getFlowType().isCall() ||
+				(site >= 0x1048L) != call.getFlowType().isConditional() ||
 				!toAddr(site + 4).equals(call.getFallThrough())) {
 				throw new AssertionError("call at " + toAddr(site) + ": " + call +
 					(call == null ? "" : " flow=" + call.getFlowType() +

@@ -11,6 +11,10 @@
   form, and unconditional immediate calls, which previously had no
   fall-through and left their delay slots and the code after the return
   point undecoded.
+* Predicated `B` calls are recognised in the compiler's if/else call-pair
+  form (the other arm in the delay slots, `B3` set before the branch);
+  unrecognised predicated immediate calls on the CDJ-2000NXS DSP dropped
+  from 30 to 5, all overlapping-branch schedules that are not clear calls.
 * Ghidra's heuristic non-returning-function discovery is disabled for the
   C6000 languages. It marked returning functions no-return because a call's
   delay slots and return point are not decoded until the call is
