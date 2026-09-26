@@ -51,6 +51,7 @@ public class C6000LateBranchAnalyzer extends AbstractAnalyzer {
 		// Calls need only the new code; the whole-program walk runs once per
 		// analysis cycle and dominated firmware analysis time.
 		new C6000CallAnalyzer().added(program, set, monitor, log);
+		C6000JumpTableAnalyzer.recover(program, set, monitor, log);
 		new C6000ReturnAnalyzer().added(program, all, monitor, log);
 		new C6000RegisterBranchAnalyzer().added(program, all, monitor, log);
 		return true;

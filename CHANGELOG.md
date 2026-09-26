@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+### Added
+* `C6000JumpTableAnalyzer` recovers the TI compiler's switch dispatch
+  (guarded `LDW` from an `MVK`/`MVKH` table, then `B`/`BNOP` through the
+  entry), which Ghidra's decompiler could not bound. On the CDJ-2000NXS DSP
+  all 9 such tables are recovered with their exact case counts; code outside
+  any function drops from 16,005 to 10,311 instructions.
+
 ### Fixed
 * A 32-bit `BNOP` in a header-based (compact) fetch packet scaled its
   displacement by four instead of two, sending its CFG edge into the middle

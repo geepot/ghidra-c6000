@@ -113,6 +113,27 @@ encoding `creg=7, z=0` (Table 3-9), so no valid 32-bit instruction matches it.
   redecodes them as terminal branches or returns before Decompiler Switch
   Analysis so the decompiler sees their actual control flow.
 
+* Switch tables. The TI compiler dispatches a switch with a guard
+  (`CMPLTU K,idx` or `CMPGTU idx,K`, `K` an immediate or a constant
+  register), an `MVK`/`MVKH` table base, the scaled index added in, a
+  predicated `LDW` of the entry and `B`/`BNOP` through it, with the
+  out-of-range branch in the delay slots. Ghidra's decompiler finds such a
+  table but cannot bound it through the predicated delay-slot code ("Too
+  many branches"). `C6000JumpTableAnalyzer` recognises the idiom with the
+  delayed-call analyzer's look-back, reads the `K+1` entries (stopping early
+  at a word that is not an even address in the dispatching block; with no
+  guard it recovers nothing), adds them as computed-jump references, decodes
+  them and writes a jump-table override so the decompiler emits the
+  `switch`. It runs for each new function, so a function a script creates
+  later still gets its override, and the late branch pass decodes the cases
+  of newly found code. It never rewrites an existing override or refixes an
+  unchanged body; doing so retriggered function analysis without end.
+
+The `jump-table.py` fixture and `C6000JumpTableTest.java` check, in both
+endian modes, that a guarded three-case dispatch gets exactly its three
+targets although a fourth valid code address follows the table, and that the
+decompiler emits the `switch`.
+
 The `branch-flow.py` fixture and `C6000FlowTargetTest.java` check eight direct
 branch/call forms in both endian modes, including conditional versus
 unconditional flow types and a `BNOP` in a header-based packet. The

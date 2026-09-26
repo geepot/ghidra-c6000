@@ -65,7 +65,7 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 	private static final int DELAY_CYCLES = 5;
 	private static final int LOOK_BACK = 40;
 	private static final int MAX_WINDOW = 24;
-	private static final int LOW = 1, HIGH = 2, FULL = LOW | HIGH;
+	static final int LOW = 1, HIGH = 2, FULL = LOW | HIGH;
 
 	public C6000CallAnalyzer() {
 		super("C6000 Delayed Calls",
@@ -197,7 +197,7 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 	 * Walks the instructions around a branch, decoding bytes that the
 	 * listing does not yet hold, and tracks MVK/MVKH/ADDKPC constants.
 	 */
-	private static final class Walker {
+	static final class Walker {
 		private final Program program;
 		private final Listing listing;
 		private final PseudoDisassembler pseudo;
@@ -297,7 +297,7 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 		 * ponytail: no flow merge; a far-call constant is almost always loaded
 		 * a few packets before the B.
 		 */
-		private List<Instruction> lookBack(Instruction branch) {
+		List<Instruction> lookBack(Instruction branch) {
 			Address at = branch.getMinAddress();
 			MemoryBlock block = program.getMemory().getBlock(at);
 			List<Instruction> before = new ArrayList<>();
@@ -351,7 +351,7 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 		}
 
 		/** Apply one instruction to the constant map; returns the constant register written. */
-		private Register track(Instruction insn, Map<Register, long[]> regs) {
+		Register track(Instruction insn, Map<Register, long[]> regs) {
 			String op = baseName(insn);
 			int dot = op.indexOf('.');
 			String name = dot < 0 ? op : op.substring(0, dot);
@@ -371,11 +371,14 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 				regs.put(to, copied);
 				return to;
 			}
-			if (dst == null || value == null || insn.getLength() != 4) return null;
+			if (dst == null || value == null) return null;
+			// Compact (16-bit) forms carry only small MVK constants.
+			if (insn.getLength() != 4 && !name.equals("MVK")) return null;
 			long v = value;
 			switch (name) {
 				case "MVK", "MVKL" -> {
-					if (!op.startsWith("MVK.S") && !op.startsWith("MVKL.S")) return null;
+					if (insn.getLength() == 4 && !op.startsWith("MVK.S") &&
+						!op.startsWith("MVKL.S")) return null;
 					regs.put(dst, new long[] { (short) v, FULL });
 				}
 				case "MVKH" -> {
