@@ -90,9 +90,7 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 			Instruction branch = instructions.next();
 			String op = baseName(branch);
 			if ((op.equals("B.S1") || op.equals("B.S2")) &&
-				// Only unclassified branches: Ghidra's no-return analysis turns a
-				// call into CALL_RETURN, and re-overriding it would loop forever.
-				branch.getFlowOverride() == FlowOverride.NONE &&
+				reclassifiable(program, branch) &&
 				!"B3".equals(branch.getDefaultOperandRepresentation(0))) {
 				branches.add(branch.getAddress());
 			}
@@ -146,6 +144,24 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 			CreateFunctionCmd.fixupFunctionBody(program, caller, monitor);
 		}
 		if (recovered > 0) log.appendMsg(getName(), "recovered " + recovered + " delayed call(s)");
+		return true;
+	}
+
+	/**
+	 * Unclassified branches, and CALL_RETURN tail calls that Ghidra's
+	 * shared-return logic guessed before the delay slots were understood.
+	 * A no-return callee or a terminal call form is left alone: re-overriding
+	 * either lets another analyzer flip it back, and the two loop forever.
+	 */
+	private static boolean reclassifiable(Program program, Instruction branch) {
+		FlowOverride override = branch.getFlowOverride();
+		if (override == FlowOverride.NONE) return true;
+		if (override != FlowOverride.CALL_RETURN ||
+			branch.getPrototype().getFlowType(branch.getInstructionContext()).isTerminal()) return false;
+		for (Address target : branch.getFlows()) {
+			Function callee = program.getFunctionManager().getFunctionAt(target);
+			if (callee != null && callee.hasNoReturn()) return false;
+		}
 		return true;
 	}
 

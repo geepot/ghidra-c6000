@@ -11,6 +11,11 @@
   form, and unconditional immediate calls, which previously had no
   fall-through and left their delay slots and the code after the return
   point undecoded.
+* Ghidra's heuristic non-returning-function discovery is disabled for the
+  C6000 languages. It marked returning functions no-return because a call's
+  delay slots and return point are not decoded until the call is
+  recognised, then cleared that code; 203 calls on the CDJ-2000NXS DSP lost
+  their fall-through this way.
 
 ### Documentation
 * The README is now a short overview (install, quick start, features and

@@ -82,10 +82,16 @@ encoding `creg=7, z=0` (Table 3-9), so no valid 32-bit instruction matches it.
   the branch a CALL flow override and a fall-through into its delay slots,
   adds a call reference for a register target loaded by `MVK`/`MVKH` in the
   preceding straight-line code, and recomputes the caller's body. Predicated
-  calls stay conditional; `B B3` stays a return. It only reclassifies
-  branches with no flow override: when Ghidra's non-returning-function
-  analysis has already made a call `CALL_RETURN`, it is left alone, since
-  overriding it back makes the two analyzers loop. A separate
+  calls stay conditional; `B B3` stays a return. It also reclaims
+  `CALL_RETURN` tail calls that Ghidra guessed before the delay slots were
+  understood, but never one whose callee is marked no-return or whose call
+  form is terminal, since another analyzer would flip it back and the two
+  would loop. The processor spec disables Ghidra's heuristic
+  "Non-Returning Functions - Discovered" analyzer (`enableNoReturnAnalysis`):
+  it walks the static fall-through after each call, which on C6000 is
+  undecoded until the call is recognised, so it marked returning functions
+  no-return and then cleared the code that disproved it. The name-based
+  "Known" analyzer still runs. A separate
   early analyzer classifies branches through the ABI return register `B3` as
   returns before Ghidra's switch analysis. Unpredicated `B`/`BNOP` register
   branches retain conservative fall-through during code discovery; an analyzer
