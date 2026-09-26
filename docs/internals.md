@@ -81,7 +81,14 @@ encoding `creg=7, z=0` (Table 3-9), so no valid 32-bit instruction matches it.
   delay window. It decodes the delay slots itself when Ghidra has not, gives
   the branch a CALL flow override and a fall-through into its delay slots,
   adds a call reference for a register target loaded by `MVK`/`MVKH` in the
-  preceding straight-line code, and recomputes the caller's body. Predicated
+  preceding straight-line code, and recomputes the caller's body. That
+  look-back decodes forward from about 40 words earlier, so constants in the
+  undecoded delay slots of an earlier jump (or in code words that analysis
+  typed as pointers) still count; it follows `MV` and `ADD`/`OR` of zero,
+  skips instructions predicated opposite to the branch, and ignores the
+  p-code a compact branch borrows from its parallel followers. A register
+  call recognised before its constants were decoded is revisited when code
+  just before it appears. Predicated
   calls stay conditional; `B B3` stays a return. The TI compiler's if/else
   call pairs are recognised: a branch inside the window is allowed when its
   predicate is the exact opposite of the call's, `B3` may be set before the

@@ -15,6 +15,12 @@
   form (the other arm in the delay slots, `B3` set before the branch);
   unrecognised predicated immediate calls on the CDJ-2000NXS DSP dropped
   from 30 to 5, all overlapping-branch schedules that are not clear calls.
+* Register calls get their `MVK`/`MVKH` target reference in far more cases:
+  the look-back now decodes undecoded delay slots and pointer-typed code
+  words, follows register moves, skips oppositely predicated writes, and is
+  retried when earlier code appears. Register calls without a target on the
+  CDJ-2000NXS DSP dropped from 42 to 21; the rest load the target from
+  memory or another routine.
 * Ghidra's heuristic non-returning-function discovery is disabled for the
   C6000 languages. It marked returning functions no-return because a call's
   delay slots and return point are not decoded until the call is

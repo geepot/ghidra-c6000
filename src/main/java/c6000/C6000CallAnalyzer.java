@@ -31,6 +31,8 @@ import ghidra.app.util.PseudoDisassembler;
 import ghidra.app.util.importer.MessageLog;
 import ghidra.program.disassemble.Disassembler;
 import ghidra.program.model.address.Address;
+import ghidra.program.model.address.AddressRange;
+import ghidra.program.model.address.AddressSet;
 import ghidra.program.model.address.AddressSetView;
 import ghidra.program.model.lang.Register;
 import ghidra.program.model.listing.FlowOverride;
@@ -40,6 +42,7 @@ import ghidra.program.model.listing.InstructionIterator;
 import ghidra.program.model.listing.Listing;
 import ghidra.program.model.listing.Program;
 import ghidra.program.model.mem.MemoryAccessException;
+import ghidra.program.model.mem.MemoryBlock;
 import ghidra.program.model.scalar.Scalar;
 import ghidra.program.model.symbol.RefType;
 import ghidra.program.model.symbol.Reference;
@@ -84,13 +87,21 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 			MessageLog log) throws CancelledException {
 		Listing listing = program.getListing();
 		List<Address> branches = new ArrayList<>();
-		InstructionIterator instructions = listing.getInstructions(set, true);
+		// Code decoded just before an earlier call can supply its MVK/MVKH
+		// target, so revisit the look-back distance past each new range.
+		AddressSet scan = new AddressSet(set);
+		for (AddressRange range : set.getAddressRanges()) {
+			Address end = range.getMaxAddress();
+			long room = end.getAddressSpace().getMaxAddress().subtract(end);
+			scan.add(end, end.add(Math.min(room, LOOK_BACK * 4L)));
+		}
+		InstructionIterator instructions = listing.getInstructions(scan, true);
 		while (instructions.hasNext()) {
 			monitor.checkCancelled();
 			Instruction branch = instructions.next();
 			String op = baseName(branch);
 			if ((op.equals("B.S1") || op.equals("B.S2")) &&
-				reclassifiable(program, branch) &&
+				(reclassifiable(program, branch) || missingTarget(branch)) &&
 				!"B3".equals(branch.getDefaultOperandRepresentation(0))) {
 				branches.add(branch.getAddress());
 			}
@@ -107,6 +118,8 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 			if (branch == null) continue;
 			Call call = walker.recognize(branch);
 			if (call == null) continue;
+			boolean known = branch.getFlowOverride() == FlowOverride.CALL;
+			if (known && call.target() == null) continue;
 			branch.setFlowOverride(FlowOverride.CALL);
 			Address next = branch.getMaxAddress().next();
 			if (branch.getFallThrough() == null) branch.setFallThrough(next);
@@ -114,17 +127,17 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 			Function caller = listing.getFunctionContaining(at);
 			if (caller != null) callers.add(caller);
 			if (call.target() != null) {
-				boolean known = false;
+				boolean referenced = false;
 				for (Reference ref : branch.getReferencesFrom()) {
 					if (!ref.getReferenceType().isFlow()) continue;
 					if (ref.getToAddress().equals(call.target()) && ref.getReferenceType().isCall()) {
-						known = true;
+						referenced = true;
 					}
 					else if (ref.getReferenceType().isJump()) {
 						program.getReferenceManager().delete(ref);
 					}
 				}
-				if (!known) {
+				if (!referenced) {
 					program.getReferenceManager().addMemoryReference(at, call.target(),
 						RefType.COMPUTED_CALL, SourceType.ANALYSIS, 0);
 				}
@@ -136,7 +149,7 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 				if (listing.getInstructionAt(callee) == null) analysis.disassemble(callee);
 				analysis.createFunction(callee, false);
 			}
-			recovered++;
+			if (!known) recovered++;
 		}
 		// A body computed while the B was a jump stops at it or swallows the callee.
 		for (Function caller : callers) {
@@ -165,6 +178,17 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 		return true;
 	}
 
+	/** A register call recognised before its target's MVK/MVKH was decoded. */
+	private static boolean missingTarget(Instruction branch) {
+		if (branch.getFlowOverride() != FlowOverride.CALL || branch.getRegister(0) == null) {
+			return false;
+		}
+		for (Reference ref : branch.getReferencesFrom()) {
+			if (ref.getReferenceType().isCall()) return false;
+		}
+		return true;
+	}
+
 	/** A recognised call; {@code target} is set for a register branch with a known value. */
 	private record Call(Address target) {
 	}
@@ -177,6 +201,12 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 		private final Program program;
 		private final Listing listing;
 		private final PseudoDisassembler pseudo;
+		/**
+		 * Decode through defined data. Only the look-back does: analysis can
+		 * type code words as pointers, and there a misread merely loses a
+		 * constant, while the delay window decides whether a call exists.
+		 */
+		private boolean throughData;
 
 		Walker(Program program) {
 			this.program = program;
@@ -186,19 +216,11 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 
 		Call recognize(Instruction branch) {
 			Map<Register, long[]> regs = new HashMap<>();
-			// ponytail: straight-line look-back, no flow merge; a far-call
-			// constant is almost always loaded a few packets before the B.
-			List<Instruction> before = new ArrayList<>();
-			Instruction back = branch;
-			for (int i = 0; i < LOOK_BACK; i++) {
-				Instruction prior = listing.getInstructionBefore(back.getMinAddress());
-				if (prior == null || !adjacent(prior, back)) break;
-				before.add(0, prior);
-				back = prior;
-			}
-			for (Instruction insn : before) {
-				if ((insn.getFlowType().isJump() || insn.getFlowType().isCall() ||
-					insn.getFlowType().isTerminal()) && !complementary(insn, branch)) {
+			for (Instruction insn : lookBack(branch)) {
+				// Never executes when the branch does.
+				if (complementary(insn, branch)) continue;
+				if (insn.getFlowType().isJump() || insn.getFlowType().isCall() ||
+					insn.getFlowType().isTerminal()) {
 					regs.remove(program.getRegister("B3"));
 				}
 				track(insn, regs);
@@ -258,6 +280,68 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 			return new Call(callee);
 		}
 
+		/**
+		 * The straight-line code before a branch, oldest first. It is decoded
+		 * forward from a fetch packet about {@link #LOOK_BACK} words back, so
+		 * the delay slots of an earlier jump, which Ghidra leaves undecoded,
+		 * still count; if that walk does not land on the branch, fall back to
+		 * the adjacent listing instructions.
+		 * ponytail: no flow merge; a far-call constant is almost always loaded
+		 * a few packets before the B.
+		 */
+		private List<Instruction> lookBack(Instruction branch) {
+			Address at = branch.getMinAddress();
+			MemoryBlock block = program.getMemory().getBlock(at);
+			List<Instruction> before = new ArrayList<>();
+			if (block != null) {
+				long start = Math.max(block.getStart().getOffset(),
+					(at.getOffset() - LOOK_BACK * 4L) & ~31L);
+				throughData = true;
+				Instruction insn;
+				try {
+					insn = decode(at.getNewAddress(start));
+					if (insn != null && insn.getMnemonicString().equals("CPKT")) insn = next(insn);
+					while (insn != null && insn.getMinAddress().compareTo(at) < 0) {
+						before.add(insn);
+						insn = next(insn);
+					}
+				}
+				finally {
+					throughData = false;
+				}
+				if (insn != null && insn.getMinAddress().equals(at)) return before;
+				before.clear();
+			}
+			Instruction back = branch;
+			for (int i = 0; i < LOOK_BACK; i++) {
+				Instruction prior = listing.getInstructionBefore(back.getMinAddress());
+				if (prior == null || !adjacent(prior, back)) break;
+				before.add(0, prior);
+				back = prior;
+			}
+			return before;
+		}
+
+		/**
+		 * The known value an instruction copies between registers: MV, or the
+		 * compiler's ADD/OR of zero. Null when it is not a copy of a known value.
+		 */
+		private static long[] copySource(Instruction insn, String name, Map<Register, long[]> regs) {
+			int n = insn.getNumOperands();
+			Register src;
+			if (name.equals("MV") && n == 2) src = insn.getRegister(0);
+			else if ((name.equals("ADD") || name.equals("OR")) && n == 3 &&
+				insn.getScalar(0) != null && insn.getScalar(0).getValue() == 0) {
+				src = insn.getRegister(1);
+			}
+			else return null;
+			if (src == null || insn.getRegister(n - 1) == null || insn.getMnemonicString().startsWith("[")) {
+				return null;
+			}
+			long[] value = regs.get(src);
+			return value == null ? null : value.clone();
+		}
+
 		/** Apply one instruction to the constant map; returns the constant register written. */
 		private Register track(Instruction insn, Map<Register, long[]> regs) {
 			String op = baseName(insn);
@@ -266,8 +350,18 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 			Register dst = insn.getNumOperands() >= 2 ? insn.getRegister(1) : null;
 			Long value = insn.getNumOperands() >= 2 ? constant(insn) : null;
 			long[] old = dst == null ? null : regs.get(dst);
-			for (Object written : insn.getResultObjects()) {
-				if (written instanceof Register r) regs.remove(r);
+			long[] copied = copySource(insn, name, regs);
+			// A compact branch folds its parallel followers into its own p-code
+			// as delay slots; they are tracked separately, so skip its writes.
+			if (insn.getDelaySlotDepth() == 0) {
+				for (Object written : insn.getResultObjects()) {
+					if (written instanceof Register r) regs.remove(r);
+				}
+			}
+			if (copied != null) {
+				Register to = insn.getRegister(insn.getNumOperands() - 1);
+				regs.put(to, copied);
+				return to;
 			}
 			if (dst == null || value == null || insn.getLength() != 4) return null;
 			long v = value;
@@ -310,7 +404,7 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 			if (at == null) return null;
 			Instruction existing = listing.getInstructionAt(at);
 			if (existing != null) return existing;
-			if (listing.getDefinedDataContaining(at) != null ||
+			if ((!throughData && listing.getDefinedDataContaining(at) != null) ||
 				listing.getInstructionContaining(at) != null) return null;
 			try {
 				return pseudo.disassemble(at);
