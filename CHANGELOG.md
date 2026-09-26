@@ -15,6 +15,10 @@
   form (the other arm in the delay slots, `B3` set before the branch);
   unrecognised predicated immediate calls on the CDJ-2000NXS DSP dropped
   from 30 to 5, all overlapping-branch schedules that are not clear calls.
+* In a "call Y if p, else jump to X" pair only the call arm is a call; the
+  jump arm (a register arm is always the call; otherwise the nearer target)
+  stays a conditional jump, so the local else-block is no longer made a
+  function. 26 such arms on the CDJ-2000NXS DSP were wrongly calls.
 * Register calls get their `MVK`/`MVKH` target reference in far more cases:
   the look-back now decodes undecoded delay slots and pointer-typed code
   words, follows register moves, skips oppositely predicated writes, and is

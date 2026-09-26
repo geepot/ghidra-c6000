@@ -10,10 +10,20 @@ public class C6000DelayedCallTest extends GhidraScript {
 	@Override
 	protected void run() throws Exception {
 		// The if/else pair is its own routine; the entry never reaches it.
-		disassemble(toAddr(0x1040L));
-		createFunction(toAddr(0x1040L), null);
+		for (long entry : new long[] { 0x1040L, 0x1060L }) {
+			disassemble(toAddr(entry));
+			createFunction(toAddr(entry), null);
+		}
 		analyzeChanges(currentProgram);
-		for (long site : new long[] { 0x1008L, 0x1018L, 0x1048L, 0x104cL }) {
+		// The near arm of a call-or-jump pair stays a jump.
+		Instruction jump = getInstructionAt(toAddr(0x1068L));
+		if (jump == null || jump.getFlowType().isCall() || !jump.getFlowType().isConditional() ||
+			getFunctionAt(toAddr(0x1080L)) != null) {
+			throw new AssertionError("jump arm at 0x1068: " + jump +
+				(jump == null ? "" : " flow=" + jump.getFlowType()) +
+				" function at 0x1080=" + getFunctionAt(toAddr(0x1080L)));
+		}
+		for (long site : new long[] { 0x1008L, 0x1018L, 0x1048L, 0x104cL, 0x106cL }) {
 			Instruction call = getInstructionAt(toAddr(site));
 			if (call == null || !call.getFlowType().isCall() ||
 				(site >= 0x1048L) != call.getFlowType().isConditional() ||

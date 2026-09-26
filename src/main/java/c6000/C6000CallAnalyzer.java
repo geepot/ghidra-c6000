@@ -216,9 +216,15 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 
 		Call recognize(Instruction branch) {
 			Map<Register, long[]> regs = new HashMap<>();
+			Instruction partner = null;
 			for (Instruction insn : lookBack(branch)) {
 				// Never executes when the branch does.
-				if (complementary(insn, branch)) continue;
+				if (complementary(insn, branch)) {
+					if (isFlow(insn) && branch.getMinAddress().subtract(insn.getMinAddress()) <= 24) {
+						partner = insn;
+					}
+					continue;
+				}
 				if (insn.getFlowType().isJump() || insn.getFlowType().isCall() ||
 					insn.getFlowType().isTerminal()) {
 					regs.remove(program.getRegister("B3"));
@@ -253,9 +259,10 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 							next.getMinAddress().getOffset() == ra[0]) break window;
 						// A branch in the window must be the other arm of an
 						// if/else call pair: exactly the opposite predicate.
-						if ((next.getFlowType().isJump() || next.getFlowType().isCall() ||
-							next.getFlowType().isTerminal()) &&
-							!complementary(branch, next)) return null;
+						if (isFlow(next)) {
+							if (!complementary(branch, next)) return null;
+							if (partner == null) partner = next;
+						}
 						track(next, regs);
 						packetCycles = Math.max(packetCycles, 1 + extraCycles(next));
 						current = next;
@@ -267,6 +274,7 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 			catch (MemoryAccessException e) {
 				return null;
 			}
+			if (partner != null && jumpArm(branch, partner)) return null;
 			long[] ret = regs.get(b3);
 			// B3 may be set before the branch too; the look-back forgets it at
 			// every earlier branch, so a known value here belongs to this call.
@@ -426,6 +434,33 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 			}
 			return ((header >>> ((address.getOffset() - base) / 2)) & 1) != 0;
 		}
+	}
+
+	private static boolean isFlow(Instruction insn) {
+		return insn.getFlowType().isJump() || insn.getFlowType().isCall() ||
+			insn.getFlowType().isTerminal();
+	}
+
+	/**
+	 * In an if/else pair sharing one B3 ("call Y if p, else jump to X") only
+	 * one arm is a call. A register arm is the call; between two immediate
+	 * arms the nearer target is the local else-block, so that arm is the
+	 * jump. Both arms to one target (one callee either way) stay calls.
+	 */
+	static boolean jumpArm(Instruction branch, Instruction partner) {
+		Long mine = targetDistance(branch), theirs = targetDistance(partner);
+		if (mine == null) return false;
+		if (theirs == null) return true;
+		if (java.util.Arrays.equals(branch.getFlows(), partner.getFlows())) return false;
+		return mine < theirs;
+	}
+
+	/** Distance to an immediate branch target, or null for a register branch. */
+	private static Long targetDistance(Instruction insn) {
+		if (insn.getRegister(0) != null) return null;
+		Address[] flows = insn.getFlows();
+		if (flows.length != 1) return null;
+		return Math.abs(flows[0].getOffset() - insn.getMinAddress().getOffset());
 	}
 
 	/** True when two predicated instructions test the same register with opposite senses. */

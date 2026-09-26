@@ -17,6 +17,13 @@ An if/else call pair, B3 set before the first arm:
   1044  MVKH.S2 0x0,B3           1050  NOP     4
   1048  [!A1]B.S1 0x1100 (call)  1054  B.S2 B3 ; NOP 5
 
+A call-or-jump pair: call 0x1100 if A1, else jump to the local block 0x1080.
+Only the far arm is a call:
+
+  1060  MVK.S2  0x1074,B3        106c  [A1]B.S1  0x1100      (call)
+  1064  MVKH.S2 0x0,B3           1070  NOP     4
+  1068  [!A1]B.S1 0x1080 (jump)  1074  B.S2 B3 ; ...  1080  B.S2 B3
+
 C6000DelayedCallTest.java checks every B form becomes a call that falls
 through into its delay slots and that 0x1100 becomes a function.
 """
@@ -58,6 +65,15 @@ WORDS = {
     0x1050: nop(4),
     0x1054: B_B3,
     0x1058: nop(5),
+    0x1060: mvk(0x1074, 3),
+    0x1064: mvkh(0, 3),
+    0x1068: 0x90000010 | (0x08 << 7),       # [!A1] B.S1 packet+0x20 (jump)
+    0x106C: 0x80000010 | (0x28 << 7),       # [A1] B.S1 packet+0xa0 (call)
+    0x1070: nop(4),
+    0x1074: B_B3,
+    0x1078: nop(5),
+    0x1080: B_B3,
+    0x1084: nop(5),
     0x1100: B_B3,
     0x1104: nop(5),
 }
