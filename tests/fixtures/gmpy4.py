@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 """Build GFPGFR-controlled GMPY4 fixtures. IMAGE CASES.tsv [be]."""
-import re
 import struct
 import sys
 from pathlib import Path
@@ -19,19 +18,10 @@ CASES = [
 
 
 def opcode(side, cross):
-    decode = Path(__file__).resolve().parents[2] / "data/languages/c6000_decode.sinc"
-    prefix = f":GMPY4.M{side} "
-    line = next(line for line in decode.read_text().splitlines()
-                if line.startswith(prefix))
-    fixed = {int(bit): int(value) for bit, value in
-             re.findall(r"\bi(\d+)=(\d)\b", line)}
-    word = sum(value << bit for bit, value in fixed.items())
-    word |= 1 << 13  # src1
-    word |= 2 << 18  # src2
-    word |= 3 << 23  # dst
-    word |= cross << 12
-    word |= 1 << 29  # GMPY4 fixes z=1; use the valid [!B0] predicate
-    return word
+    # TI cl6x: GMPY4 .M1 A1,A2,A3 = 0x01882470. SPRUFE8B Figure E-1
+    # gives bit 28 as predicate z; this fixture must remain unconditional
+    # even when testing a decoder that incorrectly fixes that bit to one.
+    return 0x01882470 | ((side - 1) << 1) | (cross << 12)
 
 
 def main():

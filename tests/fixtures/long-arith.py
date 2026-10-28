@@ -22,6 +22,8 @@ WORDS = [
     word(0b1100000, 0, 0, 3),
     word(0b0101111, 1, 2, 4),  # SUBU A1,A2,A5:A4
     word(0b0111111, 1, 2, 4),
+    word(0b0111111, 1, 2, 4) | 1 << 12,  # SUBU B1,A2,A5:A4 (src1 xuint)
+    word(0b0101111, 1, 2, 4) | 1 << 12,  # SUBU A1,B2,A5:A4 (src2 xuint)
 ]
 
 

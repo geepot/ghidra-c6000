@@ -268,3 +268,18 @@ and captured predicates.
 `pipeline-caller-continuation.py` and `C6000CallerContinuationTest.java` cover 21 closed
 trace contracts per endian, with six executions, 15 refusals and six wrong-entry-B3
 refusals. See [trace contracts](caller-continuation-traces.md).
+
+## Additional decoder accuracy checks
+
+The release runner includes compact stack offsets (`compact-dstk`), unscaled
+NDW offsets (`compact-ndw`), low comparison destinations (`compact-cmpdst`), and
+NOP counts (`nop-count`). These retain independent checks for fixes already in
+language 1.1. `compact-cross` verifies the `X` functional-unit suffix across the
+compact D/L/M/S formats, while the existing move/memory and comparison sweeps
+also check the corrected spellings.
+
+`long-arith` executes both SUBU cross-operand forms. `gmpy4` assembles an
+unconditional opcode and executes five polynomial/field-size examples.
+`word-shifts` executes register counts 0, 1, 31, 32, 63, 64, 65 and
+`0xffffffc1`, plus immediate controls, for SHL/SHR/SHRU. `dp-int` includes
+DPSP INEX on rounding. All run in both byte orders.

@@ -67,6 +67,16 @@ CORE = [
     ("float-dp-arithmetic", ["add.tsv", "mul.tsv"],
      [("FloatAdd", ["add.tsv"], "C6000_FLOAT_ADD_OK"),
       ("FloatMultiply", ["mul.tsv"], "C6000_FLOAT_MULTIPLY_OK")], False),
+
+    case("compact-dstk", "CompactDstk", "C6000_COMPACT_DSTK_OK"),
+    case("compact-ndw", "CompactNdw", "C6000_COMPACT_NDW_OK"),
+    case("long-arith", "LongArithmetic", "C6000_LONG_ARITH_OK", None),
+    case("nop-count", "NopCount", "C6000_NOP_COUNT_OK"),
+    case("compact-cross", "CompactCross", "C6000_COMPACT_CROSS_OK"),
+    case("compact-cmpdst", "CompactCmpDst", "C6000_COMPACT_CMPDST_OK"),
+    case("gmpy4", "Gmpy4", "C6000_GMPY4_OK"),
+    case("word-shifts", "WordShifts", "C6000_WORD_SHIFTS_OK"),
+    case("dp-int", "DpConvert", "C6000_DP_INT_OK"),
 ]
 TI = [
     case("pipeline-predicate-facts", "PredicateFacts", "PREDICATE_FACTS_TEST_OK", "json"),

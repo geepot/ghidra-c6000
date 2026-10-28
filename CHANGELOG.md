@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+### Fixed
+
+* Display compact cross-path functional units with `X`, including A-side
+  `ADDAW` from B15 (SPRUFE8B 3.8.3 and Figures C-17/C-18, D-4/D-5/D-7,
+  E-5, F-22/F-23/F-29, G-1/G-2).
+* Route `SUBU` opfield `0111111` through cross-path src1, and decode
+  unconditional `GMPY4` by treating compound-M bit 28 as predicate z
+  (SPRUFE8B 3.12 SUBU and Figure E-1).
+* Mask scalar `SHL`, `SHR` and `SHRU` register counts to six bits
+  (SPRUFE8B 3.12 SHL/SHR/SHRU).
+* Correct the `DPSP` fixture's INEX expectation when rounding, update compact
+  unit expectations, and run the added accuracy regressions in both byte orders.
+
 ## 1.1 - 2026-10-28
 
 ### Upgrade notes

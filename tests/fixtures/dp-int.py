@@ -41,8 +41,8 @@ PAIR_VARIANTS = [
     (("gnu-pair4", "DPINT", 0, f64(8.6), 0, 9, 0x80), 4, True),
     (("ti-pair4-trunc", "DPTRUNC", 1, f64(8.6), 0, 8, 0x80), 4, False),
     (("gnu-pair4-trunc", "DPTRUNC", 1, f64(8.6), 0, 8, 0x80), 4, True),
-    (("ti-pair4-dpsp", "DPSP", 0, f64(8.6), 0, 0x4109999a, 0), 4, False),
-    (("gnu-pair4-dpsp", "DPSP", 0, f64(8.6), 0, 0x4109999a, 0), 4, True),
+    (("ti-pair4-dpsp", "DPSP", 0, f64(8.6), 0, 0x4109999a, 0x80), 4, False),
+    (("gnu-pair4-dpsp", "DPSP", 0, f64(8.6), 0, 0x4109999a, 0x80), 4, True),
 ]
 
 

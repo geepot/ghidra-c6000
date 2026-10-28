@@ -12,14 +12,16 @@ import ghidra.program.model.pcode.PcodeOp;
 public class C6000LongArithmeticTest extends GhidraScript {
 	private static final long BASE = 0x1000L;
 	private static final String[] NAMES = {
-		"NORM", "NORM", "NORM", "NORM", "NORM", "SUBU", "SUBU"
+		"NORM", "NORM", "NORM", "NORM", "NORM", "SUBU", "SUBU", "SUBU", "SUBU"
 	};
-	private static final long[] A0 = {0, 0, 7, 0xffffffffL, 0, 0, 0};
+	private static final long[] A0 = {0, 0, 7, 0xffffffffL, 0, 0, 0, 0, 0};
 	private static final long[] A1 = {
-		0x02a3469fL, 0xfffff25aL, 0, 0xff, 0x80, 100, 0x325a
+		0x02a3469fL, 0xfffff25aL, 0, 0xff, 0x80, 100, 0x325a, 0xdead, 100
 	};
-	private static final long[] A2 = {0, 0, 0, 0, 0, 25, 0xffffff12L};
-	private static final long[] EXPECTED = {5, 19, 36, 39, 0, 75, 0xff00003348L};
+	private static final long[] A2 = {0, 0, 0, 0, 0, 25, 0xffffff12L, 25, 0xbeef};
+	private static final long[] B1 = {0, 0, 0, 0, 0, 0, 0, 100, 0};
+	private static final long[] B2 = {0, 0, 0, 0, 0, 0, 0, 0, 25};
+	private static final long[] EXPECTED = {5, 19, 36, 39, 0, 75, 0xff00003348L, 75, 75};
 
 	@Override
 	protected void run() throws Exception {
@@ -51,6 +53,8 @@ public class C6000LongArithmeticTest extends GhidraScript {
 				emulator.writeRegister("A0", A0[i]);
 				emulator.writeRegister("A1", A1[i]);
 				emulator.writeRegister("A2", A2[i]);
+				emulator.writeRegister("B1", B1[i]);
+				emulator.writeRegister("B2", B2[i]);
 				emulator.getEmulator().setExecuteAddress(offset);
 				if (!emulator.step(monitor)) {
 					throw new AssertionError("fixture " + i + ": " + emulator.getLastError());

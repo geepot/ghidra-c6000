@@ -37,7 +37,7 @@ def main():
                     for cross in (0, 1):
                         values = [(5, 5), (0x80000000, 1)]
                         cases.append(dict(common, word=0x408 | side | dst << 4 | 3 << 13 | 4 << 7 | cross << 12 | (op >> 2) << 11 | (op & 3) << 5,
-                            operation=operation, mnemonic=operation + '.L' + str(side + 1),
+                            operation=operation, mnemonic=operation + '.L' + str(side + 1) + ('X' if cross else ''),
                             source1=bank + str(16 * rs + 3), source2=(opposite if cross else bank) + str(16 * rs + 4), immediate=0,
                             checks=[[a, b, result(operation, a, b)] for a, b in values]))
                 # D-10 comparison direction, signedness, immediate bit and both results.

@@ -2564,7 +2564,8 @@ macro c6000_sem_compare_dp(a, b, d, side, kind) {
 # ---------------------------------------------------------------------------
 
 # SEM: SHL
-macro c6000_sem_shl(v, c, d) { d = v << c; }
+# Only the six LSBs of a register count are used (SPRUFE8B SHL/SHR/SHRU).
+macro c6000_sem_shl(v, c, d) { d = v << (c & 63); }
 # The architecture's long shift operands use only the low 40 bits of a
 # register pair. The upper 24 bits of the high register are cleared on write.
 macro c6000_sem_shl40(v, c, d) {
@@ -2582,7 +2583,7 @@ macro c6000_sem_shl_to40(v, c, d) {
   d = (zext(v) << count) & 0xffffffffff;
 }
 # SEM: SHR
-macro c6000_sem_shr(v, c, d) { d = v s>> c; }
+macro c6000_sem_shr(v, c, d) { d = v s>> (c & 63); }
 macro c6000_sem_shr40(v, c, d) {
   local count:4 = c & 63;
   if (count < 40) goto <shift>;
@@ -2595,7 +2596,7 @@ macro c6000_sem_shr40(v, c, d) {
   d = (value s>> count) & 0xffffffffff;
 }
 # SEM: SHRU
-macro c6000_sem_shru(v, c, d) { d = v >> c; }
+macro c6000_sem_shru(v, c, d) { d = v >> (c & 63); }
 macro c6000_sem_shru40(v, c, d) {
   local count:4 = c & 63;
   if (count < 40) goto <shift>;

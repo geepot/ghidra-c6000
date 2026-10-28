@@ -176,6 +176,10 @@ def main():
                 skipped.append((name, u["heading"], "leftover"))
                 continue
             fields = u["fields"]
+            if name == "GMPY4":
+                # Figure E-1: bit 28 of GMPY4 is z, not the 1 its page shows.
+                fields = [dict(f, name="z", const=None) if f["lo"] == 28 else f
+                          for f in fields]
             heading = u["heading"]
             unit_syn = rec.get("unit_syntax", "")
             ul = unit_letter(heading) or unit_letter(unit_syn)
@@ -458,6 +462,8 @@ def main():
                     ops = ["Src1PairX", "Src2PairLocal", "DstPair"]
                 if mnem == "SUBDP" and v == "1110111":
                     ops = ["Src2Pair", "Src1Pair", "DstPair"]
+                if mnem == "SUBU" and v == "0111111":
+                    ops = ["Src1X", "Src2Local", "DstPair"]  # SPRUFE8B SUBU: src1 xuint, src2 uint
                 if mnem == "SUBSP" and v == "0010101":
                     # The second .L form routes the cross path to encoded
                     # src1; the arithmetic order remains src1 - src2.

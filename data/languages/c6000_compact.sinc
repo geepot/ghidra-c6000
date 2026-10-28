@@ -73,6 +73,44 @@ CUnitLSD: ".S2" is q_unit=1 & q_s=1 { }
 CUnitLSD: ".D1" is q_unit=2 & q_s=0 { }
 CUnitLSD: ".D2" is q_unit=2 & q_s=1 { }
 
+# Cross-path forms append X to the unit when x (bit 12) is set (section 3.8.3).
+CUnitSX: ".S1" is q_s=0 & q_t=0 { }
+CUnitSX: ".S1X" is q_s=0 & q_t=1 { }
+CUnitSX: ".S2" is q_s=1 & q_t=0 { }
+CUnitSX: ".S2X" is q_s=1 & q_t=1 { }
+
+CUnitLX: ".L1" is q_s=0 & q_t=0 { }
+CUnitLX: ".L1X" is q_s=0 & q_t=1 { }
+CUnitLX: ".L2" is q_s=1 & q_t=0 { }
+CUnitLX: ".L2X" is q_s=1 & q_t=1 { }
+
+CUnitMX: ".M1" is q_s=0 & q_t=0 { }
+CUnitMX: ".M1X" is q_s=0 & q_t=1 { }
+CUnitMX: ".M2" is q_s=1 & q_t=0 { }
+CUnitMX: ".M2X" is q_s=1 & q_t=1 { }
+
+CUnitDX: ".D1" is q_s=0 & q_t=0 { }
+CUnitDX: ".D1X" is q_s=0 & q_t=1 { }
+CUnitDX: ".D2" is q_s=1 & q_t=0 { }
+CUnitDX: ".D2X" is q_s=1 & q_t=1 { }
+
+CUnitLSDX: ".L1" is q_unit=0 & q_s=0 & q_t=0 { }
+CUnitLSDX: ".L1X" is q_unit=0 & q_s=0 & q_t=1 { }
+CUnitLSDX: ".L2" is q_unit=0 & q_s=1 & q_t=0 { }
+CUnitLSDX: ".L2X" is q_unit=0 & q_s=1 & q_t=1 { }
+CUnitLSDX: ".S1" is q_unit=1 & q_s=0 & q_t=0 { }
+CUnitLSDX: ".S1X" is q_unit=1 & q_s=0 & q_t=1 { }
+CUnitLSDX: ".S2" is q_unit=1 & q_s=1 & q_t=0 { }
+CUnitLSDX: ".S2X" is q_unit=1 & q_s=1 & q_t=1 { }
+CUnitLSDX: ".D1" is q_unit=2 & q_s=0 & q_t=0 { }
+CUnitLSDX: ".D1X" is q_unit=2 & q_s=0 & q_t=1 { }
+CUnitLSDX: ".D2" is q_unit=2 & q_s=1 & q_t=0 { }
+CUnitLSDX: ".D2X" is q_unit=2 & q_s=1 & q_t=1 { }
+
+# Figure C-18 reads B15, so the A-side unit is .D1X.
+CUnitDB15: ".D1X" is q_s=0 { }
+CUnitDB15: ".D2" is q_s=1 { }
+
 # ---------------------------------------------------------------------------
 # Register operands.  RA/ RB are two independent symbols over the same
 # field so that a constructor can print both src2 and dst for the
@@ -664,15 +702,15 @@ CTgt10: reloc is cq_scst10 [ reloc = (inst_start & 0xffffffe0) + (cq_scst10 << 2
 # Figure C-17. Dx2op - SPRUFE8B appendix C.4.
 # ---------------------------------------------------------------------------
 
-:ADD^CUnitD RA15, RX97, RB15 is c_is16=1 & CUnitD & j10=0 & j6=0 & j5=1 & j4=1 & j3=0 & j2=1 & j1=1 & j11=0 & RA15 & RX97 & RB15 { RB15 = RA15 + RX97; }
-:SUB^CUnitD RA15, RX97, RB15 is c_is16=1 & CUnitD & j10=0 & j6=0 & j5=1 & j4=1 & j3=0 & j2=1 & j1=1 & j11=1 & RA15 & RX97 & RB15 { RB15 = RA15 - RX97; }
+:ADD^CUnitDX RA15, RX97, RB15 is c_is16=1 & CUnitDX & j10=0 & j6=0 & j5=1 & j4=1 & j3=0 & j2=1 & j1=1 & j11=0 & RA15 & RX97 & RB15 { RB15 = RA15 + RX97; }
+:SUB^CUnitDX RA15, RX97, RB15 is c_is16=1 & CUnitDX & j10=0 & j6=0 & j5=1 & j4=1 & j3=0 & j2=1 & j1=1 & j11=1 & RA15 & RX97 & RB15 { RB15 = RA15 - RX97; }
 
 # ---------------------------------------------------------------------------
 # Figure C-18. Dx5 - SPRUFE8B appendix C.4.  src2 is B15; ADDAW shifts the
 # 5-bit constant left by two (word addressing mode).
 # ---------------------------------------------------------------------------
 
-:ADDAW^CUnitD^" B15, "^Cucst5d^", "^RA97 is c_is16=1 & CUnitD & j10=1 & j6=0 & j5=1 & j4=1 & j3=0 & j2=1 & j1=1 & RA97 & Cucst5d { RA97 = B15 + (Cucst5d << 2); }
+:ADDAW^CUnitDB15^" B15, "^Cucst5d^", "^RA97 is c_is16=1 & CUnitDB15 & j10=1 & j6=0 & j5=1 & j4=1 & j3=0 & j2=1 & j1=1 & RA97 & Cucst5d { RA97 = B15 + (Cucst5d << 2); }
 
 # ---------------------------------------------------------------------------
 # Figure C-19. Dx5p - SPRUFE8B appendix C.4.  src2 = dst = B15.
@@ -704,16 +742,16 @@ CTgt10: reloc is cq_scst10 [ reloc = (inst_start & 0xffffffe0) + (cq_scst10 << 2
 # Figure D-4. L3 - SPRUFE8B appendix D.4.
 # ---------------------------------------------------------------------------
 
-:ADD^CUnitL RA15, RX97, RA64 is c_is16=1 & CUnitL & j10=0 & j3=0 & j2=0 & j1=0 & j11=0 & c_sat=0 & RA15 & RX97 & RA64 { RA64 = RA15 + RX97; }
-:SUB^CUnitL RA15, RX97, RA64 is c_is16=1 & CUnitL & j10=0 & j3=0 & j2=0 & j1=0 & j11=1 & c_sat=0 & RA15 & RX97 & RA64 { RA64 = RA15 - RX97; }
-:SADD^CUnitL RA15, RX97, RA64 is c_is16=1 & CUnitL & j10=0 & j3=0 & j2=0 & j1=0 & j11=0 & c_sat=1 & RA15 & RX97 & RA64 { c6000_sem_sadd32(RA15, RX97, RA64); }
-:SSUB^CUnitL RA15, RX97, RA64 is c_is16=1 & CUnitL & j10=0 & j3=0 & j2=0 & j1=0 & j11=1 & c_sat=1 & RA15 & RX97 & RA64 { c6000_sem_ssub32(RA15, RX97, RA64); }
+:ADD^CUnitLX RA15, RX97, RA64 is c_is16=1 & CUnitLX & j10=0 & j3=0 & j2=0 & j1=0 & j11=0 & c_sat=0 & RA15 & RX97 & RA64 { RA64 = RA15 + RX97; }
+:SUB^CUnitLX RA15, RX97, RA64 is c_is16=1 & CUnitLX & j10=0 & j3=0 & j2=0 & j1=0 & j11=1 & c_sat=0 & RA15 & RX97 & RA64 { RA64 = RA15 - RX97; }
+:SADD^CUnitLX RA15, RX97, RA64 is c_is16=1 & CUnitLX & j10=0 & j3=0 & j2=0 & j1=0 & j11=0 & c_sat=1 & RA15 & RX97 & RA64 { c6000_sem_sadd32(RA15, RX97, RA64); }
+:SSUB^CUnitLX RA15, RX97, RA64 is c_is16=1 & CUnitLX & j10=0 & j3=0 & j2=0 & j1=0 & j11=1 & c_sat=1 & RA15 & RX97 & RA64 { c6000_sem_ssub32(RA15, RX97, RA64); }
 
 # ---------------------------------------------------------------------------
 # Figure D-5. L3i - SPRUFE8B appendix D.4.
 # ---------------------------------------------------------------------------
 
-:ADD^CUnitL CimmL3i, RX97, RA64 is c_is16=1 & CUnitL & j10=1 & j3=0 & j2=0 & j1=0 & CimmL3i & RX97 & RA64 { RA64 = RX97 + CimmL3i; }
+:ADD^CUnitLX CimmL3i, RX97, RA64 is c_is16=1 & CUnitLX & j10=1 & j3=0 & j2=0 & j1=0 & CimmL3i & RX97 & RA64 { RA64 = RX97 + CimmL3i; }
 
 # ---------------------------------------------------------------------------
 # Figure D-6. Ltbd - SPRUFE8B appendix D.4.  The figure leaves its fields
@@ -726,14 +764,14 @@ CTgt10: reloc is cq_scst10 [ reloc = (inst_start & 0xffffffe0) + (cq_scst10 << 2
 # A0/A1 or B0/B1 (note under the figure).
 # ---------------------------------------------------------------------------
 
-:AND^CUnitL RA15, RX97, RA4 is c_is16=1 & CUnitL & j10=1 & j3=1 & j2=0 & j1=0 & j11=0 & j6=0 & j5=0 & RA15 & RX97 & RA4 { RA4 = RA15 & RX97; }
-:OR^CUnitL RA15, RX97, RA4 is c_is16=1 & CUnitL & j10=1 & j3=1 & j2=0 & j1=0 & j11=0 & j6=0 & j5=1 & RA15 & RX97 & RA4 { RA4 = RA15 | RX97; }
-:XOR^CUnitL RA15, RX97, RA4 is c_is16=1 & CUnitL & j10=1 & j3=1 & j2=0 & j1=0 & j11=0 & j6=1 & j5=0 & RA15 & RX97 & RA4 { RA4 = RA15 ^ RX97; }
-:CMPEQ^CUnitL RA15, RX97, RA4 is c_is16=1 & CUnitL & j10=1 & j3=1 & j2=0 & j1=0 & j11=0 & j6=1 & j5=1 & RA15 & RX97 & RA4 { RA4 = zext(RA15 == RX97); }
-:CMPLT^CUnitL RA15, RX97, RA4 is c_is16=1 & CUnitL & j10=1 & j3=1 & j2=0 & j1=0 & j11=1 & j6=0 & j5=0 & RA15 & RX97 & RA4 { RA4 = zext(RA15 s< RX97); }
-:CMPGT^CUnitL RA15, RX97, RA4 is c_is16=1 & CUnitL & j10=1 & j3=1 & j2=0 & j1=0 & j11=1 & j6=0 & j5=1 & RA15 & RX97 & RA4 { RA4 = zext(RA15 s> RX97); }
-:CMPLTU^CUnitL RA15, RX97, RA4 is c_is16=1 & CUnitL & j10=1 & j3=1 & j2=0 & j1=0 & j11=1 & j6=1 & j5=0 & RA15 & RX97 & RA4 { RA4 = zext(RA15 < RX97); }
-:CMPGTU^CUnitL RA15, RX97, RA4 is c_is16=1 & CUnitL & j10=1 & j3=1 & j2=0 & j1=0 & j11=1 & j6=1 & j5=1 & RA15 & RX97 & RA4 { RA4 = zext(RA15 > RX97); }
+:AND^CUnitLX RA15, RX97, RA4 is c_is16=1 & CUnitLX & j10=1 & j3=1 & j2=0 & j1=0 & j11=0 & j6=0 & j5=0 & RA15 & RX97 & RA4 { RA4 = RA15 & RX97; }
+:OR^CUnitLX RA15, RX97, RA4 is c_is16=1 & CUnitLX & j10=1 & j3=1 & j2=0 & j1=0 & j11=0 & j6=0 & j5=1 & RA15 & RX97 & RA4 { RA4 = RA15 | RX97; }
+:XOR^CUnitLX RA15, RX97, RA4 is c_is16=1 & CUnitLX & j10=1 & j3=1 & j2=0 & j1=0 & j11=0 & j6=1 & j5=0 & RA15 & RX97 & RA4 { RA4 = RA15 ^ RX97; }
+:CMPEQ^CUnitLX RA15, RX97, RA4 is c_is16=1 & CUnitLX & j10=1 & j3=1 & j2=0 & j1=0 & j11=0 & j6=1 & j5=1 & RA15 & RX97 & RA4 { RA4 = zext(RA15 == RX97); }
+:CMPLT^CUnitLX RA15, RX97, RA4 is c_is16=1 & CUnitLX & j10=1 & j3=1 & j2=0 & j1=0 & j11=1 & j6=0 & j5=0 & RA15 & RX97 & RA4 { RA4 = zext(RA15 s< RX97); }
+:CMPGT^CUnitLX RA15, RX97, RA4 is c_is16=1 & CUnitLX & j10=1 & j3=1 & j2=0 & j1=0 & j11=1 & j6=0 & j5=1 & RA15 & RX97 & RA4 { RA4 = zext(RA15 s> RX97); }
+:CMPLTU^CUnitLX RA15, RX97, RA4 is c_is16=1 & CUnitLX & j10=1 & j3=1 & j2=0 & j1=0 & j11=1 & j6=1 & j5=0 & RA15 & RX97 & RA4 { RA4 = zext(RA15 < RX97); }
+:CMPGTU^CUnitLX RA15, RX97, RA4 is c_is16=1 & CUnitLX & j10=1 & j3=1 & j2=0 & j1=0 & j11=1 & j6=1 & j5=1 & RA15 & RX97 & RA4 { RA4 = zext(RA15 > RX97); }
 
 # ---------------------------------------------------------------------------
 # Figure D-8. Lx5 - SPRUFE8B appendix D.4.
@@ -769,14 +807,14 @@ CTgt10: reloc is cq_scst10 [ reloc = (inst_start & 0xffffffe0) + (cq_scst10 << 2
 # RS = 1 it is A16/A18/A20/A22 or B16/B18/B20/B22 (figure note).
 # ---------------------------------------------------------------------------
 
-:MPY^CUnitM RA15, RX97, RA1110 is c_is16=1 & CUnitM & j4=1 & j3=1 & j2=1 & j1=1 & j6=0 & j5=0 & c_sat=0 & RA15 & RX97 & RA1110 { local a:4 = (RA15 << 16) s>> 16; local b:4 = (RX97 << 16) s>> 16; RA1110 = a * b; }
-:MPYH^CUnitM RA15, RX97, RA1110 is c_is16=1 & CUnitM & j4=1 & j3=1 & j2=1 & j1=1 & j6=0 & j5=1 & c_sat=0 & RA15 & RX97 & RA1110 { RA1110 = (RA15 s>> 16) * (RX97 s>> 16); }
-:MPYLH^CUnitM RA15, RX97, RA1110 is c_is16=1 & CUnitM & j4=1 & j3=1 & j2=1 & j1=1 & j6=1 & j5=0 & c_sat=0 & RA15 & RX97 & RA1110 { local a:4 = (RA15 << 16) s>> 16; RA1110 = a * (RX97 s>> 16); }
-:MPYHL^CUnitM RA15, RX97, RA1110 is c_is16=1 & CUnitM & j4=1 & j3=1 & j2=1 & j1=1 & j6=1 & j5=1 & c_sat=0 & RA15 & RX97 & RA1110 { local b:4 = (RX97 << 16) s>> 16; RA1110 = (RA15 s>> 16) * b; }
-:SMPY^CUnitM RA15, RX97, RA1110 is c_is16=1 & CUnitM & j4=1 & j3=1 & j2=1 & j1=1 & j6=0 & j5=0 & c_sat=1 & RA15 & RX97 & RA1110 { local a:4 = (RA15 << 16) s>> 16; local b:4 = (RX97 << 16) s>> 16; c6000_sem_smpy16(a, b, RA1110); }
-:SMPYH^CUnitM RA15, RX97, RA1110 is c_is16=1 & CUnitM & j4=1 & j3=1 & j2=1 & j1=1 & j6=0 & j5=1 & c_sat=1 & RA15 & RX97 & RA1110 { local a:4 = RA15 s>> 16; local b:4 = RX97 s>> 16; c6000_sem_smpy16(a, b, RA1110); }
-:SMPYLH^CUnitM RA15, RX97, RA1110 is c_is16=1 & CUnitM & j4=1 & j3=1 & j2=1 & j1=1 & j6=1 & j5=0 & c_sat=1 & RA15 & RX97 & RA1110 { local a:4 = (RA15 << 16) s>> 16; local b:4 = RX97 s>> 16; c6000_sem_smpy16(a, b, RA1110); }
-:SMPYHL^CUnitM RA15, RX97, RA1110 is c_is16=1 & CUnitM & j4=1 & j3=1 & j2=1 & j1=1 & j6=1 & j5=1 & c_sat=1 & RA15 & RX97 & RA1110 { local a:4 = RA15 s>> 16; local b:4 = (RX97 << 16) s>> 16; c6000_sem_smpy16(a, b, RA1110); }
+:MPY^CUnitMX RA15, RX97, RA1110 is c_is16=1 & CUnitMX & j4=1 & j3=1 & j2=1 & j1=1 & j6=0 & j5=0 & c_sat=0 & RA15 & RX97 & RA1110 { local a:4 = (RA15 << 16) s>> 16; local b:4 = (RX97 << 16) s>> 16; RA1110 = a * b; }
+:MPYH^CUnitMX RA15, RX97, RA1110 is c_is16=1 & CUnitMX & j4=1 & j3=1 & j2=1 & j1=1 & j6=0 & j5=1 & c_sat=0 & RA15 & RX97 & RA1110 { RA1110 = (RA15 s>> 16) * (RX97 s>> 16); }
+:MPYLH^CUnitMX RA15, RX97, RA1110 is c_is16=1 & CUnitMX & j4=1 & j3=1 & j2=1 & j1=1 & j6=1 & j5=0 & c_sat=0 & RA15 & RX97 & RA1110 { local a:4 = (RA15 << 16) s>> 16; RA1110 = a * (RX97 s>> 16); }
+:MPYHL^CUnitMX RA15, RX97, RA1110 is c_is16=1 & CUnitMX & j4=1 & j3=1 & j2=1 & j1=1 & j6=1 & j5=1 & c_sat=0 & RA15 & RX97 & RA1110 { local b:4 = (RX97 << 16) s>> 16; RA1110 = (RA15 s>> 16) * b; }
+:SMPY^CUnitMX RA15, RX97, RA1110 is c_is16=1 & CUnitMX & j4=1 & j3=1 & j2=1 & j1=1 & j6=0 & j5=0 & c_sat=1 & RA15 & RX97 & RA1110 { local a:4 = (RA15 << 16) s>> 16; local b:4 = (RX97 << 16) s>> 16; c6000_sem_smpy16(a, b, RA1110); }
+:SMPYH^CUnitMX RA15, RX97, RA1110 is c_is16=1 & CUnitMX & j4=1 & j3=1 & j2=1 & j1=1 & j6=0 & j5=1 & c_sat=1 & RA15 & RX97 & RA1110 { local a:4 = RA15 s>> 16; local b:4 = RX97 s>> 16; c6000_sem_smpy16(a, b, RA1110); }
+:SMPYLH^CUnitMX RA15, RX97, RA1110 is c_is16=1 & CUnitMX & j4=1 & j3=1 & j2=1 & j1=1 & j6=1 & j5=0 & c_sat=1 & RA15 & RX97 & RA1110 { local a:4 = (RA15 << 16) s>> 16; local b:4 = RX97 s>> 16; c6000_sem_smpy16(a, b, RA1110); }
+:SMPYHL^CUnitMX RA15, RX97, RA1110 is c_is16=1 & CUnitMX & j4=1 & j3=1 & j2=1 & j1=1 & j6=1 & j5=1 & c_sat=1 & RA15 & RX97 & RA1110 { local a:4 = RA15 s>> 16; local b:4 = (RX97 << 16) s>> 16; c6000_sem_smpy16(a, b, RA1110); }
 
 # ---------------------------------------------------------------------------
 # Figures F-17/F-18. Sbs7 / Sbu8 - SPRUFE8B appendix F.4.  BR = 1 decodes
@@ -814,18 +852,18 @@ CTgt10: reloc is cq_scst10 [ reloc = (inst_start & 0xffffffe0) + (cq_scst10 << 2
 # non-branch S-unit opcodes (Table 3-14).
 # ---------------------------------------------------------------------------
 
-:ADD^CUnitS RA15, RX97, RA64 is c_is16=1 & CUnitS & j10=0 & j3=1 & j2=0 & j1=1 & c_br=0 & j11=0 & c_sat=0 & RA15 & RX97 & RA64 { RA64 = RA15 + RX97; }
-:SUB^CUnitS RA15, RX97, RA64 is c_is16=1 & CUnitS & j10=0 & j3=1 & j2=0 & j1=1 & c_br=0 & j11=1 & c_sat=0 & RA15 & RX97 & RA64 { RA64 = RA15 - RX97; }
-:SADD^CUnitS RA15, RX97, RA64 is c_is16=1 & CUnitS & j10=0 & j3=1 & j2=0 & j1=1 & c_br=0 & j11=0 & c_sat=1 & RA15 & RX97 & RA64 { c6000_sem_sadd32(RA15, RX97, RA64); }
-:SUB^CUnitS RA15, RX97, RA64 is c_is16=1 & CUnitS & j10=0 & j3=1 & j2=0 & j1=1 & c_br=0 & j11=1 & c_sat=1 & RA15 & RX97 & RA64 { RA64 = RA15 - RX97; }
+:ADD^CUnitSX RA15, RX97, RA64 is c_is16=1 & CUnitSX & j10=0 & j3=1 & j2=0 & j1=1 & c_br=0 & j11=0 & c_sat=0 & RA15 & RX97 & RA64 { RA64 = RA15 + RX97; }
+:SUB^CUnitSX RA15, RX97, RA64 is c_is16=1 & CUnitSX & j10=0 & j3=1 & j2=0 & j1=1 & c_br=0 & j11=1 & c_sat=0 & RA15 & RX97 & RA64 { RA64 = RA15 - RX97; }
+:SADD^CUnitSX RA15, RX97, RA64 is c_is16=1 & CUnitSX & j10=0 & j3=1 & j2=0 & j1=1 & c_br=0 & j11=0 & c_sat=1 & RA15 & RX97 & RA64 { c6000_sem_sadd32(RA15, RX97, RA64); }
+:SUB^CUnitSX RA15, RX97, RA64 is c_is16=1 & CUnitSX & j10=0 & j3=1 & j2=0 & j1=1 & c_br=0 & j11=1 & c_sat=1 & RA15 & RX97 & RA64 { RA64 = RA15 - RX97; }
 
 # ---------------------------------------------------------------------------
 # Figure F-23. S3i - SPRUFE8B appendix F.4.  cst3 translates to ucst5 per
 # the figure table (000 -> 16, 111 -> 8).
 # ---------------------------------------------------------------------------
 
-:SHL^CUnitS RX97, CimmS3i, RA64 is c_is16=1 & CUnitS & j10=1 & j3=1 & j2=0 & j1=1 & c_br=0 & j11=0 & CimmS3i & RX97 & RA64 { RA64 = RX97 << CimmS3i; }
-:SHR^CUnitS RX97, CimmS3i, RA64 is c_is16=1 & CUnitS & j10=1 & j3=1 & j2=0 & j1=1 & c_br=0 & j11=1 & CimmS3i & RX97 & RA64 { RA64 = RX97 s>> CimmS3i; }
+:SHL^CUnitSX RX97, CimmS3i, RA64 is c_is16=1 & CUnitSX & j10=1 & j3=1 & j2=0 & j1=1 & c_br=0 & j11=0 & CimmS3i & RX97 & RA64 { RA64 = RX97 << CimmS3i; }
+:SHR^CUnitSX RX97, CimmS3i, RA64 is c_is16=1 & CUnitSX & j10=1 & j3=1 & j2=0 & j1=1 & c_br=0 & j11=1 & CimmS3i & RX97 & RA64 { RA64 = RX97 s>> CimmS3i; }
 
 # ---------------------------------------------------------------------------
 # Figure F-24. Smvk8 - SPRUFE8B appendix F.4.
@@ -876,8 +914,8 @@ CTgt10: reloc is cq_scst10 [ reloc = (inst_start & 0xffffffe0) + (cq_scst10 << 2
 # Figure F-29. Sx2op - SPRUFE8B appendix F.4.  src1 = dst.
 # ---------------------------------------------------------------------------
 
-:ADD^CUnitS RA15, RX97, RB15 is c_is16=1 & CUnitS & j10=0 & j6=0 & j5=1 & j4=0 & j3=1 & j2=1 & j1=1 & j11=0 & RA15 & RX97 & RB15 { RB15 = RA15 + RX97; }
-:SUB^CUnitS RA15, RX97, RB15 is c_is16=1 & CUnitS & j10=0 & j6=0 & j5=1 & j4=0 & j3=1 & j2=1 & j1=1 & j11=1 & RA15 & RX97 & RB15 { RB15 = RA15 - RX97; }
+:ADD^CUnitSX RA15, RX97, RB15 is c_is16=1 & CUnitSX & j10=0 & j6=0 & j5=1 & j4=0 & j3=1 & j2=1 & j1=1 & j11=0 & RA15 & RX97 & RB15 { RB15 = RA15 + RX97; }
+:SUB^CUnitSX RA15, RX97, RB15 is c_is16=1 & CUnitSX & j10=0 & j6=0 & j5=1 & j4=0 & j3=1 & j2=1 & j1=1 & j11=1 & RA15 & RX97 & RB15 { RB15 = RA15 - RX97; }
 
 # ---------------------------------------------------------------------------
 # Figure F-30. Sx5 (ADDK) - SPRUFE8B appendix F.4.
@@ -911,8 +949,8 @@ CTgt10: reloc is cq_scst10 [ reloc = (inst_start & 0xffffffe0) + (cq_scst10 << 2
 # that absolute operand ignores RS. RS selects only the other 3-bit operand.
 # ---------------------------------------------------------------------------
 
-:MV^CUnitLSD RMVTo, RA15 is c_is16=1 & CUnitLSD & j6=0 & j5=0 & j2=1 & j1=1 & RMVTo & RA15 { RA15 = RMVTo; }
-:MV^CUnitLSD RX97, RMVFr is c_is16=1 & CUnitLSD & j6=1 & j5=0 & j2=1 & j1=1 & RX97 & RMVFr { RMVFr = RX97; }
+:MV^CUnitLSDX RMVTo, RA15 is c_is16=1 & CUnitLSDX & j6=0 & j5=0 & j2=1 & j1=1 & RMVTo & RA15 { RA15 = RMVTo; }
+:MV^CUnitLSDX RX97, RMVFr is c_is16=1 & CUnitLSDX & j6=1 & j5=0 & j2=1 & j1=1 & RX97 & RMVFr { RMVFr = RX97; }
 
 # ---------------------------------------------------------------------------
 # Figure G-3. LSDx1c - SPRUFE8B appendix G.3.  Predicated MVK with a

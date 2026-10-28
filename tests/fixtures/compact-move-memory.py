@@ -45,7 +45,7 @@ def main():
                                         | (ubits << 3) | 0x46 | side)
                                 src = f'{"AB"[side ^ cross]}{16 * rs + small}'
                                 dst = f'{"AB"[side]}{wide}'
-                            emit(word, rs, 0, 'move', f'MV.{unit}{side + 1}', src, dst)
+                            emit(word, rs, 0, 'move', f'MV.{unit}{side + 1}{"X" if cross else ""}', src, dst)
 
     # Offset/indirect NDW uses bytes; NDW inc/dec is always scaled by8.
     # Aligned DW is a control: it remains scaled by8 in every format.

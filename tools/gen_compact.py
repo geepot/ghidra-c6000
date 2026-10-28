@@ -118,6 +118,7 @@ CAcc CRet Cucst4 Cucst2 Cucst2pp Cucst5stk Cucst5d Cucst5p Cucst5f23
 Cucst8f24 Cucst3d9 Cucst1f CN3 CNopCount Cii Cspk Cmask CimmL3i CimmLx5 CimmS3i
 CTgt7 CTgt8 CTgt10 CPred20 CPredCC""".split())
 TABLES.update({"RMVTo", "RMVFr", "RCmpDst"})
+TABLES.update({"CUnitSX", "CUnitLX", "CUnitMX", "CUnitDX", "CUnitLSDX", "CUnitDB15"})
 
 
 def w(s=""):
@@ -328,6 +329,21 @@ w('CUnitLSD: ".S1" is q_unit=1 & q_s=0 { }')
 w('CUnitLSD: ".S2" is q_unit=1 & q_s=1 { }')
 w('CUnitLSD: ".D1" is q_unit=2 & q_s=0 { }')
 w('CUnitLSD: ".D2" is q_unit=2 & q_s=1 { }')
+w("")
+w("# Cross-path forms append X to the unit when x (bit 12) is set (section 3.8.3).")
+for unit, tbl in (("S", "CUnitSX"), ("L", "CUnitLX"), ("M", "CUnitMX"), ("D", "CUnitDX")):
+    for s in (0, 1):
+        w('%s: ".%s%d" is q_s=%d & q_t=0 { }' % (tbl, unit, s + 1, s))
+        w('%s: ".%s%dX" is q_s=%d & q_t=1 { }' % (tbl, unit, s + 1, s))
+    w("")
+for u, unit in ((0, "L"), (1, "S"), (2, "D")):
+    for s in (0, 1):
+        w('CUnitLSDX: ".%s%d" is q_unit=%d & q_s=%d & q_t=0 { }' % (unit, s + 1, u, s))
+        w('CUnitLSDX: ".%s%dX" is q_unit=%d & q_s=%d & q_t=1 { }' % (unit, s + 1, u, s))
+w("")
+w("# Figure C-18 reads B15, so the A-side unit is .D1X.")
+w('CUnitDB15: ".D1X" is q_s=0 { }')
+w('CUnitDB15: ".D2" is q_s=1 { }')
 w("")
 
 # ===========================================================================
@@ -734,7 +750,7 @@ w("# ---------------------------------------------------------------------------
 w("")
 for op, mn, sem in ((0, "ADD", "RB15 = RA15 + RX97;"),
                     (1, "SUB", "RB15 = RA15 - RX97;")):
-    con("%s^CUnitD RA15, RX97, RB15" % mn,
+    con("%s^CUnitDX RA15, RX97, RB15" % mn,
         ["j10=0", "j6=0", "j5=1", "j4=1", "j3=0", "j2=1", "j1=1", "j11=%d" % op,
          "RA15", "RX97", "RB15"], sem)
 w("")
@@ -745,7 +761,7 @@ w("# Figure C-18. Dx5 - SPRUFE8B appendix C.4.  src2 is B15; ADDAW shifts the")
 w("# 5-bit constant left by two (word addressing mode).")
 w("# ---------------------------------------------------------------------------")
 w("")
-con("ADDAW^CUnitD^\" B15, \"^Cucst5d^\", \"^RA97",
+con("ADDAW^CUnitDB15^\" B15, \"^Cucst5d^\", \"^RA97",
     ["j10=1", "j6=0", "j5=1", "j4=1", "j3=0", "j2=1", "j1=1", "RA97", "Cucst5d"],
     "RA97 = B15 + (Cucst5d << 2);")
 w("")
@@ -824,7 +840,7 @@ for sat in (0, 1):
     for op, base, sem in ((0, "ADD", "RA64 = RA15 + RX97;"), (1, "SUB", "RA64 = RA15 - RX97;")):
         mn = ("S" + base) if sat else base
         used = ("c6000_sem_%s32(RA15, RX97, RA64);" % mn.lower()) if sat else sem
-        con("%s^CUnitL RA15, RX97, RA64" % mn,
+        con("%s^CUnitLX RA15, RX97, RA64" % mn,
             ["j10=0", "j3=0", "j2=0", "j1=0", "j11=%d" % op, "c_sat=%d" % sat,
              "RA15", "RX97", "RA64"], used)
 w("")
@@ -834,7 +850,7 @@ w("# Figure D-5. L3i - SPRUFE8B appendix D.4.")
 w("# ---------------------------------------------------------------------------")
 w("")
 # Figure D-5 gives ADD for both header SAT values.
-con("ADD^CUnitL CimmL3i, RX97, RA64",
+con("ADD^CUnitLX CimmL3i, RX97, RA64",
     ["j10=1", "j3=0", "j2=0", "j1=0", "CimmL3i", "RX97", "RA64"],
     "RA64 = RX97 + CimmL3i;")
 w("")
@@ -860,7 +876,7 @@ l2c = [(0, 0, 0, "AND", "RA4 = RA15 & RX97;"),
        (1, 1, 0, "CMPLTU", "RA4 = zext(RA15 < RX97);"),
        (1, 1, 1, "CMPGTU", "RA4 = zext(RA15 > RX97);")]
 for op2, op1, op0, mn, sem in l2c:
-    con("%s^CUnitL RA15, RX97, RA4" % mn,
+    con("%s^CUnitLX RA15, RX97, RA4" % mn,
         ["j10=1", "j3=1", "j2=0", "j1=0", "j11=%d" % op2, "j6=%d" % op1, "j5=%d" % op0,
          "RA15", "RX97", "RA4"], sem)
 w("")
@@ -936,7 +952,7 @@ for sat in (0, 1):
         else:
             sem = ("local b:4 = (RX97 << 16) s>> 16; "
                    "RA1110 = (RA15 s>> 16) * b;")
-        con("%s^CUnitM RA15, RX97, RA1110" % mn,
+        con("%s^CUnitMX RA15, RX97, RA1110" % mn,
             ["j4=1", "j3=1", "j2=1", "j1=1", "j6=%d" % ((op >> 1) & 1), "j5=%d" % (op & 1),
              "c_sat=%d" % sat, "RA15", "RX97", "RA1110"], sem)
 w("")
@@ -998,7 +1014,7 @@ for sat in (0, 1):
         else:
             mn = ("S" + base) if sat else base
             used = sem if sat == 0 else "c6000_sem_sadd32(RA15, RX97, RA64);"
-        con("%s^CUnitS RA15, RX97, RA64" % mn,
+        con("%s^CUnitSX RA15, RX97, RA64" % mn,
             ["j10=0", "j3=1", "j2=0", "j1=1", "c_br=0", "j11=%d" % op,
              "c_sat=%d" % sat, "RA15", "RX97", "RA64"], used)
 w("")
@@ -1010,7 +1026,7 @@ w("# ---------------------------------------------------------------------------
 w("")
 # Figure F-23 does not consult the SAT header bit.
 for op, base, shift in ((0, "SHL", "<<"), (1, "SHR", "s>>")):
-    con("%s^CUnitS RX97, CimmS3i, RA64" % base,
+    con("%s^CUnitSX RX97, CimmS3i, RA64" % base,
         ["j10=1", "j3=1", "j2=0", "j1=1", "c_br=0", "j11=%d" % op,
          "CimmS3i", "RX97", "RA64"], "RA64 = RX97 %s CimmS3i;" % shift)
 w("")
@@ -1100,7 +1116,7 @@ w("# Figure F-29. Sx2op - SPRUFE8B appendix F.4.  src1 = dst.")
 w("# ---------------------------------------------------------------------------")
 w("")
 for op, mn, sem in ((0, "ADD", "RB15 = RA15 + RX97;"), (1, "SUB", "RB15 = RA15 - RX97;")):
-    con("%s^CUnitS RA15, RX97, RB15" % mn,
+    con("%s^CUnitSX RA15, RX97, RB15" % mn,
         ["j10=0", "j6=0", "j5=1", "j4=0", "j3=1", "j2=1", "j1=1",
          "j11=%d" % op, "RA15", "RX97", "RB15"], sem)
 w("")
@@ -1153,9 +1169,9 @@ w("# Bits 11:10 extend the source of mvto or destination of mvfr to 5 bits;")
 w("# that absolute operand ignores RS. RS selects only the other 3-bit operand.")
 w("# ---------------------------------------------------------------------------")
 w("")
-con("MV^CUnitLSD RMVTo, RA15",
+con("MV^CUnitLSDX RMVTo, RA15",
     ["j6=0", "j5=0", "j2=1", "j1=1", "RMVTo", "RA15"], "RA15 = RMVTo;")
-con("MV^CUnitLSD RX97, RMVFr",
+con("MV^CUnitLSDX RX97, RMVFr",
     ["j6=1", "j5=0", "j2=1", "j1=1", "RX97", "RMVFr"], "RMVFr = RX97;")
 w("")
 
