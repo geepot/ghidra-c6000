@@ -103,8 +103,9 @@ Targets and predicates are captured before delay work. Native parsing is checked
 listing changes; transactional recovery preserves comments, symbols, references and
 explicit fallthrough overrides. Nested transfers, defined data and conflicting function
 ownership prevent recovery. Predicated displacement `B`/`BNOP` and displacement and register `B`
-calls, predicated or not, are recovered; a call's fallthrough moves to the next execute
-packet after its window.
+calls, predicated or not, are recovered, and so is a `CALL_RETURN` tail call when nothing in
+its packet or window writes B3 except a load and the delayed-call proof finds no return
+address in B3; a call's fallthrough moves to the next execute packet after its window.
 A jump whose target is only NOPs that fill the remaining delay cycles of a return
 issued in the jump's window, taken whenever the jump is, is continued: a
 `JUMP_OVERRIDE_UNCONDITIONAL` reference sends its branch to its own fall-through and the
@@ -199,6 +200,7 @@ The synthetic fixtures exercise these behaviors in both endian modes:
 |---|---|
 | `branch-flow.py` | Direct targets, flow types and compact-header BNOP scaling. |
 | `delayed-call.py` | ADDKPC and register-built calls, complementary predicates, caller bodies and call/jump distinction. |
+| `tail-call-slots.py` | Tail-call delay slots in the caller, and B3-setting `B` and `BNOP` calls kept out of tail-call recovery. |
 | `jump-table.py` | A guarded three-case table, an adjacent valid address outside the bound, and native switch output. |
 | `return-delay.py` / `packet-call.py` | Captured targets, tail effects, packet links and mixed-width windows. |
 
