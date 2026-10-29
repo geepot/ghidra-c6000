@@ -199,6 +199,7 @@ The synthetic fixtures exercise these behaviors in both endian modes:
 |---|---|
 | `branch-flow.py` | Direct targets, flow types and compact-header BNOP scaling. |
 | `delayed-call.py` | ADDKPC and register-built calls, complementary predicates, caller bodies and call/jump distinction. |
+| `call-packet-slots.py` | Delay slots and return point of a call with a parallel companion. |
 | `jump-table.py` | A guarded three-case table, an adjacent valid address outside the bound, and native switch output. |
 | `return-delay.py` / `packet-call.py` | Captured targets, tail effects, packet links and mixed-width windows. |
 
