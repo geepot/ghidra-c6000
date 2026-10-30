@@ -21,6 +21,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeMap;
 
 import ghidra.app.cmd.function.CreateFunctionCmd;
 import ghidra.app.plugin.core.analysis.AutoAnalysisManager;
@@ -226,6 +227,8 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 			int branchIndex = execution.size();
 			execution.add(branch);
 			execution.addAll(slots);
+			int[] issue = issueCycles(execution);
+			Constants trace = new Constants(regs);
 			List<PredicateFact> facts = new ArrayList<>();
 
 			for (int i = 0; i < path.size(); i++) {
@@ -251,10 +254,14 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 						branch.getMinAddress().subtract(insn.getMinAddress()) <= 24) partner = insn;
 					continue;
 				}
-				if (insn != viaInsn && isFlow(insn)) regs.remove(program.getRegister("B3"));
-				trackOnPath(insn, regs, runs);
+				trace.before(issue[i]);
+				if (insn != viaInsn && isFlow(insn)) trace.write(issue[i], program.getRegister("B3"), null, i);
+				trace.instruction(insn, runs, issue[i], i);
 			}
 
+			// SPRUFE8B 3.5 / Tables 4-6 and 4-11: all members of a
+			// packet read the same E1 snapshot, before any E1 writer commits.
+			trace.before(issue[branchIndex]);
 			Register source = branch.getRegister(0);
 			Long target = null;
 			if (source != null) {
@@ -278,6 +285,8 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 						if (next == null || ++seen > MAX_WINDOW) return null;
 						// Reaching the return address B3 already holds ends the
 						// window, even where compact packets skew the cycle count.
+						int index = branchIndex + 1 + slotIndex(slots, next);
+						trace.before(issue[index]);
 						long[] ra = regs.get(b3);
 						if (ra != null && ra[1] == FULL &&
 							next.getMinAddress().getOffset() == ra[0]) break window;
@@ -289,9 +298,8 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 							if (partner == null) partner = next;
 						}
 						if (next.getLength() != 4) compact = true;
-						int index = branchIndex + 1 + slotIndex(slots, next);
-						trackOnPath(next, regs, executes(execution, index, facts));
-						packetCycles = Math.max(packetCycles, 1 + extraCycles(next));
+						trace.instruction(next, executes(execution, index, facts), issue[index], index);
+						packetCycles = Math.max(packetCycles, 1 + extraCycles(program, next));
 						current = next;
 					} while (parallelWithNext(current));
 					if (!branchPacket) cycles += packetCycles;
@@ -301,6 +309,9 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 			catch (MemoryAccessException e) {
 				return null;
 			}
+			// Retire writes through the last delay cycle, including idle cycles
+			// represented by ADDKPC/NOP. A load's E5 can supersede a later E1 link.
+			trace.before(issue[branchIndex] + DELAY_CYCLES + 1);
 			if (partner != null && jumpArm(branch, partner)) return null;
 			long[] ret = regs.get(b3);
 			// B3 may also be set on the look-back path.
@@ -316,6 +327,87 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 				branch.getMinAddress().getNewAddress(target & 0xffffffffL);
 			if (callee != null && !program.getMemory().contains(callee)) callee = null;
 			return new Call(callee);
+		}
+
+		/** Relative E1 cycle of each physical instruction, including idle spans. */
+		private int[] issueCycles(List<Instruction> path) {
+			int[] cycles = new int[path.size()];int cycle = 0, span = 1;
+			for (int i = 0; i < path.size(); i++) {
+				if (i > 0) {
+					Instruction prior = path.get(i - 1), current = path.get(i);
+					long next = prior.getMaxAddress().getOffset() + 1;
+					if ((next & 31) == 28 && headerAt(prior, next)) next += 4;
+					boolean parallel;
+					try { parallel = parallelWithNext(prior) && next == current.getMinAddress().getOffset(); }
+					catch (MemoryAccessException unavailable) { parallel = false; }
+					if (!parallel) { cycle += span;span = 1; }
+				}
+				cycles[i] = cycle;span = Math.max(span, 1 + extraCycles(program, path.get(i)));
+			}
+			return cycles;
+		}
+
+		private static boolean overlaps(Register a, Register b) {
+			return a.getAddress().getAddressSpace().equals(b.getAddress().getAddressSpace()) &&
+				a.getOffset() < b.getOffset() + b.getMinimumByteSize() && b.getOffset() < a.getOffset() + a.getMinimumByteSize();
+		}
+
+		private static Register loadDestination(Instruction insn) {
+			String name = baseName(insn);
+			return name.startsWith("LD") && insn.getNumOperands() >= 2 ? insn.getRegister(insn.getNumOperands() - 1) : null;
+		}
+
+		/** An updating load writes its base in E1, even when it aliases its E5 destination. */
+		private Register updatingBase(Instruction insn) {
+			String memory = insn.getDefaultOperandRepresentation(0);
+			if (memory == null || (!memory.contains("++") && !memory.contains("--"))) return null;
+			var match = java.util.regex.Pattern.compile("\\*\\s*(?:\\+\\+|--)?\\s*([AB][0-9]+)").matcher(memory);
+			return match.find() ? program.getRegister(match.group(1)) : null;
+		}
+
+		private List<Register> issueWrites(Instruction insn) {
+			List<Register> writes = new ArrayList<>();
+			// Native delay carriers include their followers' results; those have
+			// their own physical instruction and issue time in this walk.
+			if (insn.getDelaySlotDepth() != 0) return writes;
+			Register load = loadDestination(insn);
+			for (Object result : insn.getResultObjects()) if (result instanceof Register r && (load == null || !overlaps(r, load))) writes.add(r);
+			if (load != null) { Register base = updatingBase(insn);if (base != null && !writes.contains(base)) writes.add(base); }
+			return writes;
+		}
+
+		private record Write(Register register, long[] value, int owner) {}
+
+		/** Constants visible before E1 reads, with atomic packet commits and E5 invalidations. */
+		private final class Constants {
+			private final Map<Register, long[]> values;
+			private final TreeMap<Integer, List<Write>> pending = new TreeMap<>();
+			Constants(Map<Register, long[]> values) { this.values = values; }
+			void write(int cycle, Register register, long[] value, int owner) {
+				pending.computeIfAbsent(cycle, k -> new ArrayList<>()).add(new Write(register, value == null ? null : value.clone(), owner));
+			}
+			void before(int cycle) {
+				while (!pending.isEmpty() && pending.firstKey() < cycle) {
+					List<Write> writes = pending.pollFirstEntry().getValue();
+					for (Write write : writes) values.keySet().removeIf(r -> overlaps(r, write.register()));
+					for (Write write : writes) if (write.value() != null && writes.stream().noneMatch(other ->
+						other.owner() != write.owner() && overlaps(other.register(), write.register()))) values.put(write.register(), write.value());
+				}
+			}
+			void instruction(Instruction insn, Boolean runs, int cycle, int owner) {
+				if (Boolean.FALSE.equals(runs)) return;
+				Register load = loadDestination(insn);
+				if (load != null) {
+					// SPRUFE8B 4.2.5 / Table 4-10: E1 address update,
+					// E5 data write, independent of later ADDKPC/MVK writers.
+					write(cycle + 4, load, null, owner);
+					for (Register r : issueWrites(insn)) write(cycle, r, null, owner);
+					return;
+				}
+				Map<Register, long[]> result = new HashMap<>(values);
+				Register known = Boolean.TRUE.equals(runs) ? track(insn, result) : null;
+				for (Register r : issueWrites(insn)) write(cycle, r, r.equals(known) ? result.get(r) : null, owner);
+			}
 		}
 
 		/**
@@ -517,6 +609,18 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 			if (predicate == null) return false;
 			Register register = program.getRegister(predicate.replace("!", ""));
 			boolean nonzero = predicate.startsWith("!") != taken;
+			int[] cycles = issueCycles(path);
+			int first = cycles[Math.min(query, anchor)], last = cycles[Math.max(query, anchor)];
+			for (int i = 0; i < path.size(); i++) {
+				Instruction insn = path.get(i);Register load = loadDestination(insn);
+				if (load == null || !overlaps(load, register) || cycles[i] + 4 < first || cycles[i] + 4 >= last) continue;
+				String guard = predicate(insn);
+				boolean skipped = query >= anchor && guard != null &&
+					guard.replace("!", "").equals(register.getName()) && (guard.startsWith("!") ? !nonzero : nonzero) == false &&
+					(cycles[i] >= first || stable(path, i, anchor, predicate, taken));
+				if (!skipped) return false;
+			}
+
 			for (int i = Math.min(query, anchor); i < Math.max(query, anchor); i++) {
 				Instruction instruction = path.get(i);
 				// A packet reads predicates before any of its writes commit.
@@ -533,11 +637,7 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 				// the physical followers are present separately in this path.
 				String op = baseName(instruction);
 				if (op.equals("B.S1") || op.equals("B.S2")) continue;
-				for (Object written : instruction.getResultObjects()) {
-					if (written instanceof Register r && r.getAddress().getAddressSpace().equals(register.getAddress().getAddressSpace()) &&
-						r.getOffset() < register.getOffset() + register.getMinimumByteSize() &&
-						register.getOffset() < r.getOffset() + r.getMinimumByteSize()) return false;
-				}
+				for (Register r : issueWrites(instruction)) if (overlaps(r, register)) return false;
 			}
 			return true;
 		}
@@ -565,13 +665,6 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 			catch (MemoryAccessException e) { return false; }
 		}
 
-		private void trackOnPath(Instruction insn, Map<Register, long[]> regs, Boolean runs) {
-			if (Boolean.TRUE.equals(runs)) track(insn, regs);
-			else if (runs == null && insn.getDelaySlotDepth() == 0) {
-				for (Object written : insn.getResultObjects()) if (written instanceof Register r) regs.remove(r);
-			}
-		}
-
 		/** True when {@code later} is in {@code jump}'s execute packet or five delay cycles. */
 		private boolean inWindow(Instruction jump, Instruction later) {
 			List<Instruction> slots = window(jump);
@@ -596,7 +689,7 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 						Instruction next = next(current);
 						if (next == null || slots.size() >= MAX_WINDOW) return null;
 						slots.add(next);
-						packetCycles = Math.max(packetCycles, 1 + extraCycles(next));
+						packetCycles = Math.max(packetCycles, 1 + extraCycles(program, next));
 						current = next;
 					} while (parallelWithNext(current));
 					if (!branchPacket) cycles += packetCycles;
@@ -713,8 +806,14 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 	}
 
 	/** Cycles beyond the first that an instruction idles its execute packet. */
-	private static int extraCycles(Instruction insn) {
+	private static int extraCycles(Program program, Instruction insn) {
 		String op = baseName(insn);
+		// SPRUFE8B 3.10.2.2: PROT inserts four idle cycles for loads,
+		// including full-width loads inside a header-based fetch packet.
+		if (op.startsWith("LD")) {
+			try { return C6000ExecutionPackets.protectedLoad(program, insn) ? 4 : 0; }
+			catch (MemoryAccessException unavailable) { return 0; }
+		}
 		int operand;
 		if (op.equals("NOP")) operand = 0;
 		else if (op.startsWith("ADDKPC")) operand = 2;

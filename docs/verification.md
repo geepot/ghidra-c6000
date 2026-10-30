@@ -76,7 +76,10 @@ hazards, loads and late DP reads, retains the separate AMR hazard, and exercises
 schedule injection, native decompilation, CPU-preserving analysis-language conversion
 and rejection of reviews for another language. The `pipeline-resources` fixture
 also runs all four timing profiles in both byte orders, checking physical issue-unit
-and memory-transfer-path allocation independently of predicate truth. Eight language
+and memory-transfer-path allocation independently of predicate truth. The
+`delayed-call-timing` fixture runs the same variant matrix through native
+auto-analysis, checking E1 target snapshots and E5 load invalidation in delayed-call
+and predicate proofs. Eight language
 definitions share four compiled SLEIGH files. Additional instruction checks are listed in the
 [fixture catalog](regressions.md).
 

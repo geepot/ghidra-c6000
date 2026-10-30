@@ -15,6 +15,15 @@
 
 ### Fixed
 
+* Correct delayed-call recovery for E5 load writes and E1 packet snapshots
+  (issues #23 and #24). A pending load can invalidate B3 after ADDKPC; a
+  parallel target-register writer cannot change the branch's captured target.
+  Preserve E1 base updates, pair aliases, predicate sample timing and protected
+  load idle cycles (SPRUFE8B 3.5, 3.6, 3.10.2.2, Tables 4-6/4-10/4-11).
+  Add 202 independent cases per language and byte order with native reference,
+  callee creation, data preservation, read-only recognition and repeat-analysis
+  checks.
+
 * Refuse exact schedules whose execute packets reuse a functional unit or a
   memory-transfer path, including complementary and known-false predicates.
   Keep legal predicated writes on separate units and T1/T2 transfers available

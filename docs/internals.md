@@ -117,7 +117,12 @@ complementary call partner. Full-width windows may skip only a header exactly at
 the boundary; a header elsewhere does not justify return-address slack. Incoming
 jump propagation requires a complete delay window and no alternate entry into
 the preceding slot sequence. Predicate constraints apply only while their register
-is unchanged; uncertain conditional writes invalidate constants.
+is unchanged; uncertain conditional writes invalidate constants. Constant recovery
+uses a packet E1 snapshot, then commits writes atomically. Load destinations are
+invalidated in E5, including pair aliases; updating bases still change in E1.
+Pending writes retire through multicycle NOP/ADDKPC and protected-load idle spans.
+Predicate proofs account for the actual load write cycle, including loads issued
+before the predicate query (SPRUFE8B 3.5, 3.6, 3.10.2.2, Tables 4-6/4-10/4-11).
 
 Target recovery walks preceding straight-line code, follows MV and ADD/OR of zero, and
 skips writes predicated opposite to the branch. Calls are revisited when preceding code

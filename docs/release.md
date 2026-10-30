@@ -49,9 +49,9 @@ python3 tools/verify.py --ghidra /path/to/ghidra --with-ti --jobs 2
 python3 tools/verify_gui.py --ghidra /path/to/ghidra --archive "$(cat build/release-archive-path.txt)"
 ```
 
-The runner checks 60 core fixture/language imports and five TI-assembled fixture
-imports per endian: 130 per Ghidra version, or 390 across the matrix. The core
-count includes all four timing variants for the CPU and resource fixtures. Native
+The runner checks 64 core fixture/language imports and five TI-assembled fixture
+imports per endian: 138 per Ghidra version, or 414 across the matrix. The core
+count includes all four timing variants for the CPU, resource and delayed-call-timing fixtures. Native
 decompiler checks retain their 15/30-second limits. Run the headed checks in a
 desktop session, or prefix the GUI command with `xvfb-run -a` on Linux. CI runs the
 core suite and headed checks for every matrix row without the proprietary TI
@@ -65,7 +65,7 @@ Also run the focused checks for features outside the runner's registry:
 | Ordinary execute-packet completion | `parallel-peers.py` | `C6000ParallelPeerAnalyzerTest.java` |
 
 Run each on a fresh import in both endian modes. The complete release check
-therefore adds four focused imports per matrix row: 402 total imports across the
+therefore adds four focused imports per matrix row: 426 total imports across the
 three-version matrix, plus eight Python release-tool tests and the separate headed
 checks. Contracts and invocation
 arguments are documented in [caller-tail traces](caller-tail-traces.md),

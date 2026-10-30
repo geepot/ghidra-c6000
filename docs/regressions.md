@@ -15,6 +15,18 @@ the contract.
 
 ## Flow references and ownership
 
+`tests/fixtures/delayed-call-timing.py IMAGE CASES.json [be]` and
+`C6000DelayedCallTimingTest.java prepare|check CASES.json` cover 202 independent
+cases per language and byte order for issues #23 and #24. The release runner
+executes all four language variants through normal auto-analysis. Tests cover
+E5 B3 clobbers after ADDKPC, preceding and same-packet loads, pair/base aliases,
+all six predicate registers and both polarities, predicate writes across E5,
+local/cross-path register targets, writer order, compact slots, fetch boundaries
+and protected loads. Read-only recognition must agree with native call references
+and function creation; false calls preserve return data, including untyped words.
+Two additional analyzer passes check stable references and no spurious target
+functions (SPRUFE8B 3.5, 3.6, 3.10.2.2, Tables 4-6/4-10/4-11).
+
 `tests/fixtures/closed-call.py IMAGE CASES.json [be]` and
 `C6000ClosedCallTraceTest.java CASES.json RESULTS.json` cover 48 contracts per endian
 (14 executed schedules and 34 refusals). Split MVK/MVKH targets and links,

@@ -43,6 +43,7 @@ CORE = [
     case("branch-flow", "DelaySafety", "C6000_DELAY_SAFETY_OK", args=[]),
     case("branch-flow", "FlowTarget", "C6000_FLOW_TARGET_OK"),
     case("delayed-call", "DelayedCall", "C6000_DELAYED_CALL_OK", None, analysis=True),
+    case("delayed-call-timing", "DelayedCallTiming", "C6000_DELAYED_CALL_TIMING_OK", "json", ["check", "cases.json"], analysis=True),
     case("delayed-call-safety", "DelayedCallSafety", "C6000_DELAYED_CALL_SAFETY_OK", "json"),
     ("jump-table", [], [("JumpTable", [], "C6000_JUMP_TABLE_OK"),
                         ("SwitchOwnership", [], "C6000_SWITCH_OWNERSHIP_OK")], True),
@@ -225,7 +226,7 @@ def main():
         project.mkdir()
         runs = [(item, variant) for item in cases for variant in
                 (("default", "analysis", "c67x", "c67x-analysis")
-                 if item[0] in {"pipeline-c67x", "pipeline-resources"} else ("default",))]
+                 if item[0] in {"pipeline-c67x", "pipeline-resources", "delayed-call-timing"} else ("default",))]
         for index, ((fixture, manifests, scripts, analysis), variant) in enumerate(runs):
             directory = work / endian / f"{index:02d}-{fixture}-{variant}"
             directory.mkdir()
@@ -242,6 +243,8 @@ def main():
                            "-scriptPath", ROOT / "ghidra_scripts", "-deleteProject"]
                 if not analysis:
                     command += ["-noanalysis"]
+                elif fixture == "delayed-call-timing":
+                    command += ["-preScript", "C6000DelayedCallTimingTest.java", "prepare", directory / "cases.json"]
                 elif fixture == "constant-branch-target":
                     command += ["-preScript", "C6000ConstantBranchTargetTest.java", "prepare", directory / "cases.tsv"]
                 else:

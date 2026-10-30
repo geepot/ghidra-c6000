@@ -55,6 +55,12 @@ encoding, semantics and timing fixtures. C66x retains the cross-path stall
 
 ## Decode and analysis
 
+**Existing call overrides need review.** Updated recognition applies when the call
+analyzer classifies a branch. It does not automatically remove existing manual
+or previously inferred call overrides. For an image already affected by a false
+call or target, use a fresh import or review and clear the suspect flow override
+and analysis-generated references before rerunning analysis.
+
 **Resource checks are bounded.** Exact schedules reject functional-unit and T1/T2
 memory-transfer conflicts within an execute packet, even under complementary or
 known-false predicates. These checks do not establish complete device-specific
