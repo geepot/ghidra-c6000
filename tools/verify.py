@@ -97,9 +97,10 @@ CORE = [
     case("mvc-control", "MvcControl", "C6000_MVC_CONTROL_OK"),
     case("mvc-tscl", "MvcControl", "C6000_MVC_CONTROL_OK"),
     case("elf-local-label", "ElfLocalLabel", "C6000_ELF_LOCAL_LABEL_OK", None, analysis=True),
+    case("elf-compact", "ElfCompact", "C6000_ELF_COMPACT_OK", None, analysis=True),
 ]
 # Imported with Ghidra's ELF loader at the file's own addresses.
-ELF = {"elf-local-label"}
+ELF = {"elf-local-label", "elf-compact"}
 TI = [
     case("pipeline-store-tail", "PipelineStoreTail", "C6000_PIPELINE_STORE_TAIL_OK", "json", ["cases.json", "results.json"]),
     case("caller-tail", "CallerTail", "C6000_CALLER_TAIL_OK", "json", ["cases.json", "results.json"]),

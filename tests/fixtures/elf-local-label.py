@@ -57,41 +57,47 @@ SYMS = [("f", 0x1000, 1, 0), ("$C$RL3", 0x1010, 0, 2), ("$C$L1", 0x1020, 0, 2), 
         ("$C$L2", 0x1140, 0, 2), ("$C$L", 0x11E0, 0, 2), ("$C$L1a", 0x1200, 0, 2)]
 
 
-def build(be):
+def build(be, text_words=TEXT, syms=SYMS, size=SIZE, flags=b""):
+    """FLAGS, when given, is a non-allocated .TI.section.flags section, as cl6x emits."""
     e = ">" if be else "<"
-    text = bytearray(SIZE)
-    for a, w in TEXT.items():
+    text = bytearray(size)
+    for a, w in text_words.items():
         struct.pack_into(e + "I", text, a - BASE, w)
-    strtab = b"\0" + b"".join(n.encode() + b"\0" for n, *_ in SYMS)
-    name = {n: strtab.index(b"\0" + n.encode() + b"\0") + 1 for n, *_ in SYMS}
+    strtab = b"\0" + b"".join(n.encode() + b"\0" for n, *_ in syms)
+    name = {n: strtab.index(b"\0" + n.encode() + b"\0") + 1 for n, *_ in syms}
     sym = bytearray(16)  # null symbol
     for bind in (0, 1):  # locals first, as sh_info requires
-        for n, v, b, vis in SYMS:
+        for n, v, b, vis in syms:
             if b == bind:
                 sym += struct.pack(e + "IIIBBH", name[n], v, 0, (b << 4) | 2, vis, 1)
-    nlocal = 1 + sum(1 for s in SYMS if s[2] == 0)
-    shstr = b"\0.text\0.symtab\0.strtab\0.shstrtab\0"
-    # layout: ehdr(52) phdr(32) text symtab strtab shstrtab shdrs
+    nlocal = 1 + sum(1 for s in syms if s[2] == 0)
+    shstr = b"\0.text\0.symtab\0.strtab\0.shstrtab\0" + (b".TI.section.flags\0" if flags else b"")
+    # layout: ehdr(52) phdr(32) text symtab strtab shstrtab flags shdrs
     o_text = 0x100
-    o_sym = o_text + SIZE
+    o_sym = o_text + size
     o_str = o_sym + len(sym)
     o_shs = o_str + len(strtab)
-    o_sh = (o_shs + len(shstr) + 3) & ~3
+    o_flags = o_shs + len(shstr)
+    o_sh = (o_flags + len(flags) + 3) & ~3
+    sections = 6 if flags else 5
     ident = b"\x7fELF" + bytes([1, 2 if be else 1, 1, 0]) + bytes(8)
-    eh = ident + struct.pack(e + "HHIIIIIHHHHHH", 2, 140, 1, 0x1000, 52, o_sh, 0, 52, 32, 1, 40, 5, 4)
-    ph = struct.pack(e + "IIIIIIII", 1, o_text, BASE, BASE, SIZE, SIZE, 5, 0x20)
+    eh = ident + struct.pack(e + "HHIIIIIHHHHHH", 2, 140, 1, 0x1000, 52, o_sh, 0, 52, 32, 1, 40, sections, 4)
+    ph = struct.pack(e + "IIIIIIII", 1, o_text, BASE, BASE, size, size, 5, 0x20)
     sh = bytes(40)
-    sh += struct.pack(e + "IIIIIIIIII", 1, 1, 6, BASE, o_text, SIZE, 0, 0, 32, 0)
+    sh += struct.pack(e + "IIIIIIIIII", 1, 1, 6, BASE, o_text, size, 0, 0, 32, 0)
     sh += struct.pack(e + "IIIIIIIIII", 7, 2, 0, 0, o_sym, len(sym), 3, nlocal, 4, 16)
     sh += struct.pack(e + "IIIIIIIIII", 15, 3, 0, 0, o_str, len(strtab), 0, 0, 1, 0)
     sh += struct.pack(e + "IIIIIIIIII", 23, 3, 0, 0, o_shs, len(shstr), 0, 0, 1, 0)
+    if flags:
+        sh += struct.pack(e + "IIIIIIIIII", 33, 1, 0, 0, o_flags, len(flags), 0, 0, 1, 0)
     img = bytearray(o_sh)
     img[0:52] = eh
     img[52:84] = ph
-    img[o_text:o_text + SIZE] = text
+    img[o_text:o_text + size] = text
     img[o_sym:o_sym + len(sym)] = sym
     img[o_str:o_str + len(strtab)] = strtab
     img[o_shs:o_shs + len(shstr)] = shstr
+    img[o_flags:o_flags + len(flags)] = flags
     return bytes(img) + sh
 
 

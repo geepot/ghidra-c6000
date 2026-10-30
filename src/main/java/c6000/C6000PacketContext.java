@@ -109,7 +109,7 @@ public final class C6000PacketContext {
 			long last = range.getMaxAddress().getOffset() & ~31L;
 			for (long offset = base; offset <= last; offset += FETCH_PACKET_SIZE) {
 				if (monitor != null) monitor.checkCancelled();
-				Address cursor = range.getMinAddress().getNewAddress(offset);
+				Address cursor = range.getAddressSpace().getAddressInThisSpaceOnly(offset);
 				Address hdrAddr = cursor.add(FETCH_PACKET_SIZE - 4);
 				// A truncated imported fetch packet has no readable compact header.
 				// Prime its ordinary words, matching physicalDecodeFields' default.
@@ -171,9 +171,11 @@ public final class C6000PacketContext {
 	private static AddressSet fetchPackets(AddressSetView addresses) {
 		AddressSet packets = new AddressSet();
 		for (var range : addresses.getAddressRanges()) {
-			Address first = range.getMinAddress(), last = range.getMaxAddress();
-			packets.add(first.getNewAddress(first.getOffset() & ~31L),
-				last.getNewAddress((last.getOffset() & ~31L) + 31));
+			// An overlay maps offsets outside its blocks to its base space;
+			// a packet rounded past an ELF overlay block must stay in the overlay.
+			var space = range.getAddressSpace();
+			packets.add(space.getAddressInThisSpaceOnly(range.getMinAddress().getOffset() & ~31L),
+				space.getAddressInThisSpaceOnly((range.getMaxAddress().getOffset() & ~31L) + 31));
 		}
 		return packets;
 	}
@@ -220,7 +222,7 @@ public final class C6000PacketContext {
     /** Read-only physical header fields for isolated decoders; never writes ProgramContext. */
     static Map<String,Integer> physicalDecodeFields(Program program,Address at)throws Exception {
         long base=at.getOffset()&~31L;int offset=(int)(at.getOffset()-base);
-        Address headerAt=at.getNewAddress(base+28);int header=program.getMemory().getAllInitializedAddressSet().contains(headerAt, headerAt.add(3))?program.getMemory().getInt(headerAt):0;
+        Address headerAt=at.getAddressSpace().getAddressInThisSpaceOnly(base+28);int header=program.getMemory().getAllInitializedAddressSet().contains(headerAt, headerAt.add(3))?program.getMemory().getInt(headerAt):0;
         if((header>>>28)!=0xe)return Map.of("c_is16",0,"c_isheader",0,"c_hdrpkt",0,"c_rs",0,"c_dsz",0,"c_prot",0,"c_br",0,"c_sat",0,"c_pfollow",0);
         int layout=(header>>>LAYOUT_SHIFT)&LAYOUT_MASK;
         return Map.of("c_is16",offset<28&&((layout>>>(offset/4))&1)!=0?1:0,"c_isheader",offset==28?1:0,"c_hdrpkt",1,
