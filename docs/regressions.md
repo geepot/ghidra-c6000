@@ -278,6 +278,15 @@ odd-pair or cross-path forms in both endian modes. `tests/fixtures/linked-word.p
 `C6000LinkedWordTest.java` check the C64x+ `LL` /`SL`/`CMTL` encodings and linked-memory
 event p-code.
 
+`tests/fixtures/reserved-predicate.py <image.bin> <cases.tsv> [be]` and
+`C6000ReservedPredicateTest.java <cases.tsv>` decode 15 cases per endian mode in the
+release suite. Unconditional-only `SMPY32` and `RPACK2` use the reserved `creg=0, z=1`
+encoding (SPRUFE8B Table 3-9) and must not be shadowed by their predicated twins `MPY32US`
+and `DMV`, which are decoded unpredicated and under several predicates. The shadowing only
+shows with an even destination, which the twin's register pair can also encode, so the
+cases use even and odd destinations. The seven `SMPY32`/`RPACK2` cases reuse values from
+`remaining-arith.py` and also execute, checking the result, `CSR.SAT` and `SSR`.
+
 `tests/fixtures/sat-arith.py <image.bin> <cases.tsv> [be]` and
 `C6000SatArithmeticTest.java <cases.tsv>` execute 15 `SADD` and `SSUB` cases per endian
 mode. They cover 32-bit and 40-bit saturation, signed constants, register-pair results,
