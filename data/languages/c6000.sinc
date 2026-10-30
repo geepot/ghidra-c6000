@@ -411,6 +411,8 @@ CtlDst: "IER"    is crf_dst=4  & i17=0 { export IER; }
 CtlDst: "ISTP"   is crf_dst=5  & i17=0 { export ISTP; }
 CtlDst: "IRP"    is crf_dst=6  & i17=0 { export IRP; }
 CtlDst: "NRP"    is crf_dst=7  & i17=0 { export NRP; }
+# Names the TSCL write; c6000_manual.sinc lifts it as c6000_tsc_start.
+CtlDst: "TSCL"   is crf_dst=10 & crhi=0 { export TSCL; }
 CtlDst: "ILC"    is crf_dst=13 & crhi=0 { export ILC; }
 CtlDst: "RILC"   is crf_dst=14 & crhi=0 { export RILC; }
 CtlDst: "REP"    is crf_dst=15 & crhi=0 { export REP; }
@@ -529,6 +531,9 @@ define pcodeop c6000_idle;
 define pcodeop c6000_link_load;
 define pcodeop c6000_link_store;
 define pcodeop c6000_link_commit;
+define pcodeop c6000_tsc_start;
+define pcodeop c6000_tscl_read;
+define pcodeop c6000_tsch_read;
 @if FP_MODEL == "analysis"
 define pcodeop c6000_fp_status;
 @endif
