@@ -55,6 +55,11 @@ encoding, semantics and timing fixtures. C66x retains the cross-path stall
 
 ## Decode and analysis
 
+**Resource checks are bounded.** Exact schedules reject functional-unit and T1/T2
+memory-transfer conflicts within an execute packet, even under complementary or
+known-false predicates. These checks do not establish complete device-specific
+resource legality; the C67x cross-path-reader limit remains unmodeled.
+
 **Coverage is not exhaustive.** Decode covers the documented full32 opcode maps and
 supported compact formats, including legacy MVC and C64x+ LL/SL/CMTL. Unknown encodings
 remain undefined. A successful sample or corpus run does not establish coverage of every

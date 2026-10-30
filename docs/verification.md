@@ -74,7 +74,9 @@ runs `default`, `analysis`, `c67x` and `c67x-analysis` in both byte orders. It c
 cycle/stall counts and values for both cross paths, predicated writers, incoming
 hazards, loads and late DP reads, retains the separate AMR hazard, and exercises
 schedule injection, native decompilation, CPU-preserving analysis-language conversion
-and rejection of reviews for another language. Eight language
+and rejection of reviews for another language. The `pipeline-resources` fixture
+also runs all four timing profiles in both byte orders, checking physical issue-unit
+and memory-transfer-path allocation independently of predicate truth. Eight language
 definitions share four compiled SLEIGH files. Additional instruction checks are listed in the
 [fixture catalog](regressions.md).
 

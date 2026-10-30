@@ -51,6 +51,7 @@ CORE = [
     case("predicated-register-branch", "PredicatedBranch", "C6000_PREDICATED_BRANCH_OK", analysis=True),
     case("pipeline-schedule", "PipelineSemantics", "C6000_PIPELINE_SEMANTICS_OK", None, ["decompiler.xml"]),
     case("pipeline-c67x", "PipelineCpu", "C6000_PIPELINE_CPU_OK", "json"),
+    case("pipeline-resources", "PipelineResources", "C6000_PIPELINE_RESOURCES_OK", "json"),
     case("pipeline-call-contracts", "PipelineCallContract", "C6000_PIPELINE_CALL_CONTRACT_OK", "json", ["cases.json", "results.json"]),
     case("pipeline-contracts", "PipelineContract", "C6000_PIPELINE_CONTRACT_OK", "json"),
     case("pipeline-float", "PipelineFloat", "C6000_PIPELINE_FLOAT_OK"),
@@ -224,7 +225,7 @@ def main():
         project.mkdir()
         runs = [(item, variant) for item in cases for variant in
                 (("default", "analysis", "c67x", "c67x-analysis")
-                 if item[0] == "pipeline-c67x" else ("default",))]
+                 if item[0] in {"pipeline-c67x", "pipeline-resources"} else ("default",))]
         for index, ((fixture, manifests, scripts, analysis), variant) in enumerate(runs):
             directory = work / endian / f"{index:02d}-{fixture}-{variant}"
             directory.mkdir()

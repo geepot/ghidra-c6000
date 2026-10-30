@@ -65,6 +65,8 @@ Select a function, then choose **Review Exact Schedule...**. Provide:
 ownership and the pinned entry evidence. For incomplete ownership, finish normal
 analysis/disassembly and inspect the function body before previewing again. The GUI
 never silently adopts another function's instructions or guesses an entry contract.
+Preview refuses physical functional-unit and memory-transfer-path conflicts,
+even when the instructions have mutually exclusive predicates.
 Compilation is cancellable between scheduler states. Editing any input invalidates
 the preview; Cancel closes the dialog without recording a review. Existing review
 inputs are restored when reopening the form, but still require a fresh preview.

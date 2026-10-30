@@ -27,7 +27,10 @@ def main():
     mpy = 0xe00 | (3 << 13) | (4 << 18) | (5 << 23)
     put(0x1000, mvk(1, 3) | 1, mv(3, 4), b3, 0x8000)
     put(0x1100, mpy, mv(5, 6), 0x2000, mv(5, 7), b3, 0x8000)
-    put(0x1200, stw | 0x80 | 1, ldw, 0x8000, b3, 0x8000)
+    # Read-before-store observes one address through independent T paths:
+    # STW.D2T2 B6,*B4 || LDW.D1T1 *A4,A5 (SPRUFE8B 3.8.5).
+    # Two transfers through T1 are physically invalid even on different .D units.
+    put(0x1200, (stw & ~(31 << 23)) | (6 << 23) | 0x82 | 1, ldw, 0x8000, b3, 0x8000)
     put(0x1300, mvk(1, 3) | 1, stw, 0x8000, b3, 0x8000)
     put(0x1400, 0x10 | (16 << 7), 0, 0x10 | (32 << 7), mvk(1, 3), 0x2000, stw | (7 << 13))
     put(0x1440, mvk(2, 4), mvk(3, 5), stw | (6 << 13))

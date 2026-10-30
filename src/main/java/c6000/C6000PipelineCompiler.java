@@ -1029,7 +1029,7 @@ public final class C6000PipelineCompiler {
             int fetchSpan=1;for(var instruction:fetched)fetchSpan=Math.max(fetchSpan,instruction.span());
             if(sourceFetch)fetchSpan=1;
             validateNopGenerators(fetched);
-            try{validateUnits(pack);}catch(IllegalArgumentException error){throw fail(error.getMessage()+" frame="+s.loop()+" pc="+Long.toHexString(s.pc()));}
+            try{validateIssueResources(pack);}catch(IllegalArgumentException error){throw new IllegalArgumentException(error.getMessage()+" frame="+s.loop()+" pc="+Long.toHexString(s.pc()),error);}
             for(var flight:s.flights()){
                 var old=decode(flight.pc());int latency=Set.of("ADDDP","SUBDP","CMPEQDP","CMPLTDP","CMPGTDP","MPYSP2DP").contains(old.name())?2:old.name().equals("MPYDP")?4:old.name().equals("MPYSPDP")?3:1;
                 if(flight.age()<latency)for(var instruction:pack)if(unit(old)!=0&&unit(old)==unit(instruction))throw fail("functional unit still occupied by "+old.instruction());
@@ -1412,7 +1412,7 @@ public final class C6000PipelineCompiler {
         }
     }
 
-    private void validateUnits(List<Insn> packet){
+    private void validateIssueResources(List<Insn> packet){
         // SPRUFE8B BDEC/BPOS notes prohibit ADDKPC in the same execute packet.
         if(packet.stream().anyMatch(i->Set.of("BDEC","BPOS").contains(i.name()))&&
             packet.stream().anyMatch(i->i.name().equals("ADDKPC")))
@@ -1432,8 +1432,23 @@ public final class C6000PipelineCompiler {
         }
         Map<Integer,Insn> used=new HashMap<>();
         for(var instruction:packet){int unit=unit(instruction);if(unit==0)continue;var prior=used.putIfAbsent(unit,instruction);if(prior==null)continue;
-            if(prior.predicate()!=null&&prior.predicate().equals(instruction.predicate())&&prior.inverted()!=instruction.inverted())continue;
+            // SPRUFE8B 3.6/3.8.1 and SPRU733A 3.6/3.7.1: mutually
+            // exclusive predicates cannot share physical issue resources.
             throw fail("functional-unit collision between "+prior.instruction()+" and "+instruction.instruction());
+        }
+        // SPRUFE8B 3.8.5 / SPRU733A 3.7.4: .D units choose the address
+        // bank, while the load destination/store source selects T1 or T2.
+        // Different .D units still conflict when they select the same T path,
+        // including load/store pairs and complementary or known-false guards.
+        Map<Integer,Insn> transfers=new HashMap<>();
+        for(var instruction:packet){
+            if(!instruction.load()&&!instruction.store())continue;
+            var decoded=instruction.instruction();
+            Register data=decoded.getRegister(instruction.load()?decoded.getNumOperands()-1:0);
+            if(data==null||data.getAddress().getOffset()>=0x2000)throw fail("missing memory-transfer register at "+decoded.getAddress());
+            int path=data.getAddress().getOffset()<0x1000?1:2;
+            var prior=transfers.putIfAbsent(path,instruction);
+            if(prior!=null)throw fail("memory-transfer path collision on T"+path+" between "+prior.instruction()+" and "+decoded);
         }
     }
 

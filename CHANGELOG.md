@@ -15,6 +15,14 @@
 
 ### Fixed
 
+* Refuse exact schedules whose execute packets reuse a functional unit or a
+  memory-transfer path, including complementary and known-false predicates.
+  Keep legal predicated writes on separate units and T1/T2 transfers available
+  (SPRUFE8B 3.6, 3.8.1, 3.8.5; SPRU733A 3.6, 3.7.1, 3.7.4). Add an
+  independent 244-case matrix across all timing profiles and byte orders,
+  including compact RS selections, plus native-dialog refusal checks. Correct the
+  earlier read-before-store fixture to use independent T1/T2 paths.
+
 * Hide internal decoder and scheduler registers using native processor-spec flags
   so Listing assumptions show architectural state. Honor changed-byte scopes in
   packet analysis, propagate cancellation, and prime ordinary instructions in

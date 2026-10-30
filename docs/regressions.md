@@ -63,6 +63,19 @@ from observed disassembler output.
 
 ## Memory and arithmetic
 
+`tests/fixtures/pipeline-resources.py IMAGE CASES.json [be]` and
+`C6000PipelineResourcesTest.java CASES.json` check 244 cases per language and
+byte order: 148 executed schedules and 96 refusals. The release runner exercises
+all four timing variants. Refusals cover all eight functional units, all six
+predicate registers, complementary and proven-false guards, and LDW/STW transfer
+path conflicts. Controls execute legal packets using separate units or T1/T2,
+including complementary writes to one destination on different units. Compact
+C674x memory forms exercise both RS selections; testing them under C67x timing
+profiles does not establish C67x ISA legality. Every executed case checks all GPRs,
+the return address and guarded memory words. Refused activations must leave context,
+review metadata and the modification number unchanged (SPRUFE8B 3.6/3.8.1/3.8.5;
+SPRU733A 3.6/3.7.1/3.7.4).
+
 `tests/fixtures/pipeline-c67x.py IMAGE CASES.json [be]` and
 `C6000PipelineCpuTest.java CASES.json` execute 15 cases per language and byte
 order. The release runner imports the same bytes with `default`, `analysis`,

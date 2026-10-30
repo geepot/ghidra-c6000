@@ -15,7 +15,7 @@ public class C6000PipelineSemanticsTest extends GhidraScript {
    new Case("incoming_cross_stall",0x1f04,regs("A4",5),regs("B6",5),0x11223344),
    new Case("parallel_old",0x1000,regs("A3",0x44),regs("A4",0x44,"A3",1),0x11223344),
    new Case("mpy_delay",0x1100,regs("A3",0x40000000,"A4",0x40400000,"A5",0x55),regs("A5",0x40c00000,"A6",0x55,"A7",0x40c00000),0x11223344),
-   new Case("load_store_old",0x1200,regs("A3",0x22,"A4",0x8000,"B4",0x8000),regs("A5",0x11223344),0x22),
+   new Case("load_store_old",0x1200,regs("B6",0x22,"A4",0x8000,"B4",0x8000),regs("A5",0x11223344),0x22),
    new Case("store_capture",0x1300,regs("A3",0x44,"A4",0x8000),regs("A3",1),0x44),
    new Case("two_pending_branches",0x1400,regs("A4",0x8000),regs("A3",1,"A4",2,"A5",3,"A6",4),0x11223344),
    new Case("predicate_captured_true",0x1500,regs("B0",1),regs("A4",0x22,"B0",0),0x11223344),

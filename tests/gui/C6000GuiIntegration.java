@@ -165,6 +165,47 @@ public class C6000GuiIntegration implements GhidraLaunchable {
         return descendants(provider.getComponent()).stream().filter(c -> c instanceof JTextArea text &&
             "C6000 operation result".equals(text.getAccessibleContext().getAccessibleName())).map(c -> (JTextArea)c).findFirst().orElseThrow();
     }
+    private void resourceRefusalDialogs() throws Exception {
+        // SPRUFE8B 3.6/3.8.1/3.8.5: both complementary predicates still
+        // allocate the issue unit and memory-transfer path in their packet.
+        transaction(program, "Invalid physical resource fixtures", () -> {
+            var memory = program.getMemory();
+            var base = program.getAddressFactory().getDefaultAddressSpace().getAddress(0xa000);
+            memory.createInitializedBlock("resource_conflicts", base, 256, (byte)0, TaskMonitor.DUMMY, false);
+            for (int n = 0; n < 2; n++) {
+                var at = base.add(128*n);
+                memory.setInt(at, n == 0 ? 0x23100fd9 : 0x23100265);
+                memory.setInt(at.add(4), n == 0 ? 0x33900fd8 : 0x339002f4);
+                memory.setInt(at.add(8), 0xc0362);memory.setInt(at.add(12), 0x8000);
+                new ghidra.app.cmd.disassemble.DisassembleCommand(at, new AddressSet(at, at.add(3)), false).applyTo(program, TaskMonitor.DUMMY);
+                program.getFunctionManager().createFunction("invalid_resources_"+n, at, new AddressSet(at, at.add(127)), SourceType.USER_DEFINED);
+            }
+        });
+        quiet();
+        for (int n = 0; n < 2; n++) {
+            long offset = 0xa000+128*n;String refusal = n == 0 ? "functional-unit collision" : "memory-transfer path collision";
+            var at = program.getAddressFactory().getDefaultAddressSpace().getAddress(offset);
+            var function = program.getFunctionManager().getFunctionAt(at);
+            int consumers = program.getConsumerList().size();long version = program.getModificationNumber();
+            swing(() -> tool.firePluginEvent(new ProgramLocationPluginEvent("test", new ProgramLocation(program, at), program)));
+            SwingUtilities.invokeLater(() -> action("Review C6000 Exact Schedule").actionPerformed(context(program, offset)));
+            waitFor(() -> reviewWindow() != null, "resource refusal review dialog");
+            swing(() -> {
+                var evidence = descendants(reviewWindow()).stream().filter(c -> c instanceof JTextArea text && text.isEditable()).map(c -> (JTextArea)c).findFirst().orElseThrow();
+                evidence.setText("Synthetic reset has no incoming effects");button(reviewWindow(), "Preview schedule").doClick();
+            });
+            waitFor(() -> descendants(reviewWindow()).stream().anyMatch(c -> c instanceof JTextArea text && !text.isEditable() && text.getText().contains(refusal)), refusal+" displayed in preview");
+            swing(() -> {
+                check(!button(reviewWindow(), "Enable reviewed schedule").isEnabled(), "Invalid resource preview enabled activation");
+                capture(reviewWindow(), "resource-refusal-"+offset+".png");button(reviewWindow(), "Cancel").doClick();
+            });
+            quiet();
+            check(version == program.getModificationNumber(), "Refused resource preview mutated the program");
+            check(!C6000PipelineContracts.isRecorded(program, function), "Refused resource preview recorded a contract");
+            check(program.getConsumerList().size() == consumers, "Refused resource dialog leaked a consumer");
+        }
+        swing(() -> tool.firePluginEvent(new ProgramLocationPluginEvent("test", new ProgramLocation(program, program.getMinAddress()), program)));
+    }
     private void cancelledReviewFlow() throws Exception {
         int consumers = program.getConsumerList().size();long version = program.getModificationNumber();
         SwingUtilities.invokeLater(() -> action("Review C6000 Exact Schedule").actionPerformed(context(program, 0x1000)));
@@ -291,6 +332,7 @@ public class C6000GuiIntegration implements GhidraLaunchable {
         swing(() -> check(!action("Set C6000 Entry Point").isEnabledForContext(context(program, 0x1004)), "Entry action enabled in a function interior"));
         swing(() -> check(action("Review C6000 Exact Schedule").isEnabledForContext(context(program, 0x1000)), "Native review action unavailable"));
         decompileInTool(program, function, "ordinary");
+        resourceRefusalDialogs();
         cancelledReviewFlow();
         dialogFlow(program, function);
         long before = program.getModificationNumber();
