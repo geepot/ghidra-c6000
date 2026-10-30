@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: Apache-2.0
-"""Delayed-call E1 snapshots and E5 load writes, issues #23/#24.
+"""Delayed-call E1 snapshots, late result writes and BNOP idle cycles, issues #23/#24/#30.
 
 IMAGE CASES.json [be]. Synthetic SPRUFE8B 3.5, 3.6, Tables 4-6/4-10/4-11
 and the LDW/LDDW/B/ADDKPC/MVK/MVKH opcode diagrams.
@@ -13,11 +13,22 @@ import sys
 
 helpers = runpy.run_path(str(Path(__file__).with_name('delayed-call.py')))
 mvk, mvkh, nop, addkpc, branch = (helpers[n] for n in ('mvk', 'mvkh', 'nop', 'addkpc', 'b_s1'))
+A0_, A1_ = 12, 8
 PREDICATES = [('B0', 2), ('B1', 4), ('B2', 6), ('A1', 8), ('A2', 10), ('A0', 12)]
 
 
 def load(data=3, base=15, mode=1, pair=False, predicate=0, data_bank=1, side=1):
     return predicate << 28 | data << 23 | base << 18 | mode << 9 | (0x164 if pair else 0x64) | side << 7 | data_bank << 1
+
+
+def bnop(at, target, count):
+    """BNOP.S1 target,count, relative to the fetch packet holding at."""
+    return 0x120 | (((target - (at & ~31)) >> 2) & 0xfff) << 16 | count << 13
+
+
+# cl6x 8.3.15 -mv6740: MPY32/MPYI/ADDSP B4,B5,B3 and LL/CMTL *B4,B3, all on side 2.
+LATE = {'MPY32': (0x01948802, 3), 'ADDSP': (0x0194821a, 3), 'MPYI': (0x01948202, 8),
+        'LL': (0x01900642, 4), 'CMTL': (0x01900742, 4)}
 
 
 def main():
@@ -26,7 +37,7 @@ def main():
 
     def emit(name, build):
         base = 0x1000 + len(image)
-        words, site, ret, accepted, target = build(base)
+        words, site, ret, accepted, target, *other = build(base)
         data = bytearray(0x100)
         for at, word in words.items():
             struct.pack_into(endian+'I', data, at-base, word)
@@ -38,7 +49,7 @@ def main():
             struct.pack_into(endian+'II', data, ret-base, helpers['B_B3'], nop(5))
         image.extend(data)
         rows.append(dict(name=name, entry=base, site=site, ret=ret, call=accepted,
-                         target=target, other=base+0xc0 if target!=base+0xc0 else base+0x80,
+                         target=target, other=other[0] if other else base+0xc0 if target!=base+0xc0 else base+0x80,
                          untyped_return=not accepted and words[site] >> 28 == 0))
 
     def window(base, guard=0, branch_guard=0, data=3, pointer=15, mode=1, pair=False):
@@ -150,7 +161,32 @@ def main():
         return {b:load(data=7),b+4:branch(b+4,b+0x80),b+8:addkpc(b+8,ret,4),
                 b+28:0xe0100000},b+4,ret,True,b+0x80
     emit('protected_lookback_load_drains_before_branch',protected_prefix)
-    assert len(rows)==202
+    # Issue #23: results that land after ADDKPC, beside the B or on the look-back path.
+    for name, (word, delay) in LATE.items():
+        def beside(b,word=word):
+            ret=b+12
+            return {b:branch(b,b+0x80)|1,b+4:word,b+8:addkpc(b+8,ret,4)},b,ret,False,b+0x80
+        emit(f'late_{name}_beside_B',beside)
+        for before in range(1,5):
+            def earlier(b,n=before,word=word,delay=delay):
+                site=b+4*n;ret=site+8
+                code={b:word, **{b+4*k:nop(1) for k in range(1,n)}, site:branch(site,b+0x80), site+4:addkpc(site+4,ret,4)}
+                # ADDKPC writes in E1 of cycle n+1; an equal-cycle result conflicts.
+                return code,site,ret,delay<n+1,b+0x80
+            emit(f'late_{name}_{before}_cycles_before_B',earlier)
+    # Issue #30: a BNOP idles its NOP count even when not taken.
+    def bnop_load_target(b):
+        ret=b+24;fptr=b+0xa0
+        return {b:mvk(fptr,4),b+4:mvkh(0,4),b+8:A0_<<28|bnop(b+8,b+0xc0,4)|1,
+                b+12:load(data=4,base=4,predicate=A0_|1),b+16:0x362|4<<18,
+                b+20:addkpc(b+20,ret,4),fptr:b+0x80},b+16,ret,True,None,fptr
+    emit('bnop_beside_target_load',bnop_load_target)
+    def bnop_lookback_restore(b):
+        ret=b+16
+        return {b:load(base=4),b+4:A1_<<28|bnop(b+4,b+0xc0,5),
+                b+8:branch(b+8,b+0x80),b+12:addkpc(b+12,ret,4)},b+8,ret,True,b+0x80
+    emit('bnop_lookback_B3_load_lands',bnop_lookback_restore)
+    assert len(rows)==229
     Path(sys.argv[1]).write_bytes(image)
     Path(sys.argv[2]).write_text(json.dumps(rows,indent=2)+'\n')
 

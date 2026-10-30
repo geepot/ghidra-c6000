@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // @category C6000
-// SPRUFE8B 3.5, 3.6 and Tables 4-6/4-10/4-11; issues #23/#24.
+// SPRUFE8B 3.5, 3.6, 3.12 BNOP and Tables 4-6/4-10/4-11; issues #23/#24/#30.
 import java.nio.file.*;
 import java.util.*;
 import com.google.gson.*;
@@ -42,7 +42,8 @@ public class C6000DelayedCallTimingTest extends GhidraScript {
             if(call!=null && expected && instruction.getRegister(0)!=null) {
                 var method=call.getClass().getDeclaredMethod("target");method.setAccessible(true);
                 var target=(ghidra.program.model.address.Address)method.invoke(call);
-                if(target==null||target.getOffset()!=row.get("target").getAsLong())failures.add(name+" target="+target);
+                // A null row target means the B reads a value no constant proves.
+                if(row.get("target").isJsonNull()?target!=null:target==null||target.getOffset()!=row.get("target").getAsLong())failures.add(name+" target="+target);
             }
             if(expected)accepted++;
         }
@@ -56,9 +57,10 @@ public class C6000DelayedCallTimingTest extends GhidraScript {
                 if(row.get("call").getAsBoolean()) {
                     var calls=new HashSet<Long>();int references=0;
                     for(var ref:instruction.getReferencesFrom())if(ref.getReferenceType().isCall()){calls.add(ref.getToAddress().getOffset());references++;}
-                    if(!instruction.getFlowType().isCall()||!calls.equals(Set.of(row.get("target").getAsLong()))||references!=1)
+                    boolean unknown=row.get("target").isJsonNull();
+                    if(!instruction.getFlowType().isCall()||!calls.equals(unknown?Set.of():Set.of(row.get("target").getAsLong()))||references!=(unknown?0:1))
                         throw new AssertionError(name+" native call refs="+calls+" count="+references);
-                    if(getFunctionAt(toAddr(row.get("target").getAsLong()))==null)throw new AssertionError("Missing callee: "+name);
+                    if(!unknown&&getFunctionAt(toAddr(row.get("target").getAsLong()))==null)throw new AssertionError("Missing callee: "+name);
                     if(getFunctionAt(toAddr(row.get("other").getAsLong()))!=null)throw new AssertionError("Spurious target function: "+name);
                 } else {
                     if(instruction.getFlowOverride()==FlowOverride.CALL)throw new AssertionError("False native call: "+name);

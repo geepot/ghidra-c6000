@@ -309,9 +309,11 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 			catch (MemoryAccessException e) {
 				return null;
 			}
-			// Retire writes through the last delay cycle, including idle cycles
-			// represented by ADDKPC/NOP. A load's E5 can supersede a later E1 link.
-			trace.before(issue[branchIndex] + DELAY_CYCLES + 1);
+			// Retire every pending write, including idle cycles represented by
+			// ADDKPC/NOP/BNOP. A load's E5, or a later multi-cycle result
+			// (MPYI lands in E9), supersedes an earlier E1 link even after the
+			// callee is entered.
+			trace.before(Integer.MAX_VALUE);
 			if (partner != null && jumpArm(branch, partner)) return null;
 			long[] ret = regs.get(b3);
 			// B3 may also be set on the look-back path.
@@ -352,9 +354,10 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 				a.getOffset() < b.getOffset() + b.getMinimumByteSize() && b.getOffset() < a.getOffset() + a.getMinimumByteSize();
 		}
 
+		/** LD*, and LL/CMTL, which also write in E5 (SPRU732, LL and CMTL). */
 		private static Register loadDestination(Instruction insn) {
 			String name = baseName(insn);
-			return name.startsWith("LD") && insn.getNumOperands() >= 2 ? insn.getRegister(insn.getNumOperands() - 1) : null;
+			return loadDestinationName(name) && insn.getNumOperands() >= 2 ? insn.getRegister(insn.getNumOperands() - 1) : null;
 		}
 
 		/** An updating load writes its base in E1, even when it aliases its E5 destination. */
@@ -402,6 +405,12 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 					// E5 data write, independent of later ADDKPC/MVK writers.
 					write(cycle + 4, load, null, owner);
 					for (Register r : issueWrites(insn)) write(cycle, r, null, owner);
+					return;
+				}
+				int delay = resultDelay(insn);
+				if (delay > 0) {
+					// The old value stays until the last result write; neither is a constant.
+					for (Register r : issueWrites(insn)) { write(cycle, r, null, owner);write(cycle + delay, r, null, owner); }
 					return;
 				}
 				Map<Register, long[]> result = new HashMap<>(values);
@@ -612,8 +621,9 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 			int[] cycles = issueCycles(path);
 			int first = cycles[Math.min(query, anchor)], last = cycles[Math.max(query, anchor)];
 			for (int i = 0; i < path.size(); i++) {
-				Instruction insn = path.get(i);Register load = loadDestination(insn);
-				if (load == null || !overlaps(load, register) || cycles[i] + 4 < first || cycles[i] + 4 >= last) continue;
+				Instruction insn = path.get(i);int delay = resultDelay(insn);Register load = loadDestination(insn);
+				if (delay == 0 || cycles[i] + delay < first || cycles[i] + delay >= last ||
+					(load != null ? !overlaps(load, register) : issueWrites(insn).stream().noneMatch(r -> overlaps(r, register)))) continue;
 				String guard = predicate(insn);
 				boolean skipped = query >= anchor && guard != null &&
 					guard.replace("!", "").equals(register.getName()) && (guard.startsWith("!") ? !nonzero : nonzero) == false &&
@@ -805,6 +815,37 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 		return name.startsWith("[") && end > 0 ? name.substring(1, end) : null;
 	}
 
+	private static final Set<String> ONE_DELAY = Set.of("MPY", "MPYU", "MPYUS", "MPYSU", "MPYH", "MPYHU",
+		"MPYHUS", "MPYHSU", "MPYHL", "MPYHLU", "MPYHULS", "MPYHSLU", "MPYLH", "MPYLHU", "MPYLUHS", "MPYLSHU",
+		"SMPY", "SMPYH", "SMPYHL", "SMPYLH", "AVG2", "AVGU4", "BITC4", "BITR", "DEAL", "SHFL", "ROTL",
+		"XPND2", "XPND4", "SPDP", "ABSDP", "RCPDP", "RSQRDP", "CMPEQDP", "CMPGTDP", "CMPLTDP");
+	private static final Set<String> THREE_DELAY = Set.of("ADDSP", "SUBSP", "MPYSP", "INTSP", "INTSPU",
+		"SPINT", "SPTRUNC", "DPSP", "DPINT", "DPTRUNC");
+	private static final Map<String, Integer> LONG_DELAY = Map.of("INTDP", 4, "INTDPU", 4, "MPYSP2DP", 4,
+		"ADDDP", 6, "SUBDP", 6, "MPYSPDP", 6, "MPYI", 8, "MPYID", 9, "MPYDP", 9);
+
+	/**
+	 * Delay slots before an instruction's last register result lands
+	 * (SPRUFE8B 4.2 and each instruction's pipeline table; SPRU733A for
+	 * C67x floating point). Loads, LL and CMTL write in E5.
+	 * ponytail: any other .M instruction is taken as three delay slots, the
+	 * C64x+ multiply latency; an overestimate only loses a call proof.
+	 */
+	static int resultDelay(Instruction insn) {
+		String name = baseName(insn);
+		if (loadDestinationName(name)) return 4;
+		int dot = name.indexOf('.');
+		String op = dot < 0 ? name : name.substring(0, dot);
+		if (LONG_DELAY.containsKey(op)) return LONG_DELAY.get(op);
+		if (THREE_DELAY.contains(op)) return 3;
+		if (ONE_DELAY.contains(op)) return 1;
+		return dot >= 0 && name.startsWith("M", dot + 1) ? 3 : 0;
+	}
+
+	private static boolean loadDestinationName(String name) {
+		return name.startsWith("LD") || name.startsWith("LL.") || name.startsWith("CMTL.");
+	}
+
 	/** Cycles beyond the first that an instruction idles its execute packet. */
 	private static int extraCycles(Program program, Instruction insn) {
 		String op = baseName(insn);
@@ -817,6 +858,9 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 		int operand;
 		if (op.equals("NOP")) operand = 0;
 		else if (op.startsWith("ADDKPC")) operand = 2;
+		// SPRUFE8B 3.12 BNOP: the NOP cycles are inserted whether or not
+		// the branch is taken.
+		else if (op.startsWith("BNOP")) operand = 1;
 		else return 0;
 		try {
 			int count = Integer.decode(insn.getDefaultOperandRepresentation(operand));
