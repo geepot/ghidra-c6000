@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"><title>C6000 Processor Tools</title><link rel="stylesheet" type="text/css" href="help/shared/DefaultStyle.css"></head>
+<body>
+<a name="ProcessorTools"></a><h1>C6000 Processor Tools</h1>
+<p>The C6000 extension installs native processor languages, analyzers and a decompiler injection library. Those work without enabling the optional user-interface plugin. Enable <b>C6000Plugin</b> under <b>File &gt; Configure &gt; Configure All Plugins</b> to add the processor panel and actions.</p>
+<p>Open <b>Analysis &gt; C6000 &gt; Processor Tools</b>. The dockable panel follows the current program and cursor, shows the selected timing and floating-point models, and reports whether the current function has an exact-schedule review. The same entry and schedule actions are available from the Listing and Decompiler context menus. Immutable program views allow preview and validation; entry setup, activation and disable require an editable program.</p>
+<h2>Choose the processor language</h2>
+<p><b>default</b> and <b>analysis</b> use C64x/C64x+/C674x cross-path timing. <b>c67x</b> and <b>c67x-analysis</b> omit that stall on C67x/C67x+. Select the matching byte order on import. ELF auto-selection uses default. Analysis variants simplify floating-point flags and special rounding. All variants share a superset decoder; C67x ISA filtering and C66x-specific instructions are known gaps.</p>
+<h2>Start a raw image</h2>
+<p>Import with the correct language and base address. Place the cursor at an entry instruction and choose <b>Set Entry Point Here</b>. The native background command primes compact context, disassembles code, creates an entry function and marks the entry point. Ghidra's analyzers handle subsequent analysis. Cancellation or refusal rolls back the command; Undo restores the prior program.</p>
+<a name="Schedules"></a><h2>Review exact packet schedules</h2>
+<p>Ordinary instruction lifting does not model all parallel reads and delayed writes. Exact scheduling is explicit and per function. It requires evidence that there are no pending instruction effects or transfers at entry. A function boundary or calling convention is not that evidence.</p>
+<ol><li>Select a defined function and choose <b>Review Exact Schedule</b>.</li>
+<li>Describe the entry evidence and any registers written during the preceding E1 cycle. Empty means none. Valid register names are A0–A31 and B0–B31.</li>
+<li>Choose the source-byte range supporting the evidence. Addresses are hexadecimal and the end is inclusive. The range must cover whole initialized 32-byte fetch packets, up to 64 KiB. The default is the entry's fetch packet; change it when the evidence comes from setup or caller code.</li>
+<li>Choose <b>Preview schedule</b>. Preview is read-only. Unsupported phases, incomplete function ownership or other contract failures are displayed without enabling a schedule.</li>
+<li>Review the result, then choose <b>Enable reviewed schedule</b>. Activation rechecks bytes, language, context, ownership and references while analysis is suspended. The activation and review are one undoable transaction.</li></ol>
+<p>Editing inputs invalidates the preview. Cancel leaves the program unchanged. Reopening a review restores its previous inputs and requires a fresh preview. Reviews pinning multiple source ranges must be renewed through their API/batch workflow.</p>
+<p><b>Validate Exact Schedule</b> checks a recorded review after edits. A stale review is refused by the decompiler as well; it never silently becomes an ordinary sequential representation. Re-preview and explicitly enable a fresh review if the source or assumptions changed. Operation messages clear when you navigate to another function or edit the program.</p>
+<p><b>Disable Exact Schedule</b> explicitly restores ordinary instruction lifting, removes the function’s review and observation contracts, and preserves ownership, comments and references. It is undoable. A stale schedule is never automatically disabled.</p>
+<p>Internal context and scheduler registers are hidden from normal Listing assumptions through the processor specification. Enable Ghidra’s Display Hidden Registers option to inspect them.</p>
+<p>Native actions do not invoke scripts or require JSON manifests. Scripts remain available for headless/batch use, trace experiments and fixture verification. Closed-call and post-return observation contracts remain advanced APIs; the GUI does not infer them.</p>
+</body></html>

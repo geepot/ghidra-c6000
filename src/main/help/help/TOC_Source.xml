@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<tocroot>
+  <tocref id="Ghidra Functionality">
+    <tocdef id="C6000ProcessorTools" text="C6000 Processor Tools" target="help/topics/C6000/C6000.html"/>
+  </tocref>
+</tocroot>

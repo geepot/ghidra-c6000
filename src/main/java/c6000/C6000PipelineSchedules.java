@@ -115,6 +115,12 @@ public final class C6000PipelineSchedules {
 
     static C6000PipelineCompiler.Result compileConfigured(Program program, Function function,
             Set<String> writes) throws Exception {
+        return compileConfigured(program, function, writes, TaskMonitor.DUMMY);
+    }
+
+    static C6000PipelineCompiler.Result compileConfigured(Program program, Function function,
+            Set<String> writes, TaskMonitor monitor) throws Exception {
+        monitor.checkCancelled();
         var calls = closedCalls(program, function);
         var tail = storeTailContract(program, function);
         if (!calls.isEmpty()) {
@@ -125,7 +131,7 @@ public final class C6000PipelineSchedules {
             return C6000PipelineCompiler.compileClosedCallsTrace(program, function, calls).schedule();
         }
         var compiler = new C6000PipelineCompiler(program, function, writes);
-        return tail == null ? compiler.compile() : compiler.compileStoreTail(tail).schedule();
+        return tail == null ? compiler.compile(monitor) : compiler.compileStoreTail(tail).schedule();
     }
 
     /** Explicitly install an observation contract, atomically with reviewed activation.
@@ -165,7 +171,7 @@ public final class C6000PipelineSchedules {
             throw new IllegalArgumentException("Evidence for a drained entry pipeline is required");
         }
         monitor.checkCancelled();
-        var result = compileConfigured(program, function, previousE1Writes);
+        var result = compileConfigured(program, function, previousE1Writes, monitor);
         var at = function.getEntryPoint();
         var context = program.getProgramContext();
         var enabled = context.getValue(program.getRegister("c_schedule_entry"), at, false);
@@ -251,6 +257,42 @@ public final class C6000PipelineSchedules {
             C6000PipelineCompiler.Result schedule) throws Exception {
         if (!closedCalls(program, function).isEmpty()) return;
         var body = new AddressSet(function.getBody());body.add(schedule.covered());function.setBody(body);
+    }
+
+    /** Explicitly return to ordinary instruction lifting; preserve listing annotations and scope. */
+    public static void disable(Program program, Function function, TaskMonitor monitor) throws Exception {
+        monitor.checkCancelled();
+        if (!C6000PacketContext.isC6000(program)) throw new IllegalArgumentException("Expected C6000 program");
+        var at = function.getEntryPoint();
+        boolean active = BigInteger.ONE.equals(program.getProgramContext().getValue(program.getRegister("c_schedule_entry"), at, false));
+        if (!active && !C6000PipelineContracts.isRecorded(program, function)) return;
+        int transaction = program.startTransaction("Disable exact C6000 schedule");
+        boolean commit = false;
+        try {
+            var listing = program.getListing();
+            var old = listing.getInstructionAt(at);
+            if (active && old != null) {
+                int length = old.getLength();
+                var references = old.getReferencesFrom();
+                var flow = old.getFlowOverride();
+                boolean overridden = old.isFallThroughOverridden();var fallThrough = old.getFallThrough();
+                var comments = new EnumMap<CommentType, String>(CommentType.class);
+                for (var type : CommentType.values()) { var value = listing.getComment(type, at);if (value != null) comments.put(type, value); }
+                listing.clearCodeUnits(at, at.add(length - 1), false);
+                program.getProgramContext().setValue(program.getRegister("c_schedule_entry"), at, at, BigInteger.ZERO);
+                var disassemble = new DisassembleCommand(at, new AddressSet(at, at.add(length - 1)), false);
+                if (!disassemble.applyTo(program, monitor)) throw new IllegalStateException("Cannot decode ordinary entry: " + disassemble.getStatusMsg());
+                var instruction = listing.getInstructionAt(at);
+                if (instruction == null || instruction.getLength() != length) throw new IllegalStateException("Ordinary entry changed instruction extent");
+                instruction.setFlowOverride(flow);if (overridden) instruction.setFallThrough(fallThrough);
+                for (var item : comments.entrySet()) listing.setComment(at, item.getKey(), item.getValue());
+                for (var reference : references) program.getReferenceManager().addReference(reference);
+            } else if (active) program.getProgramContext().setValue(program.getRegister("c_schedule_entry"), at, at, BigInteger.ZERO);
+            var options = program.getOptions(OPTIONS);
+            for (String key : List.of(contractKey(function), hazardsKey(function), storeTailKey(function),
+                    closedCallsKey(function), C6000PipelineContracts.key(function))) options.removeOption(key);
+            monitor.checkCancelled();commit = true;
+        } finally { program.endTransaction(transaction, commit); }
     }
 
 }

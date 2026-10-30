@@ -2,6 +2,26 @@
 <!-- TMS320C6000 processor specification. -->
 <processor_spec>
   <programcounter register="PC"/>
+  <!-- Internal decode and scheduler state stays out of normal Listing assumptions.
+       Ghidra's Display Hidden Registers option still exposes it for diagnostics. -->
+  <register_data>
+    <register name="contextreg" hidden="true"/>
+    <register name="c_is16" hidden="true"/>
+    <register name="c_rs" hidden="true"/>
+    <register name="c_dsz" hidden="true"/>
+    <register name="c_sat" hidden="true"/>
+    <register name="c_br" hidden="true"/>
+    <register name="c_prot" hidden="true"/>
+    <register name="c_isheader" hidden="true"/>
+    <register name="c_branch_terminal" hidden="true"/>
+    <register name="c_pfollow" hidden="true"/>
+    <register name="c_flow_delay" hidden="true"/>
+    <register name="c_schedule_entry" hidden="true"/>
+    <register name="c_hdrpkt" hidden="true"/>
+    <register name="C6000_PIPE_RET" hidden="true"/>
+    <register name="C6000_PIPE_ILC" hidden="true"/>
+    <register name="C6000_PIPE_RILC" hidden="true"/>
+  </register_data>
   <properties>
     <property key="pcodeInjectLibraryClass" value="c6000.C6000PipelineInjectLibrary"/>
     <property key="c6000.packetSize" value="32"/>

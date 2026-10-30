@@ -9,6 +9,7 @@ import ghidra.program.model.lang.*;
 import ghidra.program.model.listing.*;
 import ghidra.program.model.mem.DumbMemBufferImpl;
 import ghidra.program.model.pcode.*;
+import ghidra.util.task.TaskMonitor;
 /**
 * Exact finite-state retiming of raw instruction p-code. Arithmetic is never
 * reimplemented here. SPRUFE8B 3.5, 3.8.3, 3.10.2.2 and 4.2.1--4.2.8:
@@ -462,6 +463,7 @@ public final class C6000PipelineCompiler {
     private final Map<Integer,Long> cycleStarts=new LinkedHashMap<>();
     private final Map<Integer,String> stallLabels=new LinkedHashMap<>();
     private final boolean crossPathStalls;
+    private TaskMonitor monitor=TaskMonitor.DUMMY;
     // SPRUFE8B ANDN pp.145-146: .L/.S/.D read both inputs and write dst in E1.
     // SPRUFE8B PACK2 pp.397-398 / PACKL4 pp.407-408: E1 source reads and dst write.
     private static final Set<String> SINGLE=Set.of("ADD","ADDK","ADDAW","ADDAD","ADDAH","ADDAB","SUBAW","SUBAH","SUBAB","SUB","AND","ANDN","OR","XOR","NOT","MV","MVK","MVKH","MVKL","MVKLH","SHL","SHR","SHRU","EXT","EXTU","SET","CLR","CMPEQ","CMPGT","CMPLT","CMPEQSP","CMPGTSP","CMPLTSP","CMPGTU","CMPLTU","ZERO","NEG","ABS","NORM","LMBD","ABSSP","DINT","RINT","PACK2","PACKL4");
@@ -965,6 +967,11 @@ public final class C6000PipelineCompiler {
         if(traceContract!=null||closedCall!=null||callerTail!=null||storeTailContract!=null)throw fail("trace compiler is not an ordinary function schedule");
         return compileInternal();
     }
+    public Result compile(TaskMonitor monitor)throws Exception{
+        this.monitor=Objects.requireNonNull(monitor);
+        monitor.checkCancelled();
+        return compile();
+    }
     private Result compileInternal()throws Exception{
         for(String counter:List.of("ILC","RILC"))b.op(PcodeOp.COPY,new Varnode(program.getRegister("C6000_PIPE_"+counter).getAddress(),4),new Varnode(program.getRegister(counter).getAddress(),4));
         List<Hazard> incoming=List.of();
@@ -978,6 +985,7 @@ public final class C6000PipelineCompiler {
         state(start);
         int processed=0;
         while(processed<states.size()){
+            monitor.checkCancelled();
             var iterator=states.entrySet().iterator();
             Map.Entry<State,Integer> selected=null;
             for(int k=0;k<=processed;k++)selected=iterator.next();
@@ -1441,6 +1449,7 @@ public final class C6000PipelineCompiler {
         int ii=(int)start.instruction().getScalar(0).getValue();if(ii<1||ii>14)throw fail("invalid loop interval");
         List<Insn> entryPacket=packet(at);long pc=after(entryPacket.get(entryPacket.size()-1));List<LoopCell> cells=new ArrayList<>();boolean found=false;int fetchDelay=0;
         while(cells.size()<48){
+            monitor.checkCancelled();
             List<Insn> instructions=packet(pc);int mask=0,duration=1;boolean kernel=false;
             for(var instruction:instructions){
                 if(instruction.name().startsWith("SPLOOP"))throw fail("nested loop source without SPKERNEL");

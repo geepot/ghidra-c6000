@@ -40,7 +40,8 @@ existing superset decoder; per-device instruction legality, including TSCL/TSCH
 availability, is not filtered. See [processor timing](docs/pipeline-schedules.md#processor-timing-selection).
 
 A raw binary also needs an entry point before auto-analysis finds code. In the GUI,
-navigate to the address and run `C6000SetEntry.java` from Script Manager; in headless
+navigate to the address and use the native **C6000 → Set Entry Point Here** action
+(or `C6000SetEntry.java` from Script Manager); in headless
 Ghidra, use `-preScript C6000SetEntry.java <hexaddr>`. The script rejects headless
 imports without an address or an address outside loaded memory. Compact packets decode
 only after the packet analyzer has primed the decode context, which auto-analysis does
@@ -51,6 +52,18 @@ version is now 1.2: Ghidra's native language migration rebuilds instruction prot
 after compact operand corrections. See the
 [migration notes](docs/internals.md#language-prototype-migration), including annotation
 and existing error-bookmark handling.
+
+## Native CodeBrowser tools
+
+Enable **C6000Plugin** through **File → Configure → Configure All Plugins**, then
+open **Analysis → C6000 → Processor Tools**. The dockable panel shows the current
+processor model, packet, function and schedule state. Native Listing/menu actions
+set raw-image entry points and preview, enable, validate or disable exact schedules.
+They use cancellable Ghidra tasks, source-bound reviews and Undo; no scripts or JSON
+manifests are required. See the [native tools guide](docs/native-ui.md).
+
+The processor languages, ABI, automatic analyzers and decompiler injection are
+available independently of this optional GUI plugin.
 
 ## Features and limitations
 

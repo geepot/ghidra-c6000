@@ -81,7 +81,7 @@ public final class C6000ExecutionPackets {
         if (block == null || !block.isInitialized()) throw new MemoryAccessException("Uninitialized code");
         boolean compactPacket = false;
         int header = 0;
-        if (memory.contains(ha.add(3))) {
+        if (memory.getAllInitializedAddressSet().contains(ha, ha.add(3))) {
             header = memory.getInt(ha);
             compactPacket = (header >>> 28) == 0xe;
         }
@@ -163,11 +163,18 @@ public final class C6000ExecutionPackets {
         return second!=0?second:first;
     }
 
+    private static Address following(Slot slot) throws MemoryAccessException {
+        try { return slot.at().addNoWrap(slot.length()); }
+        catch (ghidra.program.model.address.AddressOverflowException end) {
+            throw new MemoryAccessException("Execute packet extends beyond the address space");
+        }
+    }
+
     /** Bytes after this instruction through its execute-packet end, including crossed headers. */
     public static int parallelBytes(Program program, Address at) throws MemoryAccessException {
         Slot current = slot(program, at);
         if (current.header()) return 0;
-        Address firstEnd = at.add(current.length());
+        long firstEnd = at.getOffset() + current.length();
         var prefix=issuePrefix(program,at);
         int instructions = 1+prefix.size();
         int generator=0;
@@ -175,12 +182,12 @@ public final class C6000ExecutionPackets {
         generator=mergeGenerator(generator,nopGenerator(program,current));
         while (current.parallel()) {
             if (++instructions > 8) throw new MemoryAccessException("Oversized execute packet");
-            Slot next = slot(program, current.at().add(current.length()));
-            if (next.header()) next = slot(program, next.at().add(next.length()));
+            Slot next = slot(program, following(current));
+            if (next.header()) next = slot(program, following(next));
             int other=nopGenerator(program,next);
             generator=mergeGenerator(generator,other);
             current = next;
         }
-        return (int) (current.at().add(current.length()).subtract(firstEnd));
+        return (int) (current.at().getOffset() + current.length() - firstEnd);
     }
 }

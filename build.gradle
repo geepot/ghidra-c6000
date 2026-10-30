@@ -31,6 +31,13 @@ tasks.named("buildExtension") {
 	exclude "**/__pycache__/**"
 	exclude "**/*.pyc"
 	exclude "**/.DS_Store"
+	// Fixture checks belong in the repository, not the user's Script Manager.
+	// Keep the public corpus audit even though its historical name ends in Test.
+	exclude "tests/**"
+	exclude { details ->
+		details.path.startsWith("ghidra_scripts/") &&
+			details.name.endsWith("Test.java") && details.name != "C6000CorpusTest.java"
+	}
 	doLast {
 		// Record this task's actual output; never select an older zip by mtime.
 		new File(layout.buildDirectory.get().asFile, "release-archive-path.txt").text =

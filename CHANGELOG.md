@@ -2,8 +2,27 @@
 
 ## Unreleased
 
+### Added
+
+* Native CodeBrowser C6000 plugin: dockable processor/packet/schedule inspector,
+  entry setup, source-bound schedule preview/activation, validation and explicit
+  disable. Use native tasks, analysis workers, Undo/Redo, program lifecycle events
+  and bundled JavaHelp without invoking scripts. Add isolated headed integration
+  checks for real actions/dialogs, persistence, tool restore and disposal, plus native
+  Decompiler integration. Run the headed checks under a virtual display in CI.
+* Keep fixture-only test scripts out of release archives and Script Manager,
+  preserving the public corpus audit and batch tools.
+
 ### Fixed
 
+* Hide internal decoder and scheduler registers using native processor-spec flags
+  so Listing assumptions show architectural state. Honor changed-byte scopes in
+  packet analysis, propagate cancellation, and prime ordinary instructions in
+  truncated raw fetch packets. Handle compact headers split across memory blocks,
+  avoid context writes into sparse holes, clear obsolete compact halfword context,
+  and handle the top of the 32-bit address space. Make ordinary schedule compilation
+  cancellable. Guard immutable program views, retain review inputs for renewal,
+  and clear validation messages after navigation or program edits.
 * Add LE/BE `c67x` and `c67x-analysis` language variants so opted-in exact
   schedules omit the C64x/C674x cross-path stall on C67x/C67x+ (SPRU198K
   6.3.2.2). Preserve existing default/analysis timing and language-bound review

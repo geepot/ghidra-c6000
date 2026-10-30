@@ -78,6 +78,17 @@ and rejection of reviews for another language. Eight language
 definitions share four compiled SLEIGH files. Additional instruction checks are listed in the
 [fixture catalog](regressions.md).
 
+## Headed framework integration
+
+After building, run `python3 tools/verify_gui.py --archive /absolute/path/to/C6000.zip`
+in a desktop session, or under `xvfb-run -a` on Linux. This adds a real CodeBrowser
+and native-plugin lifecycle check to the headless suite. It opens only generated
+fixtures in an isolated project and requires a clean framework error log.
+The [native tools guide](native-ui.md#framework-integration-and-verification) describes
+the covered workflows and retained screenshots. CI runs this as a separate virtual
+display step on every supported Ghidra version; the default local `verify.py` command
+remains headless.
+
 ## Reading the results
 
 A passing fixture requires a successful process **and** every expected script completion

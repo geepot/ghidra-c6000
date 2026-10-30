@@ -26,6 +26,15 @@ schedules. The eight language definitions share four compiled SLEIGH files; the
 variants do not filter per-device instruction legality. See
 [processor timing selection](pipeline-schedules.md#processor-timing-selection).
 
+## Native CodeBrowser plugin
+
+`C6000Plugin` is a released `ProgramPlugin` with native program-context actions and
+a dockable `C6000Provider`. `C6000ScheduleDialog` previews explicit entry contracts;
+`C6000ProgramActions` calls the shared compiler/review APIs, native disassembly and
+function commands, and analysis workers. It does not invoke scripts. Program
+listeners are detached on activation changes and disposal; queued tasks retain a
+consumer for the target program until completion. See the [native tools guide](native-ui.md).
+
 ## Compact 16-bit fetch packets
 
 A fetch packet is eight 32-bit words (32 bytes). It is a **compact** packet exactly when

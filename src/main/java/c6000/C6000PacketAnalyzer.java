@@ -57,9 +57,12 @@ public class C6000PacketAnalyzer extends AbstractAnalyzer {
 	public boolean added(Program program, AddressSetView set, TaskMonitor monitor,
 			MessageLog log) throws CancelledException {
 		try {
-			int n = C6000PacketContext.prime(program, monitor);
+			int n = C6000PacketContext.prime(program, set, monitor);
 			log.appendMsg(NAME, "primed " + n + " compact fetch packet(s)");
 			return true;
+		}
+		catch (CancelledException cancelled) {
+			throw cancelled;
 		}
 		catch (Exception e) {
 			log.appendException(e);

@@ -59,6 +59,16 @@ jobs:
       - name: Verify the release candidate in both endian modes
         run: python3 tools/verify.py --jobs 2
 
+      - name: Install virtual display for native GUI checks
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb xauth
+
+      - name: Verify native CodeBrowser and Decompiler integration
+        run: |
+          ARCHIVE=$(cat build/release-archive-path.txt)
+          xvfb-run -a python3 tools/verify_gui.py --archive "$ARCHIVE"
+
       - name: Preserve verification evidence
         if: always()
         uses: actions/upload-artifact@v4
@@ -68,6 +78,11 @@ jobs:
             scratch/verify-*/summary.json
             scratch/verify-*/build.log
             scratch/verify-*/*/*/*.log
+            scratch/verify-gui-*/summary.json
+            scratch/verify-gui-*/gui.log
+            scratch/verify-gui-*/compile.log
+            scratch/verify-gui-*/*.png
+            scratch/verify-gui-*/*.c
           if-no-files-found: warn
 
       - uses: actions/upload-artifact@v4

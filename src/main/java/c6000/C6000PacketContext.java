@@ -19,10 +19,11 @@ import java.math.BigInteger;
 import java.util.Map;
 
 import ghidra.program.model.address.Address;
+import ghidra.program.model.address.AddressSet;
+import ghidra.program.model.address.AddressSetView;
 import ghidra.program.model.lang.Register;
 import ghidra.program.model.listing.Program;
 import ghidra.program.model.mem.Memory;
-import ghidra.program.model.mem.MemoryBlock;
 import ghidra.util.task.TaskMonitor;
 
 /**
@@ -87,37 +88,45 @@ public final class C6000PacketContext {
 	 * @return the number of compact fetch packets found
 	 */
 	public static int prime(Program program, TaskMonitor monitor) throws Exception {
+		return prime(program, null, monitor);
+	}
+
+	/** Prime whole fetch packets overlapping a native analyzer's changed byte set. */
+	public static int prime(Program program, AddressSetView changed, TaskMonitor monitor) throws Exception {
 		if (!isC6000(program)) {
 			return 0;
 		}
 		Memory memory = program.getMemory();
+		AddressSetView initialized = memory.getAllInitializedAddressSet();
+		AddressSet requested = fetchPackets(changed == null ? initialized : changed);
+		// Normalize after intersection: adjacent blocks and disjoint fragments may
+		// belong to one physical packet. Block boundaries have no ISA meaning.
+		AddressSet scope = fetchPackets(requested.intersect(initialized));
 
 		int packets = 0;
-		for (MemoryBlock block : memory.getBlocks()) {
-			if (!block.isInitialized()) {
-				continue;
-			}
-			Address start = block.getStart();
-			long base = start.getOffset() & ~(long) (FETCH_PACKET_SIZE - 1);
-			Address cursor = start.getNewAddress(base);
-			Address end = block.getEnd();
-			while (cursor.compareTo(end) <= 0) {
-				if (monitor != null && monitor.isCancelled()) {
-					return packets;
-				}
+		for (var range : scope.getAddressRanges()) {
+			long base = range.getMinAddress().getOffset();
+			long last = range.getMaxAddress().getOffset() & ~31L;
+			for (long offset = base; offset <= last; offset += FETCH_PACKET_SIZE) {
+				if (monitor != null) monitor.checkCancelled();
+				Address cursor = range.getMinAddress().getNewAddress(offset);
 				Address hdrAddr = cursor.add(FETCH_PACKET_SIZE - 4);
-				if (hdrAddr.compareTo(end) > 0 || !memory.contains(hdrAddr)) {
-					cursor = cursor.add(FETCH_PACKET_SIZE);
-					continue;
-				}
-				int header = memory.getInt(hdrAddr);
+				// A truncated imported fetch packet has no readable compact header.
+				// Prime its ordinary words, matching physicalDecodeFields' default.
+				boolean completeHeader = initialized.contains(hdrAddr, hdrAddr.add(3));
+				int header = completeHeader ? memory.getInt(hdrAddr) : 0;
 				if ((header >>> 28) != 0xE) {
 					// A noflow context field with no explicit value does not
 					// reliably match a SLEIGH c_is16=0 constructor. Prime
 					// ordinary words as well as compact ones.
-					for (int i = 0; i < 8; i++) {
-						Address word = cursor.add(i * 4);
-						if (word.compareTo(start) >= 0 && word.compareTo(end) <= 0) {
+					for (int i = 0; i < 16; i++) {
+						Address word = cursor.add(i * 2);
+						// Ordinary words need an explicit decode value at their
+						// start. Halfwords only need cleanup if they were compact;
+						// avoid new context writes inside existing 32-bit instructions.
+						boolean staleHalfword = BigInteger.ONE.equals(program.getProgramContext().getValue(
+							program.getRegister("c_is16"), word, false));
+						if (initialized.contains(word) && ((i & 1) == 0 || staleHalfword)) {
 							setField(program, "c_is16", word, 0);
 							setField(program, "c_isheader", word, 0);
 							setField(program, "c_pfollow", word, 0);
@@ -125,7 +134,6 @@ public final class C6000PacketContext {
 							primeBranchMode(program, word);
 						}
 					}
-					cursor = cursor.add(FETCH_PACKET_SIZE);
 					continue;
 				}
 				packets++;
@@ -138,18 +146,15 @@ public final class C6000PacketContext {
 				for (int i = 0; i < 7; i++) {
 					Address word = cursor.add(i * 4);
 					boolean compact = ((layout >>> i) & 1) == 1;
-					setSlot(program, word, compact, rs, dsz, prot, br, sat);
-					setField(program, "c_pfollow", word,
-						parallelFollowers(header, layout, 2 * i));
-					if (compact) {
-						setSlot(program, word.add(2), true, rs, dsz, prot, br, sat);
-						setField(program, "c_pfollow", word.add(2),
-							parallelFollowers(header, layout, 2 * i + 1));
+					if (initialized.contains(word)) {
+						setSlot(program, word, compact, rs, dsz, prot, br, sat);
+						setField(program, "c_pfollow", word, parallelFollowers(header, layout, 2 * i));
 					}
-					else {
-						// make sure a stale 16-bit marking cannot survive
-						setSlot(program, word.add(2), false, 0, 0, 0, 0, 0);
-						setField(program, "c_pfollow", word.add(2), 0);
+					if (initialized.contains(word.add(2))) {
+						// Clear stale halfword context when a layout changes to full-width.
+						setSlot(program, word.add(2), compact, compact ? rs : 0,
+							compact ? dsz : 0, compact ? prot : 0, compact ? br : 0, compact ? sat : 0);
+						setField(program, "c_pfollow", word.add(2), compact ? parallelFollowers(header, layout, 2 * i + 1) : 0);
 					}
 				}
 				// The header is a 32-bit CPKT instruction, not a compact slot.
@@ -158,8 +163,17 @@ public final class C6000PacketContext {
 				setField(program, "c_pfollow", hdrAddr, 0);
 				setField(program, "c_hdrpkt", hdrAddr, 1);
 				primeBranchMode(program, hdrAddr);
-				cursor = cursor.add(FETCH_PACKET_SIZE);
 			}
+		}
+		return packets;
+	}
+
+	private static AddressSet fetchPackets(AddressSetView addresses) {
+		AddressSet packets = new AddressSet();
+		for (var range : addresses.getAddressRanges()) {
+			Address first = range.getMinAddress(), last = range.getMaxAddress();
+			packets.add(first.getNewAddress(first.getOffset() & ~31L),
+				last.getNewAddress((last.getOffset() & ~31L) + 31));
 		}
 		return packets;
 	}
@@ -206,7 +220,7 @@ public final class C6000PacketContext {
     /** Read-only physical header fields for isolated decoders; never writes ProgramContext. */
     static Map<String,Integer> physicalDecodeFields(Program program,Address at)throws Exception {
         long base=at.getOffset()&~31L;int offset=(int)(at.getOffset()-base);
-        Address headerAt=at.getNewAddress(base+28);int header=program.getMemory().contains(headerAt.add(3))?program.getMemory().getInt(headerAt):0;
+        Address headerAt=at.getNewAddress(base+28);int header=program.getMemory().getAllInitializedAddressSet().contains(headerAt, headerAt.add(3))?program.getMemory().getInt(headerAt):0;
         if((header>>>28)!=0xe)return Map.of("c_is16",0,"c_isheader",0,"c_hdrpkt",0,"c_rs",0,"c_dsz",0,"c_prot",0,"c_br",0,"c_sat",0,"c_pfollow",0);
         int layout=(header>>>LAYOUT_SHIFT)&LAYOUT_MASK;
         return Map.of("c_is16",offset<28&&((layout>>>(offset/4))&1)!=0?1:0,"c_isheader",offset==28?1:0,"c_hdrpkt",1,
