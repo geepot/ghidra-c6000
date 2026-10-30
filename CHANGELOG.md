@@ -4,6 +4,14 @@
 
 ### Fixed
 
+* Add LE/BE `c67x` and `c67x-analysis` language variants so opted-in exact
+  schedules omit the C64x/C674x cross-path stall on C67x/C67x+ (SPRU198K
+  6.3.2.2). Preserve existing default/analysis timing and language-bound review
+  contracts. Cover both cross paths, predicates, incoming hazards, pending loads
+  and late DP reads. Preserve the CPU family when switching a comparison copy to
+  concise floating-point analysis, with native-decompiler and conversion checks.
+  Decoder legality filtering remains a documented limitation;
+  C66x-specific instruction support remains a known gap.
 * Honor native parallel-follower predicate guards in all delayed-call path proofs,
   including B3 constant tracking. Refuse skipped or unproved guarded links, retain
   known links across skipped copies, and cover all six predicates in both senses

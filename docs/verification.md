@@ -69,8 +69,13 @@ flow fixtures use auto-analysis, while semantic fixtures prime packet context ex
 under `-noanalysis`.
 
 The suite covers release dependencies, rather than every fixture in the repository.
-Execution checks use the default languages; the analysis variants are compiled and
-packaged. Additional instruction checks are listed in the
+Execution checks generally use the default languages. The `pipeline-c67x` fixture
+runs `default`, `analysis`, `c67x` and `c67x-analysis` in both byte orders. It checks
+cycle/stall counts and values for both cross paths, predicated writers, incoming
+hazards, loads and late DP reads, retains the separate AMR hazard, and exercises
+schedule injection, native decompilation, CPU-preserving analysis-language conversion
+and rejection of reviews for another language. Eight language
+definitions share four compiled SLEIGH files. Additional instruction checks are listed in the
 [fixture catalog](regressions.md).
 
 ## Reading the results

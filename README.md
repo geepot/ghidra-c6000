@@ -27,9 +27,17 @@ Each zip is tied to the Ghidra version it was built against. Releases include bu
 
 | Language id | Use |
 |---|---|
-| `C6000:LE:32:default` | little-endian C674x / C64x+ / C64x / C67x+ / C67x |
+| `C6000:LE:32:default` | little-endian C674x / C64x+ / C64x timing, shared superset decoder |
 | `C6000:BE:32:default` | big-endian variant |
 | `C6000:LE:32:analysis` / `C6000:BE:32:analysis` | simplified single-precision p-code for *reading* float-heavy code; flag values are not suitable for emulation |
+| `C6000:LE:32:c67x` / `C6000:BE:32:c67x` | C67x / C67x+ cross-path timing with exact floating-point p-code |
+| `C6000:LE:32:c67x-analysis` / `C6000:BE:32:c67x-analysis` | C67x / C67x+ cross-path timing with simplified floating-point p-code |
+
+Select a `c67x` variant explicitly for C67x/C67x+ images, including ELF imports.
+ELF auto-selection continues to use `default`. C67x variants omit the C64x/C674x
+cross-path stall from opted-in exact schedules (SPRU198K 6.3.2.2). They share the
+existing superset decoder; per-device instruction legality, including TSCL/TSCH
+availability, is not filtered. See [processor timing](docs/pipeline-schedules.md#processor-timing-selection).
 
 A raw binary also needs an entry point before auto-analysis finds code. In the GUI,
 navigate to the address and run `C6000SetEntry.java` from Script Manager; in headless
@@ -75,6 +83,8 @@ Main limitations:
   monitor or scheduler.
 - Instruction and timing coverage is bounded by the documented models and
   regression fixtures; it is not a complete hardware-emulation contract.
+- C66x-specific instructions are a known gap. There is no C66x language variant
+  or complete C66x ISA support; see [limitations](docs/limitations.md#processor-families).
 
 More detail:
 

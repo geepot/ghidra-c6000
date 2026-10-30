@@ -35,6 +35,24 @@ equivalence or hardware validation. The emitted C still contains low-level AMR
 expressions and signed arithmetic; matching the selected TI output does not establish
 portable-C overflow safety. See the [experiment report](multi-call-roundtrip.md).
 
+## Processor families
+
+**C67x selection currently controls cross-path stalls.** Select `c67x` or
+`c67x-analysis` explicitly for C67x/C67x+ exact schedules; `default` and `analysis`
+retain C64x/C674x cross-path timing. All variants use the shared C674x-superset
+decoder, without per-device ISA legality filtering. In particular, TSCL/TSCH MVC
+reads still decode on C67x selections, and C67x's one-cross-path-reader resource
+limit is not newly checked. See [processor timing selection](pipeline-schedules.md#processor-timing-selection).
+
+**C66x-specific instruction coverage is a known gap.** There is no C66x language
+variant. C66x code using common C674x instructions can decode with the existing
+superset, but C66x additions such as wide SIMD, complex/matrix operations and
+fast floating-point opcodes are not implemented as a C66x ISA. A successful decode
+of shared instructions does not establish C66x support. Future coverage should
+use [TI SPRUGH7](https://www.ti.com/lit/ug/sprugh7/sprugh7.pdf) with independent
+encoding, semantics and timing fixtures. C66x retains the cross-path stall
+(SPRUGH7 3.8.5), so a future C66x profile must not inherit C67x's stall exemption.
+
 ## Decode and analysis
 
 **Coverage is not exhaustive.** Decode covers the documented full32 opcode maps and

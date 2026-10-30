@@ -8,9 +8,11 @@ the analysis language variants and the source layout.
 
 | Language | Use |
 |---|---|
-| `C6000:LE:32:default` | little-endian C674x / C64x+ / C64x / C67x+ / C67x |
+| `C6000:LE:32:default` | little-endian C674x / C64x+ / C64x cross-path timing, shared superset decode |
 | `C6000:BE:32:default` | big-endian variant (C6000 supports both byte orders) |
 | `C6000:LE:32:analysis`, `C6000:BE:32:analysis` | same decode, simplified single-precision p-code for reading float-heavy code (see [below](#floating-point-decompilation)) |
+| `C6000:LE:32:c67x`, `C6000:BE:32:c67x` | C67x / C67x+ cross-path timing with exact floating-point p-code |
+| `C6000:LE:32:c67x-analysis`, `C6000:BE:32:c67x-analysis` | C67x / C67x+ cross-path timing with concise floating-point p-code |
 
 An ELF loader opinion maps `EM_TI_C6000` (e_machine 140) to `C6000:LE:32:default`, so a
 little-endian C6000 ELF picks it automatically. The opinion only matches little-endian
@@ -18,7 +20,11 @@ files; for a big-endian ELF or a raw binary, choose the language and (for raw im
 the base address yourself.
 
 C674x is the union of the C64x+ and C67x+ instruction sets (SPRUFE8B §1.1), so one
-description serves the older parts, which are subsets.
+description serves the older parts, which are subsets. C67x/C67x+ imports must
+explicitly select a `c67x` variant to omit C64x cross-path stalls in opted-in exact
+schedules. The eight language definitions share four compiled SLEIGH files; the
+variants do not filter per-device instruction legality. See
+[processor timing selection](pipeline-schedules.md#processor-timing-selection).
 
 ## Compact 16-bit fetch packets
 
@@ -153,7 +159,10 @@ commands and test scripts.
 ### Floating-point decompilation
 
 `C6000UseAnalysisLanguage.java` switches a comparison copy to the matching endian
-`analysis` language without running auto-analysis. Keep the original default-language
+and CPU family's concise language without running auto-analysis: `default` becomes
+`analysis`, and `c67x` becomes `c67x-analysis`. Repeating it on either concise
+variant is a no-op. The language change invalidates existing exact-schedule reviews,
+which require renewed review. Keep the original exact-language
 program: the concise language deliberately approximates floating-point status and
 special rounding. Changing the language is a reading aid, not a fix to the exact
 floating-point model.
@@ -170,11 +179,13 @@ results or flags are selected (SPRUFE8B sections 2.10.1, 2.10.3 and 3.12
 ADDSP/SUBSP/MPYSP/DPSP execution descriptions).
 
 For reading float-heavy functions, explicitly select `C6000:LE:32:analysis` or
-`C6000:BE:32:analysis` when importing a program. This variant uses native
+`C6000:BE:32:analysis` for C64x/C674x, or the corresponding `c67x-analysis`
+variant for C67x/C67x+, when importing a program. These variants use native
 single-precision p-code for `INTSP`, `INTSPU`, `MPYSP`, `ADDSP`, `SUBSP`, and the SP
 comparisons. It represents status-register effects with the opaque `c6000_fp_status`
 userop, so its flag values and special rounding cases are not suitable for emulation.
-Use this language to inspect control and data flow, then use the default language for
+Use these languages to inspect control and data flow, then use the corresponding
+exact language (`default` or `c67x`) for
 detailed arithmetic and status checks.
 
 ## Switch override ownership

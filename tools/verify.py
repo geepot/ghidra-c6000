@@ -50,6 +50,7 @@ CORE = [
          args=["check", "cases.tsv"], analysis=True),
     case("predicated-register-branch", "PredicatedBranch", "C6000_PREDICATED_BRANCH_OK", analysis=True),
     case("pipeline-schedule", "PipelineSemantics", "C6000_PIPELINE_SEMANTICS_OK", None, ["decompiler.xml"]),
+    case("pipeline-c67x", "PipelineCpu", "C6000_PIPELINE_CPU_OK", "json"),
     case("pipeline-call-contracts", "PipelineCallContract", "C6000_PIPELINE_CALL_CONTRACT_OK", "json", ["cases.json", "results.json"]),
     case("pipeline-contracts", "PipelineContract", "C6000_PIPELINE_CONTRACT_OK", "json"),
     case("pipeline-float", "PipelineFloat", "C6000_PIPELINE_FLOAT_OK"),
@@ -221,11 +222,14 @@ def main():
         local_env["_JAVA_OPTIONS"] = f"-Duser.home={home}"
         project = work / endian / "projects"
         project.mkdir()
-        for index, (fixture, manifests, scripts, analysis) in enumerate(cases):
-            directory = work / endian / f"{index:02d}-{fixture}"
+        runs = [(item, variant) for item in cases for variant in
+                (("default", "analysis", "c67x", "c67x-analysis")
+                 if item[0] == "pipeline-c67x" else ("default",))]
+        for index, ((fixture, manifests, scripts, analysis), variant) in enumerate(runs):
+            directory = work / endian / f"{index:02d}-{fixture}-{variant}"
             directory.mkdir()
             image = directory / "input.bin"
-            record = {"fixture": fixture, "endian": endian, "log": str(directory / "headless.log")}
+            record = {"fixture": fixture, "endian": endian, "variant": variant, "log": str(directory / "headless.log")}
             start = time.monotonic()
             try:
                 run([sys.executable, ROOT / "tests/fixtures" / f"{fixture}.py", image,
@@ -233,7 +237,7 @@ def main():
                     directory / "generate.log", local_env, args.timeout)
                 command = [install / "support/analyzeHeadless", project, f"case-{index}",
                            "-import", image, "-loader", "BinaryLoader", "-loader-baseAddr", "0x1000",
-                           "-processor", f"C6000:{endian.upper()}:32:default", "-cspec", "default",
+                           "-processor", f"C6000:{endian.upper()}:32:{variant}", "-cspec", "default",
                            "-scriptPath", ROOT / "ghidra_scripts", "-deleteProject"]
                 if not analysis:
                     command += ["-noanalysis"]
@@ -257,7 +261,7 @@ def main():
                 record.update(passed=False, error=str(error))
             record["seconds"] = round(time.monotonic() - start, 2)
             results.append(record)
-            print(f"{'PASS' if record['passed'] else 'FAIL'} {endian} {fixture} ({record['seconds']}s)", flush=True)
+            print(f"{'PASS' if record['passed'] else 'FAIL'} {endian} {fixture} {variant} ({record['seconds']}s)", flush=True)
         return results
 
     endians = ["le", "be"] if args.endian == "both" else [args.endian]

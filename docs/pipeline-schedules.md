@@ -41,8 +41,38 @@ retain their issue predicate. Flag events merge into the *current* status regist
 writeback, even if software cleared the flag after issue. NOP, BNOP and ADDKPC cycle
 counts, protected loads and compact fetch headers advance the same state machine. A
 branch landing can interrupt a multi-cycle NOP. Up to six transfers can remain pending.
-E1 X-path hazards insert a stall without advancing any pending pipeline phase (SPRUFE8B
-3.5, 3.8.3–3.8.4, 3.10.2.2 and 4.2).
+On the default/analysis languages, E1 X-path hazards insert a stall without advancing
+any pending pipeline phase (SPRUFE8B 3.5, 3.8.3–3.8.4, 3.10.2.2 and 4.2).
+
+## Processor timing selection
+
+| Language variant (both LE and BE) | Cross-path write/read stall | Floating-point model |
+| --- | --- | --- |
+| `default` | C64x/C64x+/C674x automatic stall | exact |
+| `analysis` | C64x/C64x+/C674x automatic stall | concise analysis |
+| `c67x` | absent on C67x/C67x+ | exact |
+| `c67x-analysis` | absent on C67x/C67x+ | concise analysis |
+
+SPRU198K 6.3.2.2 explicitly excludes C67x from the C64x cross-path stall rule.
+The C67x variants therefore omit these stall edges for both first-cycle and late DP
+source reads, including incoming E1-write contracts. Instruction phases, predicates,
+register results, and the separate AMR hazard rule retain their existing models.
+E1-write metadata is still carried across caller/callee boundaries. The language ID
+pins the timing selection in ordinary, closed-call and caller-continuation reviews.
+
+Choose `C6000:LE:32:c67x` (or the BE / `c67x-analysis` equivalent) in the import
+dialog for C67x/C67x+ code. ELF opinions continue to select `default`; the ELF
+machine ID alone does not choose a CPU family. For an existing program, reimport
+with the intended variant and review exact-schedule contracts for that language.
+Changing variants never enables a schedule automatically.
+
+These variants select cross-path timing, not full per-device ISA validation. They
+use the same four compiled SLEIGH descriptions as the existing languages. C64x+
+forms such as `MVC TSCL`/`TSCH` remain decodable on C67x variants even though
+SPRU733A Table 2-4 does not define those registers. C67x's cross-path reader limit
+(SPRU733A 3.7.3) is also distinct from the automatic-stall rule; the new variants do
+not add resource-legality checking. Other phase contracts and limitations below
+still apply.
 
 Full32 predicated register `B.S2` supports the scheduler's terminal decode
 context for both predicate polarities. The predicate and target are captured

@@ -8,6 +8,7 @@ import ghidra.app.decompiler.DecompileResults;
 import ghidra.app.script.GhidraScript;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.listing.Function;
+import java.util.Set;
 
 public class C6000FloatAnalysisTest extends GhidraScript {
 	@Override
@@ -25,7 +26,8 @@ public class C6000FloatAnalysisTest extends GhidraScript {
 			}
 			String code = result.getDecompiledFunction().getC();
 			long lines = code.lines().count();
-			if (currentProgram.getLanguageID().toString().endsWith(":analysis") &&
+			if (Set.of("analysis", "c67x-analysis").contains(
+				currentProgram.getLanguage().getLanguageDescription().getVariant()) &&
 				(lines > 80 || !code.contains("< 1.0"))) {
 				throw new AssertionError("float analysis lost the compact polynomial branch " +
 					"or expanded to " + lines + " lines");

@@ -63,6 +63,18 @@ from observed disassembler output.
 
 ## Memory and arithmetic
 
+`tests/fixtures/pipeline-c67x.py IMAGE CASES.json [be]` and
+`C6000PipelineCpuTest.java CASES.json` execute 15 cases per language and byte
+order. The release runner imports the same bytes with `default`, `analysis`,
+`c67x` and `c67x-analysis`. Hand-counted pipeline advances, stall edges and
+register values cover both cross paths, enabled/disabled E1 writers, incoming
+hazards, local reads, E1 updating-load bases, E5 load destinations, a pending load during a stall and
+an E2 DP cross-port read. The AMR case retains its separate stall. A normal
+injection, native decompilation, a review with the wrong language ID, and the
+analysis-language conversion script exercise profile binding. Conversion preserves
+the CPU family, is idempotent, and refuses to reuse the old language's review
+(SPRU198K 6.3.2.2; SPRUFE8B 3.8.4).
+
 `tests/fixtures/pipeline-bnop.py IMAGE CASES.json [be]` and
 `C6000PipelineBnopTest.java CASES.json` check 118 schedules per endian.
 The 28 fixed-five Sbu8/Sbu8c cases retain their literal display without a

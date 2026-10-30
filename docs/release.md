@@ -25,7 +25,7 @@ interrupt and exceptional-loop limitations are detailed in [limitations](limitat
 |---|---|
 | Repository release | `v1.1.1` |
 | Ghidra compatibility matrix | 12.1.3 / JDK 21; 12.1.4 / JDK 21; 12.2 / JDK 25 |
-| Language version | 1.2 for all four variants |
+| Language version | 1.2 for all eight language definitions (four shared compiled SLEIGH files) |
 | Archive naming | `ghidra_<Ghidra version>_PUBLIC_<build date>_C6000.zip` |
 | Extension-property version | Ghidra compatibility version, substituted from `@extversion@` during build |
 

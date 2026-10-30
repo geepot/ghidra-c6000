@@ -461,6 +461,7 @@ public final class C6000PipelineCompiler {
     private int packets;
     private final Map<Integer,Long> cycleStarts=new LinkedHashMap<>();
     private final Map<Integer,String> stallLabels=new LinkedHashMap<>();
+    private final boolean crossPathStalls;
     // SPRUFE8B ANDN pp.145-146: .L/.S/.D read both inputs and write dst in E1.
     // SPRUFE8B PACK2 pp.397-398 / PACKL4 pp.407-408: E1 source reads and dst write.
     private static final Set<String> SINGLE=Set.of("ADD","ADDK","ADDAW","ADDAD","ADDAH","ADDAB","SUBAW","SUBAH","SUBAB","SUB","AND","ANDN","OR","XOR","NOT","MV","MVK","MVKH","MVKL","MVKLH","SHL","SHR","SHRU","EXT","EXTU","SET","CLR","CMPEQ","CMPGT","CMPLT","CMPEQSP","CMPGTSP","CMPLTSP","CMPGTU","CMPLTU","ZERO","NEG","ABS","NORM","LMBD","ABSSP","DINT","RINT","PACK2","PACKL4");
@@ -474,6 +475,10 @@ public final class C6000PipelineCompiler {
     }
     private C6000PipelineCompiler(Program p,Function f,Set<String> previousE1Writes,long startPc){
         program=p;
+        String variant=p.getLanguage().getLanguageDescription().getVariant();
+        // SPRU198K 6.3.2.2: C64x cross-path stalls do not occur on C67x.
+        // The language identity also binds this choice in reviewed contracts.
+        crossPathStalls=!Set.of("c67x","c67x-analysis").contains(variant);
         function=f;
         entry=f.getEntryPoint().getNewAddress(startPc);
         unique=p.getAddressFactory().getUniqueSpace();
@@ -917,8 +922,9 @@ public final class C6000PipelineCompiler {
         return List.copyOf(r);
     }
 
-    private Set<Long> crossReads(List<Insn> packet){
+    private Set<Long> crossStallReads(List<Insn> packet){
         Set<Long> r=new HashSet<>();
+        if(!crossPathStalls)return r;
         for(var i:packet){
             if(i.load()||i.store())continue;
             String mn=i.instruction().getMnemonicString();
@@ -1023,9 +1029,9 @@ public final class C6000PipelineCompiler {
             if(!pack.isEmpty())packets++;
             Set<Long> fetchedPcs=new HashSet<>();for(var instruction:fetched)fetchedPcs.add(instruction.instruction().getAddress().getOffset());
             Set<Long> crosses=new HashSet<>();
-            for(var instruction:fetched){Set<Long> ports=crossReads(List.of(instruction));for(var read:instruction.reads())if(read.first()>1)ports.remove(read.offset());crosses.addAll(ports);}
+            for(var instruction:fetched){Set<Long> ports=crossStallReads(List.of(instruction));for(var read:instruction.reads())if(read.first()>1)ports.remove(read.offset());crosses.addAll(ports);}
             for(var flight:s.flights()){
-                var instruction=decode(flight.pc());Set<Long> ports=crossReads(List.of(instruction));
+                var instruction=decode(flight.pc());Set<Long> ports=crossStallReads(List.of(instruction));
                 for(var read:instruction.reads())if((read.phases()&(1<<flight.age()))!=0&&ports.contains(read.offset())){
                     boolean buffered=false;
                     for(var candidate:loopPlans.values())for(int k=0;k<candidate.cells().size();k++)for(var old:candidate.cells().get(k).buffered())if(old.instruction().getAddress().getOffset()==flight.pc())buffered=loop==null||candidate!=loop||s.loop().time()-flight.age()!=k;
@@ -1044,7 +1050,7 @@ public final class C6000PipelineCompiler {
             // stalls rather than approximate exception state.
             long amr=program.getRegister("AMR").getAddress().getOffset();
             for(var instruction:pack){
-                boolean amrRead=usesAmr(instruction);Set<Long> ports=crossReads(List.of(instruction));
+                boolean amrRead=usesAmr(instruction);Set<Long> ports=crossStallReads(List.of(instruction));
                 for(var read:instruction.reads())if(read.first()>1)ports.remove(read.offset());
                 if(fetchedPcs.contains(instruction.instruction().getAddress().getOffset())){if(amrRead)crosses.add(amr);continue;}
                 for(var hazard:s.hazards())if((amrRead&&hazard.registers().contains(amr)||hazard.registers().stream().anyMatch(ports::contains))&&!harmlessPredicates(hazard,instruction,s))throw fail("buffered instruction may require a missed X-path/AMR stall (LBX/MSX): "+instruction.instruction());
