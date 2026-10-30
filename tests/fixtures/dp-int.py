@@ -34,24 +34,19 @@ CASES = [
     ("unit-two-truncate", "DPTRUNC", 1, f64(8.6), 0, 8, 0x80),
 ]
 
-# The TI assembler and older GNU tic6x assembler use different src1 fields
-# for nonzero source pairs (binutils gas/15094). Both select the same pair.
+# Nonzero source pairs in the cl6x and GNU as encoding (binutils gas/15094).
 PAIR_VARIANTS = [
-    (("ti-pair4", "DPINT", 0, f64(8.6), 0, 9, 0x80), 4, False),
-    (("gnu-pair4", "DPINT", 0, f64(8.6), 0, 9, 0x80), 4, True),
-    (("ti-pair4-trunc", "DPTRUNC", 1, f64(8.6), 0, 8, 0x80), 4, False),
-    (("gnu-pair4-trunc", "DPTRUNC", 1, f64(8.6), 0, 8, 0x80), 4, True),
-    (("ti-pair4-dpsp", "DPSP", 0, f64(8.6), 0, 0x4109999a, 0x80), 4, False),
-    (("gnu-pair4-dpsp", "DPSP", 0, f64(8.6), 0, 0x4109999a, 0x80), 4, True),
+    (("pair4", "DPINT", 0, f64(8.6), 0, 9, 0x80), 4),
+    (("pair4-trunc", "DPTRUNC", 1, f64(8.6), 0, 8, 0x80), 4),
+    (("pair4-dpsp", "DPSP", 0, f64(8.6), 0, 0x4109999a, 0x80), 4),
 ]
 
 
-def opcode(mnemonic, side, pair_low=0, legacy=False):
+def opcode(mnemonic, side, pair_low=0):
     low = {"DPINT": 0x118, "DPTRUNC": 0x38, "DPSP": 0x138}[mnemonic]
-    # src2 names the odd/high register; TI zeroes src1, while older GNU
-    # tic6x put the even/low register there.
+    # src2 names the odd/high register and src1 the even/low register.
     return ((2 << 23) | ((pair_low + 1) << 18) |
-            ((pair_low if legacy else 0) << 13) | low | (side << 1))
+            (pair_low << 13) | low | (side << 1))
 
 
 def main():
@@ -60,10 +55,10 @@ def main():
     endian = ">" if len(sys.argv) > 3 and sys.argv[3] == "be" else "<"
     image.parent.mkdir(parents=True, exist_ok=True)
     with image.open("wb") as out, cases.open("w") as manifest:
-        variants = [(case, 0, False) for case in CASES] + PAIR_VARIANTS
-        for index, (case, pair_low, legacy) in enumerate(variants):
+        variants = [(case, 0) for case in CASES] + PAIR_VARIANTS
+        for index, (case, pair_low) in enumerate(variants):
             name, mnemonic, side, raw, fadcr, result, flags = case
-            out.write(struct.pack(endian + "I", opcode(mnemonic, side, pair_low, legacy)))
+            out.write(struct.pack(endian + "I", opcode(mnemonic, side, pair_low)))
             out.write(bytes(28))
             expected_flags = fadcr | (flags << (16 if side else 0))
             manifest.write(

@@ -5,7 +5,10 @@ Usage: tools/audit_random_oracle.py IMAGE BASE C6000_LISTING
 
 GNU objdump is only an external oracle.  A GNU-only decode can be an invalid
 word: the checks below come from the operand types and fixed fields in TI
-SPRUFE8B section 3.12, not from GNU's implementation.
+SPRUFE8B section 3.12, not from GNU's implementation. The DP source-pair checks
+instead accept what TI cl6x 8.3.15 emits (src2 the odd register, src1 its low
+register) plus, for ABSDP/RCPDP/RSQRDP, the opcode diagram's even-src2 form:
+the diagrams zero src1, but the 3.12 text reads the low word through it.
 """
 
 from collections import Counter
@@ -24,8 +27,12 @@ def field(word, low, width=1):
 def gnu_only_reason(name, word):
     if name == "GMPY4" and field(word, 28) == 0:
         return "GMPY4 requires bit 28 = 1"
-    if name in {"DPINT", "DPSP", "DPTRUNC"} and field(word, 18) == 0:
-        return "conversion DP source requires an odd encoded high register"
+    if name in {"DPINT", "DPSP", "DPTRUNC"}:
+        # cl6x form only: src2 the odd register, src1 the low one.
+        if field(word, 18) == 0:
+            return "conversion DP source requires an odd encoded high register"
+        if field(word, 13, 5) != field(word, 18, 5) - 1:
+            return "conversion DP src1 must be the pair's low register"
     if name in {"ABSDP", "RCPDP", "RSQRDP"}:
         # These .S unary maps fix bits 17..13 to zero and use an even
         # register number for the source pair (see their opcode diagrams).

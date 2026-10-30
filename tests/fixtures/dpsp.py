@@ -36,7 +36,8 @@ def opcode(side):
     line = next(line for line in decode.read_text().splitlines()
                 if f'"DPSP.L{side}"' in line)
     fixed = {int(bit): int(value) for bit, value in re.findall(r"\bi(\d+)=(\d)\b", line)}
-    return sum(value << bit for bit, value in fixed.items()) | (3 << 18) | (4 << 23)
+    # A3:A2 as cl6x encodes it: src2 the odd register, src1 the low one.
+    return sum(value << bit for bit, value in fixed.items()) | (2 << 13) | (3 << 18) | (4 << 23)
 
 
 def main():
