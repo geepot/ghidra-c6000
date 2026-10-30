@@ -48,8 +48,8 @@ python3 -m unittest discover -s tests -p 'test_*.py'
 python3 tools/verify.py --ghidra /path/to/ghidra --with-ti --jobs 2
 ```
 
-The runner checks 52 core fixture imports and five TI-assembled fixture
-imports per endian: 114 per Ghidra version, or 342 across the matrix. Native
+The runner checks 54 core fixture imports and five TI-assembled fixture
+imports per endian: 118 per Ghidra version, or 354 across the matrix. Native
 decompiler checks retain their 15/30-second limits. CI runs the core suite
 without the proprietary TI assembler.
 
@@ -61,7 +61,7 @@ Also run the focused checks for features outside the runner's registry:
 | Ordinary execute-packet completion | `parallel-peers.py` | `C6000ParallelPeerAnalyzerTest.java` |
 
 Run each on a fresh import in both endian modes. The complete release check
-therefore adds four focused imports per matrix row: 354 total imports across the
+therefore adds four focused imports per matrix row: 366 total imports across the
 three-version matrix, plus seven Python release-tool tests. Contracts and invocation
 arguments are documented in [caller-tail traces](caller-tail-traces.md),
 [reviewed peer recovery](recover-parallel-peers.md) and

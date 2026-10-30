@@ -211,12 +211,33 @@ NaN, infinity, denormals, and the separate `.L1` /`.L2` warning bits.
 
 `tests/fixtures/dp-int.py <image.bin> <cases.tsv> [be]` and
 `C6000DpConvertTest.java <cases.tsv>` check `DPINT` and `DPTRUNC` with register-pair
-sources. The 23 cases per mode cover rounding, exceptions, warning bits, signed 32-bit
-result limits, and both pair encodings for `DPINT`, `DPTRUNC`, and `DPSP`. The odd/high
-register in `src2` selects the 64-bit pair. TI's assembler sets `src1` to zero, whereas
-older GNU tic6x assemblers encoded the even/low register there. The decoder accepts both
-variants; see
+sources. The 20 cases per mode cover rounding, exceptions, warning bits, signed 32-bit
+result limits, and nonzero pairs for `DPINT`, `DPTRUNC`, and `DPSP`. TI `cl6x` 8.3.15
+and GNU `as` 2.47 encode the pair's odd register in `src2` and its even/low register in
+`src1`, the port that reads the low word; see
 [binutils gas/15094](https://lists.gnu.org/archive/html/bug-binutils/2013-02/msg00037.html).
+
+`tests/fixtures/dp-convert-src1.py <image.bin> <cases.tsv> [be]` and
+`C6000DpConvertSourceTest.java <cases.tsv>` check that this form decodes and executes on
+the named pair, and that every other `src1`, `x = 1` and an even `src2` stay undefined.
+No assembler emits `src1 = 0` with another pair (as the opcode diagram shows) or an even
+`src2`, and for those words `dis6x` names the pair from `src1` where GNU uses `src2`;
+`dis6x` leaves any odd `src1` undefined.
+
+`tests/fixtures/unary-dp-src1.py <image.bin> <cases.tsv> [be]` and
+`C6000UnaryDpSourceTest.java <cases.tsv>` check `ABSDP`, `RCPDP` and `RSQRDP` source
+pairs in both endian modes. TI `cl6x` 8.3.15 and GNU `as` 2.47 encode the pair's odd
+register in `src2` and its low register in `src1`, the port that reads the low word, and
+the decoder accepts that form. It also keeps the even-`src2`, `src1` = 0 form that main
+already decoded as `src2`+1:`src2`, for compatibility only: no assembler emits it, the
+Picarro image has none, and by the same port split it would read its low word from A0 or
+B0. Every other `src1` and `x = 1` stay undefined. `dis6x` names the pair from `src2`
+whatever `src1` holds and ignores `x`, but for an odd `src1` it shows `RCPDP` as `ADD`
+and leaves `RSQRDP` undefined; GNU decodes any `src1` and rejects `x = 1`. Both halves
+are read in E1 and a cross path carries one 32-bit operand per cycle (SPRUFE8B 2.4).
+Each accepted form runs on the named pair and must match the even form's result and
+FAUCR, plain, under `[A1]` and `[!A1]` (the skipped run must leave both untouched), and
+with a flag-setting SNaN; reserved `creg` 7 stays undefined.
 
 `tests/fixtures/packed-arith.py <image.bin> <cases.tsv> [be]` and
 `C6000PackedArithmeticTest.java <cases.tsv>` execute 140 packed arithmetic, comparison,
