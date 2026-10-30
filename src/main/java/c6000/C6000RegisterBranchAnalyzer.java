@@ -17,8 +17,11 @@ package c6000;
 
 import java.math.BigInteger;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
+import ghidra.app.cmd.function.CreateFunctionCmd;
 import ghidra.app.plugin.core.clear.ClearFlowAndRepairCmd;
 import ghidra.app.services.AbstractAnalyzer;
 import ghidra.app.services.AnalysisPriority;
@@ -31,6 +34,7 @@ import ghidra.program.model.address.AddressSetView;
 import ghidra.program.model.lang.Register;
 import ghidra.program.model.listing.ContextChangeException;
 import ghidra.program.model.listing.FlowOverride;
+import ghidra.program.model.listing.Function;
 import ghidra.program.model.listing.Instruction;
 import ghidra.program.model.listing.InstructionIterator;
 import ghidra.program.model.listing.Listing;
@@ -152,13 +156,22 @@ public class C6000RegisterBranchAnalyzer extends AbstractAnalyzer {
 			throws CancelledException {
 		Listing listing = program.getListing();
 		AddressSet tails = new AddressSet();
+		Set<Function> owners = new HashSet<>();
 		for (Address at : branches) {
 			Instruction branch = listing.getInstructionAt(at);
 			Address end = branch == null ? null : C6000DelaySlots.windowEnd(program, branch, monitor);
 			Address past = end == null ? null : end.next();
-			if (past != null && listing.getInstructionAt(past) != null) tails.add(past);
+			if (past == null || listing.getInstructionAt(past) == null) continue;
+			tails.add(past);
+			Function owner = listing.getFunctionContaining(past);
+			if (owner != null) owners.add(owner);
 		}
-		if (!tails.isEmpty()) new ClearFlowAndRepairCmd(tails, false, false, true).applyTo(program, monitor);
+		if (tails.isEmpty()) return;
+		new ClearFlowAndRepairCmd(tails, false, false, true).applyTo(program, monitor);
+		// The command clears the code but leaves the owners' bodies covering it.
+		for (Function owner : owners) {
+			if (!owner.isDeleted()) CreateFunctionCmd.fixupFunctionBody(program, owner, monitor);
+		}
 	}
 
 	private static void restoreReferences(ReferenceManager manager, Address from,

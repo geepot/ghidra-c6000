@@ -35,9 +35,12 @@ public class C6000RegisterBranchTailTest extends GhidraScript {
 			Function owner = getFunctionContaining(toAddr(entry));
 			if (owner != null && !owner.getEntryPoint().equals(toAddr(entry))) failures.add(toAddr(entry) + " is inside " + owner);
 		}
-		Function q1 = getFunctionAt(toAddr(0x1000));
-		if (q1 == null || q1.getBody().contains(toAddr(0x1018)) || q1.getBody().contains(toAddr(0x1040)))
-			failures.add("q1 body " + (q1 == null ? null : q1.getBody()));
+		// No function body may keep the cleared bytes.
+		for (Function f : currentProgram.getFunctionManager().getFunctions(true)) {
+			for (long at : new long[] {0x1018, 0x1020, 0x1048, 0x1084}) {
+				if (f.getBody().contains(toAddr(at))) failures.add(f + " body " + f.getBody() + " keeps " + toAddr(at));
+			}
+		}
 		if (!failures.isEmpty()) throw new AssertionError(String.join("; ", failures));
 		println("C6000_REGISTER_BRANCH_TAIL_OK");
 	}
