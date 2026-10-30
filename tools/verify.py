@@ -88,6 +88,8 @@ CORE = [
     case("gmpy4", "Gmpy4", "C6000_GMPY4_OK"),
     case("word-shifts", "WordShifts", "C6000_WORD_SHIFTS_OK"),
     case("dp-int", "DpConvert", "C6000_DP_INT_OK"),
+    case("mvc-control", "MvcControl", "C6000_MVC_CONTROL_OK"),
+    case("mvc-tscl", "MvcControl", "C6000_MVC_CONTROL_OK"),
 ]
 TI = [
     case("pipeline-store-tail", "PipelineStoreTail", "C6000_PIPELINE_STORE_TAIL_OK", "json", ["cases.json", "results.json"]),

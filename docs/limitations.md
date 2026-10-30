@@ -87,6 +87,10 @@ their source before a base update. Packet timing involving AMR writes is not gen
 modeled. The exact compiler refuses unsupported control-register effects and buffered
 missed-stall conditions.
 
+**The time-stamp counter is not modeled.** `TSCL` writes and `TSCL`/`TSCH` reads lift
+to `c6000_tsc_start`, `c6000_tscl_read` and `c6000_tsch_read`; the stock emulator needs a
+userop handler to run them.
+
 **Linked-word operations require an external memory monitor.** LL and SL expose the
 CPU-visible transfer and named link events. CMTL receives success from a userop; the
 stock instruction emulator cannot infer another core's link state.

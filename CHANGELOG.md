@@ -4,6 +4,13 @@
 
 ### Fixed
 
+* Decode `MVC` writes to `TSCL`, which start the time-stamp counter
+  (SPRUFE8B 2.9.14.2, although Table 3-27 marks `TSCL` read-only); they were
+  Bad Instructions. The write and the
+  `TSCL`/`TSCH` reads lift to the `c6000_tsc_start`, `c6000_tscl_read` and
+  `c6000_tsch_read` userops, so the decompiler no longer folds two reads to one
+  value. `TSCH` writes and nonzero-crhi forms stay undefined. `tools/verify.py`
+  now also runs the existing `mvc-control` fixture.
 * Honor native parallel-follower predicate guards in all delayed-call path proofs,
   including B3 constant tracking. Refuse skipped or unproved guarded links, retain
   known links across skipped copies, and cover all six predicates in both senses

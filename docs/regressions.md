@@ -272,6 +272,13 @@ ADD/SUB/compare forms, operand ports, and the direction and high address bits of
 displays the encoded `MPYLIR` name and source order; `MPYILR` is its reversed-operand
 assembler pseudo-op.
 
+`tests/fixtures/mvc-tscl.py <image.bin> <cases.tsv> [be]` runs `C6000MvcControlTest.java`
+on the `cl6x` 8.3.15 and GNU `as` 2.47 encodings of `MVC` to and from `TSCL`/`TSCH` in
+both endian modes. The test interprets each plain, cross-path or predicated write and
+read for both predicate values: its userop must run exactly when the predicate holds,
+and no other register may be read or written. `.S1`, x=1 read, nonzero-crhi and `TSCH`
+write forms stay undefined.
+
 `tests/fixtures/pair-unary.py` and `C6000PairUnaryTest.java` check scalar `ABS`
 saturation and 40-bit `ABS` /`NEG`/`MV` operand pairs, upper-bit masking, and invalid
 odd-pair or cross-path forms in both endian modes. `tests/fixtures/linked-word.py` and
