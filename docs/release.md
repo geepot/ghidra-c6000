@@ -46,12 +46,16 @@ Build from a clean release commit and run the suite for every matrix row:
 ```sh
 python3 -m unittest discover -s tests -p 'test_*.py'
 python3 tools/verify.py --ghidra /path/to/ghidra --with-ti --jobs 2
+python3 tools/verify_gui.py --ghidra /path/to/ghidra --archive "$(cat build/release-archive-path.txt)"
 ```
 
-The runner checks 52 core fixture imports and five TI-assembled fixture
-imports per endian: 114 per Ghidra version, or 342 across the matrix. Native
-decompiler checks retain their 15/30-second limits. CI runs the core suite
-without the proprietary TI assembler.
+The runner checks 60 core fixture/language imports and five TI-assembled fixture
+imports per endian: 130 per Ghidra version, or 390 across the matrix. The core
+count includes all four timing variants for the CPU and resource fixtures. Native
+decompiler checks retain their 15/30-second limits. Run the headed checks in a
+desktop session, or prefix the GUI command with `xvfb-run -a` on Linux. CI runs the
+core suite and headed checks for every matrix row without the proprietary TI
+assembler.
 
 Also run the focused checks for features outside the runner's registry:
 
@@ -61,8 +65,9 @@ Also run the focused checks for features outside the runner's registry:
 | Ordinary execute-packet completion | `parallel-peers.py` | `C6000ParallelPeerAnalyzerTest.java` |
 
 Run each on a fresh import in both endian modes. The complete release check
-therefore adds four focused imports per matrix row: 354 total imports across the
-three-version matrix, plus seven Python release-tool tests. Contracts and invocation
+therefore adds four focused imports per matrix row: 402 total imports across the
+three-version matrix, plus eight Python release-tool tests and the separate headed
+checks. Contracts and invocation
 arguments are documented in [caller-tail traces](caller-tail-traces.md),
 [reviewed peer recovery](recover-parallel-peers.md) and
 [execute-packet completion](execute-packet-recovery.md).
