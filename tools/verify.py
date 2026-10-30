@@ -37,6 +37,7 @@ CORE = [
     case("compact-memory", "CompactMemory", "C6000_COMPACT_MEMORY_OK", "json"),
     case("compact-compare-destination", "CompactCompareDestination", "C6000_COMPACT_COMPARE_DESTINATION_OK"),
     case("full32-encoding-info", "Full32EncodingInfo", "C6000_FULL32_ENCODING_INFO_OK"),
+    case("reserved-predicate", "ReservedPredicate", "C6000_RESERVED_PREDICATE_OK"),
     case("return-delay", "ReturnDelay", "C6000_RETURN_DELAY_OK"),
     case("packet-call", "PacketCall", "C6000_PACKET_CALL_OK"),
     # The refusal script constructs its own memory blocks outside this small image.
