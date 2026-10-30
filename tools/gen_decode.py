@@ -568,6 +568,12 @@ def main():
                         # select it before CPKT and then fail inside Cond,
                         # instead of trying the packet-header constructor.
                         pat.append("creg!=7")
+                        # SPRUFE8B 3.6 Table 3-9 also reserves creg=0 with
+                        # z=1, which unconditional-only opcodes such as
+                        # SMPY32 use for bits 31:28. Exclude it as well, so
+                        # a predicated twin with the same opcode bits
+                        # (MPY32US) cannot shadow them and fail inside Cond.
+                        pat.append("(creg!=0 | z=0)")
                     if mnem in {"ADDAB", "ADDAH", "ADDAW", "ADDAD",
                                 "SUBAB", "SUBAH", "SUBAW"} and "ucst15" not in names:
                         pat.append("src2_idx")
@@ -777,7 +783,7 @@ def main():
                         # branch still makes Ghidra classify the instruction
                         # as a conditional jump.
                         plain_pat = [term for term in pat
-                                     if term not in {"Cond", "creg!=7"}]
+                                     if term not in {"Cond", "creg!=7", "(creg!=0 | z=0)"}]
                         plain_pat += ["creg=0", "z=0", "CFlowDelay"]
                         plain_disp = "B." + variant_ul + suffix[1:] + " BranchTarget"
                         w(":%s is %s { build CFlowDelay; goto BranchTarget; }" %
@@ -794,7 +800,7 @@ def main():
                         # be generated here; editing the .sinc alone is lost
                         # the next time this generator runs.
                         terminal_pat = [term for term in pat
-                                        if term not in {"Cond", "creg!=7"}]
+                                        if term not in {"Cond", "creg!=7", "(creg!=0 | z=0)"}]
                         terminal_pat += ["creg=0", "z=0", "c_branch_terminal=1", "CFlowDelay"]
                         terminal_disp = "B." + variant_ul + suffix[1:] + " " + ops[0]
                         w(":%s is %s { local target:4 = %s; build CFlowDelay; goto [target]; }" %

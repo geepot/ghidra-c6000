@@ -4,6 +4,11 @@
 
 ### Fixed
 
+* Decode `SMPY32` and `RPACK2` with an even destination. Predicated constructors now
+  also exclude the reserved `creg=0, z=1` encoding, which unconditional-only opcodes
+  use for bits 31:28, so the predicated twins `MPY32US` and `DMV` no longer shadow
+  them and fail inside `Cond` (SPRUFE8B 3.6 Table 3-9; 3.12 MPY32US, SMPY32, DMV,
+  RPACK2).
 * Honor native parallel-follower predicate guards in all delayed-call path proofs,
   including B3 constant tracking. Refuse skipped or unproved guarded links, retain
   known links across skipped copies, and cover all six predicates in both senses
