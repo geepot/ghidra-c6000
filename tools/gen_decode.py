@@ -513,6 +513,8 @@ def main():
                 if mnem in {"SADD", "SSUB"} and ops[-1] == "DstPair" \
                         and ops[0] == "SCst5":
                     base.append("i12=0")
+                if mnem in {"ABSDP", "RCPDP", "RSQRDP"}:  # E1 reads both halves; one 32-bit cross path (SPRUFE8B 2.4)
+                    base.append("i12=0")
                 if (mnem in {"ABS", "NEG"} and ul == "L" and
                         ops[0] == "Src2PairLocal") or mnem == "SAT":
                     base.append("i12=0")
@@ -834,6 +836,12 @@ def main():
                         placeholder_mnemonics.add(mnem)
                     w(":%s is %s { %s }" % (disp, " & ".join(pat), sem))
                     n += 1
+                    if mnem in {"ABSDP", "RCPDP", "RSQRDP"}:  # SPRUFE8B 3.12 ABSDP/RCPDP/RSQRDP: also the assemblers' odd-src2 form
+                        odd = [t.replace("Src2Pair", "Src2PairDpsp") for t in pat
+                               if not any(t.startswith(f"i{i}=") for i in range(12, 18))]
+                        w(":%s is %s { %s }" % (disp.replace("Src2Pair", "Src2PairDpsp"), " & ".join(odd),
+                                                 sem.replace("Src2Pair", "Src2PairDpsp")))
+                        n += 1
         w("")
     open(OUT, "w").write("\n".join(lines))
 

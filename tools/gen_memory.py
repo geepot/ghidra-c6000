@@ -82,7 +82,7 @@ for unit_side in (0, 1):
             )
 lines.append("")
 
-# DPINT/DPTRUNC/DPSP as cl6x and GAS encode them: src2 the odd register, src1 the low one (SPRUFE8B 3.12 port split).
+# DPINT/DPTRUNC/DPSP, ABSDP/RCPDP/RSQRDP as cl6x and GAS encode them: src2 the odd register, src1 the low one (SPRUFE8B 3.12).
 for side, file in ((0, "A"), (1, "B")):
     for pair in range(16):
         even = pair * 2

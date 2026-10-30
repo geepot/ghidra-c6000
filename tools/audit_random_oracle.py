@@ -34,12 +34,10 @@ def gnu_only_reason(name, word):
         if field(word, 13, 5) != field(word, 18, 5) - 1:
             return "conversion DP src1 must be the pair's low register"
     if name in {"ABSDP", "RCPDP", "RSQRDP"}:
-        # These .S unary maps fix bits 17..13 to zero and use an even
-        # register number for the source pair (see their opcode diagrams).
-        if field(word, 13, 5) != 0:
-            return "unary DP opcode fixes bits 17..13 to zero"
-        if field(word, 18) != 0:
-            return "unary DP source pair requires an even encoded register"
+        # cl6x form (src2 odd, src1 its low register) or the opcode diagram's (src2 even, src1 0).
+        src2, src1 = field(word, 18, 5), field(word, 13, 5)
+        if src1 != (src2 - 1 if src2 % 2 else 0):
+            return "unary DP src1 must be an odd src2's low register, or 0 with an even src2"
     if name in {"SADD", "SSUB", "SUB"}:
         long_immediate_op = {"SADD": 0x30, "SSUB": 0x2c, "SUB": 0x24}[name]
         if field(word, 5, 7) == long_immediate_op and field(word, 12):
