@@ -16,13 +16,17 @@ the contract.
 ## Flow references and ownership
 
 `tests/fixtures/delayed-call-timing.py IMAGE CASES.json [be]` and
-`C6000DelayedCallTimingTest.java prepare|check CASES.json` cover 202 independent
-cases per language and byte order for issues #23 and #24. The release runner
+`C6000DelayedCallTimingTest.java prepare|check CASES.json` cover 229 independent
+cases per language and byte order for issues #23, #24 and #30. The release runner
 executes all four language variants through normal auto-analysis. Tests cover
 E5 B3 clobbers after ADDKPC, preceding and same-packet loads, pair/base aliases,
 all six predicate registers and both polarities, predicate writes across E5,
 local/cross-path register targets, writer order, compact slots, fetch boundaries
-and protected loads. Read-only recognition must agree with native call references
+and protected loads. `cl6x`-encoded `MPY32`, `ADDSP`, `MPYI`, `LL` and `CMTL` B3 writers
+beside the B and one to four cycles before it check that each result lands after its
+delay slots, including after the callee is entered; a not-taken `BNOP` beside a target
+load, and one between a B3 load and the B, check its idle cycles. A null row target
+means the call is proved but its register target is not. Read-only recognition must agree with native call references
 and function creation; false calls preserve return data, including untyped words.
 Two additional analyzer passes check stable references and no spurious target
 functions (SPRUFE8B 3.5, 3.6, 3.10.2.2, Tables 4-6/4-10/4-11).
@@ -84,6 +88,19 @@ names: the static function `h` (hidden, as `cl6x` emits it), the far-call trampo
 `$Tramp$S$$g` (as the TI linker emits it, SPRAB89 §5.3.2), and the near-miss names
 `$C$L` and `$C$L1a`. The calls to `g` and to `$C$L2` keep their call references, and
 the called label `$C$L2` is a function. Run with both languages.
+
+`tests/fixtures/elf-compact.py IMAGE [be]` writes `cl6x` compact fetch packets into the
+same kind of ELF, with a non-allocated `.TI.section.flags` section that Ghidra loads as
+an `OTHER` overlay (issue #33). Import it with `ElfLoader` and auto-analysis, then run
+`C6000ElfCompactTest.java`: every compact slot must decode in `dis6x` order with no
+error bookmarks and `q1`, `f2` and `f3` must be functions. Big-endian images check
+decoding only until issue #31 is fixed.
+
+`tests/fixtures/register-branch-tail.py IMAGE [be]` holds the `B B3`, `B B5` and
+`BNOP B3,5` shapes of issue #32 with data after each delay window. Run
+`C6000RegisterBranchTailTest.java prepare` as a pre-script (it marks the three entries
+as functions) and `check` after auto-analysis: nothing past a delay window is decoded,
+the delay slots are, and neither later entry lies inside another function.
 
 ## Memory and arithmetic
 

@@ -77,6 +77,12 @@ decoding compact slots. The `noflow` context fields prevent one instruction's he
 parameters from leaking into another; see
 [compact packet internals](internals.md#compact-16-bit-fetch-packets).
 
+**Big-endian compact packets decode each word's halfwords swapped** (issue #31). Each
+word's first compact instruction is in its 16 LSBs (SPRUFE8B 3.10.2.3, Table 3-16), at
+byte offset +2 in big-endian memory, but a SLEIGH token is read at the slot's own
+address. Little-endian images, and big-endian images without compact packets, are
+unaffected.
+
 **Constant propagation is bounded.** Each walk is limited to 512 bytes to bound memory
 use. A register-built target carried across a longer span, loaded from memory or
 supplied by another routine may remain unresolved. Raw imports also need an explicit

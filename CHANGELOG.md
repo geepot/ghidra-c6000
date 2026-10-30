@@ -15,6 +15,19 @@
 
 ### Fixed
 
+* Retire every delayed-call register result at its own latency, not only `LD*` in E5:
+  `MPY32`/`ADDSP` (three delay slots), `MPYI` (eight), and `LL`/`CMTL` (four) to B3
+  no longer let a later ADDKPC make a B a call, and a result landing after the callee
+  is entered refuses the link (issue #23; SPRUFE8B 4.2, SPRU733A). Count a `BNOP`'s
+  NOP cycles even when it is not taken, so a load beside it lands before the next
+  packet (issue #30; SPRUFE8B 3.12 BNOP). 27 more timing cases per language and byte
+  order.
+* Clear code that the first decode of an unpredicated register `B`/`BNOP` disassembled
+  past its delay window once the branch is re-decoded as terminal; code reached from
+  elsewhere, functions and entry points are kept (issue #32; SPRUFE8B 4.2.6).
+* Prime compact packet context in ELF imports with initialized overlay blocks such as
+  `.TI.section.flags`; rounding a fetch packet out of the overlay threw and left all
+  compact code undecoded (issue #33).
 * Correct delayed-call recovery for E5 load writes and E1 packet snapshots
   (issues #23 and #24). A pending load can invalidate B3 after ADDKPC; a
   parallel target-register writer cannot change the branch's captured target.
