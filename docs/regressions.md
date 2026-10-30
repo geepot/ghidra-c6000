@@ -211,12 +211,17 @@ NaN, infinity, denormals, and the separate `.L1` /`.L2` warning bits.
 
 `tests/fixtures/dp-int.py <image.bin> <cases.tsv> [be]` and
 `C6000DpConvertTest.java <cases.tsv>` check `DPINT` and `DPTRUNC` with register-pair
-sources. The 23 cases per mode cover rounding, exceptions, warning bits, signed 32-bit
-result limits, and both pair encodings for `DPINT`, `DPTRUNC`, and `DPSP`. The odd/high
-register in `src2` selects the 64-bit pair. TI's assembler sets `src1` to zero, whereas
-older GNU tic6x assemblers encoded the even/low register there. The decoder accepts both
-variants; see
+sources. The 20 cases per mode cover rounding, exceptions, warning bits, signed 32-bit
+result limits, and nonzero pairs for `DPINT`, `DPTRUNC`, and `DPSP`. TI `cl6x` 8.3.15
+and GNU `as` 2.47 encode the pair's odd register in `src2` and its even/low register in
+`src1`, the port that reads the low word; see
 [binutils gas/15094](https://lists.gnu.org/archive/html/bug-binutils/2013-02/msg00037.html).
+
+`tests/fixtures/dp-convert-src1.py <image.bin> <cases.tsv> [be]` and
+`C6000DpConvertSourceTest.java <cases.tsv>` check that this form decodes and executes on
+the named pair, and that every other `src1`, `x = 1` and an even `src2` stay undefined.
+No assembler emits `src1 = 0` with another pair (as the opcode diagram shows) or an even
+`src2`, and for those words `dis6x` names the pair from `src1` where GNU uses `src2`.
 
 `tests/fixtures/packed-arith.py <image.bin> <cases.tsv> [be]` and
 `C6000PackedArithmeticTest.java <cases.tsv>` execute 140 packed arithmetic, comparison,

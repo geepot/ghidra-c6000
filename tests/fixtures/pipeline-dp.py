@@ -25,7 +25,7 @@ def main():
     case('compare_late_high',[opcode('CMPEQDP','S')|1,mv(6,3),mv(4,6),mv(4,7),0xc0362,0x8000],{'A1':0x3ff00000,'A3':0x40000000,'A4':0x55,'A6':0x3ff00000},{'A6':0x55,'A7':1})
     case('mpydp_late_high_split',[opcode('MPYDP','M'),mvkh(0x4008,1),0xa000,mv(4,6)|1,mvd(5,7),mv(4,8)|1,mvd(5,9),mv(5,10),0xc0362,0x8000],{'A1':0x3ff00000,'A3':0x40000000,'A4':0x1234,'A5':0x5678},{'A6':0x1234,'A7':0x5678,'A8':0,'A9':0x5678,'A10':0x40180000})
     case('intdp_split',[opcode('INTDP',b=2),0x2000,mv(4,6)|1,mvd(5,7),mv(4,8)|1,mvd(5,9),mv(5,10),0xc0362,0x8000],{'A2':3,'A4':0x1234,'A5':0x5678},{'A6':0x1234,'A7':0x5678,'A8':0,'A9':0x5678,'A10':0x40080000})
-    case('dpsp_e4',[opcode('DPSP',b=3),mv(4,6),0x2000,mv(4,7),0xc0362,0x8000],{'A3':0x3ff00000,'A4':0x55},{'A6':0x55,'A7':0x3f800000})
+    case('dpsp_e4',[opcode('DPSP',a=2,b=3),mv(4,6),0x2000,mv(4,7),0xc0362,0x8000],{'A3':0x3ff00000,'A4':0x55},{'A6':0x55,'A7':0x3f800000})
     case('predicate_captured_with_late_alias',[opcode('ADDDP',a=2,b=0)|0x80000001,(1<<23)|0x28,0xa000,0xc0362,0x8000],{'A1':0x3ff00000,'A3':0x40000000},{'A4':0,'A5':0x40000000})
     # SPRUFE8B MVD pipeline (p.379): .M use E1, result E4.
     case('mvd_e4',[opcode('MVD','M',b=2),mv(4,6),0x2000,mv(4,7),0xc0362,0x8000],{'A2':0x12345678,'A4':0x55},{'A6':0x55,'A7':0x12345678})
