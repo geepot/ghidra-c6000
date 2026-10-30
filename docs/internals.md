@@ -17,6 +17,14 @@ little-endian C6000 ELF picks it automatically. The opinion only matches little-
 files; for a big-endian ELF or a raw binary, choose the language and (for raw images)
 the base address yourself.
 
+The TI assembler gives every label in a code section a size-0 `STT_FUNC` symbol,
+local unless the label is declared global, so Ghidra's ELF loader starts a function at
+each one. Shared-return analysis then marks every jump to such a label as a tail call,
+although B and BNOP only load the PC (SPRUFE8B §3.12). `c6000.C6000_ElfExtension`
+loads the compiler's branch and return labels (`$C$L<n>`, `$C$RL<n>`) as code labels.
+Other labels have the same symbol type, size and binding as a C static function, so they
+still start functions; see [limitations](limitations.md#decode-and-analysis).
+
 C674x is the union of the C64x+ and C67x+ instruction sets (SPRUFE8B §1.1), so one
 description serves the older parts, which are subsets.
 
@@ -227,7 +235,7 @@ ghidra_scripts/          C6000*Test.java checks (one per fixture family), C6000C
                          C6000LoopReplay.java, analysis/decompiler audits
 src/main/java/c6000/     packet context, packet/call/return/register-branch/software-loop
                          analyzers, software-loop model (C6000SoftwareLoops, C6000LoopBuffer),
-                         exact pipeline compiler/injection and encoding metadata
+                         exact pipeline compiler/injection, encoding metadata, TI ELF symbols
 tests/fixtures/          generators for the fixture images and expected-result tables
 tests/test_release_tools.py  archive and verification failure-detection checks
 docs/                    verification, fixture catalog, release checklist, internals,

@@ -61,6 +61,18 @@ entries and non-word-aligned target values do not get over-filtered. Run with bo
 MVK/MVKL and MVKH descriptions (pp. 381, 383-385) and branch pipeline Table 4-11, not
 from observed disassembler output.
 
+`tests/fixtures/elf-local-label.py IMAGE [be]` writes a TI-style ELF whose code labels
+are local, size-0 `STT_FUNC` symbols, as `cl6x` emits them. Import it with `ElfLoader`
+and auto-analysis (no base address or entry script), then run
+`C6000ElfLocalLabelTest.java`. It checks that the jump to `$C$L1` keeps a plain jump
+flow with no override, and that `$C$L1`, `$C$RL1` and `$C$RL2` keep their names inside
+the containing function instead of starting functions. `$C$RL3`, which no flow reaches,
+must still be decoded and must not start a function. Four local, size-0 `STT_FUNC` controls stay functions under their
+names: the static function `h` (hidden, as `cl6x` emits it), the far-call trampoline
+`$Tramp$S$$g` (as the TI linker emits it, SPRAB89 §5.3.2), and the near-miss names
+`$C$L` and `$C$L1a`. The calls to `g` and to `$C$L2` keep their call references, and
+the called label `$C$L2` is a function. Run with both languages.
+
 ## Memory and arithmetic
 
 `tests/fixtures/pipeline-bnop.py IMAGE CASES.json [be]` and

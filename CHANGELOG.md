@@ -4,6 +4,11 @@
 
 ### Fixed
 
+* The TI assembler gives every code label a size-0 `STT_FUNC` symbol. Load the
+  compiler's branch and return labels (`$C$L<n>`, `$C$RL<n>`) as code labels instead
+  of functions, so jumps to them are no longer marked as tail calls (SPRUFE8B 3.12
+  B/BNOP). Other local symbols, such as C `static` functions, stay functions. The
+  release suite imports the new ELF fixture in both byte orders.
 * Honor native parallel-follower predicate guards in all delayed-call path proofs,
   including B3 constant tracking. Refuse skipped or unproved guarded links, retain
   known links across skipped copies, and cover all six predicates in both senses

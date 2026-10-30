@@ -88,7 +88,10 @@ CORE = [
     case("gmpy4", "Gmpy4", "C6000_GMPY4_OK"),
     case("word-shifts", "WordShifts", "C6000_WORD_SHIFTS_OK"),
     case("dp-int", "DpConvert", "C6000_DP_INT_OK"),
+    case("elf-local-label", "ElfLocalLabel", "C6000_ELF_LOCAL_LABEL_OK", None, analysis=True),
 ]
+# Imported with Ghidra's ELF loader at the file's own addresses.
+ELF = {"elf-local-label"}
 TI = [
     case("pipeline-store-tail", "PipelineStoreTail", "C6000_PIPELINE_STORE_TAIL_OK", "json", ["cases.json", "results.json"]),
     case("caller-tail", "CallerTail", "C6000_CALLER_TAIL_OK", "json", ["cases.json", "results.json"]),
@@ -231,15 +234,16 @@ def main():
                 run([sys.executable, ROOT / "tests/fixtures" / f"{fixture}.py", image,
                      *(directory / m for m in manifests), *(["be"] if endian == "be" else [])],
                     directory / "generate.log", local_env, args.timeout)
+                loader = ["ElfLoader"] if fixture in ELF else ["BinaryLoader", "-loader-baseAddr", "0x1000"]
                 command = [install / "support/analyzeHeadless", project, f"case-{index}",
-                           "-import", image, "-loader", "BinaryLoader", "-loader-baseAddr", "0x1000",
+                           "-import", image, "-loader", *loader,
                            "-processor", f"C6000:{endian.upper()}:32:default", "-cspec", "default",
                            "-scriptPath", ROOT / "ghidra_scripts", "-deleteProject"]
                 if not analysis:
                     command += ["-noanalysis"]
                 elif fixture == "constant-branch-target":
                     command += ["-preScript", "C6000ConstantBranchTargetTest.java", "prepare", directory / "cases.tsv"]
-                else:
+                elif fixture not in ELF:
                     command += ["-preScript", "C6000SetEntry.java", "1000"]
                 for script, script_args, _ in scripts:
                     command += ["-postScript", f"C6000{script}Test.java",
