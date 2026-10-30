@@ -19,6 +19,7 @@ import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.List;
 
+import ghidra.app.plugin.core.clear.ClearFlowAndRepairCmd;
 import ghidra.app.services.AbstractAnalyzer;
 import ghidra.app.services.AnalysisPriority;
 import ghidra.app.services.AnalyzerType;
@@ -92,7 +93,7 @@ public class C6000RegisterBranchAnalyzer extends AbstractAnalyzer {
 
 		Disassembler disassembler = Disassembler.getDisassembler(program, monitor, null);
 		ReferenceManager references = program.getReferenceManager();
-		int corrected = 0;
+		List<Address> terminal = new ArrayList<>();
 		for (Address at : candidates) {
 			monitor.checkCancelled();
 			Instruction old = listing.getInstructionAt(at);
@@ -126,9 +127,9 @@ public class C6000RegisterBranchAnalyzer extends AbstractAnalyzer {
 				continue;
 			}
 			restoreReferences(references, at, saved, true, isReturn);
-			corrected++;
+			terminal.add(at);
 		}
-		if (corrected > 0) log.appendMsg(getName(), "corrected " + corrected + " branch(es)");
+		if (!terminal.isEmpty()) log.appendMsg(getName(), "corrected " + terminal.size() + " branch(es)");
 		try {
 			C6000DelaySlots.recover(program, monitor, log);
 		}
@@ -136,8 +137,28 @@ public class C6000RegisterBranchAnalyzer extends AbstractAnalyzer {
 		catch (Exception e) {
 			throw new IllegalStateException("C6000 delay-window recovery failed", e);
 		}
+		clearTails(program, terminal, monitor);
 		C6000JumpTableAnalyzer.repairDetachedOverrides(program, monitor, log);
 		return true;
+	}
+
+	/**
+	 * The first decode gave each corrected branch a fall-through, so code past
+	 * its delay window was disassembled although execution continues at the
+	 * target (SPRUFE8B 4.2.6, Table 4-11). Clear that flow; code reached from
+	 * elsewhere, functions and entry points are kept.
+	 */
+	private static void clearTails(Program program, List<Address> branches, TaskMonitor monitor)
+			throws CancelledException {
+		Listing listing = program.getListing();
+		AddressSet tails = new AddressSet();
+		for (Address at : branches) {
+			Instruction branch = listing.getInstructionAt(at);
+			Address end = branch == null ? null : C6000DelaySlots.windowEnd(program, branch, monitor);
+			Address past = end == null ? null : end.next();
+			if (past != null && listing.getInstructionAt(past) != null) tails.add(past);
+		}
+		if (!tails.isEmpty()) new ClearFlowAndRepairCmd(tails, false, false, true).applyTo(program, monitor);
 	}
 
 	private static void restoreReferences(ReferenceManager manager, Address from,

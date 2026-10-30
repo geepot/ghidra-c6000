@@ -104,6 +104,13 @@ public final class C6000DelaySlots {
         return result;
     }
 
+    /** Last byte of a branch's proven delay window, or null when it is not proven. */
+    static Address windowEnd(Program program, Instruction branch, TaskMonitor monitor)
+            throws CancelledException {
+        Window window = new Reader(program).window(branch, monitor);
+        return window == null ? null : window.end();
+    }
+
     /** Dry-run native parsing with the proposed context before removing any code units. */
     private static boolean canMaterialize(Program p, Window window, int bytes, TaskMonitor monitor) {
         Instruction issue = window.branch();
