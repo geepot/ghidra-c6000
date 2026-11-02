@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // @category C6000
-// SPRUFE8B 3.5, 3.6 and Tables 4-6/4-10/4-11; issues #23/#24.
+// SPRUFE8B 3.5, 3.6 and Tables 4-6/4-10/4-11; issues #23/#24/#30.
 import java.nio.file.*;
 import java.util.*;
 import com.google.gson.*;

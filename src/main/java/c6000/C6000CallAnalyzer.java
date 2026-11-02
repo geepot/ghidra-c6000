@@ -816,6 +816,8 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 		}
 		int operand;
 		if (op.equals("NOP")) operand = 0;
+		// SPRUFE8B 3.12 BNOP: its N idle cycles are inserted whether or not the branch is taken.
+		else if (op.startsWith("BNOP")) operand = 1;
 		else if (op.startsWith("ADDKPC")) operand = 2;
 		else return 0;
 		try {

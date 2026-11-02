@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: Apache-2.0
-"""Delayed-call E1 snapshots and E5 load writes, issues #23/#24.
+"""Delayed-call E1 snapshots and E5 load writes, issues #23/#24/#30.
 
 IMAGE CASES.json [be]. Synthetic SPRUFE8B 3.5, 3.6, Tables 4-6/4-10/4-11
 and the LDW/LDDW/B/ADDKPC/MVK/MVKH opcode diagrams.
@@ -150,7 +150,19 @@ def main():
         return {b:load(data=7),b+4:branch(b+4,b+0x80),b+8:addkpc(b+8,ret,4),
                 b+28:0xe0100000},b+4,ret,True,b+0x80
     emit('protected_lookback_load_drains_before_branch',protected_prefix)
-    assert len(rows)==202
+    def bnop(at, target, n, predicate=8):
+        # SPRUFE8B 3.12 BNOP (displacement): scst12 from PCE1, N in bits 15-13 (TI cl6x [A1] BNOP .S1 = 0x80160120).
+        return predicate << 28 | ((target - (at & ~31)) >> 2 & 0xfff) << 16 | n << 13 | 0x120
+    for count in range(6):
+        def idle(b,n=count):
+            # Issue #30: a BNOP inserts its N idle cycles whether or not it is taken, so the B3
+            # load lands before the B once 1 + (1 + N) >= 4 cycles separate them.
+            site=b+8;ret=site+8
+            code={b:load(),b+4:bnop(b+4,b+0x40,n),site:branch(site,b+0x80),site+4:addkpc(site+4,ret,4),
+                  b+0x40:helpers['B_B3'],b+0x44:nop(5)}
+            return code,site,ret,n>=2,b+0x80
+        emit(f'lookback_load_bnop_{count}',idle)
+    assert len(rows)==208
     Path(sys.argv[1]).write_bytes(image)
     Path(sys.argv[2]).write_text(json.dumps(rows,indent=2)+'\n')
 

@@ -15,6 +15,11 @@
 
 ### Fixed
 
+* Count a BNOP's N idle cycles in delayed-call timing (issue #30). They are
+  inserted whether or not the BNOP is taken, so a load beside or before it can land
+  before the next branch reads it (SPRUFE8B 3.12 BNOP). This removes false computed
+  calls to loaded pointers and false tail calls; the timing matrix has 208 cases.
+
 * Correct delayed-call recovery for E5 load writes and E1 packet snapshots
   (issues #23 and #24). A pending load can invalidate B3 after ADDKPC; a
   parallel target-register writer cannot change the branch's captured target.
