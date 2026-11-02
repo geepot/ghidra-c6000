@@ -83,6 +83,7 @@ CORE = [
       ("FloatMultiply", ["mul.tsv"], "C6000_FLOAT_MULTIPLY_OK")], False),
 
     case("compact-dstk", "CompactDstk", "C6000_COMPACT_DSTK_OK"),
+    case("compact-dstk", "PacketScope", "C6000_PACKET_SCOPE_OK"),
     case("compact-ndw", "CompactNdw", "C6000_COMPACT_NDW_OK"),
     case("long-arith", "LongArithmetic", "C6000_LONG_ARITH_OK", None),
     case("nop-count", "NopCount", "C6000_NOP_COUNT_OK"),

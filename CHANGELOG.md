@@ -15,6 +15,10 @@
 
 ### Fixed
 
+* Prime compact fetch packets in ELF imports again (issue #33). Initialized
+  overlays over OTHER, such as `.TI.section.flags`, made the packet analyzer fail
+  for the whole program; only loaded memory spaces are primed now.
+
 * Correct delayed-call recovery for E5 load writes and E1 packet snapshots
   (issues #23 and #24). A pending load can invalidate B3 after ADDKPC; a
   parallel target-register writer cannot change the branch's captured target.

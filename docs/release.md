@@ -49,8 +49,8 @@ python3 tools/verify.py --ghidra /path/to/ghidra --with-ti --jobs 2
 python3 tools/verify_gui.py --ghidra /path/to/ghidra --archive "$(cat build/release-archive-path.txt)"
 ```
 
-The runner checks 64 core fixture/language imports and five TI-assembled fixture
-imports per endian: 138 per Ghidra version, or 414 across the matrix. The core
+The runner checks 65 core fixture/language imports and five TI-assembled fixture
+imports per endian: 140 per Ghidra version, or 420 across the matrix. The core
 count includes all four timing variants for the CPU, resource and delayed-call-timing fixtures. Native
 decompiler checks retain their 15/30-second limits. Run the headed checks in a
 desktop session, or prefix the GUI command with `xvfb-run -a` on Linux. CI runs the
