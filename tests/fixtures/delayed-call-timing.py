@@ -186,7 +186,16 @@ def main():
         return {b:load(base=4),b+4:A1_<<28|bnop(b+4,b+0xc0,5),
                 b+8:branch(b+8,b+0x80),b+12:addkpc(b+12,ret,4)},b+8,ret,True,b+0x80
     emit('bnop_lookback_B3_load_lands',bnop_lookback_restore)
-    assert len(rows)==229
+    for count in range(6):
+        def idle(b,n=count):
+            # Issue #30: a BNOP inserts its N idle cycles whether or not it is taken, so the B3
+            # load lands before the B once 1 + (1 + N) >= 4 cycles separate them.
+            site=b+8;ret=site+8
+            code={b:load(),b+4:A1_<<28|bnop(b+4,b+0x40,n),site:branch(site,b+0x80),site+4:addkpc(site+4,ret,4),
+                  b+0x40:helpers['B_B3'],b+0x44:nop(5)}
+            return code,site,ret,n>=2,b+0x80
+        emit(f'lookback_load_bnop_{count}',idle)
+    assert len(rows)==235
     Path(sys.argv[1]).write_bytes(image)
     Path(sys.argv[2]).write_text(json.dumps(rows,indent=2)+'\n')
 

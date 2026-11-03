@@ -20,7 +20,7 @@
   no longer let a later ADDKPC make a B a call, and a result landing after the callee
   is entered refuses the link (issue #23; SPRUFE8B 4.2, SPRU733A). Count a `BNOP`'s
   NOP cycles even when it is not taken, so a load beside it lands before the next
-  packet (issue #30; SPRUFE8B 3.12 BNOP). 27 more timing cases per language and byte
+  packet (issue #30; SPRUFE8B 3.12 BNOP). 33 more timing cases per language and byte
   order.
 * Clear code that the first decode of an unpredicated register `B`/`BNOP` disassembled
   past its delay window once the branch is re-decoded as terminal; code reached from

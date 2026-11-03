@@ -16,7 +16,7 @@ the contract.
 ## Flow references and ownership
 
 `tests/fixtures/delayed-call-timing.py IMAGE CASES.json [be]` and
-`C6000DelayedCallTimingTest.java prepare|check CASES.json` cover 229 independent
+`C6000DelayedCallTimingTest.java prepare|check CASES.json` cover 235 independent
 cases per language and byte order for issues #23, #24 and #30. The release runner
 executes all four language variants through normal auto-analysis. Tests cover
 E5 B3 clobbers after ADDKPC, preceding and same-packet loads, pair/base aliases,
@@ -25,7 +25,7 @@ local/cross-path register targets, writer order, compact slots, fetch boundaries
 and protected loads. `cl6x`-encoded `MPY32`, `ADDSP`, `MPYI`, `LL` and `CMTL` B3 writers
 beside the B and one to four cycles before it check that each result lands after its
 delay slots, including after the callee is entered; a not-taken `BNOP` beside a target
-load, and one between a B3 load and the B, check its idle cycles. A null row target
+load, and one between a B3 load and the B with N = 0 to 5, check its idle cycles. A null row target
 means the call is proved but its register target is not. Read-only recognition must agree with native call references
 and function creation; false calls preserve return data, including untyped words.
 Two additional analyzer passes check stable references and no spurious target
