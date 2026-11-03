@@ -25,6 +25,10 @@
 * Clear code that the first decode of an unpredicated register `B`/`BNOP` disassembled
   past its delay window once the branch is re-decoded as terminal; code reached from
   elsewhere, functions and entry points are kept (issue #32; SPRUFE8B 4.2.6).
+* Recover native delay windows for displacement `B` calls and predicated `B`/`BNOP`
+  (issue #34). Their slot work was lifted after the transfer: a call saw stale
+  arguments and a taken predicated branch skipped its slots. A delayed call now
+  returns after its window. Register-target forms keep the conservative treatment.
 * Prime compact packet context in ELF imports with initialized overlay blocks such as
   `.TI.section.flags`; rounding a fetch packet out of the overlay threw and left all
   compact code undecoded (issue #33). Overlays over OTHER, which hold no code, are

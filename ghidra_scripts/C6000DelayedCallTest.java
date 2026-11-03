@@ -3,6 +3,7 @@
 // Check B-with-B3 calls in an auto-analysed tests/fixtures/delayed-call.py image.
 
 import ghidra.app.script.GhidraScript;
+import ghidra.program.model.address.Address;
 import ghidra.program.model.listing.FlowOverride;
 import ghidra.program.model.listing.Function;
 import ghidra.program.model.listing.Instruction;
@@ -54,9 +55,10 @@ public class C6000DelayedCallTest extends GhidraScript {
 				(header == null ? "" : " flow=" + header.getFlowType() + " fallthrough=" + header.getFallThrough()));
 		}
 		// B3 set before a conditional jump survives its fall-through to the call after it.
+		// Its proven window ends at NOP 5, so it returns to B3 = 0x1158 (issue #34).
 		Instruction after = getInstructionAt(toAddr(0x1150L));
 		Function owner2 = getFunctionContaining(toAddr(0x1158L));
-		if (after == null || !after.getFlowType().isCall() || !toAddr(0x1154L).equals(after.getFallThrough()) ||
+		if (after == null || !after.getFlowType().isCall() || !toAddr(0x1158L).equals(after.getFallThrough()) ||
 			getFunctionAt(toAddr(0x11c0L)) == null || owner2 == null ||
 			!owner2.getEntryPoint().equals(toAddr(0x1140L))) {
 			throw new AssertionError("call at 0x1150: " + after +
@@ -65,11 +67,16 @@ public class C6000DelayedCallTest extends GhidraScript {
 		}
 		// The generic SLEIGH predicate guard also gives unpredicated register
 		// branches a conditional flow type. Require it for predicated calls only.
-		for (long site : new long[] { 0x1008L, 0x1018L, 0x1048L, 0x104cL, 0x106cL, 0x10b8L }) {
+		// A displacement call with a proven window returns after it, at B3 (issue #34).
+		// Register calls, and arms whose fifth slot holds another transfer, keep site+4.
+		long[][] returns = { { 0x1008L, 0x100cL }, { 0x1018L, 0x1020L }, { 0x1048L, 0x104cL },
+			{ 0x104cL, 0x1050L }, { 0x106cL, 0x1070L }, { 0x10b8L, 0x10bcL } };
+		for (long[] pair : returns) {
+			long site = pair[0];
 			Instruction call = getInstructionAt(toAddr(site));
 			if (call == null || !call.getFlowType().isCall() ||
 				(site >= 0x1048L && site <= 0x106cL && !call.getFlowType().isConditional()) ||
-				!toAddr(site + 4).equals(call.getFallThrough())) {
+				!toAddr(pair[1]).equals(call.getFallThrough())) {
 				throw new AssertionError("call at " + toAddr(site) + ": " + call +
 					(call == null ? "" : " flow=" + call.getFlowType() +
 						" fallthrough=" + call.getFallThrough()));
@@ -91,7 +98,7 @@ public class C6000DelayedCallTest extends GhidraScript {
 			{ 0x1408L, 0x1400L, 0x1440L }, { 0x1488L, 0x1480L, 0x14c0L } }) {
 			Instruction call = getInstructionAt(toAddr(c[0]));
 			if (call == null || !call.getFlowType().isCall() || call.getFlowType().isTerminal() ||
-				!toAddr(c[0] + 4).equals(call.getFallThrough()) || !calls(call, 0x1100L)) {
+				!returnPoint(call).equals(call.getFallThrough()) || !calls(call, 0x1100L)) {
 				throw new AssertionError("call at " + toAddr(c[0]) + ": " + call +
 					(call == null ? "" : " flow=" + call.getFlowType() + " fallthrough=" + call.getFallThrough()));
 			}
@@ -130,7 +137,7 @@ public class C6000DelayedCallTest extends GhidraScript {
 		// Both arms of an if/else call pair return at the later arm's window end.
 		for (long site : new long[] { 0x1c00L, 0x1c08L, 0x1c4cL, 0x1c58L }) {
 			Instruction arm = getInstructionAt(toAddr(site));
-			if (arm == null || !arm.getFlowType().isCall() || !toAddr(site + 4).equals(arm.getFallThrough()) ||
+			if (arm == null || !arm.getFlowType().isCall() || !returnPoint(arm).equals(arm.getFallThrough()) ||
 				!calls(arm, 0x1100L)) {
 				throw new AssertionError("pair arm at " + toAddr(site) + ": " + arm +
 					(arm == null ? "" : " flow=" + arm.getFlowType() + " fallthrough=" + arm.getFallThrough()));
@@ -141,7 +148,7 @@ public class C6000DelayedCallTest extends GhidraScript {
 			Instruction call = getInstructionAt(toAddr(site));
 			// Falls through to its parallel follower or to the next execute packet.
 			if (call == null || !call.getFlowType().isCall() || call.getFlowType().isTerminal() ||
-				!(toAddr(site + 4).equals(call.getFallThrough()) || toAddr(site + 8).equals(call.getFallThrough())) ||
+				!(returnPoint(call).equals(call.getFallThrough()) || toAddr(site + 8).equals(call.getFallThrough())) ||
 				!calls(call, 0x1100L)) {
 				throw new AssertionError("nullify call at " + toAddr(site) + ": " + call +
 					(call == null ? "" : " flow=" + call.getFlowType() + " fallthrough=" + call.getFallThrough()));
@@ -159,6 +166,13 @@ public class C6000DelayedCallTest extends GhidraScript {
 			throw new AssertionError("callee 0x1100 is not a function");
 		}
 		println("C6000_DELAYED_CALL_OK");
+	}
+
+	/** The next instruction, or the end of a proven delay window (issue #34). */
+	private Address returnPoint(Instruction call) {
+		var delay = currentProgram.getProgramContext().getValue(
+			currentProgram.getRegister("c_flow_delay"), call.getAddress(), false);
+		return call.getMaxAddress().next().add(delay == null ? 0 : delay.longValue());
 	}
 
 	private static boolean calls(Instruction insn, long target) {

@@ -31,7 +31,7 @@ public final class C6000DelaySlots {
             List<SavedRef> references, boolean fallThroughOverridden, Address fallThrough) { }
     private record Window(Instruction branch, Address end, Function owner) { }
 
-    /** Unconditional B/BNOP or CALLP only; nested transfers and ownership conflicts are refused. */
+    /** B/BNOP or CALLP; nested transfers and ownership conflicts are refused. */
     public static List<Repair> recover(Program program, TaskMonitor monitor, MessageLog log)
             throws Exception {
         int transaction = program.startTransaction("Recover C6000 delay windows");
@@ -53,12 +53,19 @@ public final class C6000DelaySlots {
         var it = program.getListing().getInstructions(true);
         while (it.hasNext()) {
             var ins = it.next();
-            String name = ins.getMnemonicString();
-            if (name.startsWith("[") || name.startsWith("_")) continue;
+            String full = ins.getMnemonicString(), name = C6000CallAnalyzer.baseName(ins);
+            if (full.startsWith("_")) continue;
             if (!(name.equals("B.S1") || name.equals("B.S2") || name.equals("BNOP.S1") ||
                     name.equals("BNOP.S2") || name.equals("CALLP.S1") || name.equals("CALLP.S2"))) continue;
-            if (ins.getFlowOverride() != FlowOverride.NONE &&
-                    ins.getFlowOverride() != FlowOverride.RETURN) continue;
+            var override = ins.getFlowOverride();
+            // Issue #34: the SLEIGH captures a predicate and target before the
+            // slots, so predicated and delayed-call displacement branches are
+            // lifted correctly once their window is proven.
+            // ponytail: register forms stay unpredicated, non-call only until tested.
+            boolean displacement = ins.getRegister(0) == null;
+            if (full.startsWith("[") && !displacement) continue;
+            if (override != FlowOverride.NONE && override != FlowOverride.RETURN &&
+                    !(override == FlowOverride.CALL && displacement)) continue;
             candidates.add(ins.getAddress());
         }
         List<Repair> result = new ArrayList<>();
@@ -81,8 +88,12 @@ public final class C6000DelaySlots {
             }
             // Ghidra's generic fallthrough calculator reuses the issue context
             // across mixed widths. Keep the proven next execute-packet address.
-            boolean fixCallFallThrough=branch.getMnemonicString().startsWith("CALLP") &&
-                !branch.isFallThroughOverridden() && !window.end().next().equals(branch.getFallThrough());
+            // A delayed call returns after its window; the call analyzer's
+            // fallthrough to the first slot predates the window.
+            boolean delayedCall=branch.getFlowOverride()==FlowOverride.CALL &&
+                branch.getMaxAddress().next().equals(branch.getFallThrough());
+            boolean fixCallFallThrough=(delayedCall || branch.getMnemonicString().startsWith("CALLP") &&
+                !branch.isFallThroughOverridden()) && !window.end().next().equals(branch.getFallThrough());
             if (!nativeReady) {
                 if (!canMaterialize(program, window, bytes, monitor)) continue;
                 result.add(apply(program, window, bytes, monitor));
@@ -205,7 +216,7 @@ public final class C6000DelaySlots {
             while(next!=null&&C6000CallAnalyzer.baseName(next).equals("CPKT"))next=decode(next.getMaxAddress().next());return next;}
         Window window(Instruction issue,TaskMonitor monitor)throws CancelledException {
             int remaining=5;
-            String name=issue.getMnemonicString();
+            String name=C6000CallAnalyzer.baseName(issue);
             if(name.startsWith("CALLP"))remaining=0;
             else if(name.startsWith("BNOP")){var n=issue.getScalar(1);if(n==null)return null;remaining=Math.max(0,5-(int)n.getValue());}
             var owner=program.getFunctionManager().getFunctionContaining(issue.getAddress());

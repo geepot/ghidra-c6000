@@ -52,6 +52,7 @@ CORE = [
          args=["check", "cases.tsv"], analysis=True),
     case("predicated-register-branch", "PredicatedBranch", "C6000_PREDICATED_BRANCH_OK", analysis=True),
     case("register-branch-tail", "RegisterBranchTail", "C6000_REGISTER_BRANCH_TAIL_OK", None, ["check"], analysis=True),
+    case("delay-window-forms", "DelayWindowForms", "C6000_DELAY_WINDOW_FORMS_OK", None, ["check"], analysis=True),
     case("pipeline-schedule", "PipelineSemantics", "C6000_PIPELINE_SEMANTICS_OK", None, ["decompiler.xml"]),
     case("pipeline-c67x", "PipelineCpu", "C6000_PIPELINE_CPU_OK", "json"),
     case("pipeline-resources", "PipelineResources", "C6000_PIPELINE_RESOURCES_OK", "json"),
@@ -259,6 +260,8 @@ def main():
                     command += ["-preScript", "C6000DelayedCallTimingTest.java", "prepare", directory / "cases.json"]
                 elif fixture == "register-branch-tail":
                     command += ["-preScript", "C6000RegisterBranchTailTest.java", "prepare"]
+                elif fixture == "delay-window-forms":
+                    command += ["-preScript", "C6000DelayWindowFormsTest.java", "prepare"]
                 elif fixture == "constant-branch-target":
                     command += ["-preScript", "C6000ConstantBranchTargetTest.java", "prepare", directory / "cases.tsv"]
                 elif fixture not in ELF:

@@ -84,7 +84,7 @@ functions can instead use an explicitly enabled
 
 ### Native delay windows
 
-`C6000DelaySlots` proves finite unconditional `B` /`BNOP` windows, including IRP/NRP
+`C6000DelaySlots` proves finite `B` /`BNOP` windows, including IRP/NRP
 forms. It accounts for execute cycles, implied BNOP cycles, multicycle NOP/ADDKPC,
 protected loads and crossed compact headers. The physical byte count is stored in
 `c_flow_delay`; `tools/gen_flow_delay.py` generates the constant `delayslot(n)` choices
@@ -93,8 +93,10 @@ because SLEIGH counts delay bytes, rather than instructions.
 Targets and predicates are captured before delay work. Native parsing is checked before
 listing changes; transactional recovery preserves comments, symbols, references and
 explicit fallthrough overrides. Nested transfers, defined data and conflicting function
-ownership prevent recovery. Predicated full windows, BDEC/BPOS and existing delayed-call
-overrides retain conservative native treatment. Exact scheduling handles its own
+ownership prevent recovery. Predicated displacement `B`/`BNOP` and displacement `B`
+calls are recovered; a call's fallthrough moves to the end of its window.
+Register-target predicated branches and calls, and BDEC/BPOS, retain conservative
+native treatment. Exact scheduling handles its own
 supported branch phases.
 
 CALLP supplies five implied idle cycles. Its parallel companions execute before the

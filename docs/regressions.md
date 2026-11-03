@@ -102,6 +102,12 @@ decoding only until issue #31 is fixed.
 as functions) and `check` after auto-analysis: nothing past a delay window is decoded,
 the delay slots are, and neither later entry lies inside another function.
 
+`tests/fixtures/delay-window-forms.py IMAGE [be]` is the `cl6x` repro of issue #34: a
+`B` call whose slots load its arguments and return link, and a predicated `B` whose
+slots run on both paths. `C6000DelayWindowFormsTest.java prepare` marks the two entries;
+`check` requires 20- and 12-byte `c_flow_delay` windows, the call's fallthrough at its
+return point, and decompiled C that passes `2` to the callee and adds 5 on both paths.
+
 ## Memory and arithmetic
 
 `tests/fixtures/pipeline-resources.py IMAGE CASES.json [be]` and
