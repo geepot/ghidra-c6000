@@ -22,7 +22,6 @@ import java.util.List;
 import java.util.Set;
 
 import ghidra.app.cmd.function.CreateFunctionCmd;
-import ghidra.app.plugin.core.clear.ClearFlowAndRepairCmd;
 import ghidra.app.services.AbstractAnalyzer;
 import ghidra.app.services.AnalysisPriority;
 import ghidra.app.services.AnalyzerType;
@@ -141,34 +140,28 @@ public class C6000RegisterBranchAnalyzer extends AbstractAnalyzer {
 		catch (Exception e) {
 			throw new IllegalStateException("C6000 delay-window recovery failed", e);
 		}
-		clearTails(program, terminal, monitor);
+		detachTails(program, terminal, monitor);
 		C6000JumpTableAnalyzer.repairDetachedOverrides(program, monitor, log);
 		return true;
 	}
 
 	/**
-	 * The first decode gave each corrected branch a fall-through, so code past
-	 * its delay window was disassembled although execution continues at the
-	 * target (SPRUFE8B 4.2.6, Table 4-11). Clear that flow; code reached from
-	 * elsewhere, functions and entry points are kept.
+	 * The first decode gave each corrected branch a fall-through, so the code
+	 * past its delay window joined the branch's function although execution
+	 * continues at the target (SPRUFE8B 4.2.6, Table 4-11). Recompute those
+	 * bodies from flow. The decoded tail stays: in a raw image it is usually
+	 * the next function, reached only through a pointer.
 	 */
-	private static void clearTails(Program program, List<Address> branches, TaskMonitor monitor)
+	private static void detachTails(Program program, List<Address> branches, TaskMonitor monitor)
 			throws CancelledException {
 		Listing listing = program.getListing();
-		AddressSet tails = new AddressSet();
 		Set<Function> owners = new HashSet<>();
 		for (Address at : branches) {
 			Instruction branch = listing.getInstructionAt(at);
 			Address end = branch == null ? null : C6000DelaySlots.windowEnd(program, branch, monitor);
-			Address past = end == null ? null : end.next();
-			if (past == null || listing.getInstructionAt(past) == null) continue;
-			tails.add(past);
-			Function owner = listing.getFunctionContaining(past);
-			if (owner != null) owners.add(owner);
+			Function owner = end == null ? null : listing.getFunctionContaining(end.next());
+			if (owner != null && !owner.getEntryPoint().equals(end.next())) owners.add(owner);
 		}
-		if (tails.isEmpty()) return;
-		new ClearFlowAndRepairCmd(tails, false, false, true).applyTo(program, monitor);
-		// The command clears the code but leaves the owners' bodies covering it.
 		for (Function owner : owners) {
 			if (!owner.isDeleted()) CreateFunctionCmd.fixupFunctionBody(program, owner, monitor);
 		}

@@ -22,9 +22,10 @@
   NOP cycles even when it is not taken, so a load beside it lands before the next
   packet (issue #30; SPRUFE8B 3.12 BNOP). 33 more timing cases per language and byte
   order.
-* Clear code that the first decode of an unpredicated register `B`/`BNOP` disassembled
-  past its delay window once the branch is re-decoded as terminal; code reached from
-  elsewhere, functions and entry points are kept (issue #32; SPRUFE8B 4.2.6).
+* Remove code past an unpredicated register `B`/`BNOP`'s delay window from the
+  branch's function once the branch is re-decoded as terminal (issue #32; SPRUFE8B
+  4.2.6). The decoded tail stays in the listing: in a raw image it is usually the
+  next function, and clearing it lost about half the code of a stock DSP image.
 * Recover native delay windows for displacement `B` calls and predicated `B`/`BNOP`
   (issue #34). Their slot work was lifted after the transfer: a call saw stale
   arguments and a taken predicated branch skipped its slots. A delayed call now

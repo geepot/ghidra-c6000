@@ -99,8 +99,9 @@ decoding only until issue #31 is fixed.
 `tests/fixtures/register-branch-tail.py IMAGE [be]` holds the `B B3`, `B B5` and
 `BNOP B3,5` shapes of issue #32 with data after each delay window. Run
 `C6000RegisterBranchTailTest.java prepare` as a pre-script (it marks the three entries
-as functions) and `check` after auto-analysis: nothing past a delay window is decoded,
-the delay slots are, and neither later entry lies inside another function.
+as functions) and `check` after auto-analysis: no function body holds anything past a
+delay window, the delay slots are decoded, and neither later entry lies inside another
+function.
 
 `tests/fixtures/delay-window-forms.py IMAGE [be]` is the `cl6x` repro of issue #34: a
 `B` call whose slots load its arguments and return link, and a predicated `B` whose
