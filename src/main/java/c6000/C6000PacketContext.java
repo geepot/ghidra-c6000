@@ -171,6 +171,8 @@ public final class C6000PacketContext {
 	private static AddressSet fetchPackets(AddressSetView addresses) {
 		AddressSet packets = new AddressSet();
 		for (var range : addresses.getAddressRanges()) {
+			// ELF imports add initialized overlays over OTHER (e.g. .TI.section.flags); only loaded memory holds code.
+			if (!range.getAddressSpace().isLoadedMemorySpace()) continue;
 			// An overlay maps offsets outside its blocks to its base space;
 			// a packet rounded past an ELF overlay block must stay in the overlay.
 			var space = range.getAddressSpace();

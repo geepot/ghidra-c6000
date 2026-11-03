@@ -527,3 +527,13 @@ read boundary, low-word snapshots, destination aliases, captured predicates,
 and cross-path read stalls in both endian modes. `C6000PipelineDpTest.java`
 executes the schedules, checks bit-exact arithmetic/status results and stall
 counts, and decompiles selected reviewed schedules through the native engine.
+
+## Packet context beside ELF overlays (issue #33)
+
+The ELF loader adds initialized overlay blocks over OTHER for sections such as
+`.TI.section.flags`. Rounding one of them out to a fetch packet left the overlay
+space, so the packet analyzer gave up on the whole program and compact code in
+`.text` stayed undecoded. Only loaded memory spaces are primed now.
+`C6000PacketScopeTest.java` reuses the `compact-dstk` image, adds such an
+overlay, runs the packet analyzer over every initialized byte as auto-analysis
+does, and checks each compact slot decodes. It runs in both byte orders.
