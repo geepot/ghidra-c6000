@@ -13,8 +13,21 @@
 * Keep fixture-only test scripts out of release archives and Script Manager,
   preserving the public corpus audit and batch tools.
 
+### Upgrade notes
+
+* The big-endian languages are version 2.0: their context register holds each
+  compact slot's halfword (issue #31). Ghidra migrates `C6000:BE:32:default` and
+  `C6000:BE:32:analysis` programs on open. Keep a packed backup, then re-run
+  auto-analysis so delay windows and calls follow the corrected order.
+  Little-endian languages are unchanged.
+
 ### Fixed
 
+* Decode big-endian compact packets in program order (issue #31). Each word's first
+  instruction is its 16 LSBs (SPRUFE8B 3.10.2.3, Table 3-16); big-endian slots were
+  decoded from their own address, which holds the other one. The primer now copies
+  each slot's halfword into context. Delay recovery corrects the fallthrough of any
+  windowed branch whose generic value is wrong.
 * Retire every delayed-call register result at its own latency, not only `LD*` in E5:
   `MPY32`/`ADDSP` (three delay slots), `MPYI` (eight), and `LL`/`CMTL` (four) to B3
   no longer let a later ADDKPC make a B a call, and a result landing after the callee

@@ -52,6 +52,7 @@ CORE = [
          args=["check", "cases.tsv"], analysis=True),
     case("predicated-register-branch", "PredicatedBranch", "C6000_PREDICATED_BRANCH_OK", analysis=True),
     case("register-branch-tail", "RegisterBranchTail", "C6000_REGISTER_BRANCH_TAIL_OK", None, ["check"], analysis=True),
+    case("upgrade-v1", "ElfCompact", "C6000_ELF_COMPACT_OK", None, ["upgraded"]),
     case("delay-window-forms", "DelayWindowForms", "C6000_DELAY_WINDOW_FORMS_OK", None, ["check"], analysis=True),
     case("pipeline-schedule", "PipelineSemantics", "C6000_PIPELINE_SEMANTICS_OK", None, ["decompiler.xml"]),
     case("pipeline-c67x", "PipelineCpu", "C6000_PIPELINE_CPU_OK", "json"),
@@ -104,6 +105,7 @@ CORE = [
 ]
 # Imported with Ghidra's ELF loader at the file's own addresses.
 ELF = {"elf-local-label", "elf-compact"}
+GZF = {"upgrade-v1"}
 TI = [
     case("pipeline-store-tail", "PipelineStoreTail", "C6000_PIPELINE_STORE_TAIL_OK", "json", ["cases.json", "results.json"]),
     case("caller-tail", "CallerTail", "C6000_CALLER_TAIL_OK", "json", ["cases.json", "results.json"]),
@@ -242,17 +244,20 @@ def main():
         for index, ((fixture, manifests, scripts, analysis), variant) in enumerate(runs):
             directory = work / endian / f"{index:02d}-{fixture}-{variant}"
             directory.mkdir()
-            image = directory / "input.bin"
+            # Ghidra's GZF loader matches by file extension.
+            image = directory / ("input.gzf" if fixture in GZF else "input.bin")
             record = {"fixture": fixture, "endian": endian, "variant": variant, "log": str(directory / "headless.log")}
             start = time.monotonic()
             try:
                 run([sys.executable, ROOT / "tests/fixtures" / f"{fixture}.py", image,
                      *(directory / m for m in manifests), *(["be"] if endian == "be" else [])],
                     directory / "generate.log", local_env, args.timeout)
-                loader = ["ElfLoader"] if fixture in ELF else ["BinaryLoader", "-loader-baseAddr", "0x1000"]
+                loader = (["ElfLoader"] if fixture in ELF else ["GzfLoader"] if fixture in GZF
+                          else ["BinaryLoader", "-loader-baseAddr", "0x1000"])
                 command = [install / "support/analyzeHeadless", project, f"case-{index}",
                            "-import", image, "-loader", *loader,
-                           "-processor", f"C6000:{endian.upper()}:32:{variant}", "-cspec", "default",
+                           # A packed program carries its own language.
+                           *([] if fixture in GZF else ["-processor", f"C6000:{endian.upper()}:32:{variant}", "-cspec", "default"]),
                            "-scriptPath", ROOT / "ghidra_scripts", "-deleteProject"]
                 if not analysis:
                     command += ["-noanalysis"]

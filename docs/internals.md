@@ -67,6 +67,15 @@ out of band:
   slots; treating them as independent full32 words does not recover the header
   parameters.
 
+A word's first compact instruction is its 16 LSBs in either byte order (SPRUFE8B
+3.10.2.3, Table 3-16). In big-endian memory that halfword is at byte offset +2, and the
+second instruction is before the slot that executes it, where SLEIGH cannot read. The
+big-endian languages therefore widen `contextreg` to 64 bits and add `c_h16`, which the
+primer sets to each compact slot's halfword. `tools/gen_compact_context.py` mirrors every
+`insn16` field onto `c_h16`, and a 16-bit pad token keeps each compact instruction two
+bytes long. Little-endian languages keep the `insn16` token and a 32-bit `contextreg`
+(issue #31). Java readers use `C6000PacketContext.halfword`.
+
 Only the eighth word of a compact fetch packet decodes as a 4-byte `CPKT` instruction.
 The `1110` prefix in bits 31..28 is the reserved predication encoding `creg=7, z=0`
 (Table 3-9), so no valid 32-bit instruction matches it.
@@ -316,6 +325,14 @@ value as its former MV spelling. Unknown cross-path metadata is null; the API do
 assume every bit 12 is a cross selector.
 
 ### Language prototype migration
+
+Big-endian languages are version 2.0 (issue #31). `data/languages/old/` describes the
+version 1 `default` and `analysis` languages, and `C6000BeDefaultLanguageTranslator` /
+`C6000BeAnalysisLanguageTranslator` carry each context field over by name. After
+Ghidra's re-disassembly they prime `c_h16` and re-disassemble again, which keeps
+references, overrides and comments. Re-run auto-analysis afterwards so delay windows and
+calls are recovered from the corrected order. The C67x variants were never released at
+version 1.
 
 The 1.2 language minor version forces Ghidra's native re-disassembly upgrade. This is
 necessary when a corrected compact operand partition distinguishes bits that an older

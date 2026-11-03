@@ -9,6 +9,9 @@ import json
 from pathlib import Path
 import struct
 import sys
+import compact_order
+
+compact_order.big_endian_on_exit()
 
 
 # Keep the data arena outside the complete generated instruction image.

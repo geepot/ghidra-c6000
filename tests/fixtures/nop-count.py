@@ -4,6 +4,9 @@
 import struct
 import sys
 from pathlib import Path
+import compact_order
+
+compact_order.big_endian_on_exit()
 
 # [A1] SPLOOP 1; LDW; NOP 4; MV; SPKERNELR || STW; NOP; NOP: dynamic length 7
 LOOP = [0x80038000, 0x00103664, 0x00006000, 0x00001fda,

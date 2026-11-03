@@ -60,7 +60,7 @@ def main():
     rows.append(dict(name='branch_idles_new_loop_in_last_slot',entry=entry,input={'A0':1,'ILC':0x777},expected={'A4':0,'B5':0,'ILC':0x777,'TSR':0},expected_cycles=12,extent=0x1ff))
     for encoded in range(8):
         entry=0x1000+len(rows)*0x200
-        struct.pack_into(endian+'HHII',image,entry-0x1000,0xc6e|(encoded<<13),0xc6e,0xc0362,0x8000)
+        struct.pack_into(endian+'III',image,entry-0x1000,0xc6e<<16|0xc6e|(encoded<<13),0xc0362,0x8000)
         struct.pack_into(endian+'I',image,entry-0x1000+28,0xe0200000)
         rows.append(dict(name=f'compact_nop_{encoded+1}',entry=entry,input={},expected={'PC':0x9000},expected_cycles=encoded+8))
     Path(sys.argv[1]).write_bytes(image);Path(sys.argv[2]).write_text(json.dumps(rows,indent=2))

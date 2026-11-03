@@ -7,6 +7,9 @@ ends with a guard store that must not execute as part of the return.
 """
 from pathlib import Path
 import struct,sys
+import compact_order
+
+compact_order.big_endian_on_exit()
 B3=(3<<18)|0x362
 BNOP=B3|(1<<23)
 def stw(index=0,p=False):return 0x274|(4<<18)|(3<<23)|(index<<13)|int(p)

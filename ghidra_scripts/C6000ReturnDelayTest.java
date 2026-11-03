@@ -43,7 +43,8 @@ public class C6000ReturnDelayTest extends GhidraScript {
     var actual=currentProgram.getProgramContext().getValue(currentProgram.getRegister("c_flow_delay"),at,false);
     if(actual==null||actual.intValue()!=bytes){for(var dbg:currentProgram.getListing().getInstructions(new AddressSet(at,at.add(24)),true))println("DEBUG "+dbg.getAddress()+" "+dbg+" length="+dbg.getLength()+" delay="+dbg.isInDelaySlot());throw new AssertionError(f[1]+": discovered byte window "+actual+" expected "+bytes);}
    }
-   if(branch.getDelaySlotDepth()==0&&!baseline)throw new AssertionError(f[1]+": missing native delay slots");
+   // Ghidra's generic depth parses the slots with the branch context; count bytes instead.
+   if(branch.getPrototype().getDelaySlotByteCount()==0&&!baseline)throw new AssertionError(f[1]+": missing native delay slots");
    if(!baseline&&!body.contains(at.add(length+bytes-1)))throw new AssertionError(f[1]+": body omits delay work at "+at+" length="+length+" bytes="+bytes+" "+body);
    if(body.contains(at.add(length+bytes)))throw new AssertionError(f[1]+": consumes guard/next function "+body);
    // Execute the exact listing p-code. Ghidra's generic pseudo-disassembler

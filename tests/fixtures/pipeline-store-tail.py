@@ -82,7 +82,7 @@ def main():
   if row.get('compact'):
    # Manual compact postincrement, data RS=0, count=1, pointer A4/B4.
    word=0xc00|row['side']<<12|row['data']<<4|row['na']<<4|row['sz']<<9|4|row['side']
-   struct.pack_into(endian+'HH',image,at+8,word,0x0c6e)
+   struct.pack_into(endian+'I',image,at+8,0x0c6e<<16|word)
    struct.pack_into(endian+'I',image,at+28,0xe0800010|row['dsz']<<16)
  image_path.write_bytes(image);manifest_path.write_text(json.dumps(rows,indent=2)+'\n');print('store-tail cases',len(rows))
 if __name__=='__main__':main()

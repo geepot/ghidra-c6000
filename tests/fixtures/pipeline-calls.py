@@ -6,6 +6,9 @@ B/register and BNOP/register, compact Scs10 Figure F-19. No firmware bytes.
 """
 from pathlib import Path
 import json,struct,sys
+import compact_order
+
+compact_order.big_endian_on_exit()
 
 def mv(src,dst,side=1,cross=False):return dst<<23|src<<18|0xfd8|(side-1)<<1|int(cross)<<12
 def mvk(value,dst,side=1,high=False):return dst<<23|(value&0xffff)<<7|(0x68 if high else 0x28)|(side-1)<<1

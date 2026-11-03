@@ -8,6 +8,9 @@ No firmware or external assembler input is needed.
 from pathlib import Path
 import struct
 import sys
+import compact_order
+
+compact_order.big_endian_on_exit()
 
 
 def main():

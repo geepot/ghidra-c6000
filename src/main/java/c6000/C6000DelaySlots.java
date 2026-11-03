@@ -86,14 +86,10 @@ public final class C6000DelaySlots {
                 var last = program.getListing().getInstructionContaining(window.end());
                 nativeReady = last != null && last.isInDelaySlot();
             }
-            // Ghidra's generic fallthrough calculator reuses the issue context
-            // across mixed widths. Keep the proven next execute-packet address.
             // A delayed call returns after its window; the call analyzer's
             // fallthrough to the first slot predates the window.
             boolean delayedCall=branch.getFlowOverride()==FlowOverride.CALL &&
                 branch.getMaxAddress().next().equals(branch.getFallThrough());
-            boolean fixCallFallThrough=(delayedCall || branch.getMnemonicString().startsWith("CALLP") &&
-                !branch.isFallThroughOverridden()) && !window.end().next().equals(branch.getFallThrough());
             if (!nativeReady) {
                 if (!canMaterialize(program, window, bytes, monitor)) continue;
                 result.add(apply(program, window, bytes, monitor));
@@ -105,8 +101,14 @@ public final class C6000DelaySlots {
                 result.add(new Repair(at.toString(),window.end().toString(),bytes,
                     branch.getDelaySlotDepth(),branch.getDelaySlotDepth(),body.getNumAddresses()-before));
             }
-            if(fixCallFallThrough){
-                program.getListing().getInstructionAt(at).setFallThrough(window.end().next());
+            // Ghidra's generic fallthrough calculator parses the slots with the
+            // issue's context: wrong across mixed widths, and for big-endian
+            // compact slots, whose halfword is context (issue #31). Keep the
+            // proven next execute-packet address.
+            Instruction now = program.getListing().getInstructionAt(at);
+            boolean generic = now.getFlowType().hasFallthrough() && !now.isFallThroughOverridden();
+            if ((delayedCall || generic) && !window.end().next().equals(now.getFallThrough())) {
+                now.setFallThrough(window.end().next());
                 if(nativeReady)result.add(new Repair(at.toString(),window.end().toString(),bytes,
                     branch.getDelaySlotDepth(),branch.getDelaySlotDepth(),0));
             }

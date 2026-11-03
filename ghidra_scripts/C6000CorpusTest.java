@@ -149,7 +149,9 @@ public class C6000CorpusTest extends GhidraScript {
 				undecoded++;
 				undecodedBytes += step;
 				long raw = step == 2
-					? currentProgram.getMemory().getShort(cursor) & 0xffffL
+					// A word's first compact slot is its 16 LSBs in either byte order.
+					? (currentProgram.getMemory().getInt(cursor.subtract(cursor.getOffset() & 2)) >>>
+						((cursor.getOffset() & 2) * 8)) & 0xffffL
 					: currentProgram.getMemory().getInt(cursor) & 0xffffffffL;
 				if (raw != (step == 2 ? 0xffffL : 0xffffffffL)) {
 					nonfillUndecoded++;

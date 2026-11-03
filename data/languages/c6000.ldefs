@@ -41,7 +41,7 @@
             endian="big"
             size="32"
             variant="default"
-            version="1.2"
+            version="2.0"
             slafile="c6000_be.sla"
             processorspec="c6000.pspec"
             id="C6000:BE:32:default">
@@ -54,7 +54,7 @@
             endian="big"
             size="32"
             variant="analysis"
-            version="1.2"
+            version="2.0"
             slafile="c6000_be_analysis.sla"
             processorspec="c6000.pspec"
             id="C6000:BE:32:analysis">
@@ -87,7 +87,7 @@
             endian="big"
             size="32"
             variant="c67x"
-            version="1.2"
+            version="2.0"
             slafile="c6000_be.sla"
             processorspec="c6000.pspec"
             id="C6000:BE:32:c67x">
@@ -98,7 +98,7 @@
             endian="big"
             size="32"
             variant="c67x-analysis"
-            version="1.2"
+            version="2.0"
             slafile="c6000_be_analysis.sla"
             processorspec="c6000.pspec"
             id="C6000:BE:32:c67x-analysis">

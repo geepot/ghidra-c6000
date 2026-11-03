@@ -156,6 +156,10 @@ public final class C6000PacketContext {
 							compact ? dsz : 0, compact ? prot : 0, compact ? br : 0, compact ? sat : 0);
 						setField(program, "c_pfollow", word.add(2), compact ? parallelFollowers(header, layout, 2 * i + 1) : 0);
 					}
+					if (compact && initialized.contains(word, word.add(3)) && program.getRegister("c_h16") != null) {
+						setField(program, "c_h16", word, halfword(program, word));
+						setField(program, "c_h16", word.add(2), halfword(program, word.add(2)));
+					}
 				}
 				// The header is a 32-bit CPKT instruction, not a compact slot.
 				setField(program, "c_is16", hdrAddr, 0);
@@ -221,12 +225,30 @@ public final class C6000PacketContext {
 		}
 	}
 
+	/**
+	 * The 16-bit encoding of the compact slot at {@code at}. A word's first
+	 * instruction is its 16 LSBs in either byte order (SPRUFE8B 3.10.2.3,
+	 * Table 3-16), so big-endian slots are not at their own address (issue #31).
+	 */
+	static int halfword(Program program, Address at) throws ghidra.program.model.mem.MemoryAccessException {
+		int word = program.getMemory().getInt(at.subtract(at.getOffset() & 2));
+		return (at.getOffset() & 2) == 0 ? word & 0xffff : word >>> 16;
+	}
+
     /** Read-only physical header fields for isolated decoders; never writes ProgramContext. */
     static Map<String,Integer> physicalDecodeFields(Program program,Address at)throws Exception {
         long base=at.getOffset()&~31L;int offset=(int)(at.getOffset()-base);
         Address headerAt=at.getAddressSpace().getAddressInThisSpaceOnly(base+28);int header=program.getMemory().getAllInitializedAddressSet().contains(headerAt, headerAt.add(3))?program.getMemory().getInt(headerAt):0;
         if((header>>>28)!=0xe)return Map.of("c_is16",0,"c_isheader",0,"c_hdrpkt",0,"c_rs",0,"c_dsz",0,"c_prot",0,"c_br",0,"c_sat",0,"c_pfollow",0);
         int layout=(header>>>LAYOUT_SHIFT)&LAYOUT_MASK;
+        boolean compact=offset<28&&((layout>>>(offset/4))&1)!=0;
+        if(compact&&program.getRegister("c_h16")!=null){
+            var fields=new java.util.HashMap<>(physicalDecodeFields(header,layout,offset));fields.put("c_h16",halfword(program,at));return Map.copyOf(fields);
+        }
+        return physicalDecodeFields(header,layout,offset);
+    }
+
+    private static Map<String,Integer> physicalDecodeFields(int header,int layout,int offset){
         return Map.of("c_is16",offset<28&&((layout>>>(offset/4))&1)!=0?1:0,"c_isheader",offset==28?1:0,"c_hdrpkt",1,
             "c_rs",(header>>>RS_SHIFT)&1,"c_dsz",(header>>>DSZ_SHIFT)&7,"c_prot",(header>>>PROT_SHIFT)&1,
             "c_br",(header>>>BR_SHIFT)&1,"c_sat",(header>>>SAT_SHIFT)&1,"c_pfollow",offset==28?0:parallelFollowers(header,layout,offset/2));

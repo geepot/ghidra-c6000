@@ -77,11 +77,12 @@ decoding compact slots. The `noflow` context fields prevent one instruction's he
 parameters from leaking into another; see
 [compact packet internals](internals.md#compact-16-bit-fetch-packets).
 
-**Big-endian compact packets decode each word's halfwords swapped** (issue #31). Each
-word's first compact instruction is in its 16 LSBs (SPRUFE8B 3.10.2.3, Table 3-16), at
-byte offset +2 in big-endian memory, but a SLEIGH token is read at the slot's own
-address. Little-endian images, and big-endian images without compact packets, are
-unaffected.
+**Big-endian compact slots decode from context.** Each word's first compact instruction
+is its 16 LSBs (SPRUFE8B 3.10.2.3, Table 3-16), at byte offset +2 in big-endian memory,
+so the primed context carries each slot's halfword (issue #31). The listing's bytes
+column still shows the memory at the slot's own address, which is the word's other
+instruction. Ghidra's generic delay-slot depth for a big-endian compact branch can read
+0; the delay-slot marks, fallthrough and p-code come from each slot's own context.
 
 **Constant propagation is bounded.** Each walk is limited to 512 bytes to bound memory
 use. A register-built target carried across a longer span, loaded from memory or

@@ -3,6 +3,9 @@
 """Closed-call proofs, late effects and multi-call capability refusals; IMAGE JSON [le|be]."""
 from pathlib import Path
 import json,struct,sys
+import compact_order
+
+compact_order.big_endian_on_exit()
 
 def mv(a,d,side=1,cross=False):return d<<23|a<<18|0xfd8|(2 if side==2 else 0)|(0x1000 if cross else 0)
 def branch(pc,target):return 0x10|((((target-(pc&~31))>>2)&0x1fffff)<<7)

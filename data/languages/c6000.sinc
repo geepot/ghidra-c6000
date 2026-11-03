@@ -81,8 +81,13 @@ define register offset=0x2000 size=4
 # 16-bit opcode cannot express (SPRUFE8B section 3.10).  It is populated by
 # the C6000PacketAnalyzer / C6000PacketContext Java helper shipped in this
 # extension; with no context set, every word decodes as a normal 32-bit
-# instruction.
+# instruction.  Big-endian adds a second word holding each compact slot's
+# halfword (issue #31).
+@if ENDIAN == "big"
+define register offset=0x3000 size=8 [ contextreg ];
+@else
 define register offset=0x3000 size=4 [ contextreg ];
+@endif
 
 # Synthetic execution address for Ghidra's p-code emulator.  C6000 exposes
 # PCE1 to instructions, while the emulator needs a distinct current PC.
@@ -107,6 +112,9 @@ define context contextreg
   c_flow_delay = (15,22) noflow # proven delay window in bytes, set by the late return pass
   c_schedule_entry = (23,23) noflow
   c_hdrpkt = (14,14) noflow # slot lies in a header-based (compact) fetch packet
+@if ENDIAN == "big"
+@include "c6000_compact_context.sinc"
+@endif
 ;
 
 # ---------------------------------------------------------------------------
@@ -171,6 +179,15 @@ define token insn32 (32)
 ;
 
 # 16-bit compact instruction token (SPRUFE8B appendices C.4/D.4/E.4/F.4/G.3/H.4)
+#
+# A compact word's first instruction is its 16 LSBs (SPRUFE8B 3.10.2.3, Table
+# 3-16): byte offset +2 in big-endian memory. SLEIGH reads a token at the slot's
+# own address, so big-endian languages decode the same fields from c_h16, which
+# C6000PacketContext primes (tools/gen_compact_context.py), and consume a 16-bit
+# pad token for the length. Issue #31.
+@if ENDIAN == "big"
+define token pad16 (16) c_padbit=(0,0);
+@else
 define token insn16 (16)
   j0=(0,0)   j1=(1,1)   j2=(2,2)   j3=(3,3)
   j4=(4,4)   j5=(5,5)   j6=(6,6)   j7=(7,7)
@@ -218,6 +235,7 @@ define token insn16 (16)
   cq_ii3=(14,14)   cq_spk43=(14,15)
   cq_acc=(0,0)     cq_ret=(0,0)
 ;
+@endif
 
 # ---------------------------------------------------------------------------
 # Attach register fields to register files
@@ -582,7 +600,13 @@ define pcodeop c6000_spkernel;
 define pcodeop c6000_spkernelr;
 define pcodeop c6000_spmask;
 define pcodeop c6000_spmaskr;
+@if ENDIAN == "big"
+with : (c_padbit=0 | c_padbit=1) {
 @include "c6000_compact.sinc"
+}
+@else
+@include "c6000_compact.sinc"
+@endif
 @include "c6000_manual.sinc"
 
 }

@@ -10,6 +10,9 @@ from pathlib import Path
 import runpy
 import struct
 import sys
+import compact_order
+
+compact_order.big_endian_on_exit()
 
 helpers = runpy.run_path(str(Path(__file__).with_name('delayed-call.py')))
 mvk, mvkh, nop, addkpc, branch = (helpers[n] for n in ('mvk', 'mvkh', 'nop', 'addkpc', 'b_s1'))

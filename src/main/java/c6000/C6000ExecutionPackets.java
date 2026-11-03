@@ -22,7 +22,7 @@ public final class C6000ExecutionPackets {
         if (count != null) return (int) count.getUnsignedValue();
         if (instruction.getLength() == 2 &&
                 C6000CallAnalyzer.baseName(instruction).startsWith("BNOP.")) {
-            int word = Short.toUnsignedInt(program.getMemory().getShort(instruction.getAddress()));
+            int word = C6000PacketContext.halfword(program, instruction.getAddress());
             // Fixed-five Sbu8 and Sbu8c only; do not guess for other forms.
             if ((word & 0xc03e) == 0xc00a || (word & 0xc02e) == 0xc02a) return 5;
         }
@@ -121,7 +121,7 @@ public final class C6000ExecutionPackets {
                 (word & 0x1ffe) == 0x162) return -1; // ADDKPC
             return 0;
         }
-        int word=Short.toUnsignedInt(program.getMemory().getShort(instruction.at()));
+        int word=C6000PacketContext.halfword(program,instruction.at());
         if ((word & 0x1fff) == 0xc6e) {
             int count=(word >>> 13)+1;return count>1?count:0;
         }

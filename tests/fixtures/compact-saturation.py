@@ -11,6 +11,9 @@ needed to exercise header-dependent decoding.
 import struct
 import sys
 from pathlib import Path
+import compact_order
+
+compact_order.big_endian_on_exit()
 
 
 def l3(op):

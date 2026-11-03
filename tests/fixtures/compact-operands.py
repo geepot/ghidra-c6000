@@ -8,6 +8,9 @@ Encoding authority: SPRUFE8B Figures C-12/C-13/C-16, G-4 and MVK
 from pathlib import Path
 import struct
 import sys
+import compact_order
+
+compact_order.big_endian_on_exit()
 
 
 def main():

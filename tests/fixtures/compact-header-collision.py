@@ -18,7 +18,8 @@ def main():
         raise SystemExit(__doc__)
     big_endian = len(sys.argv) == 3
     words = [0xE0000000] + [0xFFFFFFFF] * 7
-    words += [0xEA3BE5BE if big_endian else 0xE5BEEA3B]
+    # A word's first compact slot is its 16 LSBs in either byte order (issue #31).
+    words += [0xE5BEEA3B]
     words += [0xFFFFFFFF] * 6 + [0xE0200000]
     Path(sys.argv[1]).write_bytes(struct.pack((">" if big_endian else "<") + "16I", *words))
 

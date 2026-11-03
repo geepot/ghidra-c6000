@@ -40,6 +40,6 @@ def main():
   image=bytearray(b''.join(image[k:k+4][::-1] for k in range(0,len(image),4)))
   # Compact slots retain their physical halfword order in both languages.
   for row in rows:
-   if row['name'].startswith('bnop5_'):struct.pack_into('>HH',image,row['final_packet']-0x1000,0xc40a|int(row['name']=='bnop5_idle_s2'),0x0c6e)
+   if row['name'].startswith('bnop5_'):struct.pack_into('>I',image,row['final_packet']-0x1000,0x0c6e<<16|0xc40a|int(row['name']=='bnop5_idle_s2'))
  image_path.write_bytes(image);manifest_path.write_text(json.dumps(rows,indent=2)+'\n')
 if __name__=='__main__':main()

@@ -21,19 +21,23 @@ public class C6000ElfCompactTest extends GhidraScript {
 	@Override
 	protected void run() throws Exception {
 		List<String> failures = new ArrayList<>();
-		// Issue #31: big-endian images still decode each word's halfwords swapped,
-		// so there only check that every slot decodes.
-		boolean order = !currentProgram.getLanguage().isBigEndian();
 		for (Object[] slot : SLOTS) {
 			Instruction insn = getInstructionAt(toAddr((Long) slot[0]));
 			String name = insn == null ? null : insn.getMnemonicString().replaceFirst("^_", "").replaceFirst("\\..*", "");
-			if (insn == null || order && !slot[1].equals(name)) failures.add(toAddr((Long) slot[0]) + " expected " + slot[1] + " got " + insn);
+			if (insn == null || !slot[1].equals(name)) failures.add(toAddr((Long) slot[0]) + " expected " + slot[1] + " got " + insn);
 		}
 		for (String entry : new String[] {"q1", "f2", "f3"}) {
 			if (getFunction(entry) == null) failures.add("missing function " + entry);
 		}
 		var bad = currentProgram.getBookmarkManager().getBookmarksIterator(BookmarkType.ERROR);
 		while (bad.hasNext()) failures.add("error bookmark " + bad.next());
+		// "upgraded": a saved version 1 program, so BE must have migrated to version 2.
+		if (getScriptArgs().length > 0 && getScriptArgs()[0].equals("upgraded")) {
+			int expected = currentProgram.getLanguage().isBigEndian() ? 2 : 1;
+			if (currentProgram.getLanguage().getVersion() != expected) {
+				failures.add("language version " + currentProgram.getLanguage().getVersion() + " expected " + expected);
+			}
+		}
 		if (!failures.isEmpty()) throw new AssertionError(String.join("; ", failures));
 		println("C6000_ELF_COMPACT_OK");
 	}

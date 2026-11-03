@@ -3,6 +3,9 @@
 """Updating loads: raw final value and E1/E5 writes, SPRUFE8B 4.2.5. IMAGE JSON [be]."""
 from pathlib import Path
 import json,struct,sys
+import compact_order
+
+compact_order.big_endian_on_exit()
 
 
 def main():

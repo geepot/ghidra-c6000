@@ -7,6 +7,9 @@ IMAGE CASES.tsv [be]. Stores intentionally read the old link register.
 """
 from pathlib import Path
 import struct,sys
+import compact_order
+
+compact_order.big_endian_on_exit()
 
 def main():
  image,manifest=map(Path,sys.argv[1:3]);e='>' if len(sys.argv)>3 else '<';data=bytearray(0x600)
