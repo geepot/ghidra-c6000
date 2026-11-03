@@ -1,10 +1,10 @@
 # Release guidance
 
-Release `v1.1.1` adds normal decompilation of explicitly reviewed closed-call
-schedules, sequential CALLP/branch call traces and saved-link proofs. It also fixes
-compact predication/memory addressing, terminal predicated branches, delayed-call
-path proofs and ADDDP/SUBDP read timing, and adds ANDN/PACK/compact BNOP schedules.
-See the [changelog](../CHANGELOG.md#111---2026-10-29),
+Release `v1.2.0` adds the native CodeBrowser C6000 plugin and explicit C67x timing
+variants. It decodes big-endian compact packets in program order, with automatic
+migration of saved big-endian programs, and fixes delayed-call timing, delay windows
+for calls and predicated branches, register-branch tails, ELF compact priming and
+several decode errors. See the [changelog](../CHANGELOG.md#120---2026-11-02),
 [release limitations](limitations.md#release-111-decompilation-and-round-trips) and
 [verification](verification.md).
 
@@ -23,9 +23,9 @@ interrupt and exceptional-loop limitations are detailed in [limitations](limitat
 
 | Item | Value |
 |---|---|
-| Repository release | `v1.1.1` |
+| Repository release | `v1.2.0` |
 | Ghidra compatibility matrix | 12.1.3 / JDK 21; 12.1.4 / JDK 21; 12.2 / JDK 25 |
-| Language version | 1.2 for all eight language definitions (four shared compiled SLEIGH files) |
+| Language version | 1.2 for the four little-endian definitions; 2.0 for the four big-endian ones (issue #31) |
 | Archive naming | `ghidra_<Ghidra version>_PUBLIC_<build date>_C6000.zip` |
 | Extension-property version | Ghidra compatibility version, substituted from `@extversion@` during build |
 
@@ -33,7 +33,10 @@ Keep the `extension.properties` version token. That field identifies the
 compatible Ghidra version, rather than the repository release. Each release
 archive must match the Ghidra installation used to build it.
 
-The language minor version triggers native re-disassembly of existing programs.
+Big-endian version 1 programs migrate through `C6000BeDefaultLanguageTranslator` and
+`C6000BeAnalysisLanguageTranslator`, which re-decode compact packets; re-run
+auto-analysis afterwards. The language minor version triggers native re-disassembly of
+existing programs.
 Keep a packed backup and annotation inventory before upgrading; existing Bad
 Instruction bookmarks may be removed. Preserve and, where required, restore their
 recorded addresses, types, categories and comments before saving. See
