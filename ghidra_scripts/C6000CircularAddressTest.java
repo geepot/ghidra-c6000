@@ -9,8 +9,10 @@ import ghidra.app.cmd.disassemble.DisassembleCommand;
 import ghidra.app.emulator.EmulatorHelper;
 import ghidra.app.script.GhidraScript;
 import ghidra.program.model.address.Address;
+import ghidra.program.model.lang.Register;
 import ghidra.program.model.listing.Instruction;
 import ghidra.program.model.pcode.PcodeOp;
+import ghidra.program.model.pcode.Varnode;
 
 public class C6000CircularAddressTest extends GhidraScript {
     private static long hex(String value) {
@@ -23,6 +25,7 @@ public class C6000CircularAddressTest extends GhidraScript {
         if (args.length != 1) {
             throw new IllegalArgumentException("expected cases.tsv path");
         }
+        Register amr = currentProgram.getRegister("AMR");
         int checked = 0;
         try (BufferedReader rows = new BufferedReader(new FileReader(args[0]))) {
             String row;
@@ -38,9 +41,16 @@ public class C6000CircularAddressTest extends GhidraScript {
                     !insn.getMnemonicString().equals(f[1])) {
                     throw new AssertionError(f[0] + ": decoded as " + insn);
                 }
+                // A load or store through a base outside A4-A7/B4-B7 never reads AMR (SPRUFE8B 2.8.3).
+                boolean linear = f[1].matches("(LD|ST).*") && !f[2].matches("[AB][4-7]");
                 for (PcodeOp op : insn.getPcode()) {
                     if (op.getOpcode() == PcodeOp.CALLOTHER) {
                         throw new AssertionError(f[0] + ": placeholder " + op);
+                    }
+                    for (Varnode in : op.getInputs()) {
+                        if (linear && in.isRegister() && in.getAddress().equals(amr.getAddress())) {
+                            throw new AssertionError(f[0] + ": " + insn + " reads AMR: " + op);
+                        }
                     }
                 }
                 EmulatorHelper emulator = new EmulatorHelper(currentProgram);

@@ -2,8 +2,8 @@
 """Generate size-aware .D-unit memory operands for c6000_memory.sinc.
 
 The addressing modes and offset scaling follow SPRUFE8B sections 3.9.2-3.9.3
-and Table C-3. The common wrap macro in c6000.sinc applies AMR to eligible
-base registers.
+and Table C-3. The CircM subtable applies AMR only to the eligible base
+registers A4-A7/B4-B7.
 """
 from pathlib import Path
 
@@ -98,6 +98,13 @@ def offset(name, shift):
     return name if shift == 0 else f"({name} << {shift})"
 
 
+# SPRUFE8B 2.8.3: only A4-A7/B4-B7 can be circular, so the choice is made at decode time.
+lines += [
+    "CircM: is base_idx<4 { local m:4 = 0xffffffff; export m; }",
+    "CircM: is base_idx>7 { local m:4 = 0xffffffff; export m; }",
+    "CircM: is base_idx>=4 & base_idx<=7 & base_idx & i7 { local m:4; c6000_circular_mask(base_idx, i7, m); export m; }",
+    "",
+]
 for suffix, default_shift in (("B", 0), ("H", 1), ("W", 2), ("D", 3), ("N", 0)):
     table = f"MemReg{suffix}"
     scales = ((0, 0), (1, 3)) if suffix == "N" else ((None, default_shift),)
@@ -120,7 +127,7 @@ for suffix, default_shift in (("B", 0), ("H", 1), ("W", 2), ("D", 3), ("N", 0)):
             bracket = left if update != "post" else f"{sign}{sign}{left}"
             display = f'"{prefix}" ^ BaseReg ^ "{bracket}" ^ {off} ^ "{right}"'
             field = "ucst5" if off == "UCst5" else "offr"
-            pattern = f"mode=0x{mode:x} & {field} & BaseReg & {off} & base_idx & i7"
+            pattern = f"mode=0x{mode:x} & {field} & BaseReg & {off} & base_idx & i7 & CircM"
             if sc is not None:
                 pattern += f" & scbit={sc}"
             # The constructor commits pre/post updates after the transfer.
@@ -129,8 +136,7 @@ for suffix, default_shift in (("B", 0), ("H", 1), ("W", 2), ("D", 3), ("N", 0)):
                 sem += f" delta = delta << {shift};"
             if sign == "-":
                 sem += " delta = 0 - delta;"
-            sem += (" local a:4 = BaseReg; c6000_wrap_address(BaseReg, "
-                    "delta, base_idx, i7, a); export a;")
+            sem += " local a:4 = (BaseReg & ~CircM) | ((BaseReg + delta) & CircM); export a;"
             lines.append(f"{table}: {display} is {pattern} {{ {sem} }}")
     lines.append("")
 
