@@ -495,6 +495,18 @@ plain instruction cannot accidentally stand in for the regression. Together with
 its existing controls, this fixture checks 72 cases per endian (24 accepted and
 48 refused). These follow SPRUFE8B 3.5, 3.6 and 4.2.6.
 
+## Calls returning to earlier caller code (issue #41)
+
+`idle-call.py IMAGE [be]` and `C6000IdleCallTest.java` (with `prepare` as a pre-script,
+which declares the eight functions) check eight `B` sites in `cl6x` 8.3.15 words. A `B`
+to another function's entry whose delay slots set B3 to earlier code of the same
+function is a call that returns there, as in `for (;;) run(*tbl);`. 1004 (B3 is the
+caller's entry), 1028 (a mid-function label) and 109c (B3 set in the slots of the jump
+into it) must be calls with their whole window in the caller. B3 untouched (1044) or
+still the previous call's link (10d4) stays a tail call, B3 naming another function
+(1064) or a local target (1084, #11's shape) is not a call, and a predicated `B` (10e8)
+keeps its not-taken path (SPRUFE8B 4.2.6, B).
+
 ## Encoding identity and updating-load phases
 
 `tests/fixtures/full32-encoding-info.py <image.bin> <cases.tsv> [be]` and
