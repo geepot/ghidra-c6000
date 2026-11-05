@@ -8,7 +8,8 @@ from pathlib import Path
 
 # index, instruction, addressing mode, base, offset register, offset value,
 # AMR, initial base, target register, target value, expected target,
-# expected base, store address, expected stored halfword.
+# expected base, store address, expected stored halfword; the manifest adds
+# the code address.
 CASES = [
     ("ADDAH.D1", None, "A4", "A1", 0x13, 0x00040001, 0x1100,
      "A4", 0, 0x1106, 0x1106, 0, 0),
@@ -40,12 +41,46 @@ CASES = [
      "A1", 0, 0x0BADC0DE, 0x1224, 0, 0),
 ]
 
+# Every AMR field set (BK0 = 32 bytes): A4-A7/B4-B7 wrap, every other base,
+# including the stack pointer B15, stays linear (SPRUFE8B 2.8.3).
+ALL_BK0 = 0x00045555
+CIRCULAR = (0x12345678, 0x1204)
+LINEAR = (0x0BADC0DE, 0x1224)
+for _base in ("A4", "A5", "A6", "A7", "B4", "B5", "B6", "B7",
+              "A3", "A8", "B3", "B8", "B15"):
+    _unit, _target = ("D1", "A1") if _base[0] == "A" else ("D2", "B1")
+    _expect = CIRCULAR if 4 <= int(_base[1:]) <= 7 else LINEAR
+    CASES.append((f"LDW.{_unit}", 0x9, _base, "", 9, ALL_BK0, 0x1200,
+                  _target, 0, *_expect, 0, 0))
+CASES += [
+    # *+R[ucst5]: the address wraps, the base is unchanged.
+    ("LDW.D1", 0x1, "A4", "", 9, ALL_BK0, 0x1200, "A1", 0, 0x12345678, 0x1200, 0, 0),
+    ("LDW.D2", 0x1, "B15", "", 9, ALL_BK0, 0x1200, "B1", 0, 0x0BADC0DE, 0x1200, 0, 0),
+    # *R++[ucst5]: transfer from the old base, then the updated base wraps.
+    ("LDW.D1", 0xB, "A4", "", 9, ALL_BK0, 0x1204, "A1", 0, 0x12345678, 0x1208, 0, 0),
+    ("LDW.D2", 0xB, "B15", "", 9, ALL_BK0, 0x1204, "B1", 0, 0x12345678, 0x1228, 0, 0),
+    # *++R[offsetR] and *-R[offsetR].
+    ("LDW.D1", 0xD, "A4", "A0", 9, ALL_BK0, 0x1200, "A1", 0, 0x12345678, 0x1204, 0, 0),
+    ("LDW.D2", 0xD, "B15", "B0", 9, ALL_BK0, 0x1200, "B1", 0, 0x0BADC0DE, 0x1224, 0, 0),
+    ("LDW.D1", 0x4, "A4", "A0", 7, ALL_BK0, 0x1200, "A1", 0, 0x12345678, 0x1200, 0, 0),
+    ("LDW.D2", 0x4, "B15", "B0", 7, ALL_BK0, 0x1240, "B1", 0, 0x0BADC0DE, 0x1240, 0, 0),
+    # Every field selects BK1 (32 bytes); BK0 is 2 bytes.
+    ("LDW.D1", 0x9, "A4", "", 9, 0x0080AAAA, 0x1200, "A1", 0, 0x12345678, 0x1204, 0, 0),
+]
+
+
+def slot(index):
+    """Code address of a case; 0x1200-0x123F holds the data words."""
+    return 0x1000 + 32 * (index if index < 16 else index + 2)
+
 
 def encode(mnemonic, mode, base, offset_reg, offset, target):
     decode = Path(__file__).resolve().parents[2] / "data/languages/c6000_decode.sinc"
+    operand = "Src1," if offset_reg else "UCst5,"
     candidates = [line for line in decode.read_text().splitlines()
-                  if line.startswith(f":{mnemonic} ") and
-                  (mode is None or f"mode=0x{mode:x}" in line)]
+                  if line.startswith(f':^Cond^"{mnemonic}" ') and
+                  (f"mode=0x{mode:x} " in line if mode is not None
+                   else f"Src2Local, {operand}" in line)]
     if not candidates:
         raise ValueError((mnemonic, mode))
     line = candidates[0]
@@ -64,12 +99,12 @@ def encode(mnemonic, mode, base, offset_reg, offset, target):
 def main():
     image, manifest = map(Path, sys.argv[1:3])
     endian = ">" if len(sys.argv) > 3 and sys.argv[3] == "be" else "<"
-    data = bytearray(0x400)
+    data = bytearray(0x800)
     for index, row in enumerate(CASES):
         mnemonic, mode, base, source, offset, amr, base_in, target, target_in, \
             expected_target, expected_base, store_addr, store_value = row
         word = encode(mnemonic, mode, base, source, offset, target)
-        struct.pack_into(endian + "I", data, index * 32, word)
+        struct.pack_into(endian + "I", data, slot(index) - 0x1000, word)
     for addr, value in ((0x1204, 0x12345678), (0x121C, 0x89ABCDEF),
                         (0x1224, 0x0BADC0DE)):
         struct.pack_into(endian + "I", data, addr - 0x1000, value)
@@ -83,7 +118,7 @@ def main():
                                  f"{offset:x}", f"{amr:x}", f"{base_in:x}",
                                  target, f"{target_in:x}", f"{expected_target:x}",
                                  f"{expected_base:x}", f"{store_addr:x}",
-                                 f"{store_value:x}")) + "\n")
+                                 f"{store_value:x}", f"{slot(index):x}")) + "\n")
 
 
 if __name__ == "__main__":

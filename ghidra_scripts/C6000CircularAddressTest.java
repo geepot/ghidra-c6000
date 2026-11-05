@@ -28,7 +28,7 @@ public class C6000CircularAddressTest extends GhidraScript {
             String row;
             while ((row = rows.readLine()) != null) {
                 String[] f = row.split("\t");
-                Address address = toAddr(0x1000L + 32L * Integer.parseInt(f[0]));
+                Address address = toAddr(hex(f[13]));
                 Instruction insn = currentProgram.getListing().getInstructionAt(address);
                 if (insn == null) {
                     new DisassembleCommand(address, null, false).applyTo(currentProgram, monitor);

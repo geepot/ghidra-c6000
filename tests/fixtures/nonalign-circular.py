@@ -21,7 +21,7 @@ CASES = [
 def encode(mnemonic, base, target):
     decode = Path(__file__).resolve().parents[2] / "data/languages/c6000_decode.sinc"
     line = next(line for line in decode.read_text().splitlines()
-                if line.startswith(f":{mnemonic} ") and "mode=0x1" in line)
+                if line.startswith(f':^Cond^"{mnemonic}" ') and "mode=0x1 " in line)
     word = sum(int(value) << int(bit) for bit, value in
                re.findall(r"\bi(\d+)=(\d)\b", line))
     word |= 1 << 9  # *+base[offset], with offset zero
