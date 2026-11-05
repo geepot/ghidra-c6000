@@ -495,6 +495,17 @@ plain instruction cannot accidentally stand in for the regression. Together with
 its existing controls, this fixture checks 72 cases per endian (24 accepted and
 48 refused). These follow SPRUFE8B 3.5, 3.6 and 4.2.6.
 
+## 64-bit arguments and results in register pairs
+
+`abi-pairs.py IMAGE [be]` and `C6000AbiPairsTest.java` (with `prepare` as a pre-script,
+which declares the six functions) check `cl6x` 8.3.15 words. Undeclared `pass` hands its
+untouched A4 to `sink` beside B4 and A6, and the call must keep all three arguments.
+Declared `double second(int k, double y)` must take k in A4 and y in B5:B4 and return
+through A5:A4, not slide y into a hidden return pointer. Undeclared, `twice64` (which
+writes A5 and A4 separately) and `neg64` (which writes them as a pair) must keep a 4-byte
+A4 result. Declared `long long twice64(long long x)` must keep x in A5:A4 and return 8
+bytes, and both 64-bit calls in `callit` must pass one 8-byte argument.
+
 ## Encoding identity and updating-load phases
 
 `tests/fixtures/full32-encoding-info.py <image.bin> <cases.tsv> [be]` and

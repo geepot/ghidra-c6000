@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+* Pass and return 64-bit values in register pairs (A5:A4, B5:B4, ...) as the C6000
+  ABI does. A declared `long long` or `double` argument or result had no storage, and
+  the prototype now uses the `standard` strategy, which keeps an untouched
+  pass-through argument. Undeclared functions keep a 4-byte A4 result.
+
 ## 1.2.0 - 2026-11-02
 
 ### Added
