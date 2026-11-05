@@ -169,6 +169,18 @@ and predicate writers, and consumers before and after E1 writeback. CSR and
 AMR remain unchanged. Opcode fields, expected results and the single-cycle
 contract follow SPRUFE8B pp. 145-146. This is a core release regression.
 
+`tests/fixtures/pipeline-scalar-ops.py IMAGE CASES.json [be]` and
+`C6000PipelineScalarOpsTest.java CASES.json` exercise 333 cases per endian mode:
+330 raw/scheduled checks and three functional-unit collision refusals (.M, .L, .S).
+All sixteen 16 × 16 multiplies, both ADDU and SUBU forms, SUBC, INTSPU, RCPSP and
+RSQRSP run on both sides, the second through its cross path. Each case lists a
+parallel writer first: a source or predicate it overwrites keeps its E1 value, and a
+same-packet reader sees the old destination. Readers in every following cycle see
+the old destination until E2 (multiplies) or E4 (INTSPU); FADCR/FAUCR events match the raw
+p-code. Opcode fields match `cl6x` 8.3.15; results follow independent oracles and the
+manual's INTSPU, RCPSP, RSQRSP and SUBU examples (SPRUFE8B pp.135-136, 278, 320-350,
+411-412, 420-421, 539-540, 546-547).
+
 `tests/fixtures/compact-memory.py IMAGE CASES.json [be]` and
 `C6000CompactMemoryTest.java CASES.json` execute 960 native instruction checks
 and 960 exact-schedule checks per endian mode. They cover compact offset,

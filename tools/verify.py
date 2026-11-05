@@ -70,6 +70,7 @@ CORE = [
     case("pipeline-predicated-return", "PipelinePredicatedReturn", "C6000_PIPELINE_PREDICATED_RETURN_OK", "json"),
     case("pipeline-andn", "PipelineAndn", "C6000_PIPELINE_ANDN_OK", "json"),
     case("pipeline-pack", "PipelinePack", "C6000_PIPELINE_PACK_OK", "json"),
+    case("pipeline-scalar-ops", "PipelineScalarOps", "C6000_PIPELINE_SCALAR_OPS_OK", "json"),
     case("pipeline-rotl", "PipelineRotl", "C6000_PIPELINE_ROTL_OK", "json"),
     case("pipeline-mpyli", "PipelineMpyli", "C6000_PIPELINE_MPYLI_OK", "json"),
     case("pipeline-load-alias", "PipelineLoadAlias", "C6000_PIPELINE_LOAD_ALIAS_OK", "json"),
