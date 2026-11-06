@@ -6,7 +6,8 @@
   Optimizing Compiler User's Guide, and the CGT 7.3.4 headers):
 
     * integer/pointer arguments are passed in A4, B4, A6, B6, A8, B8,
-      A10, B10, A12, B12, then on the stack;
+      A10, B10, A12, B12, then on the stack; a 64-bit argument takes
+      the pair whose even register is its slot (A5:A4, B5:B4, ...);
     * a 32-bit result is returned in A4; a 64-bit result in A5:A4;
     * B3 holds the return address, B15 is the stack pointer, A15 is the
       frame pointer and B14 is the data (near-data) pointer;
@@ -26,21 +27,32 @@
   </returnaddress>
   <callotherfixup targetop="c6000_pipeline"><pcode dynamic="true"/></callotherfixup>
   <default_proto>
-    <prototype name="__c6000" extrapop="0" stackshift="0" strategy="register">
+    <prototype name="__c6000" extrapop="0" stackshift="0" strategy="standard">
       <input>
         <pentry minsize="1" maxsize="4"><register name="A4"/></pentry>
+        <pentry minsize="5" maxsize="8"><register name="A5_A4"/></pentry>
         <pentry minsize="1" maxsize="4"><register name="B4"/></pentry>
+        <pentry minsize="5" maxsize="8"><register name="B5_B4"/></pentry>
         <pentry minsize="1" maxsize="4"><register name="A6"/></pentry>
+        <pentry minsize="5" maxsize="8"><register name="A7_A6"/></pentry>
         <pentry minsize="1" maxsize="4"><register name="B6"/></pentry>
+        <pentry minsize="5" maxsize="8"><register name="B7_B6"/></pentry>
         <pentry minsize="1" maxsize="4"><register name="A8"/></pentry>
+        <pentry minsize="5" maxsize="8"><register name="A9_A8"/></pentry>
         <pentry minsize="1" maxsize="4"><register name="B8"/></pentry>
+        <pentry minsize="5" maxsize="8"><register name="B9_B8"/></pentry>
         <pentry minsize="1" maxsize="4"><register name="A10"/></pentry>
+        <pentry minsize="5" maxsize="8"><register name="A11_A10"/></pentry>
         <pentry minsize="1" maxsize="4"><register name="B10"/></pentry>
+        <pentry minsize="5" maxsize="8"><register name="B11_B10"/></pentry>
         <pentry minsize="1" maxsize="4"><register name="A12"/></pentry>
+        <pentry minsize="5" maxsize="8"><register name="A13_A12"/></pentry>
         <pentry minsize="1" maxsize="4"><register name="B12"/></pentry>
+        <pentry minsize="5" maxsize="8"><register name="B13_B12"/></pentry>
       </input>
       <output>
         <pentry minsize="1" maxsize="4"><register name="A4"/></pentry>
+        <pentry minsize="5" maxsize="8"><addr space="join" piece1="A5" piece2="A4"/></pentry>
       </output>
       <unaffected>
         <register name="A10"/><register name="A11"/><register name="A12"/>
