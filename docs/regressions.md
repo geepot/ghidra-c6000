@@ -186,9 +186,11 @@ This fixture is part of the core release suite and requires no external image
 or assembler.
 
 `tests/fixtures/circular-addressing.py <image.bin> <cases.tsv> [be]` and
-`C6000CircularAddressTest.java <cases.tsv>` execute 14 cases per endian mode. They check
+`C6000CircularAddressTest.java <cases.tsv>` execute 36 cases per endian mode. They check
 BK0/BK1 wraparound, underflow, pre/post updates, noneligible base registers, a
-full-width BK0 field, and byte/halfword store truncation. The register forms of
+full-width BK0 field, and byte/halfword store truncation. With every AMR field set,
+each of A4-A7/B4-B7 wraps and A3, A8, B3, B8 and B15 stay linear; a load or store
+through a linear base must not read AMR in its p-code. The register forms of
 ADDAB/ADDAH/ADDAW/ADDAD and SUBAB/SUBAH/SUBAW use the local `.D` source register, as the
 opcode map specifies. `tests/fixtures/nonalign-circular.py <image.bin> <cases.tsv> [be]`
 and `C6000NonalignedCircularTest.java <cases.tsv>` execute six cases per endian mode.

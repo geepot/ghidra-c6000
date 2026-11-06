@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+* Choose circular addressing at decode time: loads and stores through a base other
+  than A4-A7/B4-B7, including the stack pointer B15, no longer run the AMR check in
+  p-code, whose branches the decompiler had to prove dead (issue #38; SPRUFE8B 2.8.3).
+  Run the `circular-addressing` and `nonalign-circular` fixtures, with repaired
+  encoders and every base register.
+
 ## 1.2.0 - 2026-11-02
 
 ### Added
