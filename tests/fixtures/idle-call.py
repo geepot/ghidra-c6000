@@ -3,7 +3,7 @@
 """Build B calls whose B3 returns to earlier code of the caller. Usage: IMAGE [be].
 
 Load at 0x1000 with entry 0x1000 and auto-analysis; C6000IdleCallTest.java
-prepare declares the thirteen functions, as ELF symbols would. Words are TI cl6x
+prepare declares the fourteen functions, as ELF symbols would. Words are TI cl6x
 8.3.15 output (-mv6740 --no_compress), listed by dis6x (SPRUFE8B 4.2.6, B, MVK/MVKH):
 
   1000 idle     MVK tbl,A4 ; B run || MVKH ; LDW *A4,A4 || MVK 0x1000,B3 ; MVKH ; NOP 3
@@ -31,6 +31,8 @@ prepare declares the thirteen functions, as ELF symbols would. Words are TI cl6x
   11a0 nullify  B run ; MVK 0x11b0,B3 ; MVKH ; NOP 3 ; 11b0 [A1] B 0x11c8 ; NOP 5 ;
                 [A1] MVK 0x11b0,B3 ; [A1] MVKH ; B run ; NOP 5 ; 11c8 B B3 ; NOP 5
                 the B3 writes are nullified, B3 still the call's link: tail call
+  11e0 partial  B run ; MVK 0x11f0,B3 ; MVKH ; NOP 3 ; 11f0 MVKH 0,B3 ; B run ; NOP 5
+                B3's low half still the call's link: tail call
   1200 regref   regcall's code, its B given a reference to run by the test
                 a register B with a known target: still not a call returning to regref
 """
@@ -60,8 +62,10 @@ WORDS = {
     0x11A0: 0x0FFFEC10, 0x11A4: 0x0188D82A, 0x11A8: 0x0180006A, 0x11AC: 0x00004000,
     0x11B0: 0x80000510, 0x11B4: 0x00008000, 0x11B8: 0x8188D82A, 0x11BC: 0x8180006A,
     0x11C0: 0x0FFFE812, 0x11C4: 0x00008000, 0x11C8: 0x000C0362, 0x11CC: 0x00008000,
-    0x1200: 0x0288802A, 0x1204: 0x0280006A, 0x1208: 0x00140362, 0x120C: 0x020003A8,
-    0x1210: 0x0189002A, 0x1214: 0x0180006A, 0x1218: 0x00002000,
+    0x11E0: 0x0FFFE410, 0x11E4: 0x0188F82A, 0x11E8: 0x0180006A, 0x11EC: 0x00004000,
+    0x11F0: 0x0180006A, 0x11F4: 0x0FFFE412, 0x11F8: 0x00008000, 0x1200: 0x0288802A,
+    0x1204: 0x0280006A, 0x1208: 0x00140362, 0x120C: 0x020003A8, 0x1210: 0x0189002A,
+    0x1214: 0x0180006A, 0x1218: 0x00002000,
 }
 
 

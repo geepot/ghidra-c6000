@@ -349,8 +349,8 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 					if (slots == null) return false;
 					after = i + slots.size();
 				}
-				// A nullified write leaves the old link.
-				if (Boolean.FALSE.equals(executes(execution, i, facts))) continue;
+				// A nullified write leaves the old link, and MVKH keeps its low half.
+				if (Boolean.FALSE.equals(executes(execution, i, facts)) || baseName(insn).startsWith("MVKH")) continue;
 				Register load = loadDestination(insn);
 				if ((load != null && overlaps(load, b3)) ||
 					issueWrites(insn).stream().anyMatch(r -> overlaps(r, b3))) writer = i;
