@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """Strict caller/store-tail scopes; IMAGE JSON [be]. TI assembled, no stock bytes."""
 from pathlib import Path
-import importlib.util,json,struct,subprocess,sys
+import importlib.util,json,os,struct,subprocess,sys
 
 def main():
  image_path,manifest_path=map(Path,sys.argv[1:3]);be=len(sys.argv)>3 and sys.argv[3]=='be';endian='>' if be else '<';image_path.parent.mkdir(parents=True,exist_ok=True)
@@ -15,7 +15,8 @@ def main():
   lines+=[' .sect "'+'.'+tag+'"',' .nocmp',tag+':',' '+('MVK.S2 1,B3' if name=='first_B3_writer' else 'MVK.S1 2,A1'),tag+'_loop:',' SUB.S1 A1,1,A1',' [A1] B.S2 '+tag+'_loop',' NOP 5',' B.S2 B3',' NOP 3',' STW.D1 B5,*A4[0]',' STW.D1 B4,*A4[1]']
   if name.startswith('callp_'):lines+=[' .sect ".'+tag+'_setup"',' .nocmp',tag+'_setup_target .set $-0x1e0',' CALLP.S2 '+tag+'_setup_target,B3',' || MV.L2 B11,B4']
   rows.append(dict(name=name,at=at,callee_end=at+32,caller=caller,caller_end=caller+8,owner=caller-32,setup_start=caller-32,final_packet=caller-4,setup_end=caller,packets=[caller,caller+4],accepted=error is None,error=error))
- asm=image_path.with_suffix('.asm');obj=image_path.with_suffix('.obj');asm.write_text('\n'.join(lines)+'\n');result=subprocess.run(['/Applications/ti/ti-cgt-c6000_8.3.15/bin/cl6x','-mv6740','--abi=eabi','-c',str(asm),'--output_file='+str(obj)],stdout=subprocess.PIPE,stderr=subprocess.STDOUT,text=True);image_path.with_suffix('.asm.log').write_text(result.stdout);assert result.returncode==0,result.stdout
+ binary=Path(os.environ.get('TI_C6000_BIN','/Applications/ti/ti-cgt-c6000_8.3.15/bin'));compiler=str(binary/'cl6x' if binary.is_dir() else binary)
+ asm=image_path.with_suffix('.asm');obj=image_path.with_suffix('.obj');asm.write_text('\n'.join(lines)+'\n');result=subprocess.run([compiler,'-mv6740','--abi=eabi','-c',str(asm),'--output_file='+str(obj)],stdout=subprocess.PIPE,stderr=subprocess.STDOUT,text=True);image_path.with_suffix('.asm.log').write_text(result.stdout);assert result.returncode==0,result.stdout
  sections=module.object_sections(obj);image=bytearray(len(rows)*0x800)
  for row in rows:
   at=row['at'];name=row['name'];raw=sections['.ct_strict_'+name];image[at-0x1000:at-0x1000+len(raw)]=raw

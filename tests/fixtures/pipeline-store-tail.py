@@ -5,7 +5,7 @@ SPRUFE8B 3.5, 3.9.2, 4.2.3/4.2.6 and Figures C-8..C-15.
 TI assembles synthetic full32 instructions; compact fields and byte oracles
 are independent. No firmware bytes are distributed.
 """
-import importlib.util,json,struct,subprocess,sys
+import importlib.util,json,os,struct,subprocess,sys
 from pathlib import Path
 
 FORMATS=[('B',1,1,1,0),('H',2,3,1,0),('W',4,0,0,0),('DW',8,4,0,0),('NW',4,6,1,0),('NDW',8,4,0,1)]
@@ -73,7 +73,8 @@ def main():
   ('control_tail',[' B.S2 B3',' NOP 4',' B.S1 $'],'unresolved control effects')]:
   tag='ct_store_tail_'+str(len(rows));entry=0x1000+len(rows)*0x100;lines.extend([' .sect ".'+tag+'"',' .nocmp',tag+':']+body);rows.append(dict(name=name,tag=tag,entry=entry,error=error,advances=1 if name=='short_budget' else 2))
  image_path.parent.mkdir(parents=True,exist_ok=True);asm=image_path.with_suffix('.asm');obj=image_path.with_suffix('.obj');asm.write_text('\n'.join(lines)+'\n')
- r=subprocess.run(['/Applications/ti/ti-cgt-c6000_8.3.15/bin/cl6x','-mv6740','--abi=eabi','-c',str(asm),'--output_file='+str(obj)],capture_output=True,text=True);image_path.with_suffix('.asm.log').write_text(r.stdout+r.stderr);assert r.returncode==0,r.stdout+r.stderr
+ binary=Path(os.environ.get('TI_C6000_BIN','/Applications/ti/ti-cgt-c6000_8.3.15/bin'));compiler=str(binary/'cl6x' if binary.is_dir() else binary)
+ r=subprocess.run([compiler,'-mv6740','--abi=eabi','-c',str(asm),'--output_file='+str(obj)],capture_output=True,text=True);image_path.with_suffix('.asm.log').write_text(r.stdout+r.stderr);assert r.returncode==0,r.stdout+r.stderr
  sections=module.object_sections(obj);image=bytearray(len(rows)*256)
  for row in rows:
   at=row['entry']-0x1000;raw=sections['.'+row['tag']];assert len(raw)<128;image[at:at+len(raw)]=raw

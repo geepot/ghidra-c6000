@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """Stock-free same-EP discovery fixtures. IMAGE CASES.json [be]."""
 from pathlib import Path
-import importlib.util,json,struct,subprocess,sys
+import importlib.util,json,os,struct,subprocess,sys
 
 def main():
  output,cases=map(Path,sys.argv[1:3]);big=len(sys.argv)>3 and sys.argv[3]=='be';output.parent.mkdir(parents=True,exist_ok=True)
@@ -10,7 +10,8 @@ def main():
  if not helper.exists():helper=Path(__file__).parents[2]/'plugin-fix/tests/fixtures/pipeline-caller-continuation.py'
  spec=importlib.util.spec_from_file_location('elf_fixture',helper);module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
  asm=output.with_suffix('.asm');obj=output.with_suffix('.obj');asm.write_text(' .sect ".ct_opcodes"\n .nocmp\n B.S1 local_target\n || MVK.S2 7,B4\n NOP 5\n B.S2 B5\nlocal_target:\n NOP\n .sect ".ct_idle"\n .nocmp\n IDLE\n .sect ".ct_overlap"\n .nocmp\n LDW.D1T1 *-A27[16],A24\n')
- result=subprocess.run(['/Applications/ti/ti-cgt-c6000_8.3.15/bin/cl6x','-mv6740','--abi=eabi','-c',str(asm),'--output_file='+str(obj)],stdout=subprocess.PIPE,stderr=subprocess.STDOUT,text=True);output.with_suffix('.asm.log').write_text(result.stdout);assert result.returncode==0,result.stdout;sections=module.object_sections(obj);words=struct.unpack_from('<5I',sections['.ct_opcodes']);idle=struct.unpack_from('<I',sections['.ct_idle'])[0];overlap=struct.unpack_from('<I',sections['.ct_overlap'])[0]
+ binary=Path(os.environ.get('TI_C6000_BIN','/Applications/ti/ti-cgt-c6000_8.3.15/bin'));compiler=str(binary/'cl6x' if binary.is_dir() else binary)
+ result=subprocess.run([compiler,'-mv6740','--abi=eabi','-c',str(asm),'--output_file='+str(obj)],stdout=subprocess.PIPE,stderr=subprocess.STDOUT,text=True);output.with_suffix('.asm.log').write_text(result.stdout);assert result.returncode==0,result.stdout;sections=module.object_sections(obj);words=struct.unpack_from('<5I',sections['.ct_opcodes']);idle=struct.unpack_from('<I',sections['.ct_idle'])[0];overlap=struct.unpack_from('<I',sections['.ct_overlap'])[0]
  names=['full32','mixed16','nested_window','cross_fetch','cross_header','p0','data_start','data_suffix','instruction_suffix','foreign_owner','partial_owner','stale_context','opaque_peer','invalid_peer','already_defined','defined_partial_bridge','annotations','bound_cut','header_eight','oversized','anchor_partial_owner','late_data','compact_p0_tail','control_peer'];image=bytearray(len(names)*0x100);rows=[]
  for i,name in enumerate(names):
   at=0x1000+i*0x100;anchor=at;peer=at+4;width=4;expected=1 if name in ['full32','mixed16','nested_window','cross_fetch','cross_header','annotations'] else 0
