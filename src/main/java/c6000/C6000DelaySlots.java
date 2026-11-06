@@ -52,6 +52,8 @@ public final class C6000DelaySlots {
 
     private static List<Repair> recoverWindows(Program program, TaskMonitor monitor, MessageLog log)
             throws Exception {
+        int preempted = neutralise(program, monitor);
+        if (preempted > 0) log.appendMsg("C6000 Delay Slots", "continued " + preempted + " preempted jump(s)");
         List<Address> candidates = new ArrayList<>();
         var it = program.getListing().getInstructions(true);
         while (it.hasNext()) {
@@ -65,9 +67,10 @@ public final class C6000DelaySlots {
             // slots, so predicated and delayed-call displacement branches are
             // lifted correctly once their window is proven.
             // The register form also captures predicate and target first, so a
-            // register call gets its window too (SPRUFE8B 4.2.6, B).
+            // register call gets its window too (SPRUFE8B 4.2.6, B). A predicated
+            // register return gets one only when it preempts a continued jump.
             boolean displacement = ins.getRegister(0) == null;
-            if (full.startsWith("[") && !displacement && override != FlowOverride.CALL) continue;
+            if (full.startsWith("[") && !displacement && override != FlowOverride.CALL && !preemptingReturn(ins)) continue;
             if (override != FlowOverride.NONE && override != FlowOverride.RETURN &&
                     override != FlowOverride.CALL) continue;
             candidates.add(ins.getAddress());
@@ -231,6 +234,29 @@ public final class C6000DelaySlots {
         return false;
     }
 
+    /** A return through B3. */
+    static boolean preemptingTransfer(Instruction transfer) {
+        var register = transfer.getRegister(0);
+        var override = transfer.getFlowOverride();
+        return register != null && register.getName().equals("B3") && !transfer.getFlowType().isCall() &&
+            override != FlowOverride.CALL && override != FlowOverride.CALL_RETURN;
+    }
+
+    /** A predicated return whose window is cut exactly where a continued jump lands. */
+    private static boolean preemptingReturn(Instruction transfer) {
+        if (!preemptingTransfer(transfer)) return false;
+        var preemption = new C6000CallAnalyzer.Walker(transfer.getProgram()).preempting(transfer);
+        return preemption != null && preemption.exact() && continues(transfer.getProgram(), preemption.jump());
+    }
+
+    /** Whether the jump's branch is overridden to continue (see neutralise). */
+    static boolean continues(Program program, Instruction jump) {
+        for (Reference r : program.getReferenceManager().getReferencesFrom(jump.getAddress())) {
+            if (r.getReferenceType() == RefType.JUMP_OVERRIDE_UNCONDITIONAL && r.isPrimary()) return true;
+        }
+        return false;
+    }
+
     /** Bytes of the branch's own execute packet after it: the primer's c_flow_delay (C6000PacketContext). */
     private static int parallelBytes(Program program, Address at) {
         try { return C6000ExecutionPackets.parallelBytes(program, at); }
@@ -279,6 +305,75 @@ public final class C6000DelaySlots {
         return next;
     }
 
+    /**
+     * A jump whose target only idles until a return issued in its
+     * window lands (C6000CallAnalyzer.Preemption) leaves nothing to its target:
+     * execution goes on through its window. Override its branch to its own
+     * fall-through and drop the edge to the target, whose NOPs are usually
+     * another return's delay slots. The return's window then ends where the
+     * jump lands (Reader.window), which must hold on the not-taken path too.
+     */
+    private static int neutralise(Program program, TaskMonitor monitor) throws CancelledException {
+        var listing = program.getListing();
+        var references = program.getReferenceManager();
+        var walker = new C6000CallAnalyzer.Walker(program);
+        List<Instruction> jumps = new ArrayList<>();
+        for (var it = listing.getInstructions(true); it.hasNext();) {
+            var ins = it.next();
+            if (C6000CallAnalyzer.Walker.displacementJump(ins)) jumps.add(ins);
+        }
+        Disassembler disassembler = null;
+        int count = 0;
+        for (Instruction jump : jumps) {
+            monitor.checkCancelled();
+            var preemption = walker.preemption(jump);
+            if (preemption == null || !preemption.exact() || !preemptingTransfer(preemption.transfer())) continue;
+            Address at = jump.getAddress(), target = jump.getDefaultFlows()[0];
+            Address next = jump.getMaxAddress().next().add(jump.getPrototype().getDelaySlotByteCount());
+            boolean changed = false, overridden = false, other = false;
+            for (Reference r : references.getReferencesFrom(at)) {
+                if (r.getReferenceType() != RefType.JUMP_OVERRIDE_UNCONDITIONAL) continue;
+                if (r.getToAddress().equals(next) && r.isPrimary()) overridden = true;
+                else other = true;
+            }
+            // Someone else's override stands.
+            if (other) continue;
+            for (Reference r : references.getReferencesFrom(at)) {
+                if (r.getReferenceType().isFlow() && !r.getReferenceType().isOverride() && r.getToAddress().equals(target)) {
+                    references.delete(r);
+                    changed = true;
+                }
+            }
+            if (!overridden) {
+                var r = references.addMemoryReference(at, next, RefType.JUMP_OVERRIDE_UNCONDITIONAL,
+                    SourceType.ANALYSIS, 0);
+                references.setPrimary(r, true);
+                changed = true;
+            }
+            if (listing.getInstructionAt(next) == null) {
+                if (disassembler == null) disassembler = Disassembler.getDisassembler(program, monitor, null);
+                disassembler.disassemble(next, null, true);
+                changed = true;
+            }
+            if (!changed) continue;
+            count++;
+            // The window runs after the jump on every path: the jump's function owns it.
+            // Extend the body only; recomputing it from flow could absorb a later entry.
+            Function owner = program.getFunctionManager().getFunctionContaining(at);
+            var window = new AddressSet(next, preemption.windowEnd());
+            if (owner != null && !owner.getBody().contains(window)) {
+                boolean free = true;
+                for (var it = program.getFunctionManager().getFunctionsOverlapping(window); it.hasNext();)
+                    if (!it.next().equals(owner)) free = false;
+                if (free) {
+                    try { owner.setBody(new AddressSet(owner.getBody()).union(window)); }
+                    catch (ghidra.program.database.function.OverlappingFunctionException e) { }
+                }
+            }
+        }
+        return count;
+    }
+
     /** Last byte of a branch's proven delay window, or null when it is not proven. */
     static Address windowEnd(Program program, Instruction branch, TaskMonitor monitor)
             throws CancelledException {
@@ -320,18 +415,24 @@ public final class C6000DelaySlots {
         Address at = original.getAddress();int oldDepth = original.getDelaySlotDepth();
         FlowOverride override = original.getFlowOverride();
         boolean registerBranch=original.getRegister(0)!=null && !original.getMnemonicString().startsWith("CALLP");
-        List<SavedInstruction> saved = snapshot(p, at, window.end());
+        // A shorter window than the native one releases the old slots too.
+        Address end = window.end(), old = original.getMaxAddress().add(original.getPrototype().getDelaySlotByteCount());
+        if (old.compareTo(end) > 0) end = old;
+        List<SavedInstruction> saved = snapshot(p, at, end);
         // A B B3 proven a call keeps its CALL override (issue #39).
         boolean isReturn = override == FlowOverride.RETURN || (override != FlowOverride.CALL &&
             original.getNumOperands()>0 && "B3".equals(original.getDefaultOperandRepresentation(0)) &&
                 !original.getMnemonicString().startsWith("CALLP"));
         if(isReturn)override=FlowOverride.RETURN;
-        listing.clearCodeUnits(at,window.end(),false);
+        listing.clearCodeUnits(at,end,false);
         p.getProgramContext().setValue(p.getRegister("c_flow_delay"),at,at,BigInteger.valueOf(bytes));
         if(registerBranch)
             p.getProgramContext().setValue(p.getRegister("c_branch_terminal"),at,at,BigInteger.ONE);
         Disassembler disassembler=Disassembler.getDisassembler(p,monitor,null);
-        disassembler.disassemble(at,new AddressSet(at,window.end()),false);
+        disassembler.disassemble(at,new AddressSet(at,end),false);
+        // The released slots after a terminal transfer are reached by no fall-through.
+        if(end.compareTo(window.end())>0&&listing.getInstructionContaining(window.end().next())==null)
+            disassembler.disassemble(window.end().next(),new AddressSet(window.end().next(),end),false);
         var branch=listing.getInstructionAt(at);var tail=listing.getInstructionContaining(window.end());
         if(branch==null||branch.getPrototype().getDelaySlotByteCount()!=bytes||tail==null||!tail.isInDelaySlot())
             throw new IllegalStateException("Could not materialize native delay window at "+at+" end="+window.end()+" bytes="+bytes+" branch="+branch+" depth="+(branch==null?-1:branch.getDelaySlotDepth())+" tail="+tail);
@@ -392,7 +493,8 @@ public final class C6000DelaySlots {
 
     private static final class Reader {
         private final Program program;private final Listing listing;private final PseudoDisassembler pseudo;
-        Reader(Program p){program=p;listing=p.getListing();pseudo=new PseudoDisassembler(p);}
+        private final C6000CallAnalyzer.Walker walker;
+        Reader(Program p){program=p;listing=p.getListing();pseudo=new PseudoDisassembler(p);walker=new C6000CallAnalyzer.Walker(p);}
         Instruction decode(Address at) {
             if (at == null) return null;
             var old=listing.getInstructionAt(at);if(old!=null)return old;
@@ -406,6 +508,14 @@ public final class C6000DelaySlots {
             String name=C6000CallAnalyzer.baseName(issue);
             if(name.startsWith("CALLP"))remaining=0;
             else if(name.startsWith("BNOP")){var n=issue.getScalar(1);if(n==null)return null;remaining=Math.max(0,5-(int)n.getValue());}
+            // Issued in a preempted jump's window: that jump lands first and its target only idles.
+            Address cut=null;
+            if((name.equals("B.S1")||name.equals("B.S2"))&&issue.getLength()==4&&preemptingTransfer(issue)){
+                var preemption=walker.preempting(issue);
+                if(preemption!=null&&preemption.exact()&&continues(program,preemption.jump())){
+                    remaining=5-preemption.cycle();cut=preemption.windowEnd();
+                }
+            }
             var owner=program.getFunctionManager().getFunctionContaining(issue.getAddress());
             Instruction current=issue;int count=0;
             try {
@@ -451,6 +561,7 @@ public final class C6000DelaySlots {
                     if(!issuePacket)remaining-=cycles;else remaining-=cycles-1;
                     issuePacket=false;
                 }while(remaining>0);
+                if(cut!=null&&!cut.equals(current.getMaxAddress()))return null;
                 return new Window(issue,current.getMaxAddress(),owner);
             }catch(MemoryAccessException e){return null;}
         }
