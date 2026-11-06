@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+* Continue a jump whose target only idles until a return issued in its delay window
+  lands (the compiler's jump into a shared epilogue's NOP tail). Natively the jump kept
+  only its own packet: taken, it skipped the rest of its window and ran through the NOPs
+  into the following code, which are often another return's delay slots
+  (SPRUFE8B 3.5, 4.2.6, NOP).
+
 ## 1.2.0 - 2026-11-02
 
 ### Added
