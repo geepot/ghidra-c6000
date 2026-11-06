@@ -516,6 +516,19 @@ and captured predicates.
 trace contracts per endian, with six executions, 15 refusals and six wrong-entry-B3
 refusals. See [trace contracts](caller-continuation-traces.md).
 
+## Calls through a register
+
+`register-call.py IMAGE [be]` and `C6000RegisterCallTest.java` (with `prepare` as a
+pre-script, which declares the five functions) check `cl6x` 8.3.15 words of `B reg`
+calls whose delay slots set B3 and the arguments: through an argument register
+(`rcall`, 1004), through MVK/MVKH with ADDKPC in the slots (`rknown`, 104c), and
+predicated (`rpred`, 10b0, whose not-taken path also continues after the slots). Each
+must return after its window with every slot in the caller, and every A4, B4 and B3
+write from the slots must precede the CALLIND. A register `B` that leaves B3 untouched
+(`rtail`, 1088) must not become a returning call (SPRUFE8B 4.2.6, B).
+`C6000DelayedCallTest` expects its register calls to return after their windows too,
+and a window ending before a fetch-packet header to return past the header.
+
 ## Additional decoder accuracy checks
 
 The release runner includes compact stack offsets (`compact-dstk`), unscaled

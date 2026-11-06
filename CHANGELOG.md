@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+* Recover the delay window of a call through a register (`B reg` whose slots set B3),
+  predicated or not. Its argument and B3 set-up were lifted after the call, so the
+  callee got no arguments (SPRUFE8B 4.2.6, B). A window ending before a fetch-packet
+  header returns to the next execute packet, and the constant propagator no longer adds
+  its own computed reference to a register call whose target the call analyzer did not
+  prove.
+
 ## 1.2.0 - 2026-11-02
 
 ### Added

@@ -102,10 +102,10 @@ because SLEIGH counts delay bytes, rather than instructions.
 Targets and predicates are captured before delay work. Native parsing is checked before
 listing changes; transactional recovery preserves comments, symbols, references and
 explicit fallthrough overrides. Nested transfers, defined data and conflicting function
-ownership prevent recovery. Predicated displacement `B`/`BNOP` and displacement `B`
-calls are recovered; a call's fallthrough moves to the end of its window.
-Register-target predicated branches and calls, and BDEC/BPOS, retain conservative
-native treatment. Exact scheduling handles its own
+ownership prevent recovery. Predicated displacement `B`/`BNOP` and displacement and register `B`
+calls, predicated or not, are recovered; a call's fallthrough moves to the next execute
+packet after its window. Register-target predicated branches that are not calls, and
+BDEC/BPOS, retain conservative native treatment. Exact scheduling handles its own
 supported branch phases.
 
 CALLP supplies five implied idle cycles. Its parallel companions execute before the

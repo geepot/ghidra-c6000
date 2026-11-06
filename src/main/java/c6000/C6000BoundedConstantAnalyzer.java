@@ -58,6 +58,9 @@ public class C6000BoundedConstantAnalyzer extends ConstantPropagationAnalyzer {
 					Long exact = referenceType.isComputed() && referenceType.isFlow()
 						? adjacentConstantTarget(instruction) : null;
 					if (exact != null && target.getOffset() != exact) return false;
+					// A register call's target is the call analyzer's E1 proof, which adds its reference.
+					if (exact == null && referenceType.isComputed() && referenceType.isCall() &&
+						instruction.getRegister(0) != null) return false;
 					return super.evaluateReference(context, instruction, pcodeop, target, size,
 						type, referenceType);
 				}
