@@ -106,7 +106,7 @@ in C identifiers, so their names cannot be told from a static function's.
 | Read-only caller continuations | Pending effects through explicit immutable caller windows. | Bounded plans and entry proofs; not automatically installed as callee-only schedules. |
 
 Native delay recovery remains conservative for nested transfers, register-target
-predicated branches and calls, and BDEC/BPOS. Ghidra's stock instruction-step
+predicated branches that are not calls, and BDEC/BPOS. Ghidra's stock instruction-step
 emulator can fail on mixed-width delay windows; direct listing p-code execution and
 native decompilation have separate checks.
 

@@ -49,7 +49,7 @@ public class C6000DelayedCallTest extends GhidraScript {
 		}
 		// A window ending at a compact header returns to the next fetch packet.
 		Instruction header = getInstructionAt(toAddr(0x1888L));
-		if (header == null || !header.getFlowType().isCall() || !toAddr(0x188cL).equals(header.getFallThrough()) ||
+		if (header == null || !header.getFlowType().isCall() || !toAddr(0x18a0L).equals(header.getFallThrough()) ||
 			!calls(header, 0x1100L)) {
 			throw new AssertionError("call at 0x1888: " + header +
 				(header == null ? "" : " flow=" + header.getFlowType() + " fallthrough=" + header.getFallThrough()));
@@ -67,10 +67,10 @@ public class C6000DelayedCallTest extends GhidraScript {
 		}
 		// The generic SLEIGH predicate guard also gives unpredicated register
 		// branches a conditional flow type. Require it for predicated calls only.
-		// A displacement call with a proven window returns after it, at B3 (issue #34).
-		// Register calls, and arms whose fifth slot holds another transfer, keep site+4.
-		long[][] returns = { { 0x1008L, 0x100cL }, { 0x1018L, 0x1020L }, { 0x1048L, 0x104cL },
-			{ 0x104cL, 0x1050L }, { 0x106cL, 0x1070L }, { 0x10b8L, 0x10bcL } };
+		// A call with a proven window, displacement (issue #34) or register, returns after it, at B3.
+		// Arms whose fifth slot holds another transfer keep site+4.
+		long[][] returns = { { 0x1008L, 0x1018L }, { 0x1018L, 0x1020L }, { 0x1048L, 0x104cL },
+			{ 0x104cL, 0x1050L }, { 0x106cL, 0x1070L }, { 0x10b8L, 0x10c0L } };
 		for (long[] pair : returns) {
 			long site = pair[0];
 			Instruction call = getInstructionAt(toAddr(site));
