@@ -531,6 +531,20 @@ unconditional opcode and executes five polynomial/field-size examples.
 `0xffffffc1`, plus immediate controls, for SHL/SHR/SHRU. `dp-int` includes
 DPSP INEX on rounding. All run in both byte orders.
 
+## Jumps preempted by a return in their delay window
+
+`preempted-jump.py IMAGE [be]` and `C6000PreemptedJumpTest.java` (with `prepare` as a
+pre-script, which declares the functions) check `cl6x` 8.3.15 words of a `[p] B T` whose
+delay window issues a return, where T only idles until that return lands. In `padret`
+(1004) and `padtail` (10a0, no fall-through) the jump must be overridden to its own
+fall-through with no edge to T, the return's window must end where the jump lands, and
+the functions must return `a ? 0x111 : 0x333` and `0x333`. The jump keeps its target when
+T runs code (`padcode`), the return is under another predicate (`padother`), the
+predicate is rewritten in the window (`padwritten`), T has too few NOP cycles
+(`padshort`), the return is unconditional and its last slots run code when the jump is
+not taken (`padleak`, whose return also keeps its whole window), or a call under the
+jump's predicate preempts it (`padcall`) (SPRUFE8B 3.5, 4.2.6, B and NOP).
+
 ## ADDDP/SUBDP upper-word read timing (issue #20)
 
 Both lower source words are sampled in E1 and both upper words in E2, before
