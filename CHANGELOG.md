@@ -30,7 +30,6 @@
   its own computed reference to a register call whose target the call analyzer did not
   prove.
 
-
 ## 1.2.0 - 2026-11-02
 
 ### Added
