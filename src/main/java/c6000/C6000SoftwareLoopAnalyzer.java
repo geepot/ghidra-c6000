@@ -21,6 +21,7 @@ import ghidra.app.services.AnalyzerType;
 import ghidra.app.util.importer.MessageLog;
 import ghidra.program.model.address.AddressSetView;
 import ghidra.program.model.listing.Program;
+import ghidra.util.Msg;
 import ghidra.util.exception.CancelledException;
 import ghidra.util.task.TaskMonitor;
 
@@ -44,8 +45,8 @@ public class C6000SoftwareLoopAnalyzer extends AbstractAnalyzer {
 	public boolean added(Program program, AddressSetView set, TaskMonitor monitor,
 			MessageLog log) throws CancelledException {
 		C6000SoftwareLoops.Result result = C6000SoftwareLoops.annotate(program, set, monitor);
-		log.appendMsg(getName(), "matched " + result.paired + " loop(s), annotated " +
-			result.masked + " mask(s)");
+		if (result.paired + result.masked > 0) Msg.info(this, getName() + "> matched " +
+			result.paired + " loop(s), annotated " + result.masked + " mask(s)");
 		return true;
 	}
 }

@@ -11,6 +11,7 @@ import ghidra.program.model.lang.RegisterValue;
 import ghidra.program.model.listing.*;
 import ghidra.program.model.mem.MemoryAccessException;
 import ghidra.program.model.symbol.*;
+import ghidra.util.Msg;
 import ghidra.util.exception.CancelledException;
 import ghidra.util.task.TaskMonitor;
 
@@ -115,7 +116,7 @@ public final class C6000DelaySlots {
                     branch.getDelaySlotDepth(),branch.getDelaySlotDepth(),0));
             }
         }
-        if (!result.isEmpty()) log.appendMsg("C6000 Delay Slots", "recovered " + result.size() + " proven window(s)");
+        if (!result.isEmpty()) Msg.info(C6000DelaySlots.class, "C6000 Delay Slots> recovered " + result.size() + " proven window(s)");
         return result;
     }
 

@@ -21,6 +21,7 @@ import ghidra.app.services.AnalyzerType;
 import ghidra.app.util.importer.MessageLog;
 import ghidra.program.model.address.AddressSetView;
 import ghidra.program.model.listing.Program;
+import ghidra.util.Msg;
 import ghidra.util.exception.CancelledException;
 import ghidra.util.task.TaskMonitor;
 
@@ -58,7 +59,7 @@ public class C6000PacketAnalyzer extends AbstractAnalyzer {
 			MessageLog log) throws CancelledException {
 		try {
 			int n = C6000PacketContext.prime(program, set, monitor);
-			log.appendMsg(NAME, "primed " + n + " compact fetch packet(s)");
+			Msg.info(this, NAME + "> primed " + n + " compact fetch packet(s)");
 			return true;
 		}
 		catch (CancelledException cancelled) {

@@ -41,6 +41,7 @@ import ghidra.program.model.listing.Program;
 import ghidra.program.model.symbol.RefType;
 import ghidra.program.model.symbol.Reference;
 import ghidra.program.model.symbol.ReferenceManager;
+import ghidra.util.Msg;
 import ghidra.util.exception.CancelledException;
 import ghidra.util.task.TaskMonitor;
 
@@ -132,7 +133,7 @@ public class C6000RegisterBranchAnalyzer extends AbstractAnalyzer {
 			restoreReferences(references, at, saved, true, isReturn);
 			terminal.add(at);
 		}
-		if (!terminal.isEmpty()) log.appendMsg(getName(), "corrected " + terminal.size() + " branch(es)");
+		if (!terminal.isEmpty()) Msg.info(this, getName() + "> corrected " + terminal.size() + " branch(es)");
 		try {
 			C6000DelaySlots.recover(program, monitor, log);
 		}

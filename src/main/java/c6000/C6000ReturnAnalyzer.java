@@ -24,6 +24,7 @@ import ghidra.program.model.listing.FlowOverride;
 import ghidra.program.model.listing.Instruction;
 import ghidra.program.model.listing.InstructionIterator;
 import ghidra.program.model.listing.Program;
+import ghidra.util.Msg;
 import ghidra.util.exception.CancelledException;
 import ghidra.util.task.TaskMonitor;
 
@@ -58,7 +59,7 @@ public class C6000ReturnAnalyzer extends AbstractAnalyzer {
 			instruction.setFlowOverride(FlowOverride.RETURN);
 			recovered++;
 		}
-		if (recovered > 0) log.appendMsg(getName(), "recovered " + recovered + " return(s)");
+		if (recovered > 0) Msg.info(this, getName() + "> recovered " + recovered + " return(s)");
 		return true;
 	}
 }

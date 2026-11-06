@@ -29,6 +29,10 @@
   header returns to the next execute packet, and the constant propagator no longer adds
   its own computed reference to a register call whose target the call analyzer did not
   prove.
+* Write analyzer result counts (primed packets, recovered calls and windows, matched
+  loops) to the application log instead of the analysis message log, so a clean
+  auto-analysis no longer opens the "warnings/errors" summary dialog. Real
+  diagnostics such as uncorrectable branches and refused schedules still appear there.
 
 ## 1.2.0 - 2026-11-02
 

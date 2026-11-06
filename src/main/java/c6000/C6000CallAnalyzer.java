@@ -48,6 +48,7 @@ import ghidra.program.model.scalar.Scalar;
 import ghidra.program.model.symbol.RefType;
 import ghidra.program.model.symbol.Reference;
 import ghidra.program.model.symbol.SourceType;
+import ghidra.util.Msg;
 import ghidra.util.exception.CancelledException;
 import ghidra.util.task.TaskMonitor;
 
@@ -159,7 +160,7 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 			monitor.checkCancelled();
 			CreateFunctionCmd.fixupFunctionBody(program, caller, monitor);
 		}
-		if (recovered > 0) log.appendMsg(getName(), "recovered " + recovered + " delayed call(s)");
+		if (recovered > 0) Msg.info(this, getName() + "> recovered " + recovered + " delayed call(s)");
 		return true;
 	}
 

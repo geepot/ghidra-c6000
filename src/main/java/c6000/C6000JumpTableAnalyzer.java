@@ -49,6 +49,7 @@ import ghidra.program.model.symbol.Reference;
 import ghidra.program.model.symbol.Namespace;
 import ghidra.program.model.symbol.SourceType;
 import ghidra.program.model.symbol.Symbol;
+import ghidra.util.Msg;
 import ghidra.util.exception.CancelledException;
 import ghidra.util.exception.InvalidInputException;
 import ghidra.util.task.TaskMonitor;
@@ -98,7 +99,7 @@ public class C6000JumpTableAnalyzer extends AbstractAnalyzer {
 			if (function != null) bodies.add(function.getBody());
 		}
 		int recovered = recover(program, bodies, monitor, log);
-		if (recovered > 0) log.appendMsg(getName(), "recovered " + recovered + " jump table(s)");
+		if (recovered > 0) Msg.info(this, getName() + "> recovered " + recovered + " jump table(s)");
 		return true;
 	}
 

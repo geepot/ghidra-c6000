@@ -7,6 +7,7 @@ import ghidra.app.util.importer.MessageLog;
 import ghidra.program.model.address.*;
 import ghidra.program.model.listing.Program;
 import ghidra.program.model.mem.DumbMemBufferImpl;
+import ghidra.util.Msg;
 import ghidra.util.exception.CancelledException;
 import ghidra.util.task.TaskMonitor;
 
@@ -38,7 +39,7 @@ public class C6000CompactPacketTailAnalyzer extends AbstractAnalyzer {
             catch (CancelledException cancelled) { throw cancelled; }
             catch (Exception failure) { log.appendException(failure); return false; }
         }
-        if (created > 0) log.appendMsg(getName(), "decoded " + created + " proved parallel peer(s)");
+        if (created > 0) Msg.info(this, getName() + "> decoded " + created + " proved parallel peer(s)");
         return true;
     }
 
