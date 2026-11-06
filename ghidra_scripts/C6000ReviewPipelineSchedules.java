@@ -44,6 +44,7 @@ public class C6000ReviewPipelineSchedules extends GhidraScript {
         long before = currentProgram.getModificationNumber();
         List<C6000PipelineContracts.Review> plans = new ArrayList<>();
         List<Object> reports = new ArrayList<>();
+        Map<Long, Map<String,Object>> rows = new HashMap<>();
         Set<Long> seen = new HashSet<>();
         for (var value : manifest.getAsJsonArray("functions")) {
             monitor.checkCancelled();
@@ -71,7 +72,25 @@ public class C6000ReviewPipelineSchedules extends GhidraScript {
             catch (Exception refused) {
                 row.put("status", "refused");row.put("reason", refused.getMessage());
             }
-            reports.add(row);
+            reports.add(row);rows.put(entry, row);
+        }
+        // Apply enables in order: refuse a schedule whose enable would change the source another one pins.
+        Map<Long, C6000PipelineContracts.Footprint> footprints = new LinkedHashMap<>();
+        for (var plan : plans) {
+            footprints.put(plan.entry(), C6000PipelineContracts.footprint(currentProgram,
+                currentProgram.getFunctionManager().getFunctionAt(toAddr(plan.entry())), plan, monitor));
+        }
+        for (var absorber : footprints.entrySet()) {
+            for (var other : footprints.entrySet()) {
+                if (other.getKey().equals(absorber.getKey()) ||
+                    !other.getValue().source().intersects(absorber.getValue().absorbed())) continue;
+                var row = rows.get(absorber.getKey());
+                row.put("status", "refused");row.remove("review");
+                row.put("reason", "enabling would change the reviewed source of " + toAddr(other.getKey()) +
+                    " in this batch: covered code outside the body shares its fetch packets");
+                plans.removeIf(plan -> plan.entry() == absorber.getKey());
+                break;
+            }
         }
         if (before != currentProgram.getModificationNumber()) throw new AssertionError("report changed program");
         String planHash = C6000PipelineContracts.sha256(JSON.toJson(plans).getBytes(java.nio.charset.StandardCharsets.UTF_8));

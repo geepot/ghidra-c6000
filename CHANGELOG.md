@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+* Review an exact schedule whose covered code includes the delay slots of a nested
+  window that native recovery refused. Review required every covered byte in the
+  function's body, and those slots belong to no function, so such a function kept the
+  native lifting (SPRUFE8B 4.2.6). The slots must continue the body straight-line and no
+  function may own them; enable absorbs them. Absorbing is refused when a recorded
+  schedule, or another schedule in the same review batch, reads the same fetch packets,
+  since it would change the source that schedule pins.
+
 ## 1.2.0 - 2026-11-02
 
 ### Added
