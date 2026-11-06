@@ -15,9 +15,9 @@ import ghidra.program.model.symbol.SourceType;
 public class C6000IdleCallTest extends GhidraScript {
 	private static final long RUN = 0x1100L;
 	private static final long[] ENTRIES = { RUN, 0x1000L, 0x1020L, 0x1040L, 0x1060L, 0x1080L, 0x10c0L, 0x10e0L,
-		0x1140L, 0x1200L };
+		0x1140L, 0x1160L, 0x1180L, 0x1200L };
 	private static final String[] NAMES = { "run", "idle", "loopmid", "tail", "other", "jlocal", "stale", "pred",
-		"regcall", "regref" };
+		"regcall", "callp", "bnop", "regref" };
 
 	@Override
 	protected void run() throws Exception {
@@ -56,7 +56,10 @@ public class C6000IdleCallTest extends GhidraScript {
 		call(0x1004L, 0x1000L, 0x1000L, 0x101cL, 0x100cL);
 		call(0x1028L, 0x1024L, 0x1020L, 0x1038L, 0x1030L);
 		call(0x109cL, 0x1080L, 0x1080L, 0x10a4L, 0x10a0L);
-		println("C6000_IDLE_CALL_OK checks=10");
+		// CALLP and BNOP 5 leave no delay slots, so the B3 writes after them are fresh.
+		call(0x1168L, 0x1164L, 0x1160L, 0x1178L, 0x116cL);
+		call(0x118cL, 0x1180L, 0x1180L, 0x1194L, 0x1190L);
+		println("C6000_IDLE_CALL_OK checks=12");
 	}
 
 	/** A returning call to run whose fall-through is ret and whose window, owned by the caller, ends before end. */
