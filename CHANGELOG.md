@@ -4,10 +4,10 @@
 
 ### Fixed
 
-* Take a `B` to another function's entry as a call when its delay slots set B3 to
-  earlier code of the same function, as in an idle loop; it was a tail call whose delay
-  slots were not lifted (issue #41; SPRUFE8B 4.2.6). The `B` must be unpredicated and B3
-  written after every earlier branch's window.
+* Take a displacement `B` to another function's entry as a call when its delay slots set
+  B3 to earlier code of the same function, as in an idle loop; it was a tail call whose
+  delay slots were not lifted (issue #41; SPRUFE8B 4.2.6). The `B` must be unpredicated
+  and B3 written after every earlier branch's window.
 
 ## 1.2.0 - 2026-11-02
 

@@ -8,12 +8,16 @@ import ghidra.app.script.GhidraScript;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.listing.Function;
 import ghidra.program.model.listing.Instruction;
+import ghidra.program.model.symbol.RefType;
 import ghidra.program.model.symbol.Reference;
+import ghidra.program.model.symbol.SourceType;
 
 public class C6000IdleCallTest extends GhidraScript {
 	private static final long RUN = 0x1100L;
-	private static final long[] ENTRIES = { RUN, 0x1000L, 0x1020L, 0x1040L, 0x1060L, 0x1080L, 0x10c0L, 0x10e0L };
-	private static final String[] NAMES = { "run", "idle", "loopmid", "tail", "other", "jlocal", "stale", "pred" };
+	private static final long[] ENTRIES = { RUN, 0x1000L, 0x1020L, 0x1040L, 0x1060L, 0x1080L, 0x10c0L, 0x10e0L,
+		0x1140L, 0x1200L };
+	private static final String[] NAMES = { "run", "idle", "loopmid", "tail", "other", "jlocal", "stale", "pred",
+		"regcall", "regref" };
 
 	@Override
 	protected void run() throws Exception {
@@ -24,6 +28,9 @@ public class C6000IdleCallTest extends GhidraScript {
 				disassemble(toAddr(ENTRIES[i]));
 				createFunction(toAddr(ENTRIES[i]), NAMES[i]);
 			}
+			// regref's B with its target known, as a resolved computed branch's would be.
+			currentProgram.getReferenceManager().addMemoryReference(toAddr(0x1208L), toAddr(RUN),
+				RefType.COMPUTED_JUMP, SourceType.ANALYSIS, 0);
 			return;
 		}
 		// Known-bads: B3 untouched, B3 an earlier call's link, B3 another function, a local target, a predicated B.
@@ -35,11 +42,21 @@ public class C6000IdleCallTest extends GhidraScript {
 		if (pred == null || toAddr(0x10e4L).equals(pred.getFallThrough())) {
 			throw new AssertionError("predicated B at 0x10e8 loses its not-taken path: " + describe(pred));
 		}
+		// A register B has no native window under a CALL override: lifted with its slots, never past them.
+		Instruction arg = getInstructionAt(toAddr(0x114cL));
+		if (arg == null || !arg.isInDelaySlot()) {
+			throw new AssertionError("register B at 0x1148 bypasses its slots: " + describe(getInstructionAt(toAddr(0x1148L))));
+		}
+		// With its target known, still no call returning to regref.
+		Instruction known = getInstructionAt(toAddr(0x1208L));
+		if (known == null || toAddr(0x1200L).equals(known.getFallThrough())) {
+			throw new AssertionError("register B at 0x1208 returns to 0x1200: " + describe(known));
+		}
 		// Known-good: B3 set to earlier caller code is a call with its full window, returning there.
 		call(0x1004L, 0x1000L, 0x1000L, 0x101cL, 0x100cL);
 		call(0x1028L, 0x1024L, 0x1020L, 0x1038L, 0x1030L);
 		call(0x109cL, 0x1080L, 0x1080L, 0x10a4L, 0x10a0L);
-		println("C6000_IDLE_CALL_OK checks=8");
+		println("C6000_IDLE_CALL_OK checks=10");
 	}
 
 	/** A returning call to run whose fall-through is ret and whose window, owned by the caller, ends before end. */

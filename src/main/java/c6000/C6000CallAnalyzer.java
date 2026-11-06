@@ -326,10 +326,10 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 				branch.getMinAddress().getNewAddress(target & 0xffffffffL);
 			if (callee != null && !program.getMemory().contains(callee)) callee = null;
 			if (ret[0] < branchAt) {
-				// One fall-through cannot hold a predicated call's not-taken path.
-				Address loop = partner == null && predicate(branch) == null &&
-					freshLink(execution, branchIndex, b3) ? loopReturn(branch, ret[0], callee) : null;
-				return loop == null ? null : new Call(callee, loop);
+				// A predicated call needs two fall-throughs, and a register call has no native window.
+				Address loop = partner == null && predicate(branch) == null && branch.getRegister(0) == null &&
+					freshLink(execution, branchIndex, b3) ? loopReturn(branch, ret[0]) : null;
+				return loop == null ? null : new Call(null, loop);
 			}
 			if (ret[0] < branchAt + 4 || ret[0] > windowEnd + 8) return null;
 			boolean headerAtEnd = (windowEnd & 31) == 28 && headerAt(branch, windowEnd);
@@ -357,15 +357,14 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 		}
 
 		/** Return address of a call to another function whose B3 is the caller's earlier code (SPRUFE8B 4.2.6, B). */
-		private Address loopReturn(Instruction branch, long ret, Address registerTarget) {
+		private Address loopReturn(Instruction branch, long ret) {
 			Function caller = listing.getFunctionContaining(branch.getMinAddress());
 			if (caller == null) return null;
 			Address to = branch.getMinAddress().getNewAddress(ret & 0xffffffffL);
 			Instruction back = listing.getInstructionAt(to);
 			if (!caller.getBody().contains(to) || back == null || back.isInDelaySlot()) return null;
 			Address[] flows = branch.getFlows();
-			Address target = branch.getRegister(0) != null ? registerTarget : flows.length == 1 ? flows[0] : null;
-			Function callee = target == null ? null : program.getFunctionManager().getFunctionAt(target);
+			Function callee = flows.length == 1 ? program.getFunctionManager().getFunctionAt(flows[0]) : null;
 			return callee == null || callee.equals(caller) ? null : to;
 		}
 

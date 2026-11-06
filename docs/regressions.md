@@ -498,7 +498,7 @@ its existing controls, this fixture checks 72 cases per endian (24 accepted and
 ## Calls returning to earlier caller code (issue #41)
 
 `idle-call.py IMAGE [be]` and `C6000IdleCallTest.java` (with `prepare` as a pre-script,
-which declares the eight functions) check eight `B` sites in `cl6x` 8.3.15 words. A `B`
+which declares the ten functions) check ten `B` sites in `cl6x` 8.3.15 words. A `B`
 to another function's entry whose delay slots set B3 to earlier code of the same
 function is a call that returns there, as in `for (;;) run(*tbl);`. 1004 (B3 is the
 caller's entry), 1028 (a mid-function label) and 109c (B3 set in the slots of the jump
@@ -506,6 +506,11 @@ into it) must be calls with their whole window in the caller. B3 untouched (1044
 still the previous call's link (10d4) stays a tail call, B3 naming another function
 (1064) or a local target (1084, #11's shape) is not a call, and a predicated `B` (10e8)
 keeps its not-taken path (SPRUFE8B 4.2.6, B).
+
+A register `B` (1148) stays a jump with its native window: under a CALL override a
+register branch gets no window, so a return to 1140 would skip the argument load at 114c.
+With its target already a reference (1208; the test adds it, as a resolved computed
+branch's would be) it is still not a call returning to 1200.
 
 ## Encoding identity and updating-load phases
 
