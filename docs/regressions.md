@@ -509,6 +509,26 @@ plain instruction cannot accidentally stand in for the regression. Together with
 its existing controls, this fixture checks 72 cases per endian (24 accepted and
 48 refused). These follow SPRUFE8B 3.5, 3.6 and 4.2.6.
 
+## Calls returning to earlier caller code (issue #41)
+
+`idle-call.py IMAGE [be]` and `C6000IdleCallTest.java` (with `prepare` as a pre-script,
+which declares the fourteen functions) check fourteen `B` sites in `cl6x` 8.3.15 words. A `B`
+to another function's entry whose delay slots set B3 to earlier code of the same
+function is a call that returns there, as in `for (;;) run(*tbl);`. 1004 (B3 is the
+caller's entry), 1028 (a mid-function label) and 109c (B3 set in the slots of the jump
+into it) must be calls with their whole window in the caller. B3 untouched (1044) or
+still the previous call's link (10d4) stays a tail call, B3 naming another function
+(1064) or a local target (1084, #11's shape) is not a call, and a predicated `B` (10e8)
+keeps its not-taken path (SPRUFE8B 4.2.6, B).
+
+A register `B` (1148) stays a jump with its native window: under a CALL override a
+register branch gets no window, so a return to 1140 would skip the argument load at 114c.
+With its target already a reference (1208; the test adds it, as a resolved computed
+branch's would be) it is still not a call returning to 1200. CALLP (1164) and BNOP 5
+(1180) leave no delay slots, so B3 written after them is fresh and 1168 and 118c are
+calls (SPRUFE8B 3.12, BNOP and CALLP). Nullified writes to B3 (11b8, 11bc) or a lone MVKH
+(11f0, which keeps the low half) leave the earlier link: 11c0 and 11f4 stay tail calls.
+
 ## Encoding identity and updating-load phases
 
 `tests/fixtures/full32-encoding-info.py <image.bin> <cases.tsv> [be]` and

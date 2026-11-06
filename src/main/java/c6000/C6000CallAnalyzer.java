@@ -120,10 +120,12 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 			Call call = walker.recognize(branch);
 			if (call == null) continue;
 			boolean known = branch.getFlowOverride() == FlowOverride.CALL;
-			if (known && call.target() == null) continue;
+			if (known && call.target() == null &&
+				(call.returnTo() == null || call.returnTo().equals(branch.getFallThrough()))) continue;
 			branch.setFlowOverride(FlowOverride.CALL);
 			Address next = branch.getMaxAddress().next();
-			if (branch.getFallThrough() == null) branch.setFallThrough(next);
+			if (call.returnTo() != null) branch.setFallThrough(call.returnTo());
+			else if (branch.getFallThrough() == null) branch.setFallThrough(next);
 			if (listing.getInstructionAt(next) == null) disassembler.disassemble(next, null, true);
 			Function caller = listing.getFunctionContaining(at);
 			if (caller != null) callers.add(caller);
@@ -190,8 +192,8 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 		return true;
 	}
 
-	/** A recognised call; {@code target} is set for a register branch with a known value. */
-	private record Call(Address target) {
+	/** A recognised call; {@code target} for a known register branch, {@code returnTo} for a return to earlier code. */
+	private record Call(Address target, Address returnTo) {
 	}
 
 	/**
@@ -320,15 +322,52 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 			if (ret == null || ret[1] != FULL) return null;
 			long branchAt = branch.getMinAddress().getOffset();
 			long windowEnd = current.getMaxAddress().getOffset() + 1;
+			Address callee = target == null ? null :
+				branch.getMinAddress().getNewAddress(target & 0xffffffffL);
+			if (callee != null && !program.getMemory().contains(callee)) callee = null;
+			if (ret[0] < branchAt) {
+				// A predicated call needs two fall-throughs, and a register call has no native window.
+				Address loop = partner == null && predicate(branch) == null && branch.getRegister(0) == null &&
+					freshLink(execution, branchIndex, b3, facts) ? loopReturn(branch, ret[0]) : null;
+				return loop == null ? null : new Call(null, loop);
+			}
 			if (ret[0] < branchAt + 4 || ret[0] > windowEnd + 8) return null;
 			boolean headerAtEnd = (windowEnd & 31) == 28 && headerAt(branch, windowEnd);
 			long partnerEnd = partner == null ? -1 : windowEnd(partner);
 			if (ret[0] != windowEnd && !(compact && ret[0] <= windowEnd + 8) &&
 				!(headerAtEnd && ret[0] == windowEnd + 4) && ret[0] != partnerEnd) return null;
-			Address callee = target == null ? null :
-				branch.getMinAddress().getNewAddress(target & 0xffffffffL);
-			if (callee != null && !program.getMemory().contains(callee)) callee = null;
-			return new Call(callee);
+			return new Call(callee, null);
+		}
+
+		/** B3 was last written after every earlier branch's window, so it is not an earlier call's link. */
+		private boolean freshLink(List<Instruction> execution, int branchIndex, Register b3, List<PredicateFact> facts) {
+			int writer = -1, after = -1;
+			for (int i = 0; i < execution.size(); i++) {
+				Instruction insn = execution.get(i);
+				if (i < branchIndex && insn != viaInsn && isFlow(insn)) {
+					List<Instruction> slots = window(insn, delayCycles(insn));
+					if (slots == null) return false;
+					after = i + slots.size();
+				}
+				// A nullified write leaves the old link, and MVKH keeps its low half.
+				if (Boolean.FALSE.equals(executes(execution, i, facts)) || baseName(insn).startsWith("MVKH")) continue;
+				Register load = loadDestination(insn);
+				if ((load != null && overlaps(load, b3)) ||
+					issueWrites(insn).stream().anyMatch(r -> overlaps(r, b3))) writer = i;
+			}
+			return writer > after;
+		}
+
+		/** Return address of a call to another function whose B3 is the caller's earlier code (SPRUFE8B 4.2.6, B). */
+		private Address loopReturn(Instruction branch, long ret) {
+			Function caller = listing.getFunctionContaining(branch.getMinAddress());
+			if (caller == null) return null;
+			Address to = branch.getMinAddress().getNewAddress(ret & 0xffffffffL);
+			Instruction back = listing.getInstructionAt(to);
+			if (!caller.getBody().contains(to) || back == null || back.isInDelaySlot()) return null;
+			Address[] flows = branch.getFlows();
+			Function callee = flows.length == 1 ? program.getFunctionManager().getFunctionAt(flows[0]) : null;
+			return callee == null || callee.equals(caller) ? null : to;
 		}
 
 		/** Relative E1 cycle of each physical instruction, including idle spans. */
@@ -687,12 +726,18 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 
 		/** The rest of {@code jump}'s execute packet and its five delay cycles; null on an incomplete window. */
 		private List<Instruction> window(Instruction jump) {
+			return window(jump, DELAY_CYCLES);
+		}
+
+		/** The rest of {@code jump}'s execute packet and {@code delay} cycles after it; null on an incomplete window. */
+		private List<Instruction> window(Instruction jump, int delay) {
+			if (delay < 0) return null;
 			List<Instruction> slots = new ArrayList<>();
 			Instruction current = jump;
 			int cycles = 0;
 			boolean branchPacket = true;
 			try {
-				while (cycles < DELAY_CYCLES) {
+				do {
 					int packetCycles = 1;
 					do {
 						if (branchPacket && !parallelWithNext(current)) break;
@@ -704,12 +749,21 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 					} while (parallelWithNext(current));
 					if (!branchPacket) cycles += packetCycles;
 					branchPacket = false;
-				}
+				} while (cycles < delay);
 			}
 			catch (MemoryAccessException e) {
 				return null;
 			}
 			return slots;
+		}
+
+		/** Delay cycles left for physical slots: none after CALLP, 5 - n after BNOP n (SPRUFE8B 3.12 BNOP, CALLP). */
+		private static int delayCycles(Instruction insn) {
+			String op = baseName(insn);
+			if (op.startsWith("CALLP")) return 0;
+			if (!op.startsWith("BNOP")) return DELAY_CYCLES;
+			Scalar n = insn.getScalar(1);
+			return n == null ? -1 : Math.max(0, DELAY_CYCLES - (int) n.getValue());
 		}
 
 		/** The address just past {@code jump}'s delay window. */

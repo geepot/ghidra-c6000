@@ -45,6 +45,7 @@ CORE = [
     case("branch-flow", "FlowTarget", "C6000_FLOW_TARGET_OK"),
     case("delayed-call", "DelayedCall", "C6000_DELAYED_CALL_OK", None, analysis=True),
     case("delayed-call-timing", "DelayedCallTiming", "C6000_DELAYED_CALL_TIMING_OK", "json", ["check", "cases.json"], analysis=True),
+    case("idle-call", "IdleCall", "C6000_IDLE_CALL_OK", None, analysis=True),
     case("delayed-call-safety", "DelayedCallSafety", "C6000_DELAYED_CALL_SAFETY_OK", "json"),
     ("jump-table", [], [("JumpTable", [], "C6000_JUMP_TABLE_OK"),
                         ("SwitchOwnership", [], "C6000_SWITCH_OWNERSHIP_OK")], True),
@@ -272,6 +273,8 @@ def main():
                     command += ["-preScript", "C6000DelayWindowFormsTest.java", "prepare"]
                 elif fixture == "constant-branch-target":
                     command += ["-preScript", "C6000ConstantBranchTargetTest.java", "prepare", directory / "cases.tsv"]
+                elif fixture == "idle-call":
+                    command += ["-preScript", "C6000IdleCallTest.java", "prepare"]
                 elif fixture not in ELF:
                     command += ["-preScript", "C6000SetEntry.java", "1000"]
                 for script, script_args, _ in scripts:
