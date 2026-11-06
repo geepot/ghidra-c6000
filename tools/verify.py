@@ -68,6 +68,8 @@ CORE = [
     case("pipeline-counter-branch", "PipelineCounterBranch", "C6000_PIPELINE_COUNTER_BRANCH_OK", "json"),
     case("pipeline-bnop", "PipelineBnop", "C6000_PIPELINE_BNOP_OK", "json"),
     case("pipeline-predicated-return", "PipelinePredicatedReturn", "C6000_PIPELINE_PREDICATED_RETURN_OK", "json"),
+    ("nested-window-schedule", [], [("NestedWindowSchedule", [], "C6000_NESTED_WINDOW_SCHEDULE_OK"),
+                                    ("WindowNeighbour", [], "C6000_WINDOW_NEIGHBOUR_OK")], True),
     case("pipeline-andn", "PipelineAndn", "C6000_PIPELINE_ANDN_OK", "json"),
     case("pipeline-pack", "PipelinePack", "C6000_PIPELINE_PACK_OK", "json"),
     case("pipeline-rotl", "PipelineRotl", "C6000_PIPELINE_ROTL_OK", "json"),
@@ -267,6 +269,8 @@ def main():
                     command += ["-preScript", "C6000RegisterBranchTailTest.java", "prepare"]
                 elif fixture == "delay-window-forms":
                     command += ["-preScript", "C6000DelayWindowFormsTest.java", "prepare"]
+                elif fixture == "nested-window-schedule":
+                    command += ["-preScript", "C6000NestedWindowScheduleTest.java", "prepare"]
                 elif fixture == "constant-branch-target":
                     command += ["-preScript", "C6000ConstantBranchTargetTest.java", "prepare", directory / "cases.tsv"]
                 elif fixture not in ELF:
