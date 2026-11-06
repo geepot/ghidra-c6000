@@ -19,11 +19,12 @@ The phase contracts currently implemented are:
 | --- | --- | --- |
 | Supported scalar operations | E1 | E1 register write |
 | PACK2 (.L/.S), PACKL4 (.L) | E1 | E1 register write (SPRUFE8B pp.397-398,407-408) |
-| MPY / MPYSU / MPYU / MPYUS | E1 | E2 register write |
+| ADDU / SUBU (40-bit), SUBC, RCPSP / RSQRSP | E1 | E1 register or pair write and status events (SPRUFE8B pp.135-136,411-412,420-421,539-540,546-547) |
+| 16 × 16 MPY, MPYH, MPYHL, MPYLH and their U/SU/US/ULS/SLU/UHS/SHU forms | E1 | E2 register write (SPRUFE8B pp.320-350) |
 | MPYLI | E1 | Simultaneous E4 register-pair write; .M occupancy only in E1 |
 | ADDSP / SUBSP / MPYSP | E1 | E4 result and sticky event flags |
 | SPDP / ABSDP / RCPDP / RSQRDP | E1 | Low word and FAUCR E1; high word E2 |
-| DPSP / DPINT / DPTRUNC / INTSP / SPINT / SPTRUNC / MVD | E1 | E4 result and applicable status events |
+| DPSP / DPINT / DPTRUNC / INTSP / INTSPU / SPINT / SPTRUNC / MVD | E1 | E4 result and applicable status events |
 | INTDP / INTDPU / MPYSP2DP | E1 | Low word and status E4; high word E5 |
 | DP comparisons | Low words E1, upper words E2 | Result and FAUCR E2 |
 | ADDDP / SUBDP | Both low words E1; both high words E2 | Low word and FADCR E6; high word E7 |
@@ -196,6 +197,8 @@ nonaligned stores in both byte orders, ages one/two, predicates, source/base ali
 AMR wrapping, captured memory effects, exact idle counts, no early writes, refusal
 paths and source-bound injection. `pipeline-pack.py` checks both banks, cross paths,
 aliases, predication, parallel source writers and same/next-packet consumers.
+`pipeline-scalar-ops.py` does the same for the 16 × 16 multiplies, ADDU/SUBU, SUBC,
+RCPSP/RSQRSP and INTSPU, with readers in every cycle up to writeback.
 
 Compilation completes before the listing changes. Enabling is transactional, retains the
 entry's comments, references and explicit flow overrides, expands the body to scheduled

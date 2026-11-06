@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+### Added
+
+* Exact schedules for the remaining 16 x 16 multiplies (`MPYH`, `MPYHL`, `MPYLH` and
+  their unsigned and mixed-sign forms, E2), `ADDU`/`SUBU` (40-bit), `SUBC`,
+  `RCPSP`/`RSQRSP` (E1) and `INTSPU` (E4). Functions using them were refused as
+  "unimplemented phase contract", so their same-packet and delay-slot reads kept the
+  native per-instruction lifting (issue #16; SPRUFE8B pp.135-136, 278, 320-350,
+  411-412, 420-421, 539-540, 546-547).
+
 ### Fixed
 
 * Choose circular addressing at decode time: loads and stores through a base other
@@ -9,6 +18,7 @@
   p-code, whose branches the decompiler had to prove dead (issue #38; SPRUFE8B 2.8.3).
   Run the `circular-addressing` and `nonalign-circular` fixtures, with repaired
   encoders and every base register.
+
 
 ## 1.2.0 - 2026-11-02
 
