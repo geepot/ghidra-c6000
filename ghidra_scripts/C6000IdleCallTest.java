@@ -15,9 +15,9 @@ import ghidra.program.model.symbol.SourceType;
 public class C6000IdleCallTest extends GhidraScript {
 	private static final long RUN = 0x1100L;
 	private static final long[] ENTRIES = { RUN, 0x1000L, 0x1020L, 0x1040L, 0x1060L, 0x1080L, 0x10c0L, 0x10e0L,
-		0x1140L, 0x1160L, 0x1180L, 0x1200L };
+		0x1140L, 0x1160L, 0x1180L, 0x11a0L, 0x1200L };
 	private static final String[] NAMES = { "run", "idle", "loopmid", "tail", "other", "jlocal", "stale", "pred",
-		"regcall", "callp", "bnop", "regref" };
+		"regcall", "callp", "bnop", "nullify", "regref" };
 
 	@Override
 	protected void run() throws Exception {
@@ -36,6 +36,8 @@ public class C6000IdleCallTest extends GhidraScript {
 		// Known-bads: B3 untouched, B3 an earlier call's link, B3 another function, a local target, a predicated B.
 		notCall(0x1044L, true);
 		notCall(0x10d4L, true);
+		// The same link past nullified writes.
+		notCall(0x11c0L, true);
 		notCall(0x1064L, false);
 		notCall(0x1084L, false);
 		Instruction pred = getInstructionAt(toAddr(0x10e8L));
@@ -59,7 +61,7 @@ public class C6000IdleCallTest extends GhidraScript {
 		// CALLP and BNOP 5 leave no delay slots, so the B3 writes after them are fresh.
 		call(0x1168L, 0x1164L, 0x1160L, 0x1178L, 0x116cL);
 		call(0x118cL, 0x1180L, 0x1180L, 0x1194L, 0x1190L);
-		println("C6000_IDLE_CALL_OK checks=12");
+		println("C6000_IDLE_CALL_OK checks=13");
 	}
 
 	/** A returning call to run whose fall-through is ret and whose window, owned by the caller, ends before end. */

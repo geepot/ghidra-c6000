@@ -328,7 +328,7 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 			if (ret[0] < branchAt) {
 				// A predicated call needs two fall-throughs, and a register call has no native window.
 				Address loop = partner == null && predicate(branch) == null && branch.getRegister(0) == null &&
-					freshLink(execution, branchIndex, b3) ? loopReturn(branch, ret[0]) : null;
+					freshLink(execution, branchIndex, b3, facts) ? loopReturn(branch, ret[0]) : null;
 				return loop == null ? null : new Call(null, loop);
 			}
 			if (ret[0] < branchAt + 4 || ret[0] > windowEnd + 8) return null;
@@ -340,7 +340,7 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 		}
 
 		/** B3 was last written after every earlier branch's window, so it is not an earlier call's link. */
-		private boolean freshLink(List<Instruction> execution, int branchIndex, Register b3) {
+		private boolean freshLink(List<Instruction> execution, int branchIndex, Register b3, List<PredicateFact> facts) {
 			int writer = -1, after = -1;
 			for (int i = 0; i < execution.size(); i++) {
 				Instruction insn = execution.get(i);
@@ -349,6 +349,8 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 					if (slots == null) return false;
 					after = i + slots.size();
 				}
+				// A nullified write leaves the old link.
+				if (Boolean.FALSE.equals(executes(execution, i, facts))) continue;
 				Register load = loadDestination(insn);
 				if ((load != null && overlaps(load, b3)) ||
 					issueWrites(insn).stream().anyMatch(r -> overlaps(r, b3))) writer = i;

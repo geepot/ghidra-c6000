@@ -3,7 +3,7 @@
 """Build B calls whose B3 returns to earlier code of the caller. Usage: IMAGE [be].
 
 Load at 0x1000 with entry 0x1000 and auto-analysis; C6000IdleCallTest.java
-prepare declares the twelve functions, as ELF symbols would. Words are TI cl6x
+prepare declares the thirteen functions, as ELF symbols would. Words are TI cl6x
 8.3.15 output (-mv6740 --no_compress), listed by dis6x (SPRUFE8B 4.2.6, B, MVK/MVKH):
 
   1000 idle     MVK tbl,A4 ; B run || MVKH ; LDW *A4,A4 || MVK 0x1000,B3 ; MVKH ; NOP 3
@@ -28,6 +28,9 @@ prepare declares the twelve functions, as ELF symbols would. Words are TI cl6x
                 CALLP has no delay slots: call, returns to 0x1164
   1180 bnop     [A1] BNOP 0x1194,5 ; MVK 0x1180,B3 ; MVKH ; B run ; NOP 5 ; 1194 B B3 ; NOP 5
                 BNOP 5 has no delay slots: call, returns to bnop
+  11a0 nullify  B run ; MVK 0x11b0,B3 ; MVKH ; NOP 3 ; 11b0 [A1] B 0x11c8 ; NOP 5 ;
+                [A1] MVK 0x11b0,B3 ; [A1] MVKH ; B run ; NOP 5 ; 11c8 B B3 ; NOP 5
+                the B3 writes are nullified, B3 still the call's link: tail call
   1200 regref   regcall's code, its B given a reference to run by the test
                 a register B with a known target: still not a call returning to regref
 """
@@ -54,6 +57,9 @@ WORDS = {
     0x1164: 0x1FFFF412, 0x1168: 0x0FFFF412, 0x116C: 0x0188B22A, 0x1170: 0x0180006A,
     0x1174: 0x00004000, 0x1180: 0x8005A120, 0x1184: 0x0188C02A, 0x1188: 0x0180006A,
     0x118C: 0x0FFFF012, 0x1190: 0x00008000, 0x1194: 0x000C0362, 0x1198: 0x00008000,
+    0x11A0: 0x0FFFEC10, 0x11A4: 0x0188D82A, 0x11A8: 0x0180006A, 0x11AC: 0x00004000,
+    0x11B0: 0x80000510, 0x11B4: 0x00008000, 0x11B8: 0x8188D82A, 0x11BC: 0x8180006A,
+    0x11C0: 0x0FFFE812, 0x11C4: 0x00008000, 0x11C8: 0x000C0362, 0x11CC: 0x00008000,
     0x1200: 0x0288802A, 0x1204: 0x0280006A, 0x1208: 0x00140362, 0x120C: 0x020003A8,
     0x1210: 0x0189002A, 0x1214: 0x0180006A, 0x1218: 0x00002000,
 }

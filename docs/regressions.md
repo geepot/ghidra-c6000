@@ -498,7 +498,7 @@ its existing controls, this fixture checks 72 cases per endian (24 accepted and
 ## Calls returning to earlier caller code (issue #41)
 
 `idle-call.py IMAGE [be]` and `C6000IdleCallTest.java` (with `prepare` as a pre-script,
-which declares the twelve functions) check twelve `B` sites in `cl6x` 8.3.15 words. A `B`
+which declares the thirteen functions) check thirteen `B` sites in `cl6x` 8.3.15 words. A `B`
 to another function's entry whose delay slots set B3 to earlier code of the same
 function is a call that returns there, as in `for (;;) run(*tbl);`. 1004 (B3 is the
 caller's entry), 1028 (a mid-function label) and 109c (B3 set in the slots of the jump
@@ -512,7 +512,8 @@ register branch gets no window, so a return to 1140 would skip the argument load
 With its target already a reference (1208; the test adds it, as a resolved computed
 branch's would be) it is still not a call returning to 1200. CALLP (1164) and BNOP 5
 (1180) leave no delay slots, so B3 written after them is fresh and 1168 and 118c are
-calls (SPRUFE8B 3.12, BNOP and CALLP).
+calls (SPRUFE8B 3.12, BNOP and CALLP). Nullified writes to B3 (11b8, 11bc) leave the
+earlier link: 11c0 stays a tail call.
 
 ## Encoding identity and updating-load phases
 
