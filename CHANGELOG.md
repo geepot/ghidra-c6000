@@ -29,6 +29,15 @@
   header returns to the next execute packet, and the constant propagator no longer adds
   its own computed reference to a register call whose target the call analyzer did not
   prove.
+* Keep functions with entered delay windows decompilable on Ghidra 12.2 (issue #52). A
+  jump into another branch's delay slots is legal (SPRUFE8B 3.5, 4.2.6); the decompiler
+  re-reads such a native window with an "overlaps instruction" warning and correct C,
+  but Ghidra 12.2 counts each overlap as bad data and abandons a function after four.
+  The new `C6000 Entered Delay Windows` analyzer decompiles each function holding an
+  entered window and, only while it fails on an overlap, releases the window the error
+  names (bookmarked under `C6000 Released Delay Window`), keeping the branch's override,
+  references and slot annotations. Released branches lift their slots after the transfer,
+  as before #34 and #48; every other window is kept.
 * Write analyzer result counts (primed packets, recovered calls and windows, matched
   loops) to the application log instead of the analysis message log, so a clean
   auto-analysis no longer opens the "warnings/errors" summary dialog. Real

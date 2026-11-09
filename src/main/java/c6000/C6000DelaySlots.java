@@ -23,6 +23,8 @@ import ghidra.util.task.TaskMonitor;
 public final class C6000DelaySlots {
     private static final int MAX_BYTES = 254;
     private static final int MAX_INSTRUCTIONS = 64;
+    /** Bookmark category on a branch whose window relieveOverlaps released. */
+    public static final String RELEASED = "C6000 Released Delay Window";
     private C6000DelaySlots() { }
 
     public record Repair(String branch, String end, int delayBytes, int oldDepth,
@@ -76,6 +78,8 @@ public final class C6000DelaySlots {
             monitor.checkCancelled();
             Instruction branch = program.getListing().getInstructionAt(at);
             if (branch == null || branch.isInDelaySlot()) continue;
+            // Issue #52: relieveOverlaps released this window for the decompiler.
+            if (program.getBookmarkManager().getBookmark(at, BookmarkType.ANALYSIS, RELEASED) != null) continue;
             Window window = reader.window(branch, monitor);
             if (window == null) continue;
             int bytes = (int) (window.end().subtract(branch.getMaxAddress()));
@@ -118,6 +122,151 @@ public final class C6000DelaySlots {
         }
         if (!result.isEmpty()) Msg.info(C6000DelaySlots.class, "C6000 Delay Slots> recovered " + result.size() + " proven window(s)");
         return result;
+    }
+
+    /**
+     * Issue #52: release native windows that make a function undecompilable.
+     * A jump from outside into a window's slots is legal: the hardware runs the
+     * slots in sequence from there (SPRUFE8B 3.5, 4.2.6). The decompiler lifts a
+     * branch and its native slots as one instruction, re-reads an entered window
+     * with an "overlaps instruction" warning and still produces correct C, but
+     * Ghidra 12.2 counts each overlap as bad data and abandons the function past
+     * its limit (four by default). Decompile each function holding an entered
+     * window; while it fails on an overlap, release the window the error names
+     * and retry. Only those windows lose their delay-slot lifting.
+     * @return the number of windows released
+     */
+    public static int relieveOverlaps(Program program, AddressSetView set, TaskMonitor monitor)
+            throws Exception {
+        var functions = program.getFunctionManager();
+        Set<Function> candidates = new LinkedHashSet<>();
+        for (Instruction branch : program.getListing().getInstructions(set, true)) {
+            monitor.checkCancelled();
+            int laid = branch.getPrototype().getDelaySlotByteCount();
+            Address at = branch.getAddress();
+            if (laid <= parallelBytes(program, at) || !entered(program, at, branch.getMaxAddress().add(laid))) continue;
+            // The decompiler follows flow past a stale body: also try the function before unowned code.
+            Function owner = functions.getFunctionContaining(at);
+            if (owner == null) {
+                var before = functions.getFunctions(at, false);
+                owner = before.hasNext() ? before.next() : null;
+            }
+            if (owner != null) candidates.add(owner);
+        }
+        if (candidates.isEmpty()) return 0;
+        int released = 0;
+        var decompiler = new ghidra.app.decompiler.DecompInterface();
+        // Default options: the CodeBrowser's bad-data limit is not a tool option.
+        decompiler.setOptions(new ghidra.app.decompiler.DecompileOptions());
+        if (!decompiler.openProgram(program)) return 0;
+        int transaction = program.startTransaction("Release C6000 delay windows for the decompiler");
+        boolean commit = false;
+        try {
+            for (Function function : candidates) {
+                for (int attempt = 0; attempt < MAX_INSTRUCTIONS && !function.isDeleted(); attempt++) {
+                    monitor.checkCancelled();
+                    var result = decompiler.decompileFunction(function, 60, monitor);
+                    if (result == null || result.decompileCompleted()) break;
+                    String error = result.getErrorMessage();
+                    Instruction branch = overlapped(program, error);
+                    // Other bad data (an unmapped target, say) can be the last straw:
+                    // the function's own entered windows still count toward the limit.
+                    if (branch == null && error != null && error.contains("Bad instruction count exceeded"))
+                        branch = enteredIn(program, function);
+                    if (branch == null) break;
+                    Address at = branch.getAddress();
+                    if (branch.getPrototype().getDelaySlotByteCount() <= parallelBytes(program, at)) break;
+                    release(program, branch, monitor);
+                    decompiler.flushCache();
+                    program.getBookmarkManager().setBookmark(at, BookmarkType.ANALYSIS, RELEASED,
+                        "Native delay window released: " + function.getName() +
+                        " exceeded the decompiler's overlapping-instruction limit (issue #52)");
+                    released++;
+                }
+            }
+            commit = true;
+        }
+        finally {
+            program.endTransaction(transaction, commit);
+            decompiler.dispose();
+        }
+        if (released > 0) Msg.info(C6000DelaySlots.class, "C6000 Delay Slots> released " + released +
+            " entered window(s) for the decompiler");
+        return released;
+    }
+
+    private static final java.util.regex.Pattern OVERLAP = java.util.regex.Pattern.compile(
+        "overlaps instruction at \\((\\w+),0x([0-9a-fA-F]+)\\)");
+
+    /** The branch whose native window a decompiler "overlaps instruction" error names. */
+    private static Instruction overlapped(Program program, String error) {
+        var m = error == null ? null : OVERLAP.matcher(error);
+        if (m == null || !m.find()) return null;
+        var space = program.getAddressFactory().getAddressSpace(m.group(1));
+        if (space == null) return null;
+        return program.getListing().getInstructionAt(space.getAddress(Long.parseUnsignedLong(m.group(2), 16)));
+    }
+
+    /** The first branch in the function's body whose laid window is entered, or null. */
+    private static Instruction enteredIn(Program program, Function function) {
+        for (Instruction branch : program.getListing().getInstructions(function.getBody(), true)) {
+            int laid = branch.getPrototype().getDelaySlotByteCount();
+            Address at = branch.getAddress();
+            if (laid > parallelBytes(program, at) && entered(program, at, branch.getMaxAddress().add(laid))) return branch;
+        }
+        return null;
+    }
+
+    /** Control from outside [at, end] reaches one of the slots after at. */
+    private static boolean entered(Program program, Address at, Address end) {
+        var references = program.getReferenceManager();
+        var targets = references.getReferenceDestinationIterator(new AddressSet(at.next(), end), true);
+        while (targets.hasNext()) {
+            for (var it = references.getReferencesTo(targets.next()); it.hasNext();) {
+                Reference r = it.next();
+                Address from = r.getFromAddress();
+                if (r.getReferenceType().isFlow() && (from.compareTo(at) < 0 || from.compareTo(end) > 0)) return true;
+            }
+        }
+        return false;
+    }
+
+    /** Bytes of the branch's own execute packet after it: the primer's c_flow_delay (C6000PacketContext). */
+    private static int parallelBytes(Program program, Address at) {
+        try { return C6000ExecutionPackets.parallelBytes(program, at); }
+        catch (MemoryAccessException e) { return 0; }
+    }
+
+    /**
+     * Undo apply(): the slots become ordinary instructions again, lifted after
+     * the transfer as before issues #34 and #48. Keep the branch's override, the
+     * slots' annotations and every reference.
+     */
+    private static Repair release(Program p, Instruction original, TaskMonitor monitor) throws Exception {
+        var listing = p.getListing();
+        Address at = original.getAddress();
+        Address end = original.getMaxAddress().add(original.getPrototype().getDelaySlotByteCount());
+        int oldDepth = original.getDelaySlotDepth(), keep = parallelBytes(p, at);
+        FlowOverride override = original.getFlowOverride();
+        List<SavedInstruction> saved = snapshot(p, at, end);
+        listing.clearCodeUnits(at, end, false);
+        p.getProgramContext().setValue(p.getRegister("c_flow_delay"), at, at, BigInteger.valueOf(keep));
+        Disassembler disassembler = Disassembler.getDisassembler(p, monitor, null);
+        // A terminal branch has no fall-through: decode each released slot run too.
+        for (Address cursor = at; cursor.compareTo(end) <= 0;) {
+            if (listing.getInstructionContaining(cursor) == null)
+                disassembler.disassemble(cursor, new AddressSet(cursor, end), false);
+            var ins = listing.getInstructionContaining(cursor);
+            if (ins == null) throw new IllegalStateException("Could not re-decode released window at " + cursor);
+            cursor = ins.getMaxAddress().next();
+        }
+        var branch = listing.getInstructionAt(at);
+        if (branch == null || branch.getPrototype().getDelaySlotByteCount() != keep)
+            throw new IllegalStateException("Could not release native delay window at " + at + ": " + branch);
+        branch.setFlowOverride(override);
+        // The fall-through past the window belonged to the window; any other override stays.
+        restore(p, at, saved, false, resume(p, end));
+        return new Repair(at.toString(), end.toString(), keep, oldDepth, branch.getDelaySlotDepth(), 0);
     }
 
     /** The next execute packet after a window ending at end: past a fetch-packet header (SPRUFE8B 3.10.2). */
@@ -171,16 +320,7 @@ public final class C6000DelaySlots {
         Address at = original.getAddress();int oldDepth = original.getDelaySlotDepth();
         FlowOverride override = original.getFlowOverride();
         boolean registerBranch=original.getRegister(0)!=null && !original.getMnemonicString().startsWith("CALLP");
-        List<SavedInstruction> saved = new ArrayList<>();
-        // Undisassembled tail bytes can already carry user comments and refs.
-        // Snapshot every address, including those without a defined instruction.
-        for(Address cursor=at;cursor.compareTo(window.end())<=0;cursor=cursor.next()) {
-            var ins=listing.getInstructionAt(cursor);List<SavedRef> refs=new ArrayList<>();
-            for(var r:p.getReferenceManager().getReferencesFrom(cursor))
-                refs.add(new SavedRef(r,r.isPrimary(),r.getSymbolID()));
-            String[] comments=new String[5];for(int i=0;i<5;i++)comments[i]=listing.getComment(i,cursor);
-            saved.add(new SavedInstruction(cursor,ins==null?FlowOverride.NONE:ins.getFlowOverride(),comments,refs,ins!=null&&ins.isFallThroughOverridden(),ins==null?null:ins.getFallThrough()));
-        }
+        List<SavedInstruction> saved = snapshot(p, at, window.end());
         boolean isReturn = override == FlowOverride.RETURN ||
             (original.getNumOperands()>0 && "B3".equals(original.getDefaultOperandRepresentation(0)) &&
                 !original.getMnemonicString().startsWith("CALLP"));
@@ -195,14 +335,51 @@ public final class C6000DelaySlots {
         if(branch==null||branch.getPrototype().getDelaySlotByteCount()!=bytes||tail==null||!tail.isInDelaySlot())
             throw new IllegalStateException("Could not materialize native delay window at "+at+" end="+window.end()+" bytes="+bytes+" branch="+branch+" depth="+(branch==null?-1:branch.getDelaySlotDepth())+" tail="+tail);
         branch.setFlowOverride(override);
+        restore(p, at, saved, isReturn, null);
+        long added=0;
+        if(window.owner()!=null) {
+            var body=new AddressSet(window.owner().getBody());long before=body.getNumAddresses();
+            body.add(at,window.end());window.owner().setBody(body);added=body.getNumAddresses()-before;
+        }
+        return new Repair(at.toString(),window.end().toString(),bytes,oldDepth,branch.getDelaySlotDepth(),added);
+    }
+
+    /** Annotations in [at, end]. Undisassembled tail bytes can already carry user comments and refs. */
+    private static List<SavedInstruction> snapshot(Program p, Address at, Address end) {
+        var listing = p.getListing();
+        List<SavedInstruction> saved = new ArrayList<>();
+        // Snapshot every address, including those without a defined instruction.
+        for(Address cursor=at;cursor.compareTo(end)<=0;cursor=cursor.next()) {
+            var ins=listing.getInstructionAt(cursor);List<SavedRef> refs=new ArrayList<>();
+            for(var r:p.getReferenceManager().getReferencesFrom(cursor))
+                refs.add(new SavedRef(r,r.isPrimary(),r.getSymbolID()));
+            String[] comments=new String[5];for(int i=0;i<5;i++)comments[i]=listing.getComment(i,cursor);
+            saved.add(new SavedInstruction(cursor,ins==null?FlowOverride.NONE:ins.getFlowOverride(),comments,refs,ins!=null&&ins.isFallThroughOverridden(),ins==null?null:ins.getFallThrough()));
+        }
+        return saved;
+    }
+
+    /**
+     * Restore a snapshot around the re-decoded branch at at, whose own override the
+     * caller sets. A return drops its flow references; dropFallThrough is the
+     * branch fall-through that belonged to a released window.
+     */
+    private static void restore(Program p, Address at, List<SavedInstruction> saved, boolean isReturn,
+            Address dropFallThrough) {
+        var listing = p.getListing();
         for(var snapshot:saved) {
             var ins=listing.getInstructionAt(snapshot.at());
-            if(ins!=null&&!snapshot.at().equals(at))ins.setFlowOverride(snapshot.override());
-            if(ins!=null&&snapshot.fallThroughOverridden())ins.setFallThrough(snapshot.fallThrough());
+            boolean issue=snapshot.at().equals(at);
+            if(ins!=null&&!issue)ins.setFlowOverride(snapshot.override());
+            if(ins!=null&&snapshot.fallThroughOverridden()&&
+                    !(issue&&snapshot.fallThrough()!=null&&snapshot.fallThrough().equals(dropFallThrough)))
+                ins.setFallThrough(snapshot.fallThrough());
             for(int i=0;i<5;i++)if(snapshot.comments()[i]!=null)listing.setComment(snapshot.at(),i,snapshot.comments()[i]);
             for(var ref:snapshot.references()) {
                 var r=ref.reference();
-                if(snapshot.at().equals(at)&&isReturn&&r.getReferenceType().isFlow())continue;
+                if(issue&&isReturn&&r.getReferenceType().isFlow())continue;
+                // A dropped fall-through's reference goes with it.
+                if(issue&&dropFallThrough!=null&&r.getReferenceType().isFallthrough()&&r.getToAddress().equals(dropFallThrough))continue;
                 var manager=p.getReferenceManager();
                 var restored=r.isRegisterReference() ? manager.addRegisterReference(r.getFromAddress(),r.getOperandIndex(),p.getRegister(r.getToAddress()),r.getReferenceType(),r.getSource()) : manager.addReference(r);
                 manager.setPrimary(restored,ref.primary());
@@ -210,12 +387,6 @@ public final class C6000DelaySlots {
                 if(symbol!=null)manager.setAssociation(symbol,restored);
             }
         }
-        long added=0;
-        if(window.owner()!=null) {
-            var body=new AddressSet(window.owner().getBody());long before=body.getNumAddresses();
-            body.add(at,window.end());window.owner().setBody(body);added=body.getNumAddresses()-before;
-        }
-        return new Repair(at.toString(),window.end().toString(),bytes,oldDepth,branch.getDelaySlotDepth(),added);
     }
 
     private static final class Reader {

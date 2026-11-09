@@ -563,6 +563,23 @@ write from the slots must precede the CALLIND. A register `B` that leaves B3 unt
 `C6000DelayedCallTest` expects its register calls to return after their windows too,
 and a window ending before a fetch-packet header to return past the header.
 
+## Delay windows entered from outside
+
+`entered-window.py IMAGE [be]` and `C6000EnteredWindowTest.java` (with `prepare` as a
+pre-script, which declares the five functions) check `cl6x` 8.3.15 words of branches
+whose delay slots are also a jump target (issue #52). A jump into a packet in another
+branch's delay slots runs those slots in sequence (SPRUFE8B 3.5, 4.2.6). The decompiler
+re-reads such a native window with an "overlaps instruction" warning and still produces
+correct C, so the register call at 1018 (entered at 1028), the predicated displacement
+branch at 1050 (entered at 1058) and the unentered `rplain` call at 1084 keep their
+five-slot windows; `rentry` must decompile with `sink(6)` and `dentry` with the 15 of its
+`a == 0, b != 0` path. `dmany` (10b8) holds five entered windows: Ghidra 12.2 counts each
+overlap as bad data and abandons a function after four, so the `C6000 Entered Delay
+Windows` analyzer must release exactly one of them (bookmarked, depth 0, target kept) and
+`dmany` must then decompile. On earlier Ghidra versions, which only warn, nothing is
+released. A second release pass must change nothing, and delay-window recovery must not
+lay a released window again.
+
 ## Additional decoder accuracy checks
 
 The release runner includes compact stack offsets (`compact-dstk`), unscaled
