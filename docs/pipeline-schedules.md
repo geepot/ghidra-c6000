@@ -232,8 +232,14 @@ The manifest uses schema 1 and the program's exact `language_id`. For example:
 
 Source windows must start and end on 32-byte fetch boundaries. The report records
 supported schedules and precise refusal reasons. Successful compilation alone does
-not prove entry drainage. Reviewed activation also requires complete function
-ownership of the covered code; repair/review incomplete bodies separately.
+not prove entry drainage. Reviewed activation also requires function ownership of the
+covered code. Covered code outside the body is accepted only when no function owns it
+and it continues the body straight-line: the delay slots of a nested or entered window
+that native recovery refused. The source hash pins it as unowned and enable absorbs it.
+Absorbing changes the ownership and body that every other binding over the same fetch
+packets pins, so it is refused when a recorded schedule reads those packets, and the
+report refuses it when another schedule in the same batch does.
+Repair/review other incomplete bodies separately.
 
 After reviewing the report, pass its SHA-256 with an explicit action:
 

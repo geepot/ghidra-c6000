@@ -345,10 +345,88 @@ public final class C6000PipelineContracts {
         }
         var schedule = C6000PipelineSchedules.compileConfigured(program, function, previousE1Writes, monitor);
         if (C6000PipelineSchedules.closedCalls(program, function).isEmpty() &&
-                !new AddressSet(schedule.covered()).subtract(function.getBody()).isEmpty()) {
+                !ownedOrWindowTail(program, function, schedule.covered())) {
             throw new IllegalArgumentException("reviewed activation requires complete function ownership of the scheduled code");
         }
+        absorptionKeepsRecorded(program, function, schedule, monitor);
         return reviewed(program, function, evidence, previousE1Writes, entrySources, schedule, monitor);
+    }
+
+    /**
+     * Covered code outside the body must be owned by no function and continue
+     * the body straight-line: the delay slots of a nested or entered window the
+     * native analysis refused (SPRUFE8B 4.2.6). The source hash pins it unowned;
+     * enable absorbs it.
+     */
+    private static boolean ownedOrWindowTail(Program program, Function function, AddressSetView covered) {
+        var outside = new AddressSet(covered).subtract(function.getBody());
+        if (program.getFunctionManager().getFunctionsOverlapping(outside).hasNext()) return false;
+        for (AddressRange range : outside) {
+            Address before = range.getMinAddress().previous();
+            if (before == null || !function.getBody().contains(before)) return false;
+        }
+        return true;
+    }
+
+    /** Fetch packets a schedule's source hash reads, and those whose hashed owners or
+     * function bodies its enable changes (empty when enable keeps the body). */
+    public record Footprint(AddressSetView source, AddressSetView absorbed) {}
+
+    private static AddressSet packets(Program program, AddressSetView set) {
+        var result = new AddressSet();
+        for (AddressRange range : set) {
+            result.add(address(program, range.getMinAddress().getOffset() & ~31L),
+                address(program, range.getMaxAddress().getOffset() | 31L));
+        }
+        return result;
+    }
+
+    private static Footprint footprint(Program program, Function function, AddressSetView covered) {
+        var source = new AddressSet(function.getBody());source.add(covered);
+        var outside = new AddressSet(covered).subtract(function.getBody());
+        if (!C6000PipelineSchedules.closedCalls(program, function).isEmpty()) outside.clear();
+        var absorbed = packets(program, outside);
+        // A hash whose packets hold this entry also records this function's body.
+        if (!outside.isEmpty()) absorbed.add(packets(program, new AddressSet(function.getEntryPoint())));
+        return new Footprint(packets(program, source), absorbed);
+    }
+
+    /** Footprint of a reviewed schedule; a batch must not enable one whose absorbed packets another reads. */
+    public static Footprint footprint(Program program, Function function, Review review,
+            TaskMonitor monitor) throws Exception {
+        return footprint(program, function, C6000PipelineSchedules.compileConfigured(program, function,
+            Set.copyOf(review.previousE1Writes()), monitor).covered());
+    }
+
+    /** Enable's absorption must not change the source a recorded schedule pins. */
+    private static void absorptionKeepsRecorded(Program program, Function function,
+            C6000PipelineCompiler.Result schedule, TaskMonitor monitor) throws Exception {
+        var absorbed = footprint(program, function, schedule.covered()).absorbed();
+        if (absorbed.isEmpty()) return;
+        boolean present = false;
+        for (String group : program.getOptionsNames()) present |= group.equals(C6000PipelineSchedules.OPTIONS);
+        if (!present) return;
+        for (String name : program.getOptions(C6000PipelineSchedules.OPTIONS).getOptionNames()) {
+            monitor.checkCancelled();
+            if (!name.startsWith(PREFIX)) continue;
+            Address at = program.getAddressFactory().getAddress(name.substring(PREFIX.length()));
+            Function other = at == null ? null : program.getFunctionManager().getFunctionAt(at);
+            if (other == null || other.getEntryPoint().equals(function.getEntryPoint())) continue;
+            AddressSetView covered = other.getBody();
+            // Enable put an active schedule's covered code in its body; a pending or closed-call one may extend past it.
+            if (isPending(program, other) || !C6000PipelineSchedules.closedCalls(program, other).isEmpty()) {
+                try {
+                    covered = C6000PipelineSchedules.compileConfigured(program, other,
+                        Set.copyOf(recordedReview(program, other).previousE1Writes()), monitor).covered();
+                }
+                catch (ghidra.util.exception.CancelledException cancelled) { throw cancelled; }
+                catch (Exception refused) { /* its own check refuses that binding; use its body */ }
+            }
+            if (footprint(program, other, covered).source().intersects(absorbed)) {
+                throw new IllegalArgumentException("enabling would change the reviewed source of " + other.getEntryPoint() +
+                    ": covered code outside the body shares its fetch packets");
+            }
+        }
     }
 
     private static Review reviewed(Program program, Function function, String evidence,
@@ -410,6 +488,7 @@ public final class C6000PipelineContracts {
         var schedule = C6000PipelineSchedules.compileConfigured(program, function, writes, monitor);
         check(program, function, review, binding.activeSourceSha256().isEmpty() ?
             review.sourceSha256() : binding.activeSourceSha256(), schedule, monitor);
+        absorptionKeepsRecorded(program, function, schedule, monitor);
         // Expected refusals are read-only. enable() owns the write transaction
         // and repeats pending-review validation before changing the selector.
         return C6000PipelineSchedules.enable(program, function, review.evidence(), writes, monitor);
