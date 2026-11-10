@@ -11,6 +11,11 @@
   native per-instruction lifting (issue #16; SPRUFE8B pp.135-136, 278, 320-350,
   411-412, 420-421, 539-540, 546-547).
 
+### Changed
+
+* Release builds and CI cover Ghidra 12.1.4 and 12.2. Ghidra 12.1.3 is no longer built
+  or tested; use the 12.1.4 build on 12.1.x.
+
 ### Fixed
 
 * Choose circular addressing at decode time: loads and stores through a base other

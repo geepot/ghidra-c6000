@@ -24,7 +24,7 @@ interrupt and exceptional-loop limitations are detailed in [limitations](limitat
 | Item | Value |
 |---|---|
 | Repository release | `v1.2.0` |
-| Ghidra compatibility matrix | 12.1.3 / JDK 21; 12.1.4 / JDK 21; 12.2 / JDK 25 |
+| Ghidra compatibility matrix | 12.1.4 / JDK 21; 12.2 / JDK 25 |
 | Language version | 1.2 for the four little-endian definitions; 2.0 for the four big-endian ones (issue #31) |
 | Archive naming | `ghidra_<Ghidra version>_PUBLIC_<build date>_C6000.zip` |
 | Extension-property version | Ghidra compatibility version, substituted from `@extversion@` during build |
@@ -54,7 +54,7 @@ python3 tools/verify_gui.py --ghidra /path/to/ghidra --archive "$(cat build/rele
 
 The runner checks 84 core fixture/language imports (two through Ghidra's ELF loader and
 one packed program) and five TI-assembled fixture imports per endian: 178 per Ghidra
-version, or 534
+version, or 356
 across the matrix. The core
 count includes all four timing variants for the CPU, resource and delayed-call-timing fixtures. Native
 decompiler checks retain their 15/30-second limits. Run the headed checks in a
@@ -70,8 +70,8 @@ Also run the focused checks for features outside the runner's registry:
 | Ordinary execute-packet completion | `parallel-peers.py` | `C6000ParallelPeerAnalyzerTest.java` |
 
 Run each on a fresh import in both endian modes. The complete release check
-therefore adds four focused imports per matrix row: 546 total imports across the
-three-version matrix, plus eight Python release-tool tests and the separate headed
+therefore adds four focused imports per matrix row: 364 total imports across the
+two-version matrix, plus eight Python release-tool tests and the separate headed
 checks. Contracts and invocation
 arguments are documented in [caller-tail traces](caller-tail-traces.md),
 [reviewed peer recovery](recover-parallel-peers.md) and

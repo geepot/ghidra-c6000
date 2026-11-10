@@ -16,7 +16,7 @@ no disassembler source was copied, which is what allows the Apache-2.0 licence. 
 2. In Ghidra: *File → Install Extensions*, **+**, pick the zip, restart Ghidra.
 
 Each zip is tied to the Ghidra version it was built against. Releases include builds for
-12.1.3, 12.1.4 and 12.2; select the matching zip, or rebuild for another 12.x release.
+12.1.4 and 12.2; select the matching zip, or rebuild for another 12.x release.
 
 ## Quick start
 
@@ -138,7 +138,7 @@ python3 tools/verify.py --with-ti --jobs 2  # also require TI-assembled fixtures
 ```
 
 CI ([`build.yml`](.github/workflows/build.yml)) runs the same core suite on Ghidra
-12.1.3, 12.1.4 and 12.2. It checks the packaged extension in a fresh scratch
+12.1.4 and 12.2. It checks the packaged extension in a fresh scratch
 installation, including decode, native flow, exact packet scheduling and floating-point
 execution. Logs and a JSON summary are retained. The additional TI-assembled checks
 require a local C6000 compiler/assembler.

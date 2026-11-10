@@ -18,7 +18,7 @@ python3 tools/verify.py --jobs 2
 python3 tools/verify.py --with-ti --jobs 2
 ```
 
-CI runs the core suite on Ghidra 12.1.3, 12.1.4 and 12.2. The additional `--with-ti`
+CI runs the core suite on Ghidra 12.1.4 and 12.2. The additional `--with-ti`
 checks cover predicate facts, caller continuations and post-loop dispatch. A requested
 run fails if a required tool is missing.
 
