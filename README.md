@@ -48,8 +48,9 @@ only after the packet analyzer has primed the decode context, which auto-analysi
 before disassembly.
 
 When upgrading an existing program, keep a packed backup first and re-run auto-analysis
-afterwards. v1.2.1 keeps the v1.2.0 language versions; its call, delay-window and
-calling-convention changes apply on re-analysis. In v1.2.0 the big-endian languages
+afterwards. v1.2.1 and v1.2.1-hotfix keep the v1.2.0 language versions; v1.2.1's call,
+delay-window and calling-convention changes apply on re-analysis, and v1.2.1-hotfix's
+emulation fixes apply when a program is reopened. In v1.2.0 the big-endian languages
 became version 2.0: Ghidra migrates saved big-endian programs on open, then re-decodes
 compact packets in program order (issue #31). Little-endian languages stay at version
 1.2. See the

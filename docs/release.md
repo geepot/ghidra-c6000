@@ -1,10 +1,12 @@
 # Release guidance
 
-Release `v1.2.1` recovers calls through a register, including `B B3`, and calls whose
-return address is earlier caller code; passes 64-bit and large-struct values as the
-C6000 EABI does; extends exact schedules to the remaining 16x16 multiplies and several
-single-cycle instructions; and keeps functions with entered delay windows decompilable
-on Ghidra 12.2. It drops Ghidra 12.1.3. See the [changelog](../CHANGELOG.md#121---2026-11-09),
+Release `v1.2.1-hotfix` corrects p-code emulation of SPINT/DPINT ties, the DPINT limit,
+RCPSP/RSQRSP near 1.0 and MVC writes to ICR, ISR, ECR and CSR, and judges floating-point
+overflow after rounding as IEEE 754 does (issue #40). It otherwise matches `v1.2.1`, which
+recovers calls through a register, including `B B3`, and calls whose return address is
+earlier caller code; passes 64-bit and large-struct values as the C6000 EABI does; extends
+exact schedules; and keeps functions with entered delay windows decompilable on Ghidra
+12.2. See the [changelog](../CHANGELOG.md#121-hotfix---2026-11-10),
 [release limitations](limitations.md#release-111-decompilation-and-round-trips) and
 [verification](verification.md).
 
@@ -23,7 +25,7 @@ interrupt and exceptional-loop limitations are detailed in [limitations](limitat
 
 | Item | Value |
 |---|---|
-| Repository release | `v1.2.1` |
+| Repository release | `v1.2.1-hotfix` |
 | Ghidra compatibility matrix | 12.1.4 / JDK 21; 12.2 / JDK 25 |
 | Language version | 1.2 for the four little-endian definitions; 2.0 for the four big-endian ones (issue #31) |
 | Archive naming | `ghidra_<Ghidra version>_PUBLIC_<build date>_C6000.zip` |
@@ -91,7 +93,7 @@ the affected checks and build release assets from the final commit.
 - Retain the verified archive for each Ghidra version and generate `SHA256SUMS`.
 - Create the annotated release tag at that same commit and push it with the
   release branch.
-- Publish the GitHub release with the three matching archives, checksums,
+- Publish the GitHub release with the two matching archives, checksums,
   upgrade notes and links to the changelog and verification results.
 
 ## Checking release assets

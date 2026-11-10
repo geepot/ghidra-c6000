@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.2.1-hotfix - 2026-11-10
 
 ### Fixed
 
