@@ -4,6 +4,7 @@
 // in a tests/fixtures/nested-window-schedule.py image. Run after C6000NestedWindowScheduleTest.java prepare.
 
 import c6000.C6000PipelineContracts;
+import c6000.C6000PipelineSchedules;
 import com.google.gson.*;
 import ghidra.app.script.GhidraScript;
 import ghidra.program.model.listing.Function;
@@ -15,6 +16,7 @@ import java.util.*;
 
 public class C6000WindowNeighbourTest extends GhidraScript {
 	private static final String EVIDENCE = "fixture entry: drained pipeline";
+	private final Map<Long, List<C6000PipelineContracts.SourceWindow>> pins = new HashMap<>();
 	private int checks;
 
 	interface Action { void run() throws Exception; }
@@ -35,9 +37,26 @@ public class C6000WindowNeighbourTest extends GhidraScript {
 		currentProgram.getReferenceManager().delete(jump);
 		// Known-good: no schedule reads the shared packet, so the absorber alone stays reviewable.
 		review(absorber);
-		// One batch, absorber first: its enable would change the neighbour's pinned source.
 		Path directory = Files.createTempDirectory("c6000-window-neighbour");
 		Path manifest = directory.resolve("manifest.json"), report = directory.resolve("report.json");
+		// Known-bad: callee's code is elsewhere, but it pins the shared packet as an entry source,
+		// which its source hash reads too: in one batch, and once recorded.
+		Function callee = getFunctionAt(toAddr(0x10c0L));
+		pins.put(0x10c0L, List.of(source(callee), window(0x1120L)));
+		Files.writeString(manifest, manifest(absorber, callee));
+		runScript("C6000ReviewPipelineSchedules.java", new String[] { manifest.toString(), report.toString() });
+		var pinned = JsonParser.parseString(Files.readString(report)).getAsJsonObject().getAsJsonArray("functions");
+		if (!pinned.get(0).getAsJsonObject().has("reason") ||
+			!pinned.get(0).getAsJsonObject().get("reason").getAsString().contains("would change the reviewed source of 000010c0") ||
+			!pinned.get(1).getAsJsonObject().get("status").getAsString().equals("eligible")) {
+			throw new AssertionError("batch must refuse the absorber over callee's entry source: " + pinned);
+		}
+		checks++;
+		C6000PipelineContracts.record(currentProgram, callee, review(callee), monitor);
+		refuses(() -> review(absorber), "would change the reviewed source of 000010c0");
+		currentProgram.getOptions(C6000PipelineSchedules.OPTIONS).removeOption(C6000PipelineContracts.key(callee));
+		review(absorber);
+		// One batch, absorber first: its enable would change the neighbour's pinned source.
 		Files.writeString(manifest, manifest(absorber, neighbour));
 		runScript("C6000ReviewPipelineSchedules.java", new String[] { manifest.toString(), report.toString() });
 		String digest = C6000PipelineContracts.sha256(Files.readAllBytes(report));
@@ -67,14 +86,22 @@ public class C6000WindowNeighbourTest extends GhidraScript {
 			currentProgram.getRegister("c_schedule_entry"), f.getEntryPoint(), false));
 	}
 
-	private C6000PipelineContracts.SourceWindow source(Function f) throws Exception {
-		long start = f.getEntryPoint().getOffset() & ~31L;
+	private C6000PipelineContracts.SourceWindow window(long start) throws Exception {
 		return new C6000PipelineContracts.SourceWindow(start, 32,
 			C6000PipelineContracts.sha256(getBytes(toAddr(start), 32)));
 	}
 
+	private C6000PipelineContracts.SourceWindow source(Function f) throws Exception {
+		return window(f.getEntryPoint().getOffset() & ~31L);
+	}
+
+	private List<C6000PipelineContracts.SourceWindow> sources(Function f) throws Exception {
+		var pinned = pins.get(f.getEntryPoint().getOffset());
+		return pinned != null ? pinned : List.of(source(f));
+	}
+
 	private C6000PipelineContracts.Review review(Function f) throws Exception {
-		return C6000PipelineContracts.review(currentProgram, f, EVIDENCE, Set.of(), List.of(source(f)), monitor);
+		return C6000PipelineContracts.review(currentProgram, f, EVIDENCE, Set.of(), sources(f), monitor);
 	}
 
 	private String manifest(Function... functions) throws Exception {
@@ -87,9 +114,7 @@ public class C6000WindowNeighbourTest extends GhidraScript {
 			row.addProperty("entry", f.getEntryPoint().getOffset());
 			row.addProperty("drained_entry_evidence", EVIDENCE);
 			row.add("previous_e1_writes", new JsonArray());
-			var sources = new JsonArray();
-			sources.add(new Gson().toJsonTree(source(f)));
-			row.add("entry_sources", sources);
+			row.add("entry_sources", new Gson().toJsonTree(sources(f)));
 			rows.add(row);
 		}
 		plan.add("functions", rows);

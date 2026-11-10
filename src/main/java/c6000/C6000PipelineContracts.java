@@ -381,8 +381,14 @@ public final class C6000PipelineContracts {
         return result;
     }
 
-    private static Footprint footprint(Program program, Function function, AddressSetView covered) {
+    private static Footprint footprint(Program program, Function function, AddressSetView covered,
+            List<SourceWindow> windows) {
         var source = new AddressSet(function.getBody());source.add(covered);
+        // The hash also reads the pinned entry-source windows (full fetch packets).
+        for (SourceWindow window : windows) {
+            Address start = address(program, window.start());
+            source.add(start, start.add(window.length() - 1));
+        }
         var outside = new AddressSet(covered).subtract(function.getBody());
         if (!C6000PipelineSchedules.closedCalls(program, function).isEmpty()) outside.clear();
         var absorbed = packets(program, outside);
@@ -395,13 +401,13 @@ public final class C6000PipelineContracts {
     public static Footprint footprint(Program program, Function function, Review review,
             TaskMonitor monitor) throws Exception {
         return footprint(program, function, C6000PipelineSchedules.compileConfigured(program, function,
-            Set.copyOf(review.previousE1Writes()), monitor).covered());
+            Set.copyOf(review.previousE1Writes()), monitor).covered(), review.entrySources());
     }
 
     /** Enable's absorption must not change the source a recorded schedule pins. */
     private static void absorptionKeepsRecorded(Program program, Function function,
             C6000PipelineCompiler.Result schedule, TaskMonitor monitor) throws Exception {
-        var absorbed = footprint(program, function, schedule.covered()).absorbed();
+        var absorbed = footprint(program, function, schedule.covered(), List.of()).absorbed();
         if (absorbed.isEmpty()) return;
         boolean present = false;
         for (String group : program.getOptionsNames()) present |= group.equals(C6000PipelineSchedules.OPTIONS);
@@ -413,6 +419,7 @@ public final class C6000PipelineContracts {
             Function other = at == null ? null : program.getFunctionManager().getFunctionAt(at);
             if (other == null || other.getEntryPoint().equals(function.getEntryPoint())) continue;
             AddressSetView covered = other.getBody();
+            List<SourceWindow> windows = recordedReview(program, other).entrySources();
             // Enable put an active schedule's covered code in its body; a pending or closed-call one may extend past it.
             if (isPending(program, other) || !C6000PipelineSchedules.closedCalls(program, other).isEmpty()) {
                 try {
@@ -422,7 +429,7 @@ public final class C6000PipelineContracts {
                 catch (ghidra.util.exception.CancelledException cancelled) { throw cancelled; }
                 catch (Exception refused) { /* its own check refuses that binding; use its body */ }
             }
-            if (footprint(program, other, covered).source().intersects(absorbed)) {
+            if (footprint(program, other, covered, windows).source().intersects(absorbed)) {
                 throw new IllegalArgumentException("enabling would change the reviewed source of " + other.getEntryPoint() +
                     ": covered code outside the body shares its fetch packets");
             }

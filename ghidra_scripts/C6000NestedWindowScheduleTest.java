@@ -44,11 +44,11 @@ public class C6000NestedWindowScheduleTest extends GhidraScript {
 		retjump.setBody(body.subtract(new AddressSet(toAddr(0x101cL), toAddr(0x103fL))));
 		refuses(() -> review(retjump), "complete function ownership");
 		retjump.setBody(body);
-		// Known-bad: covered code another function owns.
+		// Known-bad: covered code another function owns (the compiler refuses it before review).
 		disassemble(toAddr(0x1008L));
 		Function intruder = createFunction(toAddr(0x1008L), "intruder");
 		if (intruder == null) throw new AssertionError("cannot declare intruder");
-		refuses(() -> review(retjump), "");
+		refuses(() -> review(retjump), "flow enters another function at 00001008");
 		removeFunction(intruder);
 		retjump.setBody(body);
 		// Known-good: the refused window's slots continue the body and no function owns them.
