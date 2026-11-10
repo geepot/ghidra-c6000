@@ -22,6 +22,13 @@ CASES = [
     ("tie-even", "DPINT", 0, f64(2.5), 0, 2, 0x80),
     ("tie-odd", "DPINT", 0, f64(3.5), 0, 4, 0x80),
     ("negative-tie-even", "DPINT", 0, f64(-2.5), 0, -2, 0x80),
+    # #40: negative odd ties, and src2 above 2^31 - 1 overflows before rounding.
+    ("negative-tie-odd", "DPINT", 0, f64(-1.5), 0, -2, 0x80),
+    ("negative-limit-tie", "DPINT", 0, f64(-2147483647.5), 0, 0x80000000, 0x80),
+    ("positive-limit", "DPINT", 0, f64(2147483647.0), 0, 0x7fffffff, 0),
+    ("positive-limit-up", "DPINT", 0, f64(2147483647.75), 0, 0x7fffffff, 0xc0),
+    ("positive-limit-down", "DPINT", 0, f64(2147483647.25), 0, 0x7fffffff, 0xc0),
+    ("positive-limit-trunc", "DPTRUNC", 0, f64(2147483647.5), 0, 0x7fffffff, 0xc0),
     ("truncate", "DPTRUNC", 0, f64(8.6), 0, 8, 0x80),
     ("nan", "DPINT", 0, 0x7ff8000000000000, 0, 0x7fffffff, 0x12),
     ("negative-nan", "DPINT", 0, 0xfff8000000000000, 0, 0x80000000, 0x12),

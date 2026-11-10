@@ -76,13 +76,20 @@ public class C6000MvcControlTest extends GhidraScript {
             emulator.writeRegister("A4", 0x87654321L);
             emulator.writeRegister(f[2], 0x55aabbccL);
             emulator.writeRegister("B8", 0x66);
+            boolean write = f[1].equals("write");
+            // Columns 5-8: source value, register checked, its preset, expected value.
+            boolean effect = write && f.length > 8;
+            if (effect) {
+                emulator.writeRegister(f[3].equals("1") ? "A4" : "B4", Long.parseUnsignedLong(f[5], 16));
+                emulator.writeRegister(f[6], Long.parseUnsignedLong(f[7], 16));
+            }
             emulator.getEmulator().setExecuteAddress(offset);
             if (!emulator.step(monitor)) {
                 throw new AssertionError(f[0] + ": " + emulator.getLastError());
             }
-            boolean write = f[1].equals("write");
-            String resultRegister = write ? f[2] : "B8";
-            long expected = write ? (f[3].equals("1") ? 0x87654321L : 0x12345678L)
+            String resultRegister = effect ? f[6] : write ? f[2] : "B8";
+            long expected = effect ? Long.parseUnsignedLong(f[8], 16)
+                : write ? (f[3].equals("1") ? 0x87654321L : 0x12345678L)
                 : 0x55aabbccL;
             long actual = emulator.readRegister(resultRegister).longValue() & 0xffffffffL;
             if (actual != expected) {

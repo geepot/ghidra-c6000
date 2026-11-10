@@ -1,5 +1,18 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+* P-code emulation now matches SPRU733A for these cases (issue #40):
+  * `SPINT`/`DPINT` round negative ties with an odd truncation away from zero (−1.5 → −2).
+  * `DPINT`/`DPTRUNC` overflow for sources between 2^31 − 1 and 2^31 instead of wrapping
+    to 8000 0000h.
+  * `RCPSP`/`RSQRSP` keep the correct exponent just above 1.0.
+  * `MVC` writes to ICR/ISR clear/set IFR bits, ECR clears EFR bits, and CSR keeps its
+    read-only fields.
+* The SPINT and reciprocal emulator regressions now run in the release suite.
+
 ## 1.2.1 - 2026-11-09
 
 ### Added

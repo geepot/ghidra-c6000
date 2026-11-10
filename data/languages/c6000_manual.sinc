@@ -24,6 +24,25 @@
   & i1=1 & i2=0 & i3=0 & i4=0 & i5=1 & i6=0 & i7=1 & i8=1 & i9=1 & i10=0 & i11=0
 { if (Cond == 0) goto <skip>; CtlDst = Src2; <skip> }
 
+# Writes with side effects (SPRU733A 2.7.5, 2.7.9, Table 2-7; SPRUFE8B 2.9.2).
+# ICR/ISR clear/set IFR15-4 and are never read back; ECR clears EFR NXF/EXF/IXF/SXF.
+# CSR keeps CPU ID, REVISION ID and EN; MVC can only clear SAT.
+:^Cond^"MVC.S2" Src2, CtlDst is c_is16=0 & Cond & creg!=7 & Src2 & CtlDst & crf_dst=1 & i17=0
+  & i1=1 & i2=0 & i3=0 & i4=0 & i5=1 & i6=0 & i7=1 & i8=1 & i9=1 & i10=0 & i11=0
+{ if (Cond == 0) goto <skip>; CSR = (CSR & (Src2 | 0xfffffdff) & 0xffff0300) | (Src2 & 0xfcff); <skip> }
+
+:^Cond^"MVC.S2" Src2, CtlDst is c_is16=0 & Cond & creg!=7 & Src2 & CtlDst & crf_dst=2 & i17=0
+  & i1=1 & i2=0 & i3=0 & i4=0 & i5=1 & i6=0 & i7=1 & i8=1 & i9=1 & i10=0 & i11=0
+{ if (Cond == 0) goto <skip>; IFR = IFR | (Src2 & 0xfff0); <skip> }
+
+:^Cond^"MVC.S2" Src2, CtlDst is c_is16=0 & Cond & creg!=7 & Src2 & CtlDst & crf_dst=3 & i17=0
+  & i1=1 & i2=0 & i3=0 & i4=0 & i5=1 & i6=0 & i7=1 & i8=1 & i9=1 & i10=0 & i11=0
+{ if (Cond == 0) goto <skip>; IFR = IFR & ~(Src2 & 0xfff0); <skip> }
+
+:^Cond^"MVC.S2" Src2, CtlDst is c_is16=0 & Cond & creg!=7 & Src2 & CtlDst & crf_dst=29 & crhi=0
+  & i1=1 & i2=0 & i3=0 & i4=0 & i5=1 & i6=0 & i7=1 & i8=1 & i9=1 & i10=0 & i11=0
+{ if (Cond == 0) goto <skip>; EFR = EFR & ~(Src2 & 0xc0000003); <skip> }
+
 :^Cond^"MVC.S2" CtlReg, Dst is c_is16=0 & Cond & creg!=7 & CtlReg & Dst
   & i1=1 & i2=0 & i3=0 & i4=0 & i5=1 & i6=1 & i7=1 & i8=1 & i9=1 & i10=0 & i11=0
   & i12=0

@@ -15,6 +15,9 @@ CASES = [
     ("RSQRSP", 1, 0x40800000, 0x3f000000, 0),
     ("RSQRSP", 2, 0x4109999a, 0x3eae8000, 0),
     ("RCPDP", 1, 0x4010000000000000, 0x3fd0000000000000, 0),
+    # #40: just above 1.0 the result stays below 1.0 (the correct exponent).
+    ("RSQRSP", 1, 0x3f800001, 0x3f7f8000, 0),
+    ("RCPSP", 2, 0x3f800001, 0x3f7f8000, 0),
     ("RSQRDP", 2, 0x4010000000000000, 0x3fe0000000000000, 0),
     ("RCPSP", 1, 0x00000000, 0x7f800000, 0x420),
     ("RCPSP", 2, 0x80000000, 0xff800000, 0x420),
@@ -39,7 +42,7 @@ CASES = [
 
 def opcode(mnemonic, side):
     decode = Path(__file__).resolve().parents[2] / "data/languages/c6000_decode.sinc"
-    prefix = f":{mnemonic}.S{side} "
+    prefix = f':^Cond^"{mnemonic}.S{side}" '
     line = next(line for line in decode.read_text().splitlines()
                 if line.startswith(prefix))
     fixed = {int(bit): int(value) for bit, value in

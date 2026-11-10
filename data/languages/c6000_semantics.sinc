@@ -1931,13 +1931,18 @@ macro c6000_sem_recip_sp(a, d, side, rsqrt) {
   <sqrtCheck>
   if (sign != 0) goto <negative>;
   <calculate>
-  local one:4 = 0x3f800000;
+  # Work in double precision and truncate there: a single-precision sqrt can
+  # round 1 + 2^-23 up to 1.0 and put the result in the wrong binade (#40).
+  # Eight mantissa bits always fit a single exactly.
+  local wide:8 = float2float(a);
+  local one:8 = 0x3ff0000000000000;
   if (inverseRoot == 0) goto <divide>;
-  local root:4 = sqrt(a);
-  one = one f/ root;
+  one = one f/ sqrt(wide);
   goto <seed>;
-  <divide> one = one f/ a;
-  <seed> d = one & 0xffff8000;
+  <divide> one = one f/ wide;
+  <seed>
+  local truncated:8 = one & 0xfffff00000000000;
+  d = float2float(truncated);
   goto <done>;
   <special>
   if (fraction != 0) goto <nan>;
@@ -2346,17 +2351,22 @@ macro c6000_sem_sp_to_int(a, d, side, forceTrunc) {
   rounded = floor(a);
   goto <convert>;
   <nearest>
-  # SLEIGH's FLOAT_ROUND rounds halfway cases away from zero.  The C6000
-  # RMODE=0 rule is ties-to-even, so correct even-integer halfway cases.
-  rounded = round(a);
+  # RMODE=0 is ties-to-even.  FLOAT_ROUND's tie direction differs between the
+  # decompiler (away from zero) and the Java emulator (up), so settle it here.
   local truncatedInt:4 = trunc(a);
-  if ((truncatedInt & 1) != 0) goto <convert>;
   local truncatedFloat:4 = int2float(truncatedInt);
-  local delta:4 = a f- truncatedFloat;
-  local half:4 = 0x3f000000;
-  local absDelta:4 = abs(delta);
-  if (absDelta f!= half) goto <convert>;
   rounded = truncatedFloat;
+  local absDelta:4 = abs(a f- truncatedFloat);
+  local half:4 = 0x3f000000;
+  if (absDelta f< half) goto <convert>;
+  if (absDelta f> half) goto <away>;
+  if ((truncatedInt & 1) == 0) goto <convert>;
+  <away>
+  local unit:4 = 0x3f800000;
+  if (a f< 0) goto <awayDown>;
+  rounded = truncatedFloat f+ unit;
+  goto <convert>;
+  <awayDown> rounded = truncatedFloat f- unit;
   goto <convert>;
   <zero> goto <convert>;
   <up> rounded = ceil(a);
@@ -2405,10 +2415,13 @@ macro c6000_sem_dp_to_int(a, d, side, forceTrunc) {
   if (fraction != 0) goto <denormal>;
   <normal>
   if (exponent > 1054) goto <overflow>;
-  if (exponent != 1054) goto <rounding>;
+  if (exponent != 1054) goto <positiveLimit>;
   if (sign == 0) goto <overflow>;
   if (fraction != 0) goto <overflow>;
-  <rounding>
+  # DPINT/DPTRUNC note 2: src2 above 2^31 - 1 overflows, before any rounding.
+  <positiveLimit>
+  local intMax:8 = 0x41dfffffffc00000;
+  if (a f> intMax) goto <overflow>;
 
   local rounded:8 = a;
   if (roundMode == 0) goto <nearest>;
@@ -2417,15 +2430,20 @@ macro c6000_sem_dp_to_int(a, d, side, forceTrunc) {
   rounded = floor(a);
   goto <convert>;
   <nearest>
-  rounded = round(a);
   local truncatedInt:4 = trunc(a);
-  if ((truncatedInt & 1) != 0) goto <convert>;
   local truncatedFloat:8 = int2float(truncatedInt);
-  local delta:8 = a f- truncatedFloat;
-  local half:8 = 0x3fe0000000000000;
-  local absDelta:8 = abs(delta);
-  if (absDelta f!= half) goto <convert>;
   rounded = truncatedFloat;
+  local absDelta:8 = abs(a f- truncatedFloat);
+  local half:8 = 0x3fe0000000000000;
+  if (absDelta f< half) goto <convert>;
+  if (absDelta f> half) goto <away>;
+  if ((truncatedInt & 1) == 0) goto <convert>;
+  <away>
+  local unit:8 = 0x3ff0000000000000;
+  if (a f< 0) goto <awayDown>;
+  rounded = truncatedFloat f+ unit;
+  goto <convert>;
+  <awayDown> rounded = truncatedFloat f- unit;
   goto <convert>;
   <zero> goto <convert>;
   <up> rounded = ceil(a);

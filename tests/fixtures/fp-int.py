@@ -24,6 +24,11 @@ CASES = [
     ("tie-even", "SPINT", 0, f32(2.5), 0, 2, 0x80),
     ("tie-odd", "SPINT", 0, f32(3.5), 0, 4, 0x80),
     ("negative-tie-even", "SPINT", 0, f32(-2.5), 0, -2, 0x80),
+    # #40: negative ties with an odd truncation round away from zero.
+    ("negative-tie-odd", "SPINT", 0, f32(-1.5), 0, -2, 0x80),
+    ("negative-tie-odd-3", "SPINT", 0, f32(-3.5), 0, -4, 0x80),
+    ("tie-one", "SPINT", 0, f32(1.5), 0, 2, 0x80),
+    ("negative-half", "SPINT", 0, f32(-0.5), 0, 0, 0x80),
     ("negative-zero", "SPINT", 0, f32(-8.6), 1 << 9, -8, 0x80),
     ("negative-up", "SPINT", 0, f32(-8.6), 2 << 9, -8, 0x80),
     ("negative-down", "SPINT", 0, f32(-8.6), 3 << 9, -9, 0x80),

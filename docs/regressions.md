@@ -303,13 +303,15 @@ including cross paths and register-pair results.
 
 `tests/fixtures/fp-int.py <image.bin> <cases.tsv> [be]` and
 `C6000FpConvertTest.java <cases.tsv>` check `SPINT` and `SPTRUNC` in both endian modes.
-The 23 cases per mode cover all FADCR rounding modes, ties to even, signed overflow,
-NaN, infinity, denormals, and the separate `.L1` /`.L2` warning bits.
+The 27 cases per mode cover all FADCR rounding modes, ties to even (including negative
+ties with an odd truncation, issue #40), signed overflow, NaN, infinity, denormals, and
+the separate `.L1` /`.L2` warning bits. The SLEIGH settles ties itself because
+`FLOAT_ROUND` rounds halves away from zero in the decompiler but up in the Java emulator.
 
 `tests/fixtures/dp-int.py <image.bin> <cases.tsv> [be]` and
 `C6000DpConvertTest.java <cases.tsv>` check `DPINT` and `DPTRUNC` with register-pair
-sources. The 20 cases per mode cover rounding, exceptions, warning bits, signed 32-bit
-result limits, and nonzero pairs for `DPINT`, `DPTRUNC`, and `DPSP`. TI `cl6x` 8.3.15
+sources. The 26 cases per mode cover rounding, exceptions, warning bits, signed 32-bit
+result limits (a source above 2^31 − 1 overflows before rounding, note 2), and nonzero pairs for `DPINT`, `DPTRUNC`, and `DPSP`. TI `cl6x` 8.3.15
 and GNU `as` 2.47 encode the pair's odd register in `src2` and its even/low register in
 `src1`, the port that reads the low word; see
 [binutils gas/15094](https://lists.gnu.org/archive/html/bug-binutils/2013-02/msg00037.html).
@@ -386,7 +388,16 @@ the `0x4000` rounding bias.
 `tests/fixtures/arithmetic-forms.py`, `compare-forms.py`, and `mvc-control.py` with
 their matching `C6000*Test.java` scripts check signed and unsigned 40-bit
 ADD/SUB/compare forms, operand ports, and the direction and high address bits of 32-bit
-`MVC` control-register encodings in both endian modes. The rounded multiply test
+`MVC` control-register encodings in both endian modes. MVC writes to ICR and ISR clear
+and set IFR15–4, ECR clears EFR, and CSR keeps its read-only CPU ID, REVISION ID and EN
+fields; MVC can clear SAT but not set it (SPRU733A 2.7.5, 2.7.9, Table 2-7; issue #40).
+
+`tests/fixtures/reciprocal.py <image.bin> <cases.tsv> [be]` runs
+`C6000UnaryStatusTest.java` on RCPSP, RSQRSP, RCPDP and RSQRDP: TI's examples, every
+special-value note, and inputs just above 1.0 whose result must keep exponent 126.
+The single-precision seed is computed and truncated in double precision.
+
+The rounded multiply test
 displays the encoded `MPYLIR` name and source order; `MPYILR` is its reversed-operand
 assembler pseudo-op.
 
