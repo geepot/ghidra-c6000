@@ -5,6 +5,7 @@ dist/
 data/languages/*.sla
 /tmp/
 scratch/
+.claude/worktrees/
 .research/
 __pycache__/
 
