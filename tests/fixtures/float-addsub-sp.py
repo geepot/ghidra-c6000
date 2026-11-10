@@ -17,8 +17,10 @@ OPERANDS = [
     (0x3f800000, 0x00800000),       # tiny source lost by DP addition
     (0xbf800000, 0x00800000),       # tiny source lost from negative result
     (0x7f7fffff, 0x7f7fffff),       # overflow
-    (0x7f7fffff, 0x3f800000),       # overflow with a tiny normal source
-    (0xff7fffff, 0xbf800000),       # negative overflow with tiny source
+    (0x7f7fffff, 0x3f800000),       # tiny source: LFPN unless RMODE rounds up (IEEE)
+    (0xff7fffff, 0xbf800000),       # negative tiny source
+    (0x7f7fffff, 0x73000000),       # LFPN + half an ULP: ties to even overflow
+    (0x7f7fffff, 0x72800000),       # LFPN + a quarter ULP: rounds back to LFPN
     (0x7f800000, 0xff800000),       # opposing infinity
     (0x7f800000, 0x7f800000),       # matching infinity
     (0x7fc00001, 0x3f800000),       # QNaN in encoded src1
@@ -51,10 +53,29 @@ def value(bits):
 
 MIN_NORMAL = value(0x00800000)
 MAX_NORMAL = value(0x7f7fffff)
+OVERFLOW = value(0x7f800000)  # 2^128: the next value above LFPN with an unbounded exponent
+
+
+def overflow(sign, mode, flags):
+    infinity = mode == 0 or (mode == 2 and not sign) or (mode == 3 and sign)
+    return sign | (0x7f800000 if infinity else 0x7f7fffff), flags | 0xc0
+
+
+def finite_bits(magnitude, sign, mode, flags):
+    """IEEE 754: overflow is judged after rounding with an unbounded exponent."""
+    if magnitude >= OVERFLOW:
+        return overflow(sign, mode, flags)
+    if magnitude < MIN_NORMAL:
+        smallest = (mode == 2 and not sign) or (mode == 3 and sign)
+        return sign | (0x00800000 if smallest else 0), flags | 0x180
+    bits, inexact = rounded_bits(magnitude, sign, mode)
+    if bits & 0x7fffffff == 0x7f800000:
+        return overflow(sign, mode, flags)
+    return bits, flags | (0x80 if inexact else 0)
 
 
 def rounded_bits(magnitude, sign, mode):
-    lo, hi = 0x00800000, 0x7f7fffff
+    lo, hi = 0x00800000, 0x7f800000
     while lo <= hi:
         mid = (lo + hi) // 2
         candidate = value(mid)
@@ -116,14 +137,7 @@ def expected(a, b, subtract, reverse, mode):
         return sign, flags
     sign = 0x80000000 if exact < 0 else 0
     magnitude = abs(exact)
-    if magnitude > MAX_NORMAL:
-        infinity = mode == 0 or (mode == 2 and not sign) or (mode == 3 and sign)
-        return sign | (0x7f800000 if infinity else 0x7f7fffff), flags | 0xc0
-    if magnitude < MIN_NORMAL:
-        smallest = (mode == 2 and not sign) or (mode == 3 and sign)
-        return sign | (0x00800000 if smallest else 0), flags | 0x180
-    bits, inexact = rounded_bits(magnitude, sign, mode)
-    return bits, flags | (0x80 if inexact else 0)
+    return finite_bits(magnitude, sign, mode, flags)
 
 
 def opcode(mnemonic, unit, side, opfield, cross):

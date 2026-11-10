@@ -13,6 +13,14 @@
     read-only fields.
 * The SPINT and reciprocal emulator regressions now run in the release suite.
 
+### Changed
+
+* Floating-point overflow follows IEEE 754: it is judged after rounding with an unbounded
+  exponent, not on the exact value. `ADDSP` of LFPN + 1.0 now gives LFPN with INEX in
+  round-to-nearest instead of +infinity with OVER, and DPSP/MPYSP/ADDDP/MPYDP results just
+  above LFPN overflow only when RMODE rounds them up. SPRU733A does not say which rule the
+  hardware uses; this replaces an unsourced before-rounding model (issue #40).
+
 ## 1.2.1 - 2026-11-09
 
 ### Added

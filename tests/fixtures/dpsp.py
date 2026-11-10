@@ -18,6 +18,10 @@ CASES = [
     (0x3810000000000000, (0x00800000,) * 4, 0),
     (0x3810000000000001, (0x00800000, 0x00800000, 0x00800001, 0x00800000), 0x80),
     (0x47f0000000000000, (0x7f800000, 0x7f7fffff, 0x7f800000, 0x7f7fffff), 0xc0),
+    # IEEE 754 overflow is judged after rounding, so near LFPN the flags follow RMODE.
+    (0x47effffff0000000, (0x7f800000, 0x7f7fffff, 0x7f800000, 0x7f7fffff), (0xc0, 0x80, 0xc0, 0x80)),
+    (0x47efffffe8000000, (0x7f7fffff, 0x7f7fffff, 0x7f800000, 0x7f7fffff), (0x80, 0x80, 0xc0, 0x80)),
+    (0xc7effffff0000000, (0xff800000, 0xff7fffff, 0xff7fffff, 0xff800000), (0xc0, 0x80, 0x80, 0xc0)),
     (0xc7f0000000000000, (0xff800000, 0xff7fffff, 0xff7fffff, 0xff800000), 0xc0),
     (0x3800000000000000, (0, 0, 0x00800000, 0), 0x180),
     (0xb800000000000000, (0x80000000, 0x80000000, 0x80000000, 0x80800000), 0x180),
@@ -51,7 +55,7 @@ def main():
             for mode in range(4):
                 for value, outputs, flags in CASES:
                     preset = (mode << 9) | 4 # preserve unrelated sticky DEN1
-                    expectedFlags = preset | flags
+                    expectedFlags = preset | (flags[mode] if isinstance(flags, tuple) else flags)
                     if side == 2:
                         preset <<= 16
                         expectedFlags <<= 16

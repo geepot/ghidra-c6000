@@ -301,6 +301,11 @@ or BE language. The `float-addsub-sp.py` / `C6000FloatAddTest.java`, `mpysp.py` 
 `C6000ConvertStatusTest.java` suites cover the other consumers of these shared helpers,
 including cross paths and register-pair results.
 
+Overflow follows IEEE 754: it is judged after rounding with an unbounded exponent.
+SPRU733A gives the overflow results per RMODE but not when overflow occurs. The SP, DP
+and DPSP oracles therefore include LFPN plus a tiny source, plus half an ULP (a tie,
+which overflows in round-to-nearest) and plus a quarter ULP (which rounds back to LFPN).
+
 `tests/fixtures/fp-int.py <image.bin> <cases.tsv> [be]` and
 `C6000FpConvertTest.java <cases.tsv>` check `SPINT` and `SPTRUNC` in both endian modes.
 The 27 cases per mode cover all FADCR rounding modes, ties to even (including negative

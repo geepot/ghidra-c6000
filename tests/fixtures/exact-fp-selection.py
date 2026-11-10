@@ -45,14 +45,7 @@ def product(a, b, mode):
     exact = abs(add.value(a) * add.value(b))
     if not exact:
         return sign, flags
-    if exact > add.MAX_NORMAL:
-        infinity = mode == 0 or (mode == 2 and not sign) or (mode == 3 and sign)
-        return sign | (0x7f800000 if infinity else 0x7f7fffff), flags | 0xc0
-    if exact < add.MIN_NORMAL:
-        smallest = (mode == 2 and not sign) or (mode == 3 and sign)
-        return sign | (0x00800000 if smallest else 0), flags | 0x180
-    result, inexact = add.rounded_bits(exact, sign, mode)
-    return result, flags | (0x80 if inexact else 0)
+    return add.finite_bits(exact, sign, mode, flags)
 
 
 def main():

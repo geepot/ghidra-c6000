@@ -32,13 +32,15 @@ def round_finite(exact, mode):
         return 0, 0
     sign = SIGN if exact < 0 else 0
     magnitude = abs(exact)
-    if magnitude > value(MAX):
-        infinite = mode == 0 or (mode == 2 and not sign) or (mode == 3 and sign)
+    # IEEE 754: overflow is judged after rounding with an unbounded exponent;
+    # value(INF) reads as 2^1024, the next value above MAX.
+    infinite = mode == 0 or (mode == 2 and not sign) or (mode == 3 and sign)
+    if magnitude >= value(INF):
         return sign | (INF if infinite else MAX), 0xc0
     if magnitude < value(MIN):
         smallest = (mode == 2 and not sign) or (mode == 3 and sign)
         return sign | (MIN if smallest else 0), 0x180
-    lo, hi = MIN, MAX
+    lo, hi = MIN, INF
     while lo <= hi:
         mid = (lo + hi) // 2
         if value(mid) == magnitude:
@@ -56,6 +58,8 @@ def round_finite(exact, mode):
         low_dist = magnitude - value(lower)
         high_dist = value(upper) - magnitude
         chosen = lower if low_dist < high_dist or (low_dist == high_dist and lower % 2 == 0) else upper
+    if chosen == INF:
+        return sign | INF, 0xc0
     return sign | chosen, 0x80
 
 
@@ -131,6 +135,8 @@ ADD_CASES = [
     (0x3ff0000000000000, 0x3ff0000000000000),
     (0, SIGN), (SIGN, SIGN),
     (MAX, MAX), (MAX, 0x3ff0000000000000),
+    (MAX, 0x7c90000000000000),  # MAX + half an ULP: ties to even overflow
+    (MAX, 0x7c80000000000000),  # MAX + a quarter ULP: rounds back to MAX
     (SIGN | MAX, SIGN | 0x3ff0000000000000),
     (INF, SIGN | INF), (INF, INF),
     (0x7ff8000000000001, 0x3ff0000000000000),

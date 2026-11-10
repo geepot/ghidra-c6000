@@ -1522,39 +1522,43 @@ macro c6000_sem_round_qp_to_dp(exact, d, mode, flags) {
   if (sign == 0) goto <bounds>;
   magnitude = zeroQP f- exact;
   <bounds>
-  local maxDP:8 = 0x7fefffffffffffff;
   local minDP:8 = 0x0010000000000000;
-  local maxQP:16 = float2float(maxDP);
   local minQP:16 = float2float(minDP);
-  if (magnitude f> maxQP) goto <overflow>;
+  # IEEE 754 overflow is judged after rounding with an unbounded exponent:
+  # at or above 2^1024 always, otherwise only when RMODE rounds up to 2^1024.
+  local halfLimit:16 = float2float(0x7fe0000000000000:8);
+  if (magnitude f>= halfLimit f+ halfLimit) goto <overflow>;
   if (magnitude f< minQP && magnitude f!= zeroQP) goto <underflow>;
   d = float2float(exact);
   local rounded:16 = float2float(d);
   if (rounded f== exact) goto <done>;
   flags = flags | 0x80;
-  if (roundMode == 0) goto <done>;
+  if (roundMode == 0) goto <checked>;
   if (roundMode == 1) goto <towardZero>;
   if (roundMode == 2) goto <towardPositive>;
   if (rounded f> exact) goto <stepNegative>;
-  goto <done>;
+  goto <checked>;
   <towardZero>
   if (sign == 0) goto <zeroPositive>;
   if (rounded f< exact) goto <stepPositive>;
-  goto <done>;
+  goto <checked>;
   <zeroPositive>
   if (rounded f> exact) goto <stepNegative>;
-  goto <done>;
+  goto <checked>;
   <towardPositive>
   if (rounded f< exact) goto <stepPositive>;
-  goto <done>;
+  goto <checked>;
   <stepPositive>
   if (sign == 0) goto <increment>;
   goto <decrement>;
   <stepNegative>
   if (sign == 0) goto <decrement>;
   <increment> d = d + 1;
-  goto <done>;
+  goto <checked>;
   <decrement> d = d - 1;
+  <checked>
+  if ((d & 0x7fffffffffffffff) != 0x7ff0000000000000) goto <done>;
+  flags = flags | 0xc0;
   goto <done>;
   <overflow>
   flags = flags | 0xc0;
@@ -1680,7 +1684,9 @@ macro c6000_sem_addsub_dp(a, b, d, side, subtract, reverse) {
   flags = flags | 0x80;
   local resultSign:8 = d & 0x8000000000000000;
   if ((d & 0x7fffffffffffffff) != 0x7fefffffffffffff) goto <lostRound>;
-  if (resultSign == lostSign) goto <lostOverflow>;
+  if (resultSign != lostSign) goto <lostRound>;
+  if (roundMode == 2 && resultSign == 0) goto <lostOverflow>;
+  if (roundMode == 3 && resultSign != 0) goto <lostOverflow>;
   <lostRound>
   if (roundMode == 0) goto <done>;
   if (roundMode == 1) goto <lostTowardZero>;
@@ -1701,9 +1707,6 @@ macro c6000_sem_addsub_dp(a, b, d, side, subtract, reverse) {
   goto <done>;
   <lostOverflow>
   flags = flags | 0xc0;
-  if (roundMode == 1) goto <done>;
-  if (roundMode == 2 && resultSign != 0) goto <done>;
-  if (roundMode == 3 && resultSign == 0) goto <done>;
   d = resultSign | 0x7ff0000000000000;
   goto <done>;
   <canceled> d = 0;
@@ -2075,9 +2078,10 @@ macro c6000_sem_round_dp_to_sp(a, d, mode, flags) {
   local signSP:4 = high:4 & 0x80000000;
   local negative:1 = signSP != 0;
   local roundMode:4 = mode;
-  local overflow:1 = magnitude > 0x47efffffe0000000;
+  # IEEE 754 overflow is judged after rounding with an unbounded exponent:
+  # at or above 2^128 always, otherwise only when RMODE rounds up to 2^128.
+  local huge:1 = magnitude >= 0x47f0000000000000;
   local underflow:1 = (magnitude != 0) && (magnitude < 0x3810000000000000);
-  local regular:1 = !(overflow || underflow);
   local nearest:4 = float2float(a);
   local rounded:8 = float2float(nearest);
   local above:1 = rounded f> a;
@@ -2089,6 +2093,8 @@ macro c6000_sem_round_dp_to_sp(a, d, mode, flags) {
     ((roundMode == 2) && below && negative) ||
     ((roundMode == 3) && above && (!negative));
   local result:4 = nearest + zext(increment) - zext(decrement);
+  local overflow:1 = huge || ((result & 0x7fffffff) == 0x7f800000);
+  local regular:1 = !(overflow || underflow);
   local clampOverflow:1 = (roundMode == 1) ||
                           ((roundMode == 2) && negative) ||
                           ((roundMode == 3) && (!negative));
@@ -2254,7 +2260,8 @@ macro c6000_sem_addsub_sp(a, b, d, side, subtract, reverse) {
   local resultSign:4 = result & 0x80000000;
   local negative:1 = resultSign != 0;
   local lostNegative:1 = lostSign != 0;
-  local lostOverflow:1 = lost && ((result & 0x7fffffff) == 0x7f7fffff) && (resultSign == lostSign);
+  local lostOverflow:1 = lost && ((result & 0x7fffffff) == 0x7f7fffff) && (resultSign == lostSign) &&
+    (((roundMode == 2) && (!negative)) || ((roundMode == 3) && negative));
   flags = flags | (zext(lost) << 7) | (zext(lostOverflow) * 0xc0);
   local correctLost:1 = lost && (!lostOverflow);
   local increment:1 = correctLost &&
