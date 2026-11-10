@@ -47,10 +47,12 @@ imports without an address or an address outside loaded memory. Compact packets 
 only after the packet analyzer has primed the decode context, which auto-analysis does
 before disassembly.
 
-When upgrading an existing program, keep a packed backup first. In v1.2.0 the
-big-endian languages are version 2.0: Ghidra migrates saved big-endian programs on
-open, then re-decodes compact packets in program order (issue #31). Re-run
-auto-analysis afterwards. Little-endian languages stay at version 1.2. See the
+When upgrading an existing program, keep a packed backup first and re-run auto-analysis
+afterwards. v1.2.1 keeps the v1.2.0 language versions; its call, delay-window and
+calling-convention changes apply on re-analysis. In v1.2.0 the big-endian languages
+became version 2.0: Ghidra migrates saved big-endian programs on open, then re-decodes
+compact packets in program order (issue #31). Little-endian languages stay at version
+1.2. See the
 [migration notes](docs/internals.md#language-prototype-migration), including annotation
 and existing error-bookmark handling.
 

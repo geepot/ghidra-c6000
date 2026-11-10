@@ -1,10 +1,10 @@
 # Release guidance
 
-Release `v1.2.0` adds the native CodeBrowser C6000 plugin and explicit C67x timing
-variants. It decodes big-endian compact packets in program order, with automatic
-migration of saved big-endian programs, and fixes delayed-call timing, delay windows
-for calls and predicated branches, register-branch tails, ELF compact priming and
-several decode errors. See the [changelog](../CHANGELOG.md#120---2026-11-02),
+Release `v1.2.1` recovers calls through a register, including `B B3`, and calls whose
+return address is earlier caller code; passes 64-bit and large-struct values as the
+C6000 EABI does; extends exact schedules to the remaining 16x16 multiplies and several
+single-cycle instructions; and keeps functions with entered delay windows decompilable
+on Ghidra 12.2. It drops Ghidra 12.1.3. See the [changelog](../CHANGELOG.md#121---2026-11-09),
 [release limitations](limitations.md#release-111-decompilation-and-round-trips) and
 [verification](verification.md).
 
@@ -23,7 +23,7 @@ interrupt and exceptional-loop limitations are detailed in [limitations](limitat
 
 | Item | Value |
 |---|---|
-| Repository release | `v1.2.0` |
+| Repository release | `v1.2.1` |
 | Ghidra compatibility matrix | 12.1.4 / JDK 21; 12.2 / JDK 25 |
 | Language version | 1.2 for the four little-endian definitions; 2.0 for the four big-endian ones (issue #31) |
 | Archive naming | `ghidra_<Ghidra version>_PUBLIC_<build date>_C6000.zip` |

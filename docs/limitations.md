@@ -108,7 +108,11 @@ in C identifiers, so their names cannot be told from a static function's.
 Native delay recovery remains conservative for nested transfers, register-target
 predicated branches that are not calls, and BDEC/BPOS. Ghidra's stock instruction-step
 emulator can fail on mixed-width delay windows; direct listing p-code execution and
-native decompilation have separate checks.
+native decompilation have separate checks. A native window that a jump from outside
+enters decompiles correctly with an "overlaps instruction" warning, but Ghidra 12.2
+abandons a function after four such overlaps; the `C6000 Entered Delay Windows`
+analyzer then releases only the windows the decompiler names (bookmarked), and those
+branches lift their slots after the transfer (issue #52).
 
 Trace and activation contracts are documented for
 [closed calls](closed-call-traces.md),
