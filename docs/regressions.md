@@ -538,7 +538,9 @@ Declared `double second(int k, double y)` must take k in A4 and y in B5:B4 and r
 through A5:A4, not slide y into a hidden return pointer. Undeclared, `twice64` (which
 writes A5 and A4 separately) and `neg64` (which writes them as a pair) must keep a 4-byte
 A4 result. Declared `long long twice64(long long x)` must keep x in A5:A4 and return 8
-bytes, and both 64-bit calls in `callit` must pass one 8-byte argument.
+bytes, and both 64-bit calls in `callit` must pass one 8-byte argument. Declared with a
+16-byte struct result, a function must take its hidden result pointer in A3 and `x` in
+A4; with an 8-byte struct result it must return through A5:A4, as `cl6x` 8.3.15 does.
 
 ## Encoding identity and updating-load phases
 

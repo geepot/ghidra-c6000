@@ -9,6 +9,7 @@
       A10, B10, A12, B12, then on the stack; a 64-bit argument takes
       the pair whose even register is its slot (A5:A4, B5:B4, ...);
     * a 32-bit result is returned in A4; a 64-bit result in A5:A4;
+    * a larger result is returned through a buffer whose address is passed in A3;
     * B3 holds the return address, B15 is the stack pointer, A15 is the
       frame pointer and B14 is the data (near-data) pointer;
     * A10-A15 and B10-B15 are callee-saved.
@@ -29,6 +30,10 @@
   <default_proto>
     <prototype name="__c6000" extrapop="0" stackshift="0" strategy="standard">
       <input>
+        <!-- A result over 8 bytes is returned through a buffer whose address the caller
+             passes in A3; arguments still start at A4 (cl6x 8.3.15 EABI: a 16-byte struct
+             result; 4- and 8-byte structs return in A4 and A5:A4). -->
+        <pentry minsize="4" maxsize="4" storage="hiddenret"><register name="A3"/></pentry>
         <pentry minsize="1" maxsize="4"><register name="A4"/></pentry>
         <pentry minsize="5" maxsize="8"><register name="A5_A4"/></pentry>
         <pentry minsize="1" maxsize="4"><register name="B4"/></pentry>
@@ -53,6 +58,12 @@
       <output>
         <pentry minsize="1" maxsize="4"><register name="A4"/></pentry>
         <pentry minsize="5" maxsize="8"><addr space="join" piece1="A5" piece2="A4"/></pentry>
+        <!-- Larger: the hidden buffer address arrives in A3 (input hiddenret); A4 is not
+             set to it on return. -->
+        <rule>
+          <datatype name="any" minsize="9"/>
+          <hidden_return voidlock="true"/>
+        </rule>
       </output>
       <unaffected>
         <register name="A10"/><register name="A11"/><register name="A12"/>

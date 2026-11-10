@@ -9,6 +9,10 @@ import ghidra.app.decompiler.DecompileResults;
 import ghidra.app.script.GhidraScript;
 import ghidra.app.util.cparser.C.CParser;
 import ghidra.program.model.data.FunctionDefinitionDataType;
+import ghidra.program.model.data.IntegerDataType;
+import ghidra.program.model.data.ParameterDefinition;
+import ghidra.program.model.data.ParameterDefinitionImpl;
+import ghidra.program.model.data.StructureDataType;
 import ghidra.program.model.listing.Function;
 import ghidra.program.model.listing.Parameter;
 import ghidra.program.model.listing.VariableStorage;
@@ -77,11 +81,16 @@ public class C6000AbiPairsTest extends GhidraScript {
 				calls++;
 			}
 			if (calls != 2) throw new AssertionError("callit: " + calls + " calls to neg64/twice64");
+			// A 16-byte struct result is returned through a buffer whose address is passed in
+			// A3, and x stays in A4; an 8-byte struct result returns in A5:A4 (cl6x 8.3.15 EABI).
+			structResult(0x1014L, 16, "A3");
+			structResult(0x1048L, 8, null);
+			storage(function(0x1048L).getReturn().getVariableStorage(), PAIR, "8-byte struct result");
 		}
 		finally {
 			decompiler.dispose();
 		}
-		println("C6000_ABI_PAIRS_OK checks=10");
+		println("C6000_ABI_PAIRS_OK checks=15");
 	}
 
 	private void declare(int from, int to) throws Exception {
@@ -91,6 +100,28 @@ public class C6000AbiPairsTest extends GhidraScript {
 			if (!new ApplyFunctionSignatureCmd(toAddr(ENTRIES[i]), sig, SourceType.USER_DEFINED).applyTo(currentProgram)) {
 				throw new AssertionError("cannot apply " + PROTOS[i]);
 			}
+		}
+	}
+
+	/** Declare {@code struct sN f(int x)} at entry; x must be in A4 and the hidden pointer, if any, in register hidden. */
+	private void structResult(long entry, int size, String hidden) {
+		StructureDataType struct = new StructureDataType("s" + size, 0);
+		for (int i = 0; i < size / 4; i++) struct.add(IntegerDataType.dataType, 4, "f" + i, null);
+		FunctionDefinitionDataType sig = new FunctionDefinitionDataType("ret" + size);
+		sig.setReturnType(struct);
+		sig.setArguments(new ParameterDefinition[] { new ParameterDefinitionImpl("x", IntegerDataType.dataType, null) });
+		if (!new ApplyFunctionSignatureCmd(toAddr(entry), sig, SourceType.USER_DEFINED).applyTo(currentProgram)) {
+			throw new AssertionError("cannot apply struct s" + size + " result");
+		}
+		Function f = function(entry);
+		String hiddenAt = null, x = null;
+		for (Parameter p : f.getParameters()) {
+			if (p.isAutoParameter()) hiddenAt = p.getRegister() == null ? p.getVariableStorage().toString() : p.getRegister().getName();
+			else if (p.getName().equals("x")) x = p.getVariableStorage().toString();
+		}
+		if (!"A4:4".equals(x) || !java.util.Objects.equals(hidden, hiddenAt)) {
+			throw new AssertionError("struct s" + size + " result: x in " + x + ", hidden pointer in " + hiddenAt +
+				", expected A4:4 and " + hidden + "; " + f.getSignature());
 		}
 	}
 
