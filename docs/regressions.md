@@ -529,6 +529,17 @@ branch's would be) it is still not a call returning to 1200. CALLP (1164) and BN
 calls (SPRUFE8B 3.12, BNOP and CALLP). Nullified writes to B3 (11b8, 11bc) or a lone MVKH
 (11f0, which keeps the low half) leave the earlier link: 11c0 and 11f4 stay tail calls.
 
+## 64-bit arguments and results in register pairs
+
+`abi-pairs.py IMAGE [be]` and `C6000AbiPairsTest.java` (with `prepare` as a pre-script,
+which declares the six functions) check `cl6x` 8.3.15 words. Undeclared `pass` hands its
+untouched A4 to `sink` beside B4 and A6, and the call must keep all three arguments.
+Declared `double second(int k, double y)` must take k in A4 and y in B5:B4 and return
+through A5:A4, not slide y into a hidden return pointer. Undeclared, `twice64` (which
+writes A5 and A4 separately) and `neg64` (which writes them as a pair) must keep a 4-byte
+A4 result. Declared `long long twice64(long long x)` must keep x in A5:A4 and return 8
+bytes, and both 64-bit calls in `callit` must pass one 8-byte argument.
+
 ## Encoding identity and updating-load phases
 
 `tests/fixtures/full32-encoding-info.py <image.bin> <cases.tsv> [be]` and
