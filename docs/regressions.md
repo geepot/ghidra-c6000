@@ -631,3 +631,19 @@ space, so the packet analyzer gave up on the whole program and compact code in
 `C6000PacketScopeTest.java` reuses the `compact-dstk` image, adds such an
 overlay, runs the packet analyzer over every initialized byte as auto-analysis
 does, and checks each compact slot decodes. It runs in both byte orders.
+
+## Exact schedules over a refused nested window
+
+`nested-window-schedule.py IMAGE [be]` with `C6000NestedWindowScheduleTest.java` (also
+the `prepare` pre-script, which declares the functions) and `C6000WindowNeighbourTest.java`
+checks `cl6x` 8.3.15 words. In `retjump` (1000) `B tail1` issues `B B3` in its last
+slot, so native recovery refuses its window and the slots 1008-1013 belong to no
+function. Review must accept them, activation must absorb them, and the C must return
+22. Review must refuse adjacent unowned covered code when the body does not own the
+code before it, or when another function owns it. `absorber` (112c) has the same shape,
+and its slots share the fetch packet of `neighbour` (1120): a batch with both must
+refuse the absorber and enable the neighbour, and once the neighbour is recorded the
+absorber alone is refused too. `callee` (10c0) reads that packet only through a pinned
+entry-source window, which its source hash also reads: the absorber must be refused in a
+batch with it and while its review is recorded. A jump into the slots from another
+function is refused as an alternate entry.

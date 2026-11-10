@@ -48,6 +48,14 @@
   pass-through argument. Undeclared functions keep a 4-byte A4 result. A result over
   8 bytes is returned through a buffer whose address is passed in A3, with arguments
   still from A4 (cl6x 8.3.15 EABI); 4- and 8-byte structs return in A4 and A5:A4.
+* Review an exact schedule whose covered code includes adjacent unowned code, such as
+  the delay slots of a nested window that native recovery refused. Review required every
+  covered byte in the function's body, and those slots belong to no function, so such a
+  function kept the native lifting (SPRUFE8B 4.2.6). The code must continue the body
+  straight-line and no function may own it; enable absorbs it. Absorbing is refused when
+  a recorded schedule, or another schedule in the same review batch, reads the same fetch
+  packets, since it would change the source that schedule pins. A schedule's pinned
+  entry-source windows count as packets it reads, as its source hash reads them.
 
 ## 1.2.0 - 2026-11-02
 
