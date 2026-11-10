@@ -38,6 +38,12 @@
   names (bookmarked under `C6000 Released Delay Window`), keeping the branch's override,
   references and slot annotations. Released branches lift their slots after the transfer,
   as before #34 and #48; every other window is kept.
+* Take a `B B3` as a call when its delay slots set B3 to the address past the window, as
+  for any other register (issue #39; SPRUFE8B 4.2.6, B; SPRU187U 7.4.2). It was always a
+  return by name, so `fp()` and `callee()` reached through B3 decompiled to `return;`.
+  An existing `RETURN` override on such a branch is reclassified, delay-window recovery
+  keeps the call, and an exact schedule refuses it without a closed-call contract instead
+  of returning. A `B B3` whose B3 already held the address past the window stays a jump.
 * Write analyzer result counts (primed packets, recovered calls and windows, matched
   loops) to the application log instead of the analysis message log, so a clean
   auto-analysis no longer opens the "warnings/errors" summary dialog. Real

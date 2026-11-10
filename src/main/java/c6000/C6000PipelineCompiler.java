@@ -1280,7 +1280,9 @@ public final class C6000PipelineCompiler {
         if(issueBranch==null){emitFactTransfer(source,returnFlow,pack,pc,idle,flights,branches,hazards,loop,source.facts());return;}
         var instruction=issueBranch.instruction();long at=instruction.getAddress().getOffset();var register=instruction.getRegister(0);var plan=closedCalls.get(at);boolean call=plan!=null||issueBranch.name().equals("CALLP");
         Long origin=register==null?null:source.returns().links().get(register.getAddress().getOffset());
-        boolean returns=!call&&register!=null&&(source.returns().activeCall()!=NO_CALL?origin!=null&&origin==source.returns().activeCall():origin!=null&&origin==ENTRY_LINK||register.getName().equals("B3"));
+        // A B B3 the call analyzer proved a call is not a return; without a closed-call plan it is refused (issue #39).
+        var listed=program.getListing().getInstructionAt(instruction.getAddress());boolean provenCall=listed!=null&&listed.getFlowOverride()==ghidra.program.model.listing.FlowOverride.CALL;
+        boolean returns=!call&&register!=null&&(source.returns().activeCall()!=NO_CALL?origin!=null&&origin==source.returns().activeCall():origin!=null&&origin==ENTRY_LINK||register.getName().equals("B3")&&!provenCall);
         if(closedCall!=null&&!call&&register!=null){var active=closedCalls.get(source.returns().activeCall());if(active!=null&&at!=active.calleeReturnPc()||active==null&&!Objects.equals(at,closedCall.callerReturnPc()))throw fail("closed-call undeclared register edge");}
         if(register!=null&&!returns&&!call)throw fail("unresolved register branch "+instruction);
         long target=plan!=null?plan.callee().start():returns?0:instruction.getAddress(0).getOffset();

@@ -54,6 +54,7 @@ CORE = [
          args=["check", "cases.tsv"], analysis=True),
     case("predicated-register-branch", "PredicatedBranch", "C6000_PREDICATED_BRANCH_OK", analysis=True),
     case("register-call", "RegisterCall", "C6000_REGISTER_CALL_OK", None, analysis=True),
+    case("b3-call", "B3Call", "C6000_B3_CALL_OK", None, analysis=True),
     case("entered-window", "EnteredWindow", "C6000_ENTERED_WINDOW_OK", None, analysis=True),
     case("register-branch-tail", "RegisterBranchTail", "C6000_REGISTER_BRANCH_TAIL_OK", None, ["check"], analysis=True),
     case("upgrade-v1", "ElfCompact", "C6000_ELF_COMPACT_OK", None, ["upgraded"]),
@@ -276,6 +277,8 @@ def main():
                     command += ["-preScript", "C6000RegisterBranchTailTest.java", "prepare"]
                 elif fixture == "register-call":
                     command += ["-preScript", "C6000RegisterCallTest.java", "prepare"]
+                elif fixture == "b3-call":
+                    command += ["-preScript", "C6000B3CallTest.java", "prepare"]
                 elif fixture == "entered-window":
                     command += ["-preScript", "C6000EnteredWindowTest.java", "prepare"]
                 elif fixture == "delay-window-forms":

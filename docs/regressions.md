@@ -576,6 +576,17 @@ write from the slots must precede the CALLIND. A register `B` that leaves B3 unt
 `C6000DelayedCallTest` expects its register calls to return after their windows too,
 and a window ending before a fetch-packet header to return past the header.
 
+## Calls through B3 (issue #39)
+
+`b3-call.py IMAGE [be]` and `C6000B3CallTest.java` (with `prepare` as a pre-script, which
+declares the four functions) check `cl6x` 8.3.15 words. `viaptr` (1008: `MV A4,B3 ; B B3`)
+and `direct` (1038: `MVK/MVKH callee,B3 ; B B3`) set B3 to the address past the window in
+their delay slots, so each `B B3` must be a call returning there, with its slots and return
+point in the caller and the B3 write before the CALLIND; `direct` must call `callee`
+(105c). `callee`'s own `B B3` (1060) stays a return, and `selfjmp` (1070), whose B3 held
+the address past the window before the branch, must not become a call (SPRUFE8B 4.2.6,
+B). An exact schedule of `viaptr` or `direct` must be refused, while `callee`'s compiles.
+
 ## Delay windows entered from outside
 
 `entered-window.py IMAGE [be]` and `C6000EnteredWindowTest.java` (with `prepare` as a
