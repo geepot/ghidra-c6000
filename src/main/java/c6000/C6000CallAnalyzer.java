@@ -102,9 +102,9 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 			monitor.checkCancelled();
 			Instruction branch = instructions.next();
 			String op = baseName(branch);
+			// A B B3 is a call too when its slots set B3 past the window (issue #39).
 			if ((op.equals("B.S1") || op.equals("B.S2")) &&
-				(reclassifiable(program, branch) || missingTarget(branch)) &&
-				!"B3".equals(branch.getDefaultOperandRepresentation(0))) {
+				(reclassifiable(program, branch) || missingTarget(branch))) {
 				branches.add(branch.getAddress());
 			}
 		}
@@ -173,6 +173,9 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 	private static boolean reclassifiable(Program program, Instruction branch) {
 		FlowOverride override = branch.getFlowOverride();
 		if (override == FlowOverride.NONE) return true;
+		// C6000 Returns marks every B B3 a return by name; only a proven call overrides it
+		// (issue #39), and the return analyzer never touches a CALL, so they cannot loop.
+		if (override == FlowOverride.RETURN) return "B3".equals(branch.getDefaultOperandRepresentation(0));
 		if (override != FlowOverride.CALL_RETURN ||
 			branch.getPrototype().getFlowType(branch.getInstructionContext()).isTerminal()) return false;
 		for (Address target : branch.getFlows()) {
@@ -333,6 +336,9 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 				return loop == null ? null : new Call(null, loop);
 			}
 			if (ret[0] < branchAt + 4 || ret[0] > windowEnd + 8) return null;
+			// B3 already held the return address when the B read it: a computed jump
+			// to the fall-through, not a call (issue #39).
+			if (target != null && (target & 0xffffffffL) == (ret[0] & 0xffffffffL)) return null;
 			boolean headerAtEnd = (windowEnd & 31) == 28 && headerAt(branch, windowEnd);
 			long partnerEnd = partner == null ? -1 : windowEnd(partner);
 			if (ret[0] != windowEnd && !(compact && ret[0] <= windowEnd + 8) &&

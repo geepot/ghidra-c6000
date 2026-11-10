@@ -321,8 +321,9 @@ public final class C6000DelaySlots {
         FlowOverride override = original.getFlowOverride();
         boolean registerBranch=original.getRegister(0)!=null && !original.getMnemonicString().startsWith("CALLP");
         List<SavedInstruction> saved = snapshot(p, at, window.end());
-        boolean isReturn = override == FlowOverride.RETURN ||
-            (original.getNumOperands()>0 && "B3".equals(original.getDefaultOperandRepresentation(0)) &&
+        // A B B3 proven a call keeps its CALL override (issue #39).
+        boolean isReturn = override == FlowOverride.RETURN || (override != FlowOverride.CALL &&
+            original.getNumOperands()>0 && "B3".equals(original.getDefaultOperandRepresentation(0)) &&
                 !original.getMnemonicString().startsWith("CALLP"));
         if(isReturn)override=FlowOverride.RETURN;
         listing.clearCodeUnits(at,window.end(),false);
