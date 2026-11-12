@@ -14,6 +14,10 @@
 * Exact schedules refuse `B IRP` and `B NRP` as "unresolved branch target" instead of
   failing with a NullPointerException: their target is IRP or NRP, neither a register
   operand nor a displacement (SPRUFE8B pp. 155, 157).
+* An MVK no longer keeps a data reference to its sign-extended low half when an
+  unpredicated MVKH completes the register to another value within five cycles, with no
+  read of the register and no branch landing in between: nothing uses that value as an
+  address (`C6000 Low-Half References`; SPRUFE8B pp. 380, 383, 4.2.6).
 
 ## 1.2.1-hotfix - 2026-11-10
 

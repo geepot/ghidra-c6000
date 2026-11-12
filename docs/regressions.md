@@ -606,6 +606,17 @@ write from the slots must precede the CALLIND. A register `B` that leaves B3 unt
 `C6000DelayedCallTest` expects its register calls to return after their windows too,
 and a window ending before a fetch-packet header to return past the header.
 
+## MVK low-half references
+
+`low-half-reference.py IMAGE [be]` and `C6000LowHalfReferenceTest.java` (with `prepare` as
+a pre-script, which declares the five functions) check `cl6x` 8.3.15 words in which each
+MVK loads 0x1068, the address of `g`. The MVK must lose its data reference when an MVKH
+completes the register to 0x11068, in straight code (1000) and as a return address in a
+call's delay slots (1028). It must keep it when the MVKH completes the same address
+(1008), when the register is read first (1010), when a `B` (1040) or a `BNOP` (1080)
+lands before the MVKH issues, and when the MVKH would issue in the sixth cycle, where a
+`B` beside the MVK lands (10a0) (SPRUFE8B pp. 380, 383, 4.2.6).
+
 ## Calls through B3 (issue #39)
 
 `b3-call.py IMAGE [be]` and `C6000B3CallTest.java` (with `prepare` as a pre-script, which
