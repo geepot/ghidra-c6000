@@ -25,6 +25,11 @@
   (SPRUFE8B 3.5, 4.2.6, NOP). The jump is continued only after the return's shortened window is proven and laid,
   and an analysis override whose condition no longer holds, or whose return's window is
   released for the decompiler, is removed.
+* Exact schedules accept two writers of one register that land in the same cycle from
+  different execute packets when their predicates test one unchanged value with opposite
+  senses: only one of them writes (SPRUFE8B 3.6, 3.8.8). Such functions were refused as
+  "potential simultaneous memory/register writes"; only writers issued in one packet
+  were exempt.
 
 ## 1.2.1-hotfix - 2026-11-10
 
