@@ -104,7 +104,14 @@ listing changes; transactional recovery preserves comments, symbols, references 
 explicit fallthrough overrides. Nested transfers, defined data and conflicting function
 ownership prevent recovery. Predicated displacement `B`/`BNOP` and displacement and register `B`
 calls, predicated or not, are recovered; a call's fallthrough moves to the next execute
-packet after its window. Register-target predicated branches that are not calls, and
+packet after its window.
+A jump whose target is only NOPs that fill the remaining delay cycles of a return
+issued in the jump's window, taken whenever the jump is, is continued: a
+`JUMP_OVERRIDE_UNCONDITIONAL` reference sends its branch to its own fall-through and the
+edge to the NOPs is dropped, so no jump enters the delay slots of the return that owns them.
+The jump is continued only once the return's window is proven to end where the jump lands
+on every path, and an analysis override whose condition no longer holds is removed.
+Register-target predicated branches that are not calls or such returns, and
 BDEC/BPOS, retain conservative native treatment. Exact scheduling handles its own
 supported branch phases.
 

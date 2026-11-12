@@ -18,6 +18,12 @@
   unpredicated MVKH completes the register to another value within five cycles, with no
   read of the register and no branch landing in between: nothing uses that value as an
   address (`C6000 Low-Half References`; SPRUFE8B pp. 380, 383, 4.2.6).
+* Continue a jump whose target only idles until a return issued in its delay window
+  lands (the compiler's jump into a shared epilogue's NOP tail). Natively the jump kept
+  only its own packet: taken, it skipped the rest of its window and ran through the NOPs
+  into the following code, which are often another return's delay slots
+  (SPRUFE8B 3.5, 4.2.6, NOP). The jump is continued only after the return's shortened window is proven,
+  and an analysis override whose condition no longer holds is removed.
 
 ## 1.2.1-hotfix - 2026-11-10
 
