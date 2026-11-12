@@ -41,6 +41,7 @@ CORE = [
     case("return-delay", "ReturnDelay", "C6000_RETURN_DELAY_OK"),
     case("preempted-jump", "PreemptedJump", "C6000_PREEMPTED_JUMP_OK", None, analysis=True),
     case("packet-call", "PacketCall", "C6000_PACKET_CALL_OK"),
+    case("peer-cancel", "PeerCancel", "C6000_PEER_CANCEL_OK", "json"),
     # The refusal script constructs its own memory blocks outside this small image.
     case("branch-flow", "DelaySafety", "C6000_DELAY_SAFETY_OK", args=[]),
     case("branch-flow", "FlowTarget", "C6000_FLOW_TARGET_OK"),
