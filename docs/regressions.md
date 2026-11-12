@@ -186,6 +186,15 @@ p-code. Opcode fields match `cl6x` 8.3.15; results follow independent oracles an
 manual's INTSPU, RCPSP, RSQRSP and SUBU examples (SPRUFE8B pp.135-136, 278, 320-350,
 411-412, 420-421, 539-540, 546-547).
 
+`tests/fixtures/pipeline-sat.py IMAGE CASES.json [be]` and
+`C6000PipelineSatTest.java CASES.json` check 36 scheduled cases and two refusals per
+endian mode with `cl6x` 8.3.15 words. SAT on .L1, .L2 and under `[B0]` saturates both
+signs or passes the low word, with same-packet and next-packet readers. `SAT .L1 ||
+SAT .L2` must keep both units' SSR bits and CSR.SAT. `MVC CSR` the cycle after a
+saturating SAT reads the old CSR and the cycle after that the new one; an `MVC` clear
+in SAT's own packet lands first. An `MVC` to CSR in the next packet, and a SAT in a
+return's last delay slot, are refused (SPRUFE8B p. 437, Table 2-9, 2.9.13).
+
 `tests/fixtures/compact-memory.py IMAGE CASES.json [be]` and
 `C6000CompactMemoryTest.java CASES.json` execute 960 native instruction checks
 and 960 exact-schedule checks per endian mode. They cover compact offset,

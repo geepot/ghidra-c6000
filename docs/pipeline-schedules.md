@@ -20,6 +20,7 @@ The phase contracts currently implemented are:
 | Supported scalar operations | E1 | E1 register write |
 | PACK2 (.L/.S), PACKL4 (.L) | E1 | E1 register write (SPRUFE8B pp.397-398,407-408) |
 | ADDU / SUBU (40-bit), SUBC, RCPSP / RSQRSP | E1 | E1 register or pair write and status events (SPRUFE8B pp.135-136,411-412,420-421,539-540,546-547) |
+| SAT (.L) | E1 | E1 register write; CSR.SAT and SSR unit bit E2 (SPRUFE8B p.437, Table 2-9, 2.9.13) |
 | 16 × 16 MPY, MPYH, MPYHL, MPYLH and their U/SU/US/ULS/SLU/UHS/SHU forms | E1 | E2 register write (SPRUFE8B pp.320-350) |
 | MPYLI | E1 | Simultaneous E4 register-pair write; .M occupancy only in E1 |
 | ADDSP / SUBSP / MPYSP | E1 | E4 result and sticky event flags |
@@ -200,6 +201,10 @@ paths and source-bound injection. `pipeline-pack.py` checks both banks, cross pa
 aliases, predication, parallel source writers and same/next-packet consumers.
 `pipeline-scalar-ops.py` does the same for the 16 × 16 multiplies, ADDU/SUBU, SUBC,
 RCPSP/RSQRSP and INTSPU, with readers in every cycle up to writeback.
+`pipeline-sat.py` checks SAT on both sides and predicated, both units saturating in
+one packet, CSR read the cycle after and two cycles after, and an MVC clear beside it.
+An MVC write to CSR in the cycle SAT's flags land is refused: the unit's set outranks
+it (Table 2-9, 2.9.13).
 
 Compilation completes before the listing changes. Enabling is transactional, retains the
 entry's comments, references and explicit flow overrides, expands the body to scheduled

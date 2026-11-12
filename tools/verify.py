@@ -74,6 +74,7 @@ CORE = [
     case("pipeline-bnop", "PipelineBnop", "C6000_PIPELINE_BNOP_OK", "json"),
     case("pipeline-pointer-branch", "PipelinePointerBranch", "C6000_PIPELINE_POINTER_BRANCH_OK", "json"),
     case("pipeline-predicated-return", "PipelinePredicatedReturn", "C6000_PIPELINE_PREDICATED_RETURN_OK", "json"),
+    case("pipeline-sat", "PipelineSat", "C6000_PIPELINE_SAT_OK", "json"),
     ("nested-window-schedule", [], [("NestedWindowSchedule", [], "C6000_NESTED_WINDOW_SCHEDULE_OK"),
                                     ("WindowNeighbour", [], "C6000_WINDOW_NEIGHBOUR_OK")], True),
     case("pipeline-andn", "PipelineAndn", "C6000_PIPELINE_ANDN_OK", "json"),
