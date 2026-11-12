@@ -545,6 +545,14 @@ branch's would be) it is still not a call returning to 1200. CALLP (1164) and BN
 calls (SPRUFE8B 3.12, BNOP and CALLP). Nullified writes to B3 (11b8, 11bc) or a lone MVKH
 (11f0, which keeps the low half) leave the earlier link: 11c0 and 11f4 stay tail calls.
 
+`wide-call-window.py IMAGE [be]` and `C6000WideCallWindowTest.java` (with `prepare` as a
+pre-script) check two `B` calls in `cl6x` 8.3.15 words. At 1000 the window holds 47
+instructions, the rest of an eight-instruction branch packet and five full packets, the
+most a window can hold: the `B` must be a call returning to 10c0 with 10bc its last delay
+slot. At 1104 the `B` ends its packet and the window holds five full packets (40): it must
+be a call returning to 11a8, and the return at 11b0 must be classified in `wide40`
+(SPRUFE8B 3.5, 4.2.6).
+
 ## 64-bit arguments and results in register pairs
 
 `abi-pairs.py IMAGE [be]` and `C6000AbiPairsTest.java` (with `prepare` as a pre-script,
