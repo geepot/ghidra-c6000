@@ -110,7 +110,8 @@ issued in the jump's window, taken whenever the jump is, is continued: a
 `JUMP_OVERRIDE_UNCONDITIONAL` reference sends its branch to its own fall-through and the
 edge to the NOPs is dropped, so no jump enters the delay slots of the return that owns them.
 The jump is continued only once the return's window is proven to end where the jump lands
-on every path, and an analysis override whose condition no longer holds is removed.
+on every path and that window is laid, and an analysis override whose condition no longer
+holds is removed. When issue #52's release takes the return's window, the jump gets its edge back.
 Register-target predicated branches that are not calls or such returns, and
 BDEC/BPOS, retain conservative native treatment. Exact scheduling handles its own
 supported branch phases.

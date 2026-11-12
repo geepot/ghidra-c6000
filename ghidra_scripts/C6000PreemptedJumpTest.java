@@ -3,10 +3,15 @@
 // Check jumps preempted by a return or call in a tests/fixtures/preempted-jump.py image.
 // Run as preScript with "prepare", then as postScript with no arguments.
 
+import c6000.C6000DelaySlots;
 import c6000.C6000PacketContext;
 import ghidra.app.decompiler.DecompInterface;
+import ghidra.app.decompiler.DecompileOptions;
 import ghidra.app.script.GhidraScript;
+import ghidra.app.util.importer.MessageLog;
 import ghidra.program.model.address.Address;
+import ghidra.program.model.address.AddressSet;
+import ghidra.program.model.listing.BookmarkType;
 import ghidra.program.model.listing.FlowOverride;
 import ghidra.program.model.listing.Function;
 import ghidra.program.model.listing.Instruction;
@@ -16,9 +21,10 @@ import ghidra.program.model.symbol.SourceType;
 
 public class C6000PreemptedJumpTest extends GhidraScript {
 	private static final long[] ENTRIES = { 0x1080L, 0x1000L, 0x10a0L, 0x1100L, 0x1140L,
-		0x1180L, 0x11c0L, 0x1200L, 0x1220L, 0x1280L, 0x1298L };
+		0x1180L, 0x11c0L, 0x1200L, 0x1220L, 0x1280L, 0x1298L, 0x1300L, 0x1380L, 0x13c0L };
 	private static final String[] NAMES = { "callee", "padret", "padtail", "padcode",
-		"padother", "padwritten", "padshort", "padleak", "padcall", "padentry", "padinside" };
+		"padother", "padwritten", "padshort", "padleak", "padcall", "padentry", "padinside", "padenter", "padpre",
+		"padfar" };
 	private int checks;
 
 	@Override
@@ -62,7 +68,71 @@ public class C6000PreemptedJumpTest extends GhidraScript {
 		Instruction call2 = getInstructionAt(toAddr(0x1230L));
 		if (call2 == null || call2.getFlowType().isCall()) throw new AssertionError("predicated preempting call: " + call2);
 		checks++;
+		// padenter: issue #52 released the return's cut window, so the jump keeps its target.
+		keeps(0x1334L);
+		if (countsOverlaps() && !released(0x1338L)) throw new AssertionError("padenter's return kept its window");
+		returns(0x1300L);
+		once();
 		println("C6000_PREEMPTED_JUMP_OK checks=" + checks);
+	}
+
+	/** One recover() and one relieveOverlaps() on a copy of the image at 0x5000, with no analysis pass between. */
+	private void once() throws Exception {
+		byte[] image = new byte[0x400];
+		currentProgram.getMemory().getBytes(toAddr(0x1000L), image);
+		currentProgram.getMemory().createInitializedBlock("once", toAddr(0x5000L), image.length, (byte) 0, monitor, false)
+			.setExecute(true);
+		currentProgram.getMemory().setBytes(toAddr(0x5000L), image);
+		C6000PacketContext.prime(currentProgram, monitor);
+		for (long at : new long[] { 0x5000L, 0x5300L, 0x5380L, 0x53c0L }) {
+			disassemble(toAddr(at));
+			createFunction(toAddr(at), "once_" + Long.toHexString(at));
+		}
+		// An earlier pass released padret's return for the decompiler: no cut, so the jump keeps its target.
+		currentProgram.getBookmarkManager().setBookmark(toAddr(0x500cL), BookmarkType.ANALYSIS,
+			C6000DelaySlots.RELEASED, "released by an earlier pass");
+		C6000DelaySlots.recover(currentProgram, monitor, new MessageLog());
+		keeps(0x5004L);
+		// Decoding padfar's window gave padpre's return an incoming jump after its cut was proven.
+		if (getReferencesTo(toAddr(0x5390L)).length == 0) throw new AssertionError("padfar's window not decoded");
+		paired(0x5384L, 0x5390L, 0x539fL);
+		// padenter continues until relieveOverlaps releases its return's window.
+		continues(0x5334L, 0x5338L, 0x5368L);
+		paired(0x5334L, 0x5338L, 0x5357L);
+		if (countsOverlaps()) {
+			C6000DelaySlots.relieveOverlaps(currentProgram, new AddressSet(toAddr(0x5300L), toAddr(0x537fL)), monitor);
+			if (!released(0x5338L)) throw new AssertionError("padenter copy's return kept its window");
+			keeps(0x5334L);
+		}
+	}
+
+	/** Ghidra 12.2 counts decompiler overlaps as bad data (GP-6945). */
+	private static boolean countsOverlaps() {
+		try {
+			DecompileOptions.class.getMethod("getMaxBadData");
+			return true;
+		}
+		catch (NoSuchMethodException e) {
+			return false;
+		}
+	}
+
+	private boolean released(long at) {
+		return currentProgram.getBookmarkManager().getBookmark(toAddr(at), BookmarkType.ANALYSIS,
+			C6000DelaySlots.RELEASED) != null;
+	}
+
+	/** A continued jump's return holds the window cut where the jump lands. */
+	private void paired(long jump, long ret, long cut) {
+		boolean continued = java.util.Arrays.stream(getInstructionAt(toAddr(jump)).getReferencesFrom())
+			.anyMatch(r -> r.isPrimary() && r.getReferenceType() == RefType.JUMP_OVERRIDE_UNCONDITIONAL);
+		Instruction r = getInstructionAt(toAddr(ret));
+		Address end = r == null ? null : r.getMaxAddress().add(r.getPrototype().getDelaySlotByteCount());
+		if (continued && !toAddr(cut).equals(end)) {
+			throw new AssertionError("jump at " + toAddr(jump) + " continues but its return's window ends at " + end +
+				", not " + toAddr(cut));
+		}
+		checks++;
 	}
 
 	/** Override the jump's branch to its own fall-through and drop its edge to the target. */

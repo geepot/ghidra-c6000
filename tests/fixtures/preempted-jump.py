@@ -29,8 +29,15 @@ a landing branch ends a multicycle NOP (SPRUFE8B 3.5, 4.2.6 B, NOP):
                   both its return past the landing NOPs and its not-taken path
   1280 padentry   padret's words; prepare declares a function at 1298 inside the
                   return's window, so the cut window is unproven
+  1300 padenter   the return issues in c1, and five jumps enter its four-cycle cut
+                  window: Ghidra 12.2 abandons the function past four overlaps, so the
+                  return's window is released (issue #52) and the jump keeps its target
+  1380 padpre     padret with ADDK || [A1] B B3: the return has an execute-packet prefix
+  13c0 padfar     padtail whose window is followed by B to padpre's return: decoding the
+                  window once padfar continues gives that return an incoming jump
   Prepare also gives padcode's jump a stale analysis override and padshort's jump a
-  user override: the first is removed, the second stands.
+  user override: the first is removed, the second stands. The check also recovers
+  copies of padret, padenter and padpre/padfar once, without analysis passes between.
 """
 
 from pathlib import Path
@@ -65,7 +72,18 @@ WORDS = {
     0x122C: 0x820002A8, 0x1230: 0x8FFFCC11, 0x1234: 0x81892A2A, 0x1238: 0x8180006A,
     0x123C: 0x00002000, 0x1240: 0x01B406A2, 0x1244: 0x000C0362, 0x1248: 0x02011128,
     0x124C: 0x00006000, 0x1250: 0x00002000, 0x1254: 0x02000850, 0x1258: 0x01B406A2,
-    0x125C: 0x000C0362, 0x1260: 0x00008000,
+    0x125C: 0x000C0362, 0x1260: 0x00008000, 0x1300: 0x00900FD9, 0x1304: 0x00100FDB,
+    0x130C: 0x20000812, 0x1310: 0x00008000, 0x1314: 0x20000892, 0x1318: 0x00008000,
+    0x131C: 0x20000912, 0x1320: 0x00008000, 0x1324: 0x20000592, 0x1328: 0x00008000,
+    0x132C: 0x20000612, 0x1330: 0x00008000, 0x1334: 0x80000910, 0x1338: 0x800C0363,
+    0x133C: 0x02008028, 0x1340: 0x02102059, 0x1344: 0x0210205A, 0x1348: 0x02104059,
+    0x134C: 0x0210405A, 0x1350: 0x02106058, 0x1354: 0x92010028, 0x1358: 0x02001150,
+    0x135C: 0x000C0362, 0x1360: 0x020088D0, 0x1364: 0x00004000, 0x1380: 0x00900FD8,
+    0x1384: 0x80000610, 0x1388: 0x02008028, 0x138C: 0x020008D1, 0x1390: 0x800C0362,
+    0x1398: 0x92010028, 0x13A0: 0x02001150, 0x13A4: 0x000C0362, 0x13A8: 0x020088D0,
+    0x13AC: 0x00002000, 0x13B0: 0x00002000, 0x13C0: 0x00000410, 0x13C4: 0x02018028,
+    0x13C8: 0x000C0362, 0x13CC: 0x02001850, 0x13D0: 0x020001D0, 0x13D8: 0x0FFFFA10,
+    0x13DC: 0x00008000, 0x13E0: 0x00002000,
 }
 
 
@@ -77,7 +95,7 @@ def main():
     if len(sys.argv) not in (2, 3) or (len(sys.argv) == 3 and sys.argv[2] != "be"):
         raise SystemExit(__doc__)
     endian = ">" if len(sys.argv) == 3 else "<"
-    image = bytearray(0x300)
+    image = bytearray(0x400)
     for address, word in WORDS.items():
         struct.pack_into(endian + "I", image, address - 0x1000, word)
     Path(sys.argv[1]).write_bytes(image)

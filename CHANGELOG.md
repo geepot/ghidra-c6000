@@ -8,8 +8,9 @@
   lands (the compiler's jump into a shared epilogue's NOP tail). Natively the jump kept
   only its own packet: taken, it skipped the rest of its window and ran through the NOPs
   into the following code, which are often another return's delay slots
-  (SPRUFE8B 3.5, 4.2.6, NOP). The jump is continued only after the return's shortened window is proven,
-  and an analysis override whose condition no longer holds is removed.
+  (SPRUFE8B 3.5, 4.2.6, NOP). The jump is continued only after the return's shortened window is proven and laid,
+  and an analysis override whose condition no longer holds, or whose return's window is
+  released for the decompiler, is removed.
 
 ## 1.2.1-hotfix - 2026-11-10
 
