@@ -1285,6 +1285,8 @@ public final class C6000PipelineCompiler {
         boolean returns=!call&&register!=null&&(source.returns().activeCall()!=NO_CALL?origin!=null&&origin==source.returns().activeCall():origin!=null&&origin==ENTRY_LINK||register.getName().equals("B3")&&!provenCall);
         if(closedCall!=null&&!call&&register!=null){var active=closedCalls.get(source.returns().activeCall());if(active!=null&&at!=active.calleeReturnPc()||active==null&&!Objects.equals(at,closedCall.callerReturnPc()))throw fail("closed-call undeclared register edge");}
         if(register!=null&&!returns&&!call)throw fail("unresolved register branch "+instruction);
+        // SPRUFE8B B IRP p.155, B NRP p.157: the target is IRP or NRP, neither a register operand nor a displacement.
+        if(plan==null&&!returns&&instruction.getAddress(0)==null)throw fail("unresolved branch target "+instruction);
         long target=plan!=null?plan.callee().start():returns?0:instruction.getAddress(0).getOffset();
         if(call)b.op(PcodeOp.COPY,slot("call_target",at,1,0,4),register==null?c(target,4):captured.get(at).get(register.getAddress().getOffset()));
         if(callerTail!=null&&!returns){if(!callerTail.callee().contains(target))throw fail("caller-tail callee branch leaves declared scope");validateCallerTailTarget(target);}

@@ -169,6 +169,11 @@ and predicate writers, and consumers before and after E1 writeback. CSR and
 AMR remain unchanged. Opcode fields, expected results and the single-cycle
 contract follow SPRUFE8B pp. 145-146. This is a core release regression.
 
+`tests/fixtures/pipeline-pointer-branch.py IMAGE CASES.json [be]` and
+`C6000PipelinePointerBranchTest.java CASES.json` check `cl6x` 8.3.15 words: `B IRP`,
+`B NRP` and their predicated forms must be refused as "unresolved branch target", and a
+plain `B B3` return must still be scheduled (SPRUFE8B pp. 155, 157).
+
 `tests/fixtures/pipeline-scalar-ops.py IMAGE CASES.json [be]` and
 `C6000PipelineScalarOpsTest.java CASES.json` exercise 333 cases per endian mode:
 330 raw/scheduled checks and three functional-unit collision refusals (.M, .L, .S).
