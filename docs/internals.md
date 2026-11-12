@@ -177,6 +177,14 @@ require manual references or additional evidence. Raw images also need an entry 
 `C6000SetEntry.java` supplies one before auto-analysis. Packet context is primed before
 entry-point disassembly.
 
+Ghidra's Scalar Operand References analyzer takes an MVK's sign-extended immediate for
+an address. `C6000LowHalfReferenceAnalyzer` deletes that analysis reference when an
+unpredicated MVKH completes the register to another value within five cycles, with
+nothing reading or writing the register first and no branch landing in between
+(SPRUFE8B pp. 380, 383). A branch lands six cycles after it issues (4.2.6, Table 4-11),
+so only branches issued in the five cycles before the MVK can land inside that window.
+A gap, a fetch-packet header, IDLE or a loop-buffer instruction keeps the reference.
+
 The synthetic fixtures exercise these behaviors in both endian modes:
 
 | Fixture | Checks |
