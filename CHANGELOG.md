@@ -25,6 +25,11 @@
   (SPRUFE8B 3.5, 4.2.6, NOP). The jump is continued only after the return's shortened window is proven and laid,
   and an analysis override whose condition no longer holds, or whose return's window is
   released for the decompiler, is removed.
+* When a function exceeds Ghidra 12.2's overlap limit (issue #52) and the window the
+  decompiler names is entered only at NOP slots, the window now ends before those slots
+  instead of being released, so its other slots keep their delay-slot lifting. A NOP only
+  idles (SPRUFE8B p. 388). Released windows lifted every slot after the transfer, so a
+  return dropped their writes and a branch skipped them on its taken path.
 
 ## 1.2.1-hotfix - 2026-11-10
 
