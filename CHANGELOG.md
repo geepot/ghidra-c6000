@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+* When a function exceeds Ghidra 12.2's overlap limit (issue #52) and the window the
+  decompiler names is entered only at NOP slots, the window now ends before those slots
+  instead of being released, so its other slots keep their delay-slot lifting. A NOP only
+  idles (SPRUFE8B p. 388). Released windows lifted every slot after the transfer, so a
+  return dropped their writes and a branch skipped them on its taken path.
+
 ## 1.2.1-hotfix - 2026-11-10
 
 ### Fixed

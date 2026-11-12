@@ -620,6 +620,15 @@ Windows` analyzer must release exactly one of them (bookmarked, depth 0, target 
 released. A second release pass must change nothing, and delay-window recovery must not
 lay a released window again.
 
+`entered-idle-tail.py IMAGE [be]` and `C6000EnteredIdleTailTest.java` (with `prepare` as a
+pre-script) check `cl6x` 8.3.15 words of a function, `idle(a, b, c)`, with five windows
+(1010, 102c, 1048, 1064, 1080) entered only at their trailing `NOP 2`. A NOP only idles
+(SPRUFE8B p. 388), so on Ghidra 12.2 exactly one window must end before its `NOP 2`
+(bookmarked, depth 3) instead of being released, none may be released, and `idle` must
+decompile to `b ? a : a + 15` with no test of `c`. A released window would lift its ADDs
+after the branch, dropping them from one path. A second pass must change nothing, and
+recovery must keep the shorter window. On earlier Ghidra versions no window changes.
+
 ## Additional decoder accuracy checks
 
 The release runner includes compact stack offsets (`compact-dstk`), unscaled
