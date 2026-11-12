@@ -12,12 +12,13 @@ import ghidra.program.model.listing.Function;
 import ghidra.program.model.listing.Instruction;
 import ghidra.program.model.symbol.RefType;
 import ghidra.program.model.symbol.Reference;
+import ghidra.program.model.symbol.SourceType;
 
 public class C6000PreemptedJumpTest extends GhidraScript {
 	private static final long[] ENTRIES = { 0x1080L, 0x1000L, 0x10a0L, 0x1100L, 0x1140L,
-		0x1180L, 0x11c0L, 0x1200L, 0x1220L };
+		0x1180L, 0x11c0L, 0x1200L, 0x1220L, 0x1280L, 0x1298L };
 	private static final String[] NAMES = { "callee", "padret", "padtail", "padcode",
-		"padother", "padwritten", "padshort", "padleak", "padcall" };
+		"padother", "padwritten", "padshort", "padleak", "padcall", "padentry", "padinside" };
 	private int checks;
 
 	@Override
@@ -29,6 +30,9 @@ public class C6000PreemptedJumpTest extends GhidraScript {
 				disassemble(toAddr(ENTRIES[i]));
 				createFunction(toAddr(ENTRIES[i]), NAMES[i]);
 			}
+			// A stale analysis override (its preemption never held) and a user override.
+			override(0x1104L, SourceType.ANALYSIS);
+			override(0x11c4L, SourceType.USER_DEFINED);
 			return;
 		}
 		// The jump continues into its window; the return's window ends where the jump lands.
@@ -42,7 +46,16 @@ public class C6000PreemptedJumpTest extends GhidraScript {
 		window(0x10a8L, 3, FlowOverride.RETURN);
 		returns(0x10a0L, "0x333");
 		// Known-bads: the jump keeps its target.
-		for (long at : new long[] { 0x1104L, 0x1148L, 0x1184L, 0x11c4L, 0x1204L, 0x1228L }) keeps(at);
+		for (long at : new long[] { 0x1104L, 0x1148L, 0x1184L, 0x1204L, 0x1228L }) keeps(at);
+		// padentry: a function entry in the return's window leaves the cut unproven, so nothing changes.
+		keeps(0x1284L);
+		// A user's override stands.
+		Instruction user = getInstructionAt(toAddr(0x11c4L));
+		if (java.util.Arrays.stream(user.getReferencesFrom()).noneMatch(r -> r.isPrimary() &&
+				r.getReferenceType() == RefType.JUMP_OVERRIDE_UNCONDITIONAL && r.getSource() == SourceType.USER_DEFINED)) {
+			throw new AssertionError("user override at " + user.getAddress() + " removed");
+		}
+		checks++;
 		// padleak's return keeps its straight-line window: cut at the landing it would drop ADDK 0x22.
 		window(0x120cL, 3, FlowOverride.RETURN);
 		// A call does not continue the jump: one fall-through cannot hold its return past the landing and its not-taken path.
@@ -50,6 +63,18 @@ public class C6000PreemptedJumpTest extends GhidraScript {
 		if (call2 == null || call2.getFlowType().isCall()) throw new AssertionError("predicated preempting call: " + call2);
 		checks++;
 		println("C6000_PREEMPTED_JUMP_OK checks=" + checks);
+	}
+
+	/** Override the jump's branch to its own fall-through and drop its edge to the target. */
+	private void override(long at, SourceType source) throws Exception {
+		Instruction jump = getInstructionAt(toAddr(at));
+		Address next = jump.getMaxAddress().next().add(jump.getPrototype().getDelaySlotByteCount());
+		var references = currentProgram.getReferenceManager();
+		for (Reference r : jump.getReferencesFrom()) {
+			if (r.getReferenceType().isFlow() && r.getToAddress().equals(jump.getDefaultFlows()[0])) references.delete(r);
+		}
+		references.setPrimary(references.addMemoryReference(jump.getAddress(), next,
+			RefType.JUMP_OVERRIDE_UNCONDITIONAL, source, 0), true);
 	}
 
 	/** The jump's branch is overridden to its own fall-through, with no edge to its target. */
@@ -60,7 +85,8 @@ public class C6000PreemptedJumpTest extends GhidraScript {
 		for (Reference r : jump.getReferencesFrom()) {
 			if (r.getReferenceType() == RefType.JUMP_OVERRIDE_UNCONDITIONAL && r.isPrimary()) override = r.getToAddress();
 			else if (r.getReferenceType().isFlow() && r.getToAddress().equals(toAddr(target))) {
-				throw new AssertionError("jump at " + toAddr(at) + " still flows to " + toAddr(target));
+				throw new AssertionError("jump at " + toAddr(at) + " still flows to " + toAddr(target) + ": " +
+					java.util.Arrays.toString(jump.getReferencesFrom()));
 			}
 		}
 		if (!toAddr(next).equals(override)) throw new AssertionError("jump at " + toAddr(at) + " overridden to " + override);

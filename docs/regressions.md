@@ -647,7 +647,11 @@ T runs code (`padcode`), the return is under another predicate (`padother`), the
 predicate is rewritten in the window (`padwritten`), T has too few NOP cycles
 (`padshort`), the return is unconditional and its last slots run code when the jump is
 not taken (`padleak`, whose return also keeps its whole window), or a call under the
-jump's predicate preempts it (`padcall`) (SPRUFE8B 3.5, 4.2.6, B and NOP).
+jump's predicate preempts it (`padcall`) (SPRUFE8B 3.5, 4.2.6, B and NOP). It also keeps
+its target when the return's shortened window cannot be proven, here because a function
+starts inside it (`padentry`, a copy of `padret`). `prepare` gives `padcode`'s jump an
+analysis override, which must be removed with its edge restored, and `padshort`'s jump a
+user override, which must stand.
 
 ## ADDDP/SUBDP upper-word read timing (issue #20)
 

@@ -415,6 +415,9 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 		Preemption preemption(Instruction jump) {
 			if (!displacementJump(jump)) return null;
 			Address target = jump.getDefaultFlows()[0];
+			// idle() below needs a NOP at the target: most jumps stop here, before the window is decoded.
+			Instruction first = decode(target);
+			if (first == null || first.getLength() != 4 || !baseName(first).equals("NOP")) return null;
 			try {
 				for (Address at : C6000ExecutionPackets.issuePrefix(program, jump.getMinAddress())) {
 					Instruction prior = decode(at);

@@ -27,6 +27,10 @@ a landing branch ends a multicycle NOP (SPRUFE8B 3.5, 4.2.6 B, NOP):
                   a window cut at the jump's landing would drop
   1220 padcall    a call under [A1] preempts the jump: one fall-through cannot hold
                   both its return past the landing NOPs and its not-taken path
+  1280 padentry   padret's words; prepare declares a function at 1298 inside the
+                  return's window, so the cut window is unproven
+  Prepare also gives padcode's jump a stale analysis override and padshort's jump a
+  user override: the first is removed, the second stands.
 """
 
 from pathlib import Path
@@ -65,11 +69,15 @@ WORDS = {
 }
 
 
+# padentry: padret moved by 0x280, a whole number of fetch packets, so displacements hold.
+WORDS.update({a + 0x280: w for a, w in list(WORDS.items()) if 0x1000 <= a < 0x1040})
+
+
 def main():
     if len(sys.argv) not in (2, 3) or (len(sys.argv) == 3 and sys.argv[2] != "be"):
         raise SystemExit(__doc__)
     endian = ">" if len(sys.argv) == 3 else "<"
-    image = bytearray(0x280)
+    image = bytearray(0x300)
     for address, word in WORDS.items():
         struct.pack_into(endian + "I", image, address - 0x1000, word)
     Path(sys.argv[1]).write_bytes(image)
