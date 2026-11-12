@@ -12,7 +12,10 @@ in its fetch packet is code. The old speculative compact-tail walk is removed.
 `C6000RecoverParallelPeers.java`. The reviewed script retains its source/manifest/
 report hashes, explicit apply mode and annotation audit. The analyzer uses a
 bounded physical window, validates the complete chain before insertion, and
-creates only undefined instruction units. Each execute packet is transactional.
+creates only undefined instruction units. Each execute packet is all or nothing:
+every peer is checked again before the first write, and a mismatch after a write
+clears only that packet's new peers and is logged. The analyzer never ends its
+transaction uncommitted, which would abort the enclosing auto-analysis transaction.
 Cancellation propagates instead of becoming an unresolved proof.
 
 The proof checks physical widths, p bits, header fields, complete instruction
@@ -25,7 +28,7 @@ earlier peer partially recovered.
 
 Existing instruction/data overlaps, foreign owners, function entries, stale
 context, unsupported p-code and new control-transfer peers refuse. Neither path
-clears units, changes decode context or expands function bodies. Headers are
+clears existing units, changes decode context or expands function bodies. Headers are
 skipped, not created. Uniform fill, unproved alternate entries, delay-window
 obligations and pointer-data reclassification require separate evidence.
 Decodable bytes alone do not justify replacing defined data with instructions.
@@ -57,6 +60,10 @@ instructions/references, comments, labels, function metadata/bodies and decode
 context, idempotence and cancellation. A separate overlay-space case verifies that
 the default-space proof never inserts instructions into an overlay. No
 follow-through instruction is created.
+
+The release runner's `peer-cancel.py` / `C6000PeerCancelTest.java` cancels the
+analyzer at each of its cancellation checks in turn, inside a transaction that
+stands in for auto-analysis, and requires that transaction to keep its earlier work.
 
 These checks target listing discovery, not a new ISA or silicon qualification.
 TI architecture basis: SPRUFE8B sections 3.5 and 3.10.2/3.10.4.
