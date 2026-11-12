@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+* Exact schedules for `SAT`: E1 read and result, `CSR.SAT` and the `SSR` unit bit one
+  cycle later (SPRUFE8B p. 437, Table 2-9, 2.9.13). Functions using it were refused as
+  "unimplemented phase contract". An MVC write to CSR in the cycle the flags land, and a
+  `SAT` whose flags land after a return, are refused.
+
 ## 1.2.1-hotfix - 2026-11-10
 
 ### Fixed

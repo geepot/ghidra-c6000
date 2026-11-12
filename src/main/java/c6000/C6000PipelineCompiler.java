@@ -597,6 +597,8 @@ public final class C6000PipelineCompiler {
                 }
             }
         }
+        // SPRUFE8B SAT p.437, Table 2-9 (CSR.SAT), 2.9.13 (SSR): E1 read and dst write, saturation flags one cycle later.
+        else if(name.equals("SAT"))latency=2;
         else if(SINGLE.contains(name)||Set.of("NOP","B","BNOP","BDEC","BPOS","CALLP","ADDKPC","SPLOOP","SPLOOPD","SPLOOPW","SPMASK","SPKERNEL").contains(name))latency=1;
         else throw fail("unimplemented phase contract "+ins+" at "+at);
         var raw=Set.of("SPLOOP","SPLOOPD","SPLOOPW","SPMASK","SPKERNEL").contains(name)?new PcodeOp[0]:ins.getPcode(false);
@@ -626,8 +628,8 @@ public final class C6000PipelineCompiler {
             if(out!=null&&out.isRegister()){
                 var reg=program.getRegister(out.getAddress(),out.getSize());
                 if(reg==null)throw fail("unknown architectural output at "+at);
-                boolean flags=(Set.of("FADCR","FAUCR","FMCR").contains(reg.getName())&&!name.equals("MVC")) || (name.equals("ABS")&&Set.of("CSR","SSR").contains(reg.getName()));
-                int phase=load||store?(loadWrites.contains(rawIndex)?5:1):latency;
+                boolean flags=(Set.of("FADCR","FAUCR","FMCR").contains(reg.getName())&&!name.equals("MVC")) || (Set.of("ABS","SAT").contains(name)&&Set.of("CSR","SSR").contains(reg.getName()));
+                int phase=load||store?(loadWrites.contains(rawIndex)?5:1):name.equals("SAT")&&!flags?1:latency;
                 var destination=new Dest(out.getOffset(),out.getSize(),flags,phase,out.getOffset(),-1,load||store?rawIndex:-1);
                 if(load&&phase==5&&!isLoadData(ins,destination))throw fail("load-derived non-destination write at "+at);
                 destinations.put(out.getOffset()+":"+out.getSize()+(load||store?":"+rawIndex:""),destination);
@@ -1121,6 +1123,8 @@ public final class C6000PipelineCompiler {
             List<Dest> writesThisCycle=new ArrayList<>();
             for(var i:pack)for(var d:i.outputs())if(d.phase()==1)writesThisCycle.add(d);
             for(var f:s.flights())for(var d:decode(f.pc()).outputs())if(d.phase()==f.age()+1)writesThisCycle.add(d);
+            // SPRUFE8B Table 2-9, 2.9.13: SAT's flags outrank an MVC write landing in the same cycle; refuse rather than order them.
+            for(var f:s.flights()){var i=decode(f.pc());if(i.name().equals("SAT"))for(var d:i.outputs())if(d.flags()&&d.phase()==f.age()+1&&writesThisCycle.stream().anyMatch(w->!w.flags()&&w.offset()<d.offset()+d.size()&&d.offset()<w.offset()+w.size()))throw fail("control-register write lands with SAT status flags from "+i.instruction());}
             for(var i:pack)if(i.name().equals("CALLP")){long link=callLinkRegister(i).getAddress().getOffset();if(writesThisCycle.stream().filter(d->d.offset()<link+4&&link<d.offset()+d.size()).count()>1)throw fail("CALLP link has a potential simultaneous E1 writer");}
             validateMemoryWriteCollisions(s,pack);
             validateMpyliWritePorts(s,pack);
