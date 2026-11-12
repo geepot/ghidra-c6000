@@ -72,6 +72,7 @@ CORE = [
     case("loop-counter-proof", "LoopCounterProof", "C6000_LOOP_COUNTER_PROOF_OK", "json"),
     case("pipeline-counter-branch", "PipelineCounterBranch", "C6000_PIPELINE_COUNTER_BRANCH_OK", "json"),
     case("pipeline-bnop", "PipelineBnop", "C6000_PIPELINE_BNOP_OK", "json"),
+    case("pipeline-pointer-branch", "PipelinePointerBranch", "C6000_PIPELINE_POINTER_BRANCH_OK", "json"),
     case("pipeline-predicated-return", "PipelinePredicatedReturn", "C6000_PIPELINE_PREDICATED_RETURN_OK", "json"),
     ("nested-window-schedule", [], [("NestedWindowSchedule", [], "C6000_NESTED_WINDOW_SCHEDULE_OK"),
                                     ("WindowNeighbour", [], "C6000_WINDOW_NEIGHBOUR_OK")], True),

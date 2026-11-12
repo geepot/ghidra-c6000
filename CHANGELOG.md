@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+* Exact schedules refuse `B IRP` and `B NRP` as "unresolved branch target" instead of
+  failing with a NullPointerException: their target is IRP or NRP, neither a register
+  operand nor a displacement (SPRUFE8B pp. 155, 157).
+
 ## 1.2.1-hotfix - 2026-11-10
 
 ### Fixed

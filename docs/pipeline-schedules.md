@@ -79,7 +79,8 @@ Full32 predicated register `B.S2` supports the scheduler's terminal decode
 context for both predicate polarities. The predicate and target are captured
 before delay-slot work, including parallel writes to the predicate or B3.
 The decoder's discovery form is unchanged; exact scheduling still refuses
-unresolved register targets other than B3. `pipeline-predicated-return.py`
+unresolved register targets other than B3, and `B IRP`/`B NRP`, whose target is IRP
+or NRP (SPRUFE8B pp.155, 157). `pipeline-predicated-return.py`
 checks all six predicates, taken/skipped returns, same-packet predicate and
 target writes, store tails and fallthrough behavior in both endian modes
 (SPRUFE8B pp.153-154, section 4.2.6).
