@@ -394,7 +394,9 @@ public final class C6000PipelineCompiler {
         b.op(PcodeOp.COPY,new Varnode(program.getRegister("C6000_PIPE_RET").getAddress(),4),c(closedCall.stopPc(),4));b.jump(PcodeOp.BRANCH,"exit",null);
     }
 
-    private record Flight(long pc,int age,int predicateTruth){
+    private record Flight(long pc,int age,int predicateTruth,int predicateToken){
+        // predicateToken: canonical token of the unknown predicate value sampled in E1 (SPRUFE8B 3.6), -1 when untracked.
+        Flight(long pc,int age,int predicateTruth){this(pc,age,predicateTruth,-1);}
     }
 
     private record Branch(long pc,int age,long target,boolean returns){
@@ -426,10 +428,11 @@ public final class C6000PipelineCompiler {
             return new PredicateFacts(List.copyOf(narrowed));
         }
         PredicateFacts canonical(){
-            var names=new LinkedHashMap<Integer,Integer>();var canonical=new ArrayList<PredicateValue>();
-            for(var value:values)canonical.add(new PredicateValue(names.computeIfAbsent(value.token(),k->names.size()),value.truth()));
+            var names=names();var canonical=new ArrayList<PredicateValue>();
+            for(var value:values)canonical.add(new PredicateValue(names.get(value.token()),value.truth()));
             return new PredicateFacts(List.copyOf(canonical));
         }
+        Map<Integer,Integer> names(){var names=new LinkedHashMap<Integer,Integer>();for(var value:values)names.computeIfAbsent(value.token(),k->names.size());return names;}
     }
 
     private record Dest(long offset,int size,boolean flags,int phase,long valueOffset,long mask,int sourceWrite){
@@ -1146,7 +1149,7 @@ public final class C6000PipelineCompiler {
                 var i=decode(f.pc());
                 if(f.age()>=i.latency()-1)continue;
                 int age=f.age()+1;
-                nextFlights.add(new Flight(f.pc(),age,f.predicateTruth()));
+                nextFlights.add(new Flight(f.pc(),age,f.predicateTruth(),f.predicateToken()));
                 copy(moves,slot("predicate",f.pc(),age,0,1),slot("predicate",f.pc(),f.age(),0,1));
                 if(observesStores()&&i.name().equals("STW")){copy(moves,slot("store_address",f.pc(),age,0,4),slot("store_address",f.pc(),f.age(),0,4));copy(moves,slot("store_value",f.pc(),age,0,4),slot("store_value",f.pc(),f.age(),0,4));}
                 if(storeTailContract!=null&&i.store())moveStoreTail(moves,i,f.age(),age);
@@ -1332,6 +1335,9 @@ public final class C6000PipelineCompiler {
 
     private Varnode invert(Varnode value){var inverted=temp(1);b.op(PcodeOp.BOOL_NEGATE,inverted,value);return inverted;}
     private int predicateIndex(long offset){for(int k=0;k<6;k++){String name=(k<3?"A":"B")+(k%3);if(program.getRegister(name).getAddress().getOffset()==offset)return k;}return -1;}
+    private int predicateToken(Insn instruction,PredicateFacts facts){
+        if(instruction.predicate()==null)return -1;int index=predicateIndex(instruction.predicate().getAddress().getOffset());return index<0?-1:facts.values().get(index).token();
+    }
     private int predicateTruth(Insn instruction,PredicateFacts facts){
         if(instruction.predicate()==null)return 1;int index=predicateIndex(instruction.predicate().getAddress().getOffset());
         if(index<0)return -1;int truth=facts.values().get(index).truth();return truth<0?-1:instruction.inverted()?1-truth:truth;
@@ -1372,10 +1378,14 @@ public final class C6000PipelineCompiler {
     }
     private void emitFactTransfer(State source,ReturnFlow returnFlow,List<Insn> pack,long pc,int idle,List<Flight> flights,List<Branch> branches,List<Hazard> hazards,LoopFrame loop,PredicateFacts before){
         var facts=advanceFacts(source,pack,before);
-        List<Flight> captured=new ArrayList<>();for(var flight:flights){var instruction=instructions.get(flight.pc());boolean fresh=flight.age()==1&&pack.contains(instruction);captured.add(new Flight(flight.pc(),flight.age(),fresh?predicateTruth(instruction,before):flight.predicateTruth()));}
         // A backward redirect or buffered time wrap must not turn an entry fact
         // into a loop invariant. Widen to independent unknown values there.
-        if(pc<source.pc()||loop!=null&&source.loop()!=null&&loop.time()<source.loop().time())facts=PredicateFacts.unknown();
+        boolean widen=pc<source.pc()||loop!=null&&source.loop()!=null&&loop.time()<source.loop().time();
+        if(widen)facts=PredicateFacts.unknown();
+        var names=facts.names();
+        List<Flight> captured=new ArrayList<>();for(var flight:flights){var instruction=instructions.get(flight.pc());boolean fresh=flight.age()==1&&pack.contains(instruction);
+            int truth=fresh?predicateTruth(instruction,before):flight.predicateTruth(),token=fresh?predicateToken(instruction,before):flight.predicateToken();
+            captured.add(new Flight(flight.pc(),flight.age(),truth,truth<0&&token>=0&&!widen?names.getOrDefault(token,-1):-1));} // the sampled value, while a predicate GPR still holds it
         State target=new State(pc,idle,List.copyOf(captured),List.copyOf(branches),List.copyOf(hazards),loop,facts.canonical(),returnFlow);
         b.jump(PcodeOp.BRANCH,"node"+state(target),null);
     }
@@ -1393,16 +1403,17 @@ public final class C6000PipelineCompiler {
         }
     }
 
-    private record WriteEvent(int owner,Insn instruction,Dest destination,int truth,boolean fresh) {}
+    private record WriteEvent(int owner,Insn instruction,Dest destination,int truth,boolean fresh,int token) {}
     private void validateMemoryWriteCollisions(State state,List<Insn> packet){
         var events=new ArrayList<WriteEvent>();int owner=0;
-        for(var instruction:packet){int truth=predicateTruth(instruction,state.facts());for(var d:instruction.outputs())if(d.phase()==1&&!d.flags()&&truth!=0)events.add(new WriteEvent(owner,instruction,d,truth,true));owner++;}
-        for(var flight:state.flights()){var instruction=decodeKnown(flight.pc());for(var d:instruction.outputs())if(d.phase()==flight.age()+1&&!d.flags()&&flight.predicateTruth()!=0)events.add(new WriteEvent(owner,instruction,d,flight.predicateTruth(),false));owner++;}
+        for(var instruction:packet){int truth=predicateTruth(instruction,state.facts());for(var d:instruction.outputs())if(d.phase()==1&&!d.flags()&&truth!=0)events.add(new WriteEvent(owner,instruction,d,truth,true,truth<0?predicateToken(instruction,state.facts()):-1));owner++;}
+        for(var flight:state.flights()){var instruction=decodeKnown(flight.pc());for(var d:instruction.outputs())if(d.phase()==flight.age()+1&&!d.flags()&&flight.predicateTruth()!=0)events.add(new WriteEvent(owner,instruction,d,flight.predicateTruth(),false,flight.predicateToken()));owner++;}
         for(int x=0;x<events.size();x++)for(int y=x+1;y<events.size();y++){
             var left=events.get(x);var right=events.get(y);if(left.owner()==right.owner())continue;
             if(left.destination().sourceWrite()<0&&right.destination().sourceWrite()<0)continue;
             var a=left.destination();var b=right.destination();if(a.offset()>=b.offset()+b.size()||b.offset()>=a.offset()+a.size())continue;
             if(left.fresh()&&right.fresh()&&left.instruction().predicate()!=null&&left.instruction().predicate().equals(right.instruction().predicate())&&left.instruction().inverted()!=right.instruction().inverted())continue;
+            if(left.token()>=0&&left.token()==right.token()&&left.instruction().inverted()!=right.instruction().inverted())continue; // SPRUFE8B 3.6, 3.8.8: complementary samples of one value never both write
             throw fail("potential simultaneous memory/register writes between "+left.instruction().instruction()+" and "+right.instruction().instruction());
         }
     }

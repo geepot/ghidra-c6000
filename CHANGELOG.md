@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+* Exact schedules accept two writers of one register that land in the same cycle from
+  different execute packets when their predicates test one unchanged value with opposite
+  senses: only one of them writes (SPRUFE8B 3.6, 3.8.8). Such functions were refused as
+  "potential simultaneous memory/register writes"; only writers issued in one packet
+  were exempt.
+
 ## 1.2.1-hotfix - 2026-11-10
 
 ### Fixed

@@ -575,6 +575,14 @@ native/scheduled executions and three simultaneous-write refusals. They cover pr
 updates, aliased base/index/pair words, circular and nonaligned access, compact loads
 and captured predicates.
 
+`pipeline-predicated-collision.py IMAGE CASES.json [be]` and
+`C6000PipelinePredicatedCollisionTest.java CASES.json` check `cl6x` 8.3.15 words: an
+LDW and an E1 writer of B5 that land in one cycle under `[!B0]` and `[B0]` (or a copy
+of B0) are scheduled and executed for B0 = 0, 1 and ~0. The same pair stays refused when
+B0 is rewritten in between, through a copy of the new value, with the same sense, on
+another predicate register, unpredicated, or when B0 becomes known nonzero (SPRUFE8B
+3.6, 3.8.8).
+
 `pipeline-caller-continuation.py` and `C6000CallerContinuationTest.java` cover 21 closed
 trace contracts per endian, with six executions, 15 refusals and six wrong-entry-B3
 refusals. See [trace contracts](caller-continuation-traces.md).

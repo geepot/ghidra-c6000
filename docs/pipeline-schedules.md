@@ -374,7 +374,9 @@ Updating loads capture the transfer address before modifying the base. Their bas
 data outputs retain distinct E1 and E5 values even when registers alias. The scheduler
 observes individual raw p-code writes and commits them at their phases; it does not
 duplicate the address or load arithmetic. Simultaneous overlapping memory/register
-writes remain refused under SPRUFE8B 3.8.8 and 4.2.5/Table 4-10.
+writes remain refused under SPRUFE8B 3.8.8 and 4.2.5/Table 4-10, unless their predicates
+test one value with opposite senses and no predicate register write has replaced that
+value since the earlier writer was issued (3.6).
 
 The separate read-only [caller-continuation trace API](caller-continuation-traces.md)
 can carry captured STW E3 tails through an explicit immutable caller window. It exports
