@@ -25,6 +25,10 @@
   (SPRUFE8B 3.5, 4.2.6, NOP). The jump is continued only after the return's shortened window is proven and laid,
   and an analysis override whose condition no longer holds, or whose return's window is
   released for the decompiler, is removed.
+* A returning `B` call with an instruction in its own execute packet (`B f || STW`)
+  left its delay slots and everything after its return point undecoded: C6000
+  Delayed Calls decoded only from the next instruction, which is the companion.
+  Decoding now also starts after the branch's execute packet (SPRUFE8B 3.5, 4.2.6).
 
 ## 1.2.1-hotfix - 2026-11-10
 
