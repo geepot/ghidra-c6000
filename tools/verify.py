@@ -81,6 +81,7 @@ CORE = [
     case("pipeline-rotl", "PipelineRotl", "C6000_PIPELINE_ROTL_OK", "json"),
     case("pipeline-mpyli", "PipelineMpyli", "C6000_PIPELINE_MPYLI_OK", "json"),
     case("pipeline-load-alias", "PipelineLoadAlias", "C6000_PIPELINE_LOAD_ALIAS_OK", "json"),
+    case("pipeline-predicated-collision", "PipelinePredicatedCollision", "C6000_PIPELINE_PREDICATED_COLLISION_OK", "json"),
     case("pipeline-calls", "PipelineCalls", "C6000_PIPELINE_CALLS_OK", "json", ["cases.json", "results.json"]),
     case("closed-call", "ClosedCallTrace", "CLOSED_CALL_TRACE_TEST_OK", "json",
          ["cases.json", "results.json"]),
