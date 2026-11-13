@@ -68,9 +68,16 @@ public class C6000PreemptedJumpTest extends GhidraScript {
 		Instruction call2 = getInstructionAt(toAddr(0x1230L));
 		if (call2 == null || call2.getFlowType().isCall()) throw new AssertionError("predicated preempting call: " + call2);
 		checks++;
-		// padenter: issue #52 released the return's cut window, so the jump keeps its target.
-		keeps(0x1334L);
-		if (countsOverlaps() && !released(0x1338L)) throw new AssertionError("padenter's return kept its window");
+		// padenter: on 12.2 issue #52 released the return's cut window, so the jump keeps its
+		// target; earlier versions only warn about the overlaps, so the jump continues.
+		if (countsOverlaps()) {
+			keeps(0x1334L);
+			if (!released(0x1338L)) throw new AssertionError("padenter's return kept its window");
+		}
+		else {
+			continues(0x1334L, 0x1338L, 0x1368L);
+			paired(0x1334L, 0x1338L, 0x1357L);
+		}
 		returns(0x1300L);
 		once();
 		println("C6000_PREEMPTED_JUMP_OK checks=" + checks);
