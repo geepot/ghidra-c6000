@@ -132,7 +132,8 @@ reference, and repair the caller's body. Predicated calls remain conditional; B/
 through the ABI return register B3 remain returns.
 
 B3 must match the end of its delay window, or the complete window of a proved
-complementary call partner. Full-width windows may skip only a header exactly at
+complementary call partner. A window holds at most 47 instructions: the rest of an
+eight-instruction branch packet and five full packets (SPRUFE8B 3.5). Full-width windows may skip only a header exactly at
 the boundary; a header elsewhere does not justify return-address slack. Incoming
 jump propagation requires a complete delay window and no alternate entry into
 the preceding slot sequence. Predicate constraints apply only while their register
