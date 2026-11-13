@@ -676,7 +676,14 @@ jump's predicate preempts it (`padcall`) (SPRUFE8B 3.5, 4.2.6, B and NOP). It al
 its target when the return's shortened window cannot be proven, here because a function
 starts inside it (`padentry`, a copy of `padret`). `prepare` gives `padcode`'s jump an
 analysis override, which must be removed with its edge restored, and `padshort`'s jump a
-user override, which must stand.
+user override, which must stand. A continued jump's return must hold the cut window: in
+`padenter` (1300) five jumps enter that window, issue #52 releases it on Ghidra 12.2, and
+the jump keeps its target. The check then copies the image to 5000 and runs one
+`recover()` with no analysis pass after it: a planted `RELEASED` bookmark on the copy of
+`padret`'s return keeps its jump's target; decoding `padfar`'s window gives `padpre`'s
+return (13c0, 1380) an incoming jump after its cut was proven, and `padpre`'s jump may
+continue only if that return still holds its cut; and one `relieveOverlaps()` that
+releases the copy of `padenter`'s return gives its jump the target back.
 
 ## ADDDP/SUBDP upper-word read timing (issue #20)
 

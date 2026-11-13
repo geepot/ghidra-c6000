@@ -66,7 +66,7 @@ import ghidra.util.task.TaskMonitor;
 public class C6000CallAnalyzer extends AbstractAnalyzer {
 	private static final int DELAY_CYCLES = 5;
 	private static final int LOOK_BACK = 40;
-	private static final int MAX_WINDOW = 24;
+	static final int MAX_WINDOW = 24;
 	static final int LOW = 1, HIGH = 2, FULL = LOW | HIGH;
 
 	public C6000CallAnalyzer() {
