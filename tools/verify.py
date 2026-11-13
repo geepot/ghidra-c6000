@@ -56,6 +56,7 @@ CORE = [
     case("register-call", "RegisterCall", "C6000_REGISTER_CALL_OK", None, analysis=True),
     case("b3-call", "B3Call", "C6000_B3_CALL_OK", None, analysis=True),
     case("entered-window", "EnteredWindow", "C6000_ENTERED_WINDOW_OK", None, analysis=True),
+    case("entered-idle-tail", "EnteredIdleTail", "C6000_ENTERED_IDLE_TAIL_OK", None, analysis=True),
     case("register-branch-tail", "RegisterBranchTail", "C6000_REGISTER_BRANCH_TAIL_OK", None, ["check"], analysis=True),
     case("upgrade-v1", "ElfCompact", "C6000_ELF_COMPACT_OK", None, ["upgraded"]),
     case("delay-window-forms", "DelayWindowForms", "C6000_DELAY_WINDOW_FORMS_OK", None, ["check"], analysis=True),
@@ -283,6 +284,8 @@ def main():
                     command += ["-preScript", "C6000B3CallTest.java", "prepare"]
                 elif fixture == "entered-window":
                     command += ["-preScript", "C6000EnteredWindowTest.java", "prepare"]
+                elif fixture == "entered-idle-tail":
+                    command += ["-preScript", "C6000EnteredIdleTailTest.java", "prepare"]
                 elif fixture == "delay-window-forms":
                     command += ["-preScript", "C6000DelayWindowFormsTest.java", "prepare"]
                 elif fixture == "nested-window-schedule":
