@@ -25,6 +25,12 @@
   (SPRUFE8B 3.5, 4.2.6, NOP). The jump is continued only after the return's shortened window is proven and laid,
   and an analysis override whose condition no longer holds, or whose return's window is
   released for the decompiler, is removed.
+* Cancelling auto-analysis while `C6000 Register Branch Flow` recovers delay windows, or
+  while `C6000 Entered Delay Windows` releases them, no longer rolls back all of
+  auto-analysis: both ended their own nested transaction uncommitted on any exception,
+  and Ghidra then aborts the enclosing analysis transaction. Both now always commit. A
+  window's rewrite never polls the monitor, and a window whose rewrite fails part-way is
+  put back as it was before the failure is reported (SPRUFE8B 3.5, 4.2.6).
 
 ## 1.2.1-hotfix - 2026-11-10
 

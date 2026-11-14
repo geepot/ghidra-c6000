@@ -58,6 +58,7 @@ CORE = [
     case("b3-call", "B3Call", "C6000_B3_CALL_OK", None, analysis=True),
     case("low-half-reference", "LowHalfReference", "C6000_LOW_HALF_REFERENCE_OK", None, analysis=True),
     case("entered-window", "EnteredWindow", "C6000_ENTERED_WINDOW_OK", None, analysis=True),
+    case("delay-cancel", "DelayCancel", "C6000_DELAY_CANCEL_OK", "json"),
     case("register-branch-tail", "RegisterBranchTail", "C6000_REGISTER_BRANCH_TAIL_OK", None, ["check"], analysis=True),
     case("upgrade-v1", "ElfCompact", "C6000_ELF_COMPACT_OK", None, ["upgraded"]),
     case("delay-window-forms", "DelayWindowForms", "C6000_DELAY_WINDOW_FORMS_OK", None, ["check"], analysis=True),
