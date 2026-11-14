@@ -25,6 +25,11 @@
   (SPRUFE8B 3.5, 4.2.6, NOP). The jump is continued only after the return's shortened window is proven and laid,
   and an analysis override whose condition no longer holds, or whose return's window is
   released for the decompiler, is removed.
+* Tail calls that Shared Return Calls marks `CALL_RETURN` kept their delay slots
+  undecoded, so the epilogue and outgoing arguments were missing from the caller.
+  Their windows are now recovered unless the packet or window writes B3 other than
+  by a load, or B3 holds the window's return address: such a `B` is a call
+  (SPRUFE8B 4.2.6, B, ADDKPC).
 
 ## 1.2.1-hotfix - 2026-11-10
 

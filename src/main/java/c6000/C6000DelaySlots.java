@@ -72,6 +72,7 @@ public final class C6000DelaySlots {
             // register call gets its window too (SPRUFE8B 4.2.6, B). A predicated
             // register return gets one only when it preempts a continued jump.
             boolean displacement = ins.getRegister(0) == null;
+            boolean tail = override == FlowOverride.CALL_RETURN && !full.startsWith("[") && !name.startsWith("CALLP");
             if (full.startsWith("[") && !displacement && override != FlowOverride.CALL && !cuts.containsKey(ins.getAddress())) {
                 // Only a cut gives a predicated return a window: without one this pass, it is stale.
                 if (preemptingTransfer(ins) && ins.getPrototype().getDelaySlotByteCount() > parallelBytes(program, ins.getAddress()))
@@ -79,7 +80,7 @@ public final class C6000DelaySlots {
                 continue;
             }
             if (override != FlowOverride.NONE && override != FlowOverride.RETURN &&
-                    override != FlowOverride.CALL) continue;
+                    override != FlowOverride.CALL && !tail) continue;
             candidates.add(ins.getAddress());
         }
         for (Address at : stale) result.add(release(program, program.getListing().getInstructionAt(at), monitor));
@@ -103,6 +104,10 @@ public final class C6000DelaySlots {
         if (window == null) return false;
         int bytes = (int) (window.end().subtract(branch.getMaxAddress()));
         if (bytes == 0) return branch.getPrototype().getDelaySlotByteCount() == 0;
+        // A tail call inherits B3; a B that sets B3 returns (SPRUFE8B 4.2.6, B, ADDKPC).
+        if (branch.getFlowOverride() == FlowOverride.CALL_RETURN &&
+                (setsLink(program, reader, branch, window.end()) ||
+                    new C6000CallAnalyzer.Walker(program).recognize(branch) != null)) return false;
         BigInteger old = program.getProgramContext().getValue(
             program.getRegister("c_flow_delay"), at, false);
         boolean nativeReady = old != null && old.intValue() == bytes &&
@@ -443,6 +448,29 @@ public final class C6000DelaySlots {
             throws CancelledException {
         Window window = new Reader(program).window(branch, monitor);
         return window == null ? null : window.end();
+    }
+
+    /** Whether the branch's packet or window writes B3 other than by a load restoring it. */
+    private static boolean setsLink(Program p, Reader reader, Instruction branch, Address end) {
+        var b3 = p.getRegister("B3");
+        List<Instruction> packet = new ArrayList<>();
+        try {
+            for (Address at : C6000ExecutionPackets.issuePrefix(p, branch.getAddress())) packet.add(reader.decode(at));
+        }
+        catch (MemoryAccessException e) {
+            return true;
+        }
+        for (Instruction i = reader.next(branch); i != null && i.getMinAddress().compareTo(end) <= 0; i = reader.next(i)) {
+            packet.add(i);
+        }
+        for (Instruction i : packet) {
+            if (i == null) return true;
+            if (C6000CallAnalyzer.baseName(i).startsWith("LD")) continue;
+            for (Object o : i.getResultObjects()) {
+                if (o instanceof ghidra.program.model.lang.Register r && r.contains(b3)) return true;
+            }
+        }
+        return false;
     }
 
     /** Dry-run native parsing with the proposed context before removing any code units. */
