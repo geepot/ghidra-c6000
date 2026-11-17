@@ -1370,7 +1370,10 @@ public final class C6000PipelineCompiler {
                 long offset=program.getRegister((index<3?"A":"B")+(index%3)).getAddress().getOffset();
                 if(offset>=destination.offset()+destination.size()||destination.offset()>=offset+4)continue;
                 var value=destination.sourceWrite()<0&&destination.size()==4&&destination.offset()==offset&&destination.mask()==-1?outputFact(instruction,before,token++):new PredicateValue(token++,-1);
-                if(written.contains(index)||truth<0&&!value.equals(before.values().get(index)))value=new PredicateValue(token++,-1);
+                var prior=before.values().get(index);
+                // A predicated write selects the E1-old or written value; retain only a common truth (SPRUFE8B 3.5, 3.7).
+                if(!written.contains(index)&&truth<0&&value.truth()>=0&&value.truth()==prior.truth())value=value.truth()==0?prior:new PredicateValue(token++,1);
+                else if(written.contains(index)||truth<0&&!value.equals(prior))value=new PredicateValue(token++,-1);
                 after.set(index,value);written.add(index);
             }
         }

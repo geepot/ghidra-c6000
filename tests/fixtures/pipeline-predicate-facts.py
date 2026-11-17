@@ -30,6 +30,11 @@ specs=[
  ('backward_widens_aliases',False,[' MVK.S2 0,B0',' MV.D2 B0,B2','$LOOP:',' [B1] B.S1 $LOOP',' NOP 5'], 'B2',[],[' NOP'],2),
  ('constant_zero',True,[' MVK.S2 0,B0'], 'B0',[],[' NOP'],2),
  ('constant_nonzero',True,[' MVK.S2 1,B0'], 'B0',[],[' NOP'],2),
+ ('same_zero_predicated_write_loop',True,[' MVK.S2 0,B0',' AND.L1 A5,3,A1','$LOOP: [B0] B.S1 $LOOP',' || [!A1] ZERO.S2 B0',' [B0] B.S1 $LOOP',' || [!A1] ZERO.S2 B0',' [B0] B.S1 $LOOP',' || [!A1] ZERO.S2 B0',' LDHU.D1 *A4,A3'], 'B0',[' NOP'],[' NOP',' [B0] ZERO.S1 A3'],2,None,[0,1,2,3],{'B0':0,'A3':1}),
+ ('different_truth_must_widen',False,[' MVK.S2 0,B0',' AND.L1 A5,3,A1',' [!A1] MVK.S2 1,B0',' LDHU.D1 *A4,A3'], 'B0',[' NOP'],[' NOP',' [B0] ZERO.S1 A3'],2,'potential simultaneous memory/register writes'),
+ ('different_truth_keeps_both_paths',True,[' MVK.S2 0,B0',' AND.L1 A5,3,A1',' [!A1] MVK.S2 1,B0'], 'B0',[],[' NOP'],2,None,[1,2,3],{'A0':0,'B0':0}),
+ ('unknown_value_must_widen',False,[' MVK.S2 0,B0',' AND.L1 A5,3,A1',' [!A1] ADD.L2 B4,B5,B0',' LDHU.D1 *A4,A3'], 'B0',[' NOP'],[' NOP',' [B0] ZERO.S1 A3'],2,'potential simultaneous memory/register writes'),
+ ('nonzero_predicated_write_fresh_token',True,[' MVK.S2 1,B0',' MV.D2 B0,B2',' AND.L1 A5,3,A1',' [!A1] MVK.S2 2,B0'], 'B0',[],[' NOP'],2,None,[0,1,2,3],None,{'register':'B0','other':'B2','truth':1}),
 ]
 
 
@@ -89,7 +94,8 @@ def main():
     prefix = image_path.parent / (image_path.stem + '.predicate-facts')
     source_path, object_path, log_path = (Path(str(prefix) + suffix) for suffix in ('.asm', '.obj', '.log'))
     lines, manifest = [], []
-    for index, (name, accepted, prefix_lines, guard, peers, middle, second_cycle) in enumerate(specs):
+    for index, spec in enumerate(specs):
+        name, accepted, prefix_lines, guard, peers, middle, second_cycle = spec[:7]
         tag = 'pf_' + name
         good, bad = tag + '_good', tag + '_bad'
         lines += [' .sect ".' + tag + '"', ' .nocmp', tag + ':']
@@ -97,7 +103,16 @@ def main():
         lines += [' [!' + guard + '] B.S1 ' + good] + peers + middle
         lines += [' [B0] B.S1 ' + bad, ' NOP 5', ' B.S2 B3', ' NOP 5', good + ':',
                   ' B.S2 B3', ' NOP 5', bad + ':', ' LDW.D1 *A4,A0', ' NOP 5', ' B.S2 B3', ' NOP 5']
-        manifest.append(dict(name=name, at=0x1000 + index * 512, accepted=accepted))
+        item = dict(name=name, at=0x1000 + index * 512, accepted=accepted)
+        if len(spec) > 7 and spec[7] is not None:
+            item['refused'] = spec[7]
+        if len(spec) > 8 and spec[8] is not None:
+            item['a5_values'] = spec[8]
+        if len(spec) > 9 and spec[9] is not None:
+            item['expected'] = spec[9]
+        if len(spec) > 10 and spec[10] is not None:
+            item['fresh_token'] = dict(pc=item['at'] + 4 * len(prefix_lines), **spec[10])
+        manifest.append(item)
     source_path.write_text('\n'.join(lines) + '\n')
     binary = Path(os.environ.get('TI_C6000_BIN', '/Applications/ti/ti-cgt-c6000_8.3.15/bin'))
     compiler = binary / 'cl6x' if binary.is_dir() else binary
