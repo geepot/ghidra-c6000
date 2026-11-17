@@ -4,6 +4,12 @@
 
 ### Added
 
+* Exact schedules for functions whose entry packet issues a branch. Enabling
+  re-decodes the entry's native delay-slot window as ordinary instructions the schedule
+  issues, and disabling restores the native window and its annotations exactly. A window
+  another function owns or starts in, or that any other reference enters, is refused.
+  Such entries were refused as "Entry must be a defined instruction without native delay
+  slots" (SPRUFE8B 3.5, 4.2.6).
 * Exact schedules for `SAT`: E1 read and result, `CSR.SAT` and the `SSR` unit bit one
   cycle later (SPRUFE8B p. 437, Table 2-9, 2.9.13). Functions using it were refused as
   "unimplemented phase contract". An MVC write to CSR in the cycle the flags land, and a

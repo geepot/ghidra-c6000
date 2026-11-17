@@ -126,6 +126,8 @@ TI = [
     case("pipeline-store-tail", "PipelineStoreTail", "C6000_PIPELINE_STORE_TAIL_OK", "json", ["cases.json", "results.json"]),
     case("caller-tail", "CallerTail", "C6000_CALLER_TAIL_OK", "json", ["cases.json", "results.json"]),
     case("pipeline-predicate-facts", "PredicateFacts", "PREDICATE_FACTS_TEST_OK", "json"),
+    case("pipeline-entry-delay", "PipelineEntryDelay", "C6000_PIPELINE_ENTRY_DELAY_OK", "json",
+         ["cases.json"], analysis=True),
     case("pipeline-caller-continuation", "CallerContinuation", "CONTINUATION_CONTRACT_TEST_OK",
          "json", ["cases.json", "results.json"]),
     case("pipeline-postloop", "PostLoopDispatch", "C6000_POSTLOOP_OK", "json"),
@@ -301,6 +303,8 @@ def main():
                     command += ["-preScript", "C6000IdleCallTest.java", "prepare"]
                 elif fixture == "abi-pairs":
                     command += ["-preScript", "C6000AbiPairsTest.java", "prepare"]
+                elif fixture == "pipeline-entry-delay":
+                    command += ["-preScript", "C6000PipelineEntryDelayTest.java", "prepare", directory / "cases.json"]
                 elif fixture not in ELF:
                     command += ["-preScript", "C6000SetEntry.java", "1000"]
                 for script, script_args, _ in scripts:
