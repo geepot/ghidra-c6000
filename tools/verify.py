@@ -129,6 +129,7 @@ TI = [
     case("pipeline-caller-continuation", "CallerContinuation", "CONTINUATION_CONTRACT_TEST_OK",
          "json", ["cases.json", "results.json"]),
     case("pipeline-postloop", "PostLoopDispatch", "C6000_POSTLOOP_OK", "json"),
+    case("pipeline-selfguard-loop", "SelfGuardLoop", "C6000_SELFGUARD_LOOP_OK", "json"),
 ]
 
 

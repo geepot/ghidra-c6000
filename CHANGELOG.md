@@ -11,6 +11,16 @@
 
 ### Fixed
 
+* Exact schedules keep a predicate register's known truth across a backward branch when
+  every write to it in the loop is predicated on that register with a condition false
+  under that truth (`[R]` while R is zero, `[!R]` while nonzero), and no write to it is
+  in flight: a predicated instruction whose condition is false does not write its
+  destination, so the truth holds on every later pass (SPRUFE8B 3.5). After a
+  software-pipelined `[A1] SUB A1,1,A1` / `[A1] B loop` countdown fell through, the
+  widened facts let the next loop branch be taken, so an epilogue write landing with the
+  kernel's first write was refused as "potential simultaneous memory/register writes".
+  Any other write to the register, a guard on another register, or the opposite sense
+  still widens.
 * Exact schedules refuse `B IRP` and `B NRP` as "unresolved branch target" instead of
   failing with a NullPointerException: their target is IRP or NRP, neither a register
   operand nor a displacement (SPRUFE8B pp. 155, 157).
