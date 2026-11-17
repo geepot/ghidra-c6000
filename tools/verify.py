@@ -117,10 +117,11 @@ CORE = [
     case("circular-addressing", "CircularAddress", "C6000_CIRCULAR_ADDRESS_OK"),
     case("nonalign-circular", "NonalignedCircular", "C6000_NONALIGNED_CIRCULAR_OK"),
     case("elf-local-label", "ElfLocalLabel", "C6000_ELF_LOCAL_LABEL_OK", None, analysis=True),
+    case("elf-asm-label", "ElfAsmLabel", "C6000_ELF_ASM_LABEL_OK", None, analysis=True),
     case("elf-compact", "ElfCompact", "C6000_ELF_COMPACT_OK", None, analysis=True),
 ]
 # Imported with Ghidra's ELF loader at the file's own addresses.
-ELF = {"elf-local-label", "elf-compact"}
+ELF = {"elf-local-label", "elf-asm-label", "elf-compact"}
 GZF = {"upgrade-v1"}
 TI = [
     case("pipeline-store-tail", "PipelineStoreTail", "C6000_PIPELINE_STORE_TAIL_OK", "json", ["cases.json", "results.json"]),

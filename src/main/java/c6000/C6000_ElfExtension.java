@@ -23,11 +23,15 @@ import ghidra.app.util.bin.format.elf.ElfLoadHelper;
 import ghidra.app.util.bin.format.elf.ElfSymbol;
 import ghidra.app.util.bin.format.elf.extend.ElfExtension;
 import ghidra.program.model.address.Address;
+import ghidra.program.model.util.VoidPropertyMap;
+import ghidra.util.exception.DuplicateNameException;
 import ghidra.util.exception.InvalidInputException;
 
 /** TI C6000 ELF: compiler branch and return labels are STT_FUNC, so load them as code labels, not functions. */
 public class C6000_ElfExtension extends ElfExtension {
 	private static final Pattern COMPILER_LABEL = Pattern.compile("\\$C\\$R?L\\d+");
+	/** Other local, size-0 STT_FUNC entries: labels or static functions, told apart by C6000LocalLabelAnalyzer. */
+	public static final String LOCAL_CODE_SYMBOLS = "C6000 Local Code Symbols";
 
 	@Override
 	public boolean canHandle(ElfHeader elf) {
@@ -49,7 +53,11 @@ public class C6000_ElfExtension extends ElfExtension {
 	public Address evaluateElfSymbol(ElfLoadHelper elfLoadHelper, ElfSymbol elfSymbol,
 			Address address, boolean isExternal) {
 		if (isExternal || !elfSymbol.isLocal() || elfSymbol.getType() != ElfSymbol.STT_FUNC ||
-			elfSymbol.getSize() != 0 || !COMPILER_LABEL.matcher(elfSymbol.getNameAsString()).matches()) {
+			elfSymbol.getSize() != 0) {
+			return address;
+		}
+		if (!COMPILER_LABEL.matcher(elfSymbol.getNameAsString()).matches()) {
+			localCodeSymbols(elfLoadHelper).add(address);
 			return address;
 		}
 		try {
@@ -61,5 +69,17 @@ public class C6000_ElfExtension extends ElfExtension {
 		elfLoadHelper.markAsCode(address);
 		elfLoadHelper.setElfSymbolAddress(elfSymbol, address);
 		return null;
+	}
+
+	private static VoidPropertyMap localCodeSymbols(ElfLoadHelper elfLoadHelper) {
+		var properties = elfLoadHelper.getProgram().getUsrPropertyManager();
+		VoidPropertyMap map = properties.getVoidPropertyMap(LOCAL_CODE_SYMBOLS);
+		if (map != null) return map;
+		try {
+			return properties.createVoidPropertyMap(LOCAL_CODE_SYMBOLS);
+		}
+		catch (DuplicateNameException e) {
+			return properties.getVoidPropertyMap(LOCAL_CODE_SYMBOLS);
+		}
 	}
 }

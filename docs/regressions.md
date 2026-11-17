@@ -89,6 +89,15 @@ names: the static function `h` (hidden, as `cl6x` emits it), the far-call trampo
 `$C$L` and `$C$L1a`. The calls to `g` and to `$C$L2` keep their call references, and
 the called label `$C$L2` is a function. Run with both languages.
 
+`tests/fixtures/elf-asm-label.py IMAGE [be]` writes the same kind of ELF with
+hand-written label names, imported the same way, for `C6000ElfAsmLabelTest.java`. A
+label reached by a conditional branch (`a_else`), one fallen into and also the target of
+an unconditional `B` (`a_join`), a loop head (`b_loop`) and a call's return point
+(`d_ret`) must sit inside the function that reaches them, and the `B` to `a_join` must
+stay a plain jump. `c_tail`, reached only by an unconditional `B`, the called `d_help`,
+also reached by a conditional branch, and `e_static`, which nothing reaches, must stay
+functions. Run with both languages.
+
 `tests/fixtures/elf-compact.py IMAGE [be]` writes `cl6x` compact fetch packets into the
 same kind of ELF, with a non-allocated `.TI.section.flags` section that Ghidra loads as
 an `OTHER` overlay (issue #33). Import it with `ElfLoader` and auto-analysis, then run
