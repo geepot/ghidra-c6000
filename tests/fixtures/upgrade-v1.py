@@ -5,7 +5,8 @@ data/elf-compact-{le,be}-v1.gzf hold the elf-compact.py ELF imported and analyse
 by the 1.1.1-era language (BE version 1, LE version 1.2) in Ghidra 12.1.3, older
 than every supported version, so every matrix row can read them. Importing the BE one
 runs C6000BeDefaultLanguageTranslator, which primes each compact halfword and
-re-decodes; the LE one needs no translation.
+re-decodes; the LE one goes to version 2 through Ghidra's default translator, which
+carries each context field into the 8-byte context register by name.
 """
 from pathlib import Path
 import shutil

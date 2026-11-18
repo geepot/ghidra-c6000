@@ -81,13 +81,11 @@ define register offset=0x2000 size=4
 # 16-bit opcode cannot express (SPRUFE8B section 3.10).  It is populated by
 # the C6000PacketAnalyzer / C6000PacketContext Java helper shipped in this
 # extension; with no context set, every word decodes as a normal 32-bit
-# instruction.  Big-endian adds a second word holding each compact slot's
-# halfword (issue #31).
-@if ENDIAN == "big"
+# instruction.  Big-endian uses bits 32-47 of the second word for each compact
+# slot's halfword (issue #31).  Both byte orders use 8 bytes, so fields at the
+# same positions mean the same thing in both; little-endian was 4 bytes before
+# language version 2 (bits 0-23 then filled 24 of its 32 bits).
 define register offset=0x3000 size=8 [ contextreg ];
-@else
-define register offset=0x3000 size=4 [ contextreg ];
-@endif
 
 # Synthetic execution address for Ghidra's p-code emulator.  C6000 exposes
 # PCE1 to instructions, while the emulator needs a distinct current PC.

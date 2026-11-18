@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+### Changed
+
+* Little-endian languages are now version 2.0: their context register is 64 bits, as in
+  big-endian, with every field at the same position in both byte orders. That leaves
+  room for new decode and recovery fields (bits 24-31 and 48-63). Programs saved with
+  version 1 upgrade on open, with every context field carried over by name. Review the
+  exact schedules of an upgraded program again, because a review hashes the context
+  register's value.
+
 ### Added
 
 * Exact schedules for functions whose entry packet issues a branch. Enabling

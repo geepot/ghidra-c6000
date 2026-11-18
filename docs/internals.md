@@ -78,8 +78,13 @@ second instruction is before the slot that executes it, where SLEIGH cannot read
 big-endian languages therefore widen `contextreg` to 64 bits and add `c_h16`, which the
 primer sets to each compact slot's halfword. `tools/gen_compact_context.py` mirrors every
 `insn16` field onto `c_h16`, and a 16-bit pad token keeps each compact instruction two
-bytes long. Little-endian languages keep the `insn16` token and a 32-bit `contextreg`
-(issue #31). Java readers use `C6000PacketContext.halfword`.
+bytes long. Little-endian languages keep the `insn16` token (issue #31). Java readers use
+`C6000PacketContext.halfword`.
+
+Since language version 2 in both byte orders, `contextreg` is 64 bits and each field has
+the same position in both. Bits 0-23 hold the decode and recovery fields and big-endian
+bits 32-47 hold `c_h16`; bits 24-31 and 48-63 are free. New fields are `noflow` with a
+`c_` prefix, unless they really must flow.
 
 Only the eighth word of a compact fetch packet decodes as a 4-byte `CPKT` instruction.
 The `1110` prefix in bits 31..28 is the reserved predication encoding `creg=7, z=0`
@@ -360,8 +365,25 @@ version 1 `default` and `analysis` languages, and `C6000BeDefaultLanguageTransla
 `C6000BeAnalysisLanguageTranslator` carry each context field over by name. After
 Ghidra's re-disassembly they prime `c_h16` and re-disassemble again, which keeps
 references, overrides and comments. Re-run auto-analysis afterwards so delay windows and
-calls are recovered from the corrected order. The C67x variants were never released at
-version 1.
+calls are recovered from the corrected order. The big-endian C67x variants were never
+released at version 1.
+
+Little-endian languages are version 2.0 too: `contextreg` grew from 32 to 64 bits. The
+old field positions are unchanged, but SLEIGH numbers context bits from the most
+significant end, so every stored value moves. `data/languages/old/` describes all four
+version 1 little-endian languages (1.0 to 1.2 differ only by added fields), and Ghidra's
+default translator carries each field over by name; no Java translator is needed. A
+reviewed exact schedule or parallel-peer plan hashes the context register's value, so
+review an upgraded program's schedules again: until then an active schedule fails
+loudly ("Exact C6000 schedule failed") instead of lifting.
+
+Ghidra's upgrade re-disassembly can lose the instruction just after a native delay window
+whose last slot is compact, or fail that window's branch with a Bad Instruction bookmark.
+On the stock image this happened at three windows in about 30,000 instructions. A
+version bump that left `contextreg` alone did the same, so it comes with any
+re-disassembling upgrade, not the wider register, and re-running auto-analysis does not
+restore those instructions. Re-import when the listing must match a fresh analysis
+exactly.
 
 The 1.2 language minor version forces Ghidra's native re-disassembly upgrade. This is
 necessary when a corrected compact operand partition distinguishes bits that an older

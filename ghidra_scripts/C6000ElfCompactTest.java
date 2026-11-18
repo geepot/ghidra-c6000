@@ -31,9 +31,10 @@ public class C6000ElfCompactTest extends GhidraScript {
 		}
 		var bad = currentProgram.getBookmarkManager().getBookmarksIterator(BookmarkType.ERROR);
 		while (bad.hasNext()) failures.add("error bookmark " + bad.next());
-		// "upgraded": a saved version 1 program, so BE must have migrated to version 2.
+		// "upgraded": a saved version 1 program, so both byte orders must have migrated to
+		// version 2 (BE: issue #31; LE: 8-byte context register).
 		if (getScriptArgs().length > 0 && getScriptArgs()[0].equals("upgraded")) {
-			int expected = currentProgram.getLanguage().isBigEndian() ? 2 : 1;
+			int expected = 2;
 			if (currentProgram.getLanguage().getVersion() != expected) {
 				failures.add("language version " + currentProgram.getLanguage().getVersion() + " expected " + expected);
 			}

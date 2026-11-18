@@ -108,8 +108,9 @@ error bookmarks and `q1`, `f2` and `f3` must be functions, in both byte orders
 `tests/fixtures/upgrade-v1.py IMAGE [be]` copies a packed program of the same ELF saved
 with the version 1 languages (`tests/fixtures/data/`). Import it with Ghidra's GZF loader
 and run `C6000ElfCompactTest.java upgraded`: the big-endian program must migrate to
-language version 2 through `C6000BeDefaultLanguageTranslator` and decode in `dis6x`
-order; the little-endian one stays at version 1.
+language version 2 through `C6000BeDefaultLanguageTranslator`, the little-endian one
+through Ghidra's default translator (8-byte `contextreg`), and both must decode in
+`dis6x` order.
 
 Hand-built fixtures list compact slots in execution order, one halfword per address.
 `tests/fixtures/compact_order.py` rewrites their big-endian images so each compact

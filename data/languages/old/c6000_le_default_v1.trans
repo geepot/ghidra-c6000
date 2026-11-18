@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Little-endian version 1 to 2: contextreg grew from 32 to 64 bits; context fields carry over by name. -->
+<language_translation>
+    <from_language version="1">C6000:LE:32:default</from_language>
+    <to_language version="2">C6000:LE:32:default</to_language>
+    <map_compiler_spec from="default" to="default" />
+</language_translation>
