@@ -39,6 +39,11 @@
   The call analyzer gave up on such windows, so the call was lifted as a jump. A window
   can hold 47: the rest of an eight-instruction execute packet and five full ones
   (SPRUFE8B 3.5).
+* `C6000 Compact Packet Tails` no longer rolls back all of auto-analysis when it is
+  cancelled while completing an execute packet (SPRUFE8B 3.5): it ended its own nested
+  transaction uncommitted, and Ghidra then aborts the enclosing analysis transaction. It
+  now checks every peer before writing, commits, and on a mismatch clears only that
+  packet's new peers and logs it.
 
 ## 1.2.1-hotfix - 2026-11-10
 
