@@ -128,6 +128,9 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 			if (call.returnTo() != null) branch.setFallThrough(call.returnTo());
 			else if (branch.getFallThrough() == null) branch.setFallThrough(next);
 			if (listing.getInstructionAt(next) == null) disassembler.disassemble(next, null, true);
+			// Delay slots start after the branch's whole execute packet (SPRUFE8B 3.5, 4.2.6).
+			Address slots = packetEnd(program, listing.getInstructionAt(at));
+			if (slots != null && listing.getInstructionAt(slots) == null) disassembler.disassemble(slots, null, true);
 			Function caller = listing.getFunctionContaining(at);
 			if (caller != null) callers.add(caller);
 			if (call.target() != null) {
@@ -968,6 +971,18 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 			}
 			return ((header >>> ((address.getOffset() - base) / 2)) & 1) != 0;
 		}
+	}
+
+	private static Address packetEnd(Program program, Instruction insn) {
+		try {
+			while (insn != null && C6000ExecutionPackets.parallelWithNext(program, insn)) {
+				insn = program.getListing().getInstructionAt(insn.getMaxAddress().next());
+			}
+		}
+		catch (MemoryAccessException e) {
+			return null;
+		}
+		return insn == null ? null : insn.getMaxAddress().next();
 	}
 
 	private static boolean isFlow(Instruction insn) {

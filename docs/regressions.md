@@ -485,6 +485,10 @@ CALLP cases across both link registers, including mixed-width companions that re
 old link. Run all three scripts in both endian modes. Reuse direct-flow,
 predicated-register, delayed-call and switch-ownership fixtures as dependent checks. Raw
 auto-analysis fixtures require `C6000SetEntry.java 1000` as a pre-script.
+`call-packet-slots.py IMAGE [be]` and `C6000CallPacketSlotsTest.java` check that a `B` call
+with a parallel companion (`B f || STW`, `B f || MV`) decodes its delay slots and return
+point, and that the caller owns them (GNU-assembled, checked against TI dis6x). Without
+the fix, 0x1020 onward stays undecoded.
 
 Regenerate `c6000_flow_delay.sinc` with `python3 tools/gen_flow_delay.py`;
 `gen_decode.py` and `gen_compact.py` own their corresponding branch constructors. The

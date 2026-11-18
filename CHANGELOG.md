@@ -44,6 +44,10 @@
   transaction uncommitted, and Ghidra then aborts the enclosing analysis transaction. It
   now checks every peer before writing, commits, and on a mismatch clears only that
   packet's new peers and logs it.
+* A returning `B` call with an instruction in its own execute packet (`B f || STW`)
+  left its delay slots and everything after its return point undecoded: C6000
+  Delayed Calls decoded only from the next instruction, which is the companion.
+  Decoding now also starts after the branch's execute packet (SPRUFE8B 3.5, 4.2.6).
 
 ## 1.2.1-hotfix - 2026-11-10
 
