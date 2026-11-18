@@ -11,6 +11,9 @@
 
 ### Fixed
 
+* Retain a known predicate truth across an unknown-predicated write only when both the
+  prior and written values have that truth; different-truth and unknown writes still
+  widen facts, and nonzero writes break old-value aliases (SPRUFE8B 3.5, 3.7, 4.2.5).
 * Exact schedules refuse `B IRP` and `B NRP` as "unresolved branch target" instead of
   failing with a NullPointerException: their target is IRP or NRP, neither a register
   operand nor a displacement (SPRUFE8B pp. 155, 157).
