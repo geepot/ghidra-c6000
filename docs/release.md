@@ -54,7 +54,7 @@ python3 tools/verify.py --ghidra /path/to/ghidra --with-ti --jobs 2
 python3 tools/verify_gui.py --ghidra /path/to/ghidra --archive "$(cat build/release-archive-path.txt)"
 ```
 
-The runner checks 91 core fixture/language imports (two through Ghidra's ELF loader and
+The runner checks 91 core fixture/language imports (three through Ghidra's ELF loader and
 one packed program) and five TI-assembled fixture imports per endian: 192 per Ghidra
 version, or 384
 across the matrix. The core

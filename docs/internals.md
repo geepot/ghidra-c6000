@@ -24,8 +24,13 @@ local unless the label is declared global, so Ghidra's ELF loader starts a funct
 each one. Shared-return analysis then marks every jump to such a label as a tail call,
 although B and BNOP only load the PC (SPRUFE8B §3.12). `c6000.C6000_ElfExtension`
 loads the compiler's branch and return labels (`$C$L<n>`, `$C$RL<n>`) as code labels.
-Other labels have the same symbol type, size and binding as a C static function, so they
-still start functions; see [limitations](limitations.md#decode-and-analysis).
+Other labels have the same symbol type, size and binding as a C static function, so the
+extension records them and `c6000.C6000LocalLabelAnalyzer` (`C6000 Local Code Labels`)
+removes such a function once reached code falls into its entry or a conditional branch
+reaches it, provided nothing calls it. Its name stays as a label and the function that
+reaches it is refit. Entries nothing reaches (an address-taken static) and targets of only
+an unconditional `B` (possibly a tail call) stay functions; see
+[limitations](limitations.md#decode-and-analysis).
 
 C674x is the union of the C64x+ and C67x+ instruction sets (SPRUFE8B §1.1), so one
 description serves the older parts, which are subsets. C67x/C67x+ imports must

@@ -89,11 +89,13 @@ use. A register-built target carried across a longer span, loaded from memory or
 supplied by another routine may remain unresolved. Raw imports also need an explicit
 entry before code discovery can begin.
 
-**Hand-written TI labels can start functions.** In a TI ELF, an ordinary local label in
-hand-written assembly, such as `LOOP` in the RTS `__divu`, has the same symbol type, size
-and binding as a C static function, so Ghidra still starts a function there. Assembler
-`$n` and macro `name?` labels (`$1_$1`, `lp$1$`) stay functions too: `cl6x` accepts `$`
-in C identifiers, so their names cannot be told from a static function's.
+**Some hand-written TI labels still start functions.** In a TI ELF, a local label in
+hand-written assembly has the same symbol type, size and binding as a C static function.
+`C6000 Local Code Labels` turns it back into a label only when reached code falls into it
+or a conditional branch reaches it and nothing calls it. A label reached only by an
+unconditional `B` stays a function, because the `B` may be a tail call to a static
+function; so does a static function reached by a conditional tail call, or one that code
+falls into.
 
 ## Packet timing and control flow
 

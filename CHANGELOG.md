@@ -30,6 +30,12 @@
   kernel's first write was refused as "potential simultaneous memory/register writes".
   Any other write to the register, a guard on another register, or the opposite sense
   still widens.
+* A label in hand-written TI assembly no longer starts a function when code falls into
+  it or a conditional branch reaches it and nothing calls it (`C6000 Local Code Labels`).
+  `cl6x` gives such labels the local, size-0 `STT_FUNC` symbol of a C static function,
+  so each loop head, join and return point was a function and an unconditional `B` to
+  one was a tail call, although B only loads the PC (SPRUFE8B 3.12). Entries nothing
+  reaches, and targets of only an unconditional `B`, stay functions.
 * Exact schedules refuse `B IRP` and `B NRP` as "unresolved branch target" instead of
   failing with a NullPointerException: their target is IRP or NRP, neither a register
   operand nor a displacement (SPRUFE8B pp. 155, 157).
