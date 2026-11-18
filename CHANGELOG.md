@@ -48,6 +48,11 @@
   left its delay slots and everything after its return point undecoded: C6000
   Delayed Calls decoded only from the next instruction, which is the companion.
   Decoding now also starts after the branch's execute packet (SPRUFE8B 3.5, 4.2.6).
+* Tail calls that Shared Return Calls marks `CALL_RETURN` kept their delay slots
+  undecoded, so the epilogue and outgoing arguments were missing from the caller.
+  Their windows are now recovered unless the packet or window writes B3 other than
+  by a load, or B3 holds the window's return address: such a `B` is a call
+  (SPRUFE8B 4.2.6, B, ADDKPC).
 
 ## 1.2.1-hotfix - 2026-11-10
 
