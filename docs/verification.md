@@ -57,7 +57,7 @@ seconds). Individual native decompiler checks retain their 15- or 30-second limi
 | Native flow | Return delays and refusal safety, CALLP companions, direct and predicated branches, delayed calls, target references, switch ownership and TI ELF local labels. |
 | Exact packet schedules | Parallel input capture, pending branches, SP/DP writeback and flags, software loops, counters, ROTL, MPYLI, load aliases, closed calls and source-bound native decompilation across separate owners. |
 | Floating point | Exact SP selection and rational SP/DP arithmetic expectations, including aliases, predication and rounding modes. |
-| Additional TI fixtures | Predicate proofs, caller-continuation contracts, post-loop dispatch and missed-stall refusals. |
+| Additional TI fixtures | Predicate proofs, caller-continuation contracts, post-loop dispatch, missed-stall refusals and branch-issuing schedule entries. |
 
 Every run builds all four SLEIGH variants and checks the archive's integrity, required
 runtime files and Ghidra compatibility metadata. Research, scratch and cache files are
