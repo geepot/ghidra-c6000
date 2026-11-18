@@ -53,6 +53,12 @@
   Their windows are now recovered unless the packet or window writes B3 other than
   by a load, or B3 holds the window's return address: such a `B` is a call
   (SPRUFE8B 4.2.6, B, ADDKPC).
+* Cancelling auto-analysis while `C6000 Register Branch Flow` recovers delay windows, or
+  while `C6000 Entered Delay Windows` releases them, no longer rolls back all of
+  auto-analysis: both ended their own nested transaction uncommitted on any exception,
+  and Ghidra then aborts the enclosing analysis transaction. Both now always commit. A
+  window's rewrite never polls the monitor, and a window whose rewrite fails part-way is
+  put back as it was before the failure is reported (SPRUFE8B 3.5, 4.2.6).
 
 ## 1.2.1-hotfix - 2026-11-10
 

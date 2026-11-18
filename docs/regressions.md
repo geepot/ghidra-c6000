@@ -685,6 +685,21 @@ pre-script) check `cl6x` 8.3.15 words of a function, `idle(a, b, c)`, with five 
 decompile to `b ? a : a + 15` with no test of `c`. A released window would lift its ADDs
 after the branch, dropping them from one path. A second pass must change nothing, and
 recovery must keep the shorter window. On earlier Ghidra versions no window changes.
+## Cancelling delay-window recovery
+
+`delay-cancel.py IMAGE CASES.json [be]` and `C6000DelayCancelTest.java CASES.json` run
+delay-window recovery and release inside a transaction that stands in for auto-analysis
+and already holds code, functions and a label. Each case runs once uncancelled, which
+counts the monitor's polls (`checkCancelled` and `isCancelled`), then once cancelled at
+each poll in turn. The enclosing transaction must not be aborted and must keep its
+earlier work, `CancelledException` must propagate, and each listed window must match
+either its state before the run or after the uncancelled run. `cl6x` 8.3.15 words give
+`recover`, a predicated branch with five `ADD` slots followed by `B B3 ; NOP 5` (both
+windows must be laid), and `relieve`, `entered-window.py`'s five entered windows (one
+released on Ghidra 12.2, none before). In `put-back`, `B B3` precedes a fetch-packet
+header (SPRUFE8B 3.10.2) that another function owns, so extending the window's owner
+fails after the window is laid; the failure must propagate and the window must be
+exactly as before.
 
 ## Additional decoder accuracy checks
 

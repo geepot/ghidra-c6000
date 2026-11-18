@@ -100,8 +100,12 @@ protected loads and crossed compact headers. The physical byte count is stored i
 because SLEIGH counts delay bytes, rather than instructions.
 
 Targets and predicates are captured before delay work. Native parsing is checked before
-listing changes; transactional recovery preserves comments, symbols, references and
-explicit fallthrough overrides. Nested transfers, defined data and conflicting function
+listing changes; recovery preserves comments, symbols, references and
+explicit fallthrough overrides. Re-decoding a window never polls the task monitor, so a
+cancel lands between windows. A window whose rewrite fails part-way is put back as it was
+(instructions, decode context, annotations) before the failure propagates. Recovery and
+release never end their transactions uncommitted: in Ghidra an uncommitted nested
+transaction aborts the enclosing auto-analysis transaction. Nested transfers, defined data and conflicting function
 ownership prevent recovery. Predicated displacement `B`/`BNOP` and displacement and register `B`
 calls, predicated or not, are recovered, and so is a `CALL_RETURN` tail call when nothing in
 its packet or window writes B3 except a load and the delayed-call proof finds no return
