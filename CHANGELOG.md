@@ -35,6 +35,10 @@
   instead of being released, so its other slots keep their delay-slot lifting. A NOP only
   idles (SPRUFE8B p. 388). Released windows lifted every slot after the transfer, so a
   return dropped their writes and a branch skipped them on its taken path.
+* A `B` call whose delay window holds more than 24 instructions is recognized as a call.
+  The call analyzer gave up on such windows, so the call was lifted as a jump. A window
+  can hold 47: the rest of an eight-instruction execute packet and five full ones
+  (SPRUFE8B 3.5).
 
 ## 1.2.1-hotfix - 2026-11-10
 
