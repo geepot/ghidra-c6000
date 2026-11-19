@@ -759,7 +759,12 @@ the jump keeps its target. The check then copies the image to 5000 and runs one
 `padret`'s return keeps its jump's target; decoding `padfar`'s window gives `padpre`'s
 return (13c0, 1380) an incoming jump after its cut was proven, and `padpre`'s jump may
 continue only if that return still holds its cut; and one `relieveOverlaps()` that
-releases the copy of `padenter`'s return gives its jump the target back.
+releases the copy of `padenter`'s return gives its jump the target back. `padheader`
+(1400, hand-encoded) is `padret`'s shape in a fetch packet with a header: the return's
+cut window runs past the header, and once that window is laid the header decodes as
+`_CPKT`. The jump must stay continued, its return must hold the window cut at 1423, and
+the function must return `a ? 0x111 : 0x133`; before the fix, recovery restored and
+re-continued the jump on every pass and auto-analysis never finished (SPRUFE8B 3.10).
 
 ## ADDDP/SUBDP upper-word read timing (issue #20)
 

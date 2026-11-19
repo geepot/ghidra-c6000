@@ -21,10 +21,10 @@ import ghidra.program.model.symbol.SourceType;
 
 public class C6000PreemptedJumpTest extends GhidraScript {
 	private static final long[] ENTRIES = { 0x1080L, 0x1000L, 0x10a0L, 0x1100L, 0x1140L,
-		0x1180L, 0x11c0L, 0x1200L, 0x1220L, 0x1280L, 0x1298L, 0x1300L, 0x1380L, 0x13c0L };
+		0x1180L, 0x11c0L, 0x1200L, 0x1220L, 0x1280L, 0x1298L, 0x1300L, 0x1380L, 0x13c0L, 0x1400L };
 	private static final String[] NAMES = { "callee", "padret", "padtail", "padcode",
 		"padother", "padwritten", "padshort", "padleak", "padcall", "padentry", "padinside", "padenter", "padpre",
-		"padfar" };
+		"padfar", "padheader" };
 	private int checks;
 
 	@Override
@@ -79,6 +79,11 @@ public class C6000PreemptedJumpTest extends GhidraScript {
 			paired(0x1334L, 0x1338L, 0x1357L);
 		}
 		returns(0x1300L);
+		// padheader: a fetch packet header inside the return's laid window is no cycle, so the
+		// cut still matches on the next pass and recovery settles.
+		continues(0x1404L, 0x140cL, 0x1440L);
+		paired(0x1404L, 0x1410L, 0x1423L);
+		returns(0x1400L, "0x111", "0x133");
 		once();
 		println("C6000_PREEMPTED_JUMP_OK checks=" + checks);
 	}
