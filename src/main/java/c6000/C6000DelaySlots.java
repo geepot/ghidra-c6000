@@ -92,6 +92,11 @@ public final class C6000DelaySlots {
             monitor.checkCancelled();
             lay(program, reader, at, cuts.get(at), result, monitor);
         }
+        // Windows lay() did not lay or confirm: the packet primer's parallel-peer windows, say.
+        List<Instruction> windowed = new ArrayList<>();
+        for (Instruction ins : program.getListing().getInstructions(true))
+            if (ins.getPrototype().getDelaySlotByteCount() > 0) windowed.add(ins);
+        for (Instruction ins : windowed) proveFallThrough(program, ins);
         if (!result.isEmpty()) Msg.info(C6000DelaySlots.class, "C6000 Delay Slots> recovered " + result.size() + " proven window(s)");
         return result;
     }
@@ -205,6 +210,8 @@ public final class C6000DelaySlots {
                     if (idle != null) release(program, branch, (int) idle.subtract(branch.getMaxAddress()) - 1);
                     else release(program, branch);
                     uncontinue(program, at);
+                    Instruction now = program.getListing().getInstructionAt(at);
+                    if (now != null) proveFallThrough(program, now);
                     decompiler.flushCache();
                     program.getBookmarkManager().setBookmark(at, BookmarkType.ANALYSIS, RELEASED,
                         (idle != null ? "Native delay window ended before its entered NOP slots at " + idle + ": "
@@ -346,6 +353,36 @@ public final class C6000DelaySlots {
         catch (Exception failure) {
             throw undo.putBack(failure);
         }
+    }
+
+    /**
+     * Ghidra's generic fall-through re-parses the slots with the issue's context, so it is wrong
+     * across mixed widths and for big-endian compact slots (issue #31; Ghidra #10242). Give a
+     * windowed conditional jump with no fall-through override the next execute packet after its
+     * native window. Returns whether it changed.
+     */
+    private static boolean proveFallThrough(Program p, Instruction ins) {
+        int bytes = ins.getPrototype().getDelaySlotByteCount();
+        if (bytes == 0 || !ins.getFlowType().isJump() || !ins.getFlowType().hasFallthrough()) return false;
+        Address end, resume;
+        try { end = ins.getMaxAddress().add(bytes); resume = resume(p, end); }
+        catch (AddressOutOfBoundsException e) { return false; }
+        boolean changed = false;
+        if (!ins.isFallThroughOverridden() && !resume.equals(ins.getFallThrough())) {
+            ins.setFallThrough(resume);
+            changed = true;
+        }
+        if (!resume.equals(ins.getFallThrough())) return changed;
+        // Ghidra's body walk (FollowFlow) counts slots with the same generic parse and can drop the
+        // tail of the window once the fall-through skips it: keep the window, as lay() does.
+        Function owner = p.getFunctionManager().getFunctionContaining(ins.getAddress());
+        if (owner != null && !owner.getBody().contains(ins.getAddress(), end)) {
+            var body = new AddressSet(owner.getBody());
+            body.add(ins.getAddress(), end);
+            try { owner.setBody(body); }
+            catch (ghidra.program.database.function.OverlappingFunctionException e) { }
+        }
+        return changed;
     }
 
     /** The next execute packet after a window ending at end: past a fetch-packet header (SPRUFE8B 3.10.2). */
@@ -549,6 +586,9 @@ public final class C6000DelaySlots {
         boolean registerBranch=original.getRegister(0)!=null && !original.getMnemonicString().startsWith("CALLP");
         // A shorter window than the native one releases the old slots too.
         Address end = window.end(), old = original.getMaxAddress().add(original.getPrototype().getDelaySlotByteCount());
+        // A jump's fall-through proven for the old window (proveFallThrough) goes with it.
+        Address oldResume = original.getFlowType().isJump() && original.getPrototype().getDelaySlotByteCount() > 0 ?
+            resume(p, old) : null;
         if (old.compareTo(end) > 0) end = old;
         List<SavedInstruction> saved = snapshot(p, at, end);
         var undo = Undo.of(p, at, end, override, saved);
@@ -572,7 +612,7 @@ public final class C6000DelaySlots {
             if(branch==null||branch.getPrototype().getDelaySlotByteCount()!=bytes||tail==null||!tail.isInDelaySlot())
                 throw new IllegalStateException("Could not materialize native delay window at "+at+" end="+window.end()+" bytes="+bytes+" branch="+branch+" depth="+(branch==null?-1:branch.getDelaySlotDepth())+" tail="+tail);
             branch.setFlowOverride(override);
-            restore(p, at, saved, isReturn, null);
+            restore(p, at, saved, isReturn, oldResume);
             long added=0;
             if(window.owner()!=null) {
                 var body=new AddressSet(window.owner().getBody());long before=body.getNumAddresses();

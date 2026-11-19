@@ -499,6 +499,16 @@ auto-analysis fixtures require `C6000SetEntry.java 1000` as a pre-script.
 with a parallel companion (`B f || STW`, `B f || MV`) decodes its delay slots and return
 point, and that the caller owns them (GNU-assembled, checked against TI dis6x). Without
 the fix, 0x1020 onward stays undecoded.
+`packet-window-fallthrough.py IMAGE [be]` and `C6000PacketWindowFallthroughTest.java`
+(pre-script `prepare`) hold two hand-encoded compact fetch packets, checked against TI
+dis6x 8.3.15. A 32-bit `[A1] B` in parallel with a compact `ADD` keeps the packet primer's
+two-byte window (a return in its slots keeps the full window unproved). A 32-bit `[A1] B`
+has a proved 10-byte window of two 32-bit slots and a compact `NOP 3`. Each jump must fall
+through to the next execute packet after its window (0x1006 and 0x102e) and its function
+must hold the whole window. Without the fix, Ghidra's generic fall-through gives 0x1004
+for the first jump (Ghidra #10242); without the body extension, its function loses the
+slot at 0x1004.
+
 `tail-call-slots.py IMAGE [be]` and `C6000TailCallSlotsTest.java` (pre-script `prepare`,
 which marks 0x11c0 no-return as an ELF `exit` would be and enters 0x1300) check that
 `CALL_RETURN` tail calls keep their delay slots in the caller, including an epilogue

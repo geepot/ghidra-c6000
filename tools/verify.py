@@ -51,6 +51,7 @@ CORE = [
     case("wide-call-window", "WideCallWindow", "C6000_WIDE_CALL_WINDOW_OK", None, analysis=True),
     case("call-packet-slots", "CallPacketSlots", "C6000_CALL_PACKET_SLOTS_OK", None, analysis=True),
     case("tail-call-slots", "TailCallSlots", "C6000_TAIL_CALL_SLOTS_OK", None, analysis=True),
+    case("packet-window-fallthrough", "PacketWindowFallthrough", "C6000_PACKET_WINDOW_FALLTHROUGH_OK", None, analysis=True),
     case("delayed-call-safety", "DelayedCallSafety", "C6000_DELAYED_CALL_SAFETY_OK", "json"),
     case("abi-pairs", "AbiPairs", "C6000_ABI_PAIRS_OK", None, analysis=True),
     ("jump-table", [], [("JumpTable", [], "C6000_JUMP_TABLE_OK"),
@@ -318,6 +319,8 @@ def main():
                     command += ["-preScript", "C6000AbiPairsTest.java", "prepare"]
                 elif fixture == "tail-call-slots":
                     command += ["-preScript", "C6000TailCallSlotsTest.java", "prepare"]
+                elif fixture == "packet-window-fallthrough":
+                    command += ["-preScript", "C6000PacketWindowFallthroughTest.java", "prepare"]
                 elif fixture == "pipeline-entry-delay":
                     command += ["-preScript", "C6000PipelineEntryDelayTest.java", "prepare", directory / "cases.json"]
                 elif fixture not in ELF:

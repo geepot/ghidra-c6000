@@ -26,6 +26,12 @@
 
 ### Fixed
 
+* A conditional jump with a native delay window falls through to the next execute packet
+  after the window, and its function keeps the whole window. Ghidra measures delay slots
+  with the jump's own context ([Ghidra #10242](https://github.com/NationalSecurityAgency/ghidra/issues/10242)),
+  so where 32-bit and compact instructions mix, the default fall-through landed inside
+  the window or past the next instruction. That affected the packet primer's
+  parallel-peer windows and windows that recovery did not lay itself (SPRUFE8B 3.5, 3.10).
 * Retain a known predicate truth across an unknown-predicated write only when both the
   prior and written values have that truth; different-truth and unknown writes still
   widen facts, and nonzero writes break old-value aliases (SPRUFE8B 3.5, 3.7, 4.2.5).

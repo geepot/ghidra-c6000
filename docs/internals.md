@@ -217,6 +217,7 @@ The synthetic fixtures exercise these behaviors in both endian modes:
 | `delayed-call.py` | ADDKPC and register-built calls, complementary predicates, caller bodies and call/jump distinction. |
 | `call-packet-slots.py` | Delay slots and return point of a call with a parallel companion. |
 | `tail-call-slots.py` | Tail-call delay slots in the caller, and B3-setting `B` and `BNOP` calls kept out of tail-call recovery. |
+| `packet-window-fallthrough.py` | Fall-through and function body of conditional jumps whose windows mix 32-bit and compact instructions. |
 | `jump-table.py` | A guarded three-case table, an adjacent valid address outside the bound, and native switch output. |
 | `return-delay.py` / `packet-call.py` | Captured targets, tail effects, packet links and mixed-width windows. |
 
@@ -379,11 +380,21 @@ loudly ("Exact C6000 schedule failed") instead of lifting.
 
 Ghidra's upgrade re-disassembly can lose the instruction just after a native delay window
 whose last slot is compact, or fail that window's branch with a Bad Instruction bookmark.
-On the stock image this happened at three windows in about 30,000 instructions. A
-version bump that left `contextreg` alone did the same, so it comes with any
-re-disassembling upgrade, not the wider register, and re-running auto-analysis does not
-restore those instructions. Re-import when the listing must match a fresh analysis
-exactly.
+On the stock image this happened at three windows in about 30,000 instructions. The cause
+is in Ghidra ([#10242](https://github.com/NationalSecurityAgency/ghidra/issues/10242)):
+`SleighInstructionPrototype.getFallThroughOffset` and `getDelaySlotDepth` re-parse each
+delay slot with the branch's own context, not the slot's, so a window that mixes 32-bit
+and compact instructions is measured at the wrong length. `CodeManager.addInstructions`
+uses that length for the range it reports as disassembled and for its conflict check.
+Any whole-program re-disassembly does this, upgrade or not, and re-running auto-analysis
+does not restore those instructions. Re-import when the listing must match a fresh
+analysis exactly.
+
+The same miscount gives a conditional jump with a window a wrong default fall-through,
+and Ghidra's `FollowFlow` counts a window's slots with `getDelaySlotDepth` when it computes
+function bodies. Delay-window recovery therefore sets every windowed conditional jump's
+fall-through to the next execute packet after its native window, the packet primer's
+parallel-peer windows included, and keeps the whole window in the function's body.
 
 The 1.2 language minor version forces Ghidra's native re-disassembly upgrade. This is
 necessary when a corrected compact operand partition distinguishes bits that an older
