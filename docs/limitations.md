@@ -114,7 +114,12 @@ native decompilation have separate checks. A native window that a jump from outs
 enters decompiles correctly with an "overlaps instruction" warning, but Ghidra 12.2
 abandons a function after four such overlaps; the `C6000 Entered Delay Windows`
 analyzer then releases only the windows the decompiler names (bookmarked), and those
-branches lift their slots after the transfer (issue #52).
+branches lift their slots after the transfer (issue #52). Ghidra measures a delay window
+by re-parsing its slots with the branch's context (Ghidra
+[#10242](https://github.com/NationalSecurityAgency/ghidra/issues/10242)): delay-window
+recovery corrects conditional jumps' fall-throughs and function bodies, but selecting
+code across such a window and disassembling it, or re-disassembling a whole program, can
+skip the instruction after it.
 
 Trace and activation contracts are documented for
 [closed calls](closed-call-traces.md),

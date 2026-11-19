@@ -1,12 +1,13 @@
 # Release guidance
 
-Release `v1.2.1-hotfix` corrects p-code emulation of SPINT/DPINT ties, the DPINT limit,
-RCPSP/RSQRSP near 1.0 and MVC writes to ICR, ISR, ECR and CSR, and judges floating-point
-overflow after rounding as IEEE 754 does (issue #40). It otherwise matches `v1.2.1`, which
-recovers calls through a register, including `B B3`, and calls whose return address is
-earlier caller code; passes 64-bit and large-struct values as the C6000 EABI does; extends
-exact schedules; and keeps functions with entered delay windows decompilable on Ghidra
-12.2. See the [changelog](../CHANGELOG.md#121-hotfix---2026-11-10),
+Release `v1.3.0` widens the little-endian context register to 64 bits (language version
+2.0), recovers more calls and delay windows (calls with a parallel companion, wide
+windows, tail calls marked `CALL_RETURN`), stops hand-written TI assembly labels from
+starting functions, keeps the proven fall-through of conditional jumps whose windows mix
+32-bit and compact instructions, extends exact schedules (entry branches, `SAT`,
+complementary-predicate writers, self-guarded loop counters), and keeps earlier
+auto-analysis work when analysis is cancelled. See the
+[changelog](../CHANGELOG.md#130---2026-11-18),
 [release limitations](limitations.md#release-111-decompilation-and-round-trips) and
 [verification](verification.md).
 
@@ -25,9 +26,9 @@ interrupt and exceptional-loop limitations are detailed in [limitations](limitat
 
 | Item | Value |
 |---|---|
-| Repository release | `v1.2.1-hotfix` |
+| Repository release | `v1.3.0` |
 | Ghidra compatibility matrix | 12.1.4 / JDK 21; 12.2 / JDK 25 |
-| Language version | 1.2 for the four little-endian definitions; 2.0 for the four big-endian ones (issue #31) |
+| Language version | 2.0 for all eight definitions (big-endian since issue #31; little-endian since v1.3.0, 64-bit context register) |
 | Archive naming | `ghidra_<Ghidra version>_PUBLIC_<build date>_C6000.zip` |
 | Extension-property version | Ghidra compatibility version, substituted from `@extversion@` during build |
 
@@ -36,9 +37,12 @@ compatible Ghidra version, rather than the repository release. Each release
 archive must match the Ghidra installation used to build it.
 
 Big-endian version 1 programs migrate through `C6000BeDefaultLanguageTranslator` and
-`C6000BeAnalysisLanguageTranslator`, which re-decode compact packets; re-run
-auto-analysis afterwards. The language minor version triggers native re-disassembly of
-existing programs.
+`C6000BeAnalysisLanguageTranslator`, which re-decode compact packets. Little-endian
+version 1 programs migrate through `data/languages/old/c6000_le_*_v1.trans`, which carry
+each context field into the 64-bit context register by name; review their exact
+schedules again. Re-run auto-analysis afterwards. Both migrations re-disassemble existing
+programs, which can drop an instruction after a delay window that mixes 32-bit and
+compact instructions (Ghidra #10242).
 Keep a packed backup and annotation inventory before upgrading; existing Bad
 Instruction bookmarks may be removed. Preserve and, where required, restore their
 recorded addresses, types, categories and comments before saving. See

@@ -48,12 +48,15 @@ only after the packet analyzer has primed the decode context, which auto-analysi
 before disassembly.
 
 When upgrading an existing program, keep a packed backup first and re-run auto-analysis
-afterwards. v1.2.1 and v1.2.1-hotfix keep the v1.2.0 language versions; v1.2.1's call,
-delay-window and calling-convention changes apply on re-analysis, and v1.2.1-hotfix's
-emulation fixes apply when a program is reopened. In v1.2.0 the big-endian languages
-became version 2.0: Ghidra migrates saved big-endian programs on open, then re-decodes
-compact packets in program order (issue #31). Little-endian languages stay at version
-1.2. See the
+afterwards. In v1.3.0 the little-endian languages become version 2.0: their context
+register grows to 64 bits, as in big-endian, and Ghidra migrates saved little-endian
+programs on open, carrying every context field over by name. Review the exact schedules
+of an upgraded program again, because a review hashes the context register's value.
+Ghidra's re-disassembly during the upgrade can drop an instruction after a delay window
+that mixes 32-bit and compact instructions (Ghidra
+[#10242](https://github.com/NationalSecurityAgency/ghidra/issues/10242)); re-import
+when the listing must match a fresh analysis exactly. In v1.2.0 the big-endian languages
+became version 2.0 (issue #31). See the
 [migration notes](docs/internals.md#language-prototype-migration), including annotation
 and existing error-bookmark handling.
 
