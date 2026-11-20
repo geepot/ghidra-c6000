@@ -514,12 +514,10 @@ which marks 0x11c0 no-return as an ELF `exit` would be and enters 0x1300) check 
 `CALL_RETURN` tail calls keep their delay slots in the caller, including an epilogue
 `LDW ...,B3`, and that a branch whose B3 is set is not recovered as a tail call: a register
 call with ADDKPC in its window, a call at 0x1244 whose ADDKPC returns past its window, and
-a `BNOP` at 0x1308 whose B3 was set to its return address before the packet (Call
-Recognition reclassifies only `B`, so this one reaches delay-window recovery as
-`CALL_RETURN`). Without the fix, 0x1104 stays undecoded. Admitting every `CALL_RETURN`
+a `BNOP` at 0x1308 whose B3 was set to its return address before the packet, which Call
+Recognition makes a call returning to 0x1314 (issue #69). Without the fix, 0x1104 stays undecoded. Admitting every `CALL_RETURN`
 window, or dropping the B3-write test, makes 0x1248 a tail-call slot; dropping the load
-exception leaves 0x1104 undecoded; dropping the delayed-call proof makes 0x130c a tail-call
-slot. The 0x1244 branch sits after an `MV` so that Shared Return Calls, which skips jumps
+exception leaves 0x1104 undecoded. The 0x1244 branch sits after an `MV` so that Shared Return Calls, which skips jumps
 at a function entry, marks it `CALL_RETURN`.
 
 Regenerate `c6000_flow_delay.sinc` with `python3 tools/gen_flow_delay.py`;
@@ -800,3 +798,15 @@ absorber alone is refused too. `callee` (10c0) reads that packet only through a 
 entry-source window, which its source hash also reads: the absorber must be refused in a
 batch with it and while its review is recorded. A jump into the slots from another
 function is refused as an alternate entry.
+
+## BNOP calls (issue #69)
+
+`tests/fixtures/bnop-call.py` assembles six functions with `cl6x` 8.3.15, each with its
+own `f(x) = 2x`, one per 0x80 bytes from 0x1000; `C6000BnopCallTest.java` (`prepare`
+declares the functions) checks each `BNOP`. `addkpc` (`BNOP f,1` with `ADDKPC ret,B3,3` in
+its window), `mvk` (`MVK/MVKH ret,B3` before `BNOP f,3`) and `register` (the same through
+`BNOP .S2X A3,3`) must be calls to `f` with a `CALL` override, falling through to the
+return point in the caller, and their C must call `f`. `late` (`BNOP f,5`, then an `ADDKPC`
+that never runs), `elsewhere` (B3 set in the window to another address) and `tail` (B3
+untouched) must not be calls. Counting five delay cycles after a `BNOP`'s NOPs makes `late`
+a call; admitting only `BNOP.S1` leaves `register` a jump. Both endians.

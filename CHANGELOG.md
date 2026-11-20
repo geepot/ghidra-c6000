@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+* A `BNOP` whose delay window sets B3 to its return address is a call, as the same
+  shape written with `B` already was (SPRUFE8B 3.12 BNOP, 4.2.6). It was lifted as a tail
+  call or a jump, leaving its window and return point undecoded. A `BNOP n` window is the
+  5 - n delay cycles after its NOPs (issue #69).
+
 ## 1.3.0 - 2026-11-18
 
 ### Changed

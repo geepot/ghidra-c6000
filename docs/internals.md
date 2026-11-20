@@ -148,8 +148,9 @@ exported in RAM so Ghidra can follow them as code references.
 
 ### Call and return recovery
 
-The call analyzer recognizes a B transfer as a returning call when its delay window
-establishes B3 as the return address through ADDKPC or MVK/MVKH. It can decode
+The call analyzer recognizes a B or BNOP transfer as a returning call when its delay
+window establishes B3 as the return address through ADDKPC or MVK/MVKH. A `BNOP n`
+window is the 5 - n delay cycles after its NOPs (SPRUFE8B 3.12 BNOP). It can decode
 undiscovered delay slots, apply a CALL override, add a register-built call-target
 reference, and repair the caller's body. Predicated calls remain conditional; B/BNOP
 through the ABI return register B3 remain returns.
