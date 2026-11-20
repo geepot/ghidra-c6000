@@ -9,6 +9,11 @@
   header decoded as a delay-slot instruction (`_CPKT`) and counted as a cycle of the
   jump's window, so the cut no longer matched: each recovery pass restored the jump and
   released the window, and the next continued and laid them again (SPRUFE8B 3.10).
+* Exact schedules decode a predicated full32 register return, `[B0] BNOP B3,N`. The
+  schedule decodes returns as terminal branches, and only the unpredicated `BNOP` and
+  the predicated `B` had a terminal form, so the predicated `BNOP` failed with "Unable
+  to resolve constructor". Its terminal form takes the branch on the predicate and
+  falls through otherwise, like the predicated `B.S2`.
 
 ## 1.3.0 - 2026-11-18
 
