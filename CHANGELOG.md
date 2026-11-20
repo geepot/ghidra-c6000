@@ -301,6 +301,16 @@
   tail, with the table base and index written in the jump's delay slots, and when the
   guard's flag is set to a nonzero constant between the compare and the branch it guards.
 
+* A counted SPLOOP whose counter may stop it before SPKERNEL is loaded (an early exit)
+  no longer resumes program fetch at the SPKERNEL delay. That draining never reaches a
+  kernel stage boundary, so fetch resumes only when the buffer is idle (SPRUFE8B 7.8.2,
+  7.9.4). Code after such a loop was scheduled into the epilog's cycles and refused as a
+  functional-unit collision; `loop-counter-proof`'s unknown-counter, small-counter,
+  unknown-predicate and late-load cases now compile, and the first three run to the
+  expected state. A normal exit still resumes at the SPKERNEL delay, so a new
+  `loaded_exit_unit_collision` case (the same loop run to completion, its `.D1` unit one
+  bundle earlier) stays refused, keeping that check tested.
+
 * A predicate's known value carries to another register that holds the same value: both are
   copies of one write, as `MV A4,A1` and `MV A4,A2` at a function's entry are. With it, a
   branch in a jump's window whose predicate that path has cleared is known not to go, the
