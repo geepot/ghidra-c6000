@@ -3,7 +3,8 @@
 """BNOP inserted-idle counts, SPRUFE8B F-17/F-18/F-20/F-21/F-32.
 
 IMAGE CASES.json [be]. Fixed-five forms have literal, not Scalar, operands.
-Displacement functions take 15 cycles; register returns take seven.
+Displacement functions take 15 cycles; register returns take seven, or 15
+when a predicated full32 return ([B0] BNOP B3,N) is not taken.
 """
 import json
 from pathlib import Path
@@ -18,7 +19,7 @@ def main():
     if len(sys.argv) not in (3, 4) or len(sys.argv) == 4 and sys.argv[3] != 'be':
         raise SystemExit(__doc__)
     endian = '>' if len(sys.argv) == 4 else '<'
-    image, rows = bytearray(0x8000), []
+    image, rows = bytearray(0x10000), []
 
     def emit(kind, side, count, rs=0, inverted=None, predicate=1, backward=False, br=1):
         base = 0x1000 + len(rows) * 0x100
@@ -44,8 +45,10 @@ def main():
             word = count << 13 | 3 << 7 | 0x6f  # BNOP.S2 B3,N3, BR-independent
         else:
             word = 1 << 23 | 3 << 18 | count << 13 | 0x362
-        if predicated:
+        if predicated and compact:
             word |= 0x20 | inverted << 4
+        elif predicated:
+            word |= 1 << 29 | inverted << 28  # [B0] / [!B0]
         if compact:
             struct.pack_into(endian + 'HH', image, branch - 0x1000, word, 0x0c6e)
             # Branch and NOP 1 share their EP; only word 2 is compact.
@@ -77,11 +80,13 @@ def main():
         expected.update(A4=0x89abcdef, A6=0x89abcdef,
                         A7=0x77 if taken else 0, A8=0 if taken else 0x22, PC=0x9000)
         register = kind in ('register', 'full_register')
-        if register:
+        if register and taken:
             expected.update(A6=0, A7=0, A8=0)
+        elif register:
+            expected.update(A7=0)
         rows.append(dict(name=f'{len(rows)}_{kind}_s{side+1}_n{count}_rs{rs}_z{inverted}_p{predicate:x}',
                          entry=entry, start=base, end=base+0xf0, branch=branch,
-                         input=inputs, expected=expected, count=count, cycles=7 if register else 15,
+                         input=inputs, expected=expected, count=count, cycles=7 if register and taken else 15,
                          literal=kind == 'fixed'))
 
     for side in (0, 1):
@@ -100,7 +105,12 @@ def main():
         for br in (0, 1):
             emit('register', 1, count, br=br)
         emit('full_register', 1, count)
-    assert len(rows) == 118
+        # The exact schedule decodes returns as terminal branches; a predicated one needs
+        # its own terminal form.
+        for inverted in (0, 1):
+            for predicate in (0, 1):
+                emit('full_register', 1, count, inverted=inverted, predicate=predicate)
+    assert len(rows) == 142
     Path(sys.argv[1]).write_bytes(image)
     Path(sys.argv[2]).write_text(json.dumps(rows, indent=2) + '\n')
 

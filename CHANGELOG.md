@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+* Exact schedules decode a predicated full32 register return, `[B0] BNOP B3,N`. The
+  schedule decodes returns as terminal branches, and only the unpredicated `BNOP` and
+  the predicated `B` had a terminal form, so the predicated `BNOP` failed with "Unable
+  to resolve constructor". Its terminal form takes the branch on the predicate and
+  falls through otherwise, like the predicated `B.S2`.
+
 ## 1.3.0 - 2026-11-18
 
 ### Changed

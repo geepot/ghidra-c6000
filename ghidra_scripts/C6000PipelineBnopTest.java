@@ -58,7 +58,7 @@ public class C6000PipelineBnopTest extends GhidraScript {
             }
             checked++;
         }
-        if (checked != 118 || literals != 28) throw new AssertionError("Incomplete BNOP matrix");
+        if (checked != 142 || literals != 28) throw new AssertionError("Incomplete BNOP matrix");
         println("C6000_PIPELINE_BNOP_OK cases=" + checked + " literal=" + literals);
     }
 }
