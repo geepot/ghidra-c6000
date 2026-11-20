@@ -122,6 +122,7 @@ CORE = [
     case("unary-dp-src1", "UnaryDpSource", "C6000_UNARY_DP_SOURCE_OK"),
     case("mvc-control", "MvcControl", "C6000_MVC_CONTROL_OK"),
     case("mvc-tscl", "MvcControl", "C6000_MVC_CONTROL_OK"),
+    case("pipeline-tsc", "PipelineTsc", "C6000_PIPELINE_TSC_OK", None),
     case("circular-addressing", "CircularAddress", "C6000_CIRCULAR_ADDRESS_OK"),
     case("nonalign-circular", "NonalignedCircular", "C6000_NONALIGNED_CIRCULAR_OK"),
     case("elf-local-label", "ElfLocalLabel", "C6000_ELF_LOCAL_LABEL_OK", None, analysis=True),

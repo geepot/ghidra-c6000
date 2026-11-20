@@ -109,6 +109,10 @@
   (`[!A0] LDW`, then `[!A0] B` on the same A0) is known to run or not on each path.
   Exact schedules refused a complementary writer landing in the same cycle
   (`[A0] MVK … ,B0` with the load's `B0`) as a potential simultaneous write.
+* Exact schedules accept the time-stamp counter's reads (`MVC TSCL`/`TSCH`) and start
+  (`MVC … ,TSCL`). They lift to the `c6000_tscl_read`, `c6000_tsch_read` and
+  `c6000_tsc_start` userops, which the compiler refused as opaque semantics, so any
+  function that reads the clock had no exact schedule.
 
 * The call analyzer's look-back treats every register the ABI lets a callee change as
   unknown once an earlier call has returned (all but A10-A15 and B10-B15), and at code that
