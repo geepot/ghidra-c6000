@@ -1890,6 +1890,7 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 			return path;
 		}
 
+
 		private boolean explicitFunctionEntry(Address at) {
 			Function function = listing.getFunctionAt(at);
 			if (function == null) return false;
@@ -2139,6 +2140,9 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 		if (java.util.Arrays.equals(branch.getFlows(), partner.getFlows())) return false;
 		// Where the function bodies already say which target is the caller's own code, that decides.
 		Boolean local = localTarget(branch), other = localTarget(partner);
+		// Both targets in other functions: neither is the caller's else-block, and one link set in
+		// the window serves both calls (SPRUFE8B 4.2.6).
+		if (Boolean.FALSE.equals(local) && Boolean.FALSE.equals(other)) return false;
 		if (local != null && other != null && !local.equals(other)) return local;
 		// ponytail: distance only while bodies are incomplete; the nearer target is the local else-block.
 		return mine < theirs;
