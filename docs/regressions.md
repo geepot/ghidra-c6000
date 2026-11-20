@@ -546,6 +546,11 @@ at 1984. The arm whose target is another function's code is the call; choosing t
 nearer target as the local block made 19a8 a jump and gave 1984 a function. Target
 distance decides only while the function bodies cannot.
 
+`delayed-call.py` 1a08 is a call whose B3 is finished by `ADDK 4,B3` in its window
+after `MVK`/`MVKH 0x1a10`: it returns to 1a14. Constants come from each instruction's
+p-code with the known registers as inputs; tracking only `MVK`, `MVKL`, `MVKH`, `ADDKPC`
+and copies lost B3 at the `ADDK` and made 1a08 a tail call.
+
 ## Delayed-call predicate facts
 
 `delayed-call.py IMAGE [be]` and `C6000DelayedCallTest.java` (with

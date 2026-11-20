@@ -39,8 +39,13 @@ public final class C6000LoopCounterProof {
 
     /** constantOutput with one register known first, such as the predicate that lets the code run. */
     static Long constantOutput(Language language,PcodeOp[] code,long offset,int size,long knownOffset,int knownSize,long knownValue) {
+        return constantOutput(language,code,offset,size,List.of(new long[]{knownOffset,knownSize,knownValue}));
+    }
+
+    /** constantOutput with registers known first, each {offset, size, value}. */
+    static Long constantOutput(Language language,PcodeOp[] code,long offset,int size,List<long[]> known) {
         var proof=new C6000LoopCounterProof(language);
-        proof.write(proof.registers,knownOffset,knownSize,proof.arithmetic.fromConst(knownValue,knownSize));
+        for(long[] k:known)proof.write(proof.registers,k[0],(int)k[1],proof.arithmetic.fromConst(k[2],(int)k[1]));
         var image=proof.evaluate(new Operation(code,List.of(),null,false));
         if(image==null)return null;var value=proof.read(image,offset,size);
         return value==null?null:proof.arithmetic.toLong(value,PcodeArithmetic.Purpose.INSPECT);

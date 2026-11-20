@@ -18,6 +18,10 @@
 
 ### Fixed
 
+* The call analyzer's register constants come from each instruction's p-code, with the
+  known registers as inputs, instead of a list of mnemonics (`MVK`/`MVKL`/`MVKH`/`ADDKPC`
+  and copies, with 32-bit `MVK.L`/`MVK.D` dropped). A return address finished by other
+  arithmetic, such as `ADDK`, in a call's window was lost and the call became a tail call.
 * A jump preempted by a return in its window (#50) is continued whenever the proposed
   lifting, the jump run straight on and the return's window cut where the jump lands,
   runs what the hardware runs on every predicate outcome. That replaces a list of

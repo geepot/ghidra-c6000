@@ -81,6 +81,11 @@ at 19c0, is nearer than the jump arm's target, the caller's loop head at 1984:
   19a0  MVK/MVKH 0x19b4,B3       19ac  [!A1]B.S1 0x1984 (jump)
   19a8  [A1]B.S1 0x19c0 (call)   19b0  NOP 5 ; 19b4 B.S2 B3 ; 19c0 B.S2 B3
 
+A call whose B3 is finished by ADDK in its window returns past the window (1a08):
+
+  1a00  MVK/MVKH 0x1a10,B3       1a0c  ADDK.S2 4,B3   1a14  B.S2 B3
+  1a08  B.S1    0x1100  (call)   1a10  NOP 4
+
 A predicated reaching jump; the write under the opposite predicate does not count:
 
   1480  B.S1    0x14c0 (jump)    14c0  [A1]B.S1  0x1488 (jump)
@@ -294,8 +299,15 @@ NEAR_HELPER = {
     0x19B4: B_B3, 0x19B8: nop(5), 0x19C0: B_B3, 0x19C4: nop(5),
 }
 
+# B3 finished by arithmetic in the call's window: MVK/MVKH 0x1a10, then ADDK 4,B3 (ADDK.S2,
+# SPRUFE8B 3.12 ADDK). Constants come from each instruction's p-code, not a list of mnemonics.
+ADDK_RETURN = {
+    0x1A00: mvk(0x1A10, 3), 0x1A04: mvkh(0, 3), 0x1A08: b_s1(0x1A08, CALLEE),
+    0x1A0C: 0x01800252, 0x1A10: nop(4), 0x1A14: B_B3, 0x1A18: nop(5),
+}
+
 CASES = {
-    **PARTNER_FAR, **NEAR_HELPER,
+    **PARTNER_FAR, **NEAR_HELPER, **ADDK_RETURN,
     0x1300: b_s1(0x1300, 0x1340), 0x1304: nop(5),
     0x1308: b_s1(0x1308, CALLEE), 0x130C: nop(5), 0x1310: B_B3, 0x1314: nop(5),
     0x1340: mvk(0x1310, 3), 0x1344: mvkh(0, 3),

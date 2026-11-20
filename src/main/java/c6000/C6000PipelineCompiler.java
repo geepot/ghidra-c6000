@@ -357,7 +357,8 @@ public final class C6000PipelineCompiler {
             while(elapsed<6){var pack=packet(pc);int span=pack.stream().mapToInt(Insn::span).max().orElse(1);
                 for(var i:pack){long at=i.instruction().getAddress().getOffset();if(at!=plan.callPc()&&Set.of("B","BNOP","BDEC","BPOS","CALLP").contains(i.name()))throw fail("closed-call control edge in call delay window");
                     for(var d:i.outputs())if(d.offset()<linkOffset+4&&linkOffset<d.offset()+d.size()){
-                        if(!Set.of("ADDKPC","MVK","MVKL","MVKH","CALLP").contains(i.name())||i.predicate()!=null||d.offset()!=linkOffset||d.size()!=4||d.phase()!=1||(!Set.of("CALLP","ADDKPC").contains(i.name())&&i.span()!=1))throw fail("closed-call link lacks exact unconditional E1 "+linkRegister.getName()+" proof at "+i.instruction().getAddress());
+                        // Any unconditional full E1 write; its value is proved through p-code below.
+                        if(i.predicate()!=null||d.offset()!=linkOffset||d.size()!=4||d.phase()!=1||(!Set.of("CALLP","ADDKPC").contains(i.name())&&i.span()!=1))throw fail("closed-call link lacks exact unconditional E1 "+linkRegister.getName()+" proof at "+i.instruction().getAddress());
                         writers.add(at);lastWriter=at;
                     }
                 }proofPacket(constants,pack,shadows);elapsed+=span;pc=after(pack.get(pack.size()-1));

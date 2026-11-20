@@ -1101,74 +1101,22 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 		}
 
 		/**
-		 * The known value an instruction copies between registers: MV, or the
-		 * compiler's ADD/OR of zero. Null when it is not a copy of a known value.
+		 * Apply one instruction, assumed to run, to the constant map, from its p-code with the known
+		 * registers as inputs; returns the register it writes a constant to, else null.
 		 */
-		private static long[] copySource(Instruction insn, String name, Map<Register, long[]> regs) {
-			int n = insn.getNumOperands();
-            // Full32 exact spellings include ADD.D src,0,dst as well as
-            // ADD/OR 0,src,dst. Both are copies; preserve constant recovery
-            // when a scalar MV alias is displayed as its actual primitive.
-            Register src = C6000EncodingInfo.registerCopySource(insn);
-			if (src == null || insn.getRegister(n - 1) == null || insn.getMnemonicString().startsWith("[")) {
-				return null;
-			}
-			long[] value = regs.get(src);
-			return value == null ? null : value.clone();
-		}
-
-		/** Apply one instruction to the constant map; returns the constant register written. */
 		Register track(Instruction insn, Map<Register, long[]> regs) {
-			String op = baseName(insn);
-			int dot = op.indexOf('.');
-			String name = dot < 0 ? op : op.substring(0, dot);
-			Register dst = insn.getNumOperands() >= 2 ? insn.getRegister(1) : null;
-			Long value = insn.getNumOperands() >= 2 ? constant(insn) : null;
-			long[] old = dst == null ? null : regs.get(dst);
-			long[] copied = copySource(insn, name, regs);
 			// A compact branch folds its parallel followers into its own p-code
 			// as delay slots; they are tracked separately, so skip its writes.
-			if (insn.getDelaySlotDepth() == 0) {
-				for (Object written : insn.getResultObjects()) {
-					if (written instanceof Register r) regs.remove(r);
-				}
-			}
-			if (copied != null) {
-				Register to = insn.getRegister(insn.getNumOperands() - 1);
-				regs.put(to, copied);
-				return to;
-			}
-			if (dst == null || value == null) return null;
-			// Compact (16-bit) forms carry only small MVK constants.
-			if (insn.getLength() != 4 && !name.equals("MVK")) return null;
-			long v = value;
-			switch (name) {
-				case "MVK", "MVKL" -> {
-					if (insn.getLength() == 4 && !op.startsWith("MVK.S") &&
-						!op.startsWith("MVKL.S")) return null;
-					regs.put(dst, new long[] { (short) v, FULL });
-				}
-				case "MVKH" -> {
-					long low = old == null ? 0 : old[0] & 0xffff;
-					int mask = old == null ? HIGH : (int) old[1] | HIGH;
-					regs.put(dst, new long[] { ((v & 0xffff) << 16) | low, mask });
-				}
-				case "ADDKPC" -> regs.put(dst, new long[] { v, FULL });
-				default -> {
-					return null;
-				}
-			}
-			return dst;
+			if (insn.getDelaySlotDepth() != 0 || transfer(insn)) return null;
+			List<Register> written = new ArrayList<>();
+			for (Object result : insn.getResultObjects()) if (result instanceof Register r) written.add(r);
+			Long value = written.size() == 1 ? constantWrite(insn, written.get(0), regs) : null;
+			for (Register r : written) regs.keySet().removeIf(known -> overlaps(known, r));
+			if (value == null) return null;
+			regs.put(written.get(0), new long[] { value, FULL });
+			return written.get(0);
 		}
 
-		/** Operand 0 as a number; an in-image constant may be rendered as an address. */
-		private static Long constant(Instruction insn) {
-			for (Object o : insn.getOpObjects(0)) {
-				if (o instanceof Scalar scalar) return scalar.getUnsignedValue();
-				if (o instanceof Address address) return address.getOffset();
-			}
-			return null;
-		}
 
 		/** The jump the last {@link #viaJump} path went through. */
 		private Instruction viaInsn;
@@ -1282,28 +1230,32 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 				// Backwards, one that would falsify the fact cannot have run (SPRUFE8B 3.12 MVK, 4.2.1).
 				Long value = constantWrite(instruction, register);
 				if (value != null && ((value != 0) == nonzero) == (query >= anchor)) continue;
-				// B's native delay carrier reports its followers' writes too;
-				// the physical followers are present separately in this path.
-				String op = baseName(instruction);
-				if (op.equals("B.S1") || op.equals("B.S2")) continue;
 				for (Register r : issueWrites(instruction)) if (overlaps(r, register)) return false;
 			}
 			return true;
 		}
 
-		/** The constant an MVK/MVKL or a self-subtracting SUB writes to register, else null. */
 		/** The constant {@code insn} writes to {@code register} when it runs, from its p-code; null if none. */
 		private Long constantWrite(Instruction insn, Register register) {
+			return constantWrite(insn, register, Map.of());
+		}
+
+		/** The same, with the registers in {@code known} holding their full values. */
+		private Long constantWrite(Instruction insn, Register register, Map<Register, long[]> known) {
 			if (transfer(insn)) return null;
+			List<long[]> seeds = new ArrayList<>();
+			for (var entry : known.entrySet()) {
+				if (entry.getValue()[1] != FULL) continue;
+				Register r = entry.getKey();
+				seeds.add(new long[] { r.getAddress().getOffset(), r.getMinimumByteSize(), entry.getValue()[0] });
+			}
+			// Running means its predicate held.
 			String p = predicate(insn);
 			Register guard = p == null ? null : program.getRegister(p.replace("!", ""));
-			var code = insn.getPcode();
-			long offset = register.getAddress().getOffset();
-			int size = register.getMinimumByteSize();
-			if (guard == null) return C6000LoopCounterProof.constantOutput(program.getLanguage(), code, offset, size);
-			// Running means its predicate held.
-			return C6000LoopCounterProof.constantOutput(program.getLanguage(), code, offset, size,
-				guard.getAddress().getOffset(), guard.getMinimumByteSize(), p.startsWith("!") ? 0 : 1);
+			if (guard != null) seeds.add(new long[] { guard.getAddress().getOffset(), guard.getMinimumByteSize(), p.startsWith("!") ? 0 : 1 });
+			Long value = C6000LoopCounterProof.constantOutput(program.getLanguage(), insn.getPcode(),
+				register.getAddress().getOffset(), register.getMinimumByteSize(), seeds);
+			return value == null ? null : value & 0xffffffffL;
 		}
 
 		private boolean samePacket(List<Instruction> path, int first, int last) {
