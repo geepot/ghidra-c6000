@@ -59,6 +59,13 @@
 
 ### Fixed
 
+* A store-tail schedule accepts a return taken while a software-pipelined loop drains,
+  as in a word copy that issues its return in the first epilog cycle. The taken return
+  idles the non-reloading buffer (SPRUFE8B 7.14), so nothing more issues from it in the
+  caller's cycles; the stores it issued in the delay slots stay pending under the
+  store-tail contract, and TSR.SPLX is cleared. It was refused as an unresolved control
+  effect. The refusals now name the landing and the branch or store in the way.
+
 * The call analyzer's look-back treats every register the ABI lets a callee change as
   unknown once an earlier call has returned (all but A10-A15 and B10-B15), and at code that
   nothing falls into, after a jump or return that always goes, it takes the registers from
