@@ -58,6 +58,18 @@ def main():
     for k,word in enumerate(words):struct.pack_into(endian+'I',image,entry-0x1000+4*k,word)
     struct.pack_into(endian+'II',image,entry-0x1000+0x100,0xc0362,0x8000)
     rows.append(dict(name='branch_idles_new_loop_in_last_slot',entry=entry,input={'A0':1,'ILC':0x777},expected={'A4':0,'B5':0,'ILC':0x777,'TSR':0},expected_cycles=12,extent=0x1ff))
+    # A word copy shaped like the run-time library's: SPLOOPD ii=1 with LDW, NOP 4, MV, then
+    # SPKERNEL || STW, and the return issued in the first epilog cycle. The return lands after
+    # the last STW issued, with two stores still in E2/E3; 7.14 idles the buffer there, so
+    # nothing more issues in the caller's cycles. Copies ILC + 4 words (7.9.5).
+    def mem(store,side,base,data):return (data<<23)|(base<<18)|(1<<13)|(0xb<<9)|(int(side==2)<<7)|((7 if store else 6)<<4)|4|(int(side==2)<<1)
+    for count in [0,3]:
+        entry=0x1000+len(rows)*0x200;n=count+4
+        words=[0x3a001,(13<<23)|(6<<18)|0x3a2,mem(False,2,4,5),0x6000,(5<<23)|(5<<18)|0x1fd8,0x34001,mem(True,1,6,5),0x800362|(3<<18)|(5<<13)]
+        for k,word in enumerate(words):struct.pack_into(endian+'I',image,entry-0x1000+4*k,word)
+        src={str(0x8000+4*k):0x11110000+k for k in range(n)};dst={str(0x8100+4*k):0x11110000+k for k in range(n)};dst[str(0x8100+4*n)]=0
+        rows.append(dict(name=f'copy_return_in_epilog_{count}',entry=entry,input={'B6':count,'B4':0x8000,'A6':0x8100},memory=src,
+                         expected={'B4':0x8000+4*n,'A6':0x8100+4*n,'A5':0x11110000+n-1,'ILC':0,'TSR':0},expected_memory=dst,store_tail=True))
     for encoded in range(8):
         entry=0x1000+len(rows)*0x200
         struct.pack_into(endian+'III',image,entry-0x1000,0xc6e<<16|0xc6e|(encoded<<13),0xc0362,0x8000)

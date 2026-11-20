@@ -79,13 +79,17 @@ public final class C6000PipelineCompiler {
     }
 
     private void storeTailReturn(State source,Branch landing,List<Flight> flights,List<Branch> branches,Insn issued,LoopPlan loop,List<Hazard> hazards)throws Exception {
-        if(loop!=null||!branches.isEmpty()||issued!=null)throw fail("store-tail return has unresolved control effects");
+        if(!branches.isEmpty()||issued!=null)throw fail("store-tail return has unresolved control effects at "+Long.toHexString(landing.pc())+" ("+(!branches.isEmpty()?"branch from "+Long.toHexString(branches.get(0).pc()):"branch issued at "+issued.instruction().getAddress())+")");
+        // SPRUFE8B 7.14: the taken return idles a loop buffer that isn't reloading (SPKERNELR loops
+        // are refused), so nothing more issues from it in the caller's cycles; stores it issued in
+        // the delay slots are pending like any others
+        if(loop!=null){var tsr=new Varnode(program.getRegister("TSR").getAddress(),4);b.op(PcodeOp.INT_AND,tsr,tsr,c(0xffffbfffL,4));}
         var stores=new ArrayList<PendingStoreTail>();
         for(var flight:flights){
             var instruction=decode(flight.pc());
             if(!instruction.store()||instruction.latency()!=3||flight.age()<1||flight.age()>2||
                 instruction.outputs().stream().anyMatch(d->d.phase()>flight.age()))
-                throw fail("store-tail return supports only pending E3 stores");
+                throw fail("store-tail return supports only pending E3 stores at "+Long.toHexString(landing.pc())+" ("+instruction.instruction()+" at "+Long.toHexString(flight.pc())+", age "+flight.age()+")");
             if(3-flight.age()>storeTailContract.idleAdvances())throw fail("store-tail idle budget is too short");
             stores.add(new PendingStoreTail(flight.pc(),flight.age(),3-flight.age(),
                 slot("predicate",flight.pc(),flight.age(),0,1),storeTailWrites(instruction,flight.age()),
