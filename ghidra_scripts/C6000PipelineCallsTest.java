@@ -29,7 +29,7 @@ public class C6000PipelineCallsTest extends GhidraScript {
     if(closed){var plans=new ArrayList<C6000PipelineCompiler.ClosedCallPlan>();for(var x:row.getAsJsonArray("sites")){var site=x.getAsJsonObject();plans.add(new C6000PipelineCompiler.ClosedCallPlan(currentProgram.getLanguageID().getIdAsString(),window(c,end),window(n(site,"callee"),n(site,"callee_end")),c,null,n(site,"call"),n(site,"link"),n(site,"continuation"),n(site,"callee_return"),n(row,"caller_return"),new C6000PipelineCompiler.TraceEntry(true,Set.of()),"Synthetic sequential leaf calls, separate owners and explicit drained entry"));}
      var result=C6000PipelineCompiler.compileClosedCallsTrace(currentProgram,function,plans);schedule=result.schedule();boundaries=result.boundaries();proofs=result.proofs();
     }else{int cap=C6000PipelineCompiler.maxStates;if(row.has("state_cap"))C6000PipelineCompiler.maxStates=row.get("state_cap").getAsInt();
-     try{schedule=new C6000PipelineCompiler(currentProgram,function).compile();}finally{C6000PipelineCompiler.maxStates=cap;}
+     try{var compiler=new C6000PipelineCompiler(currentProgram,function);schedule=row.has("store_tail")?compiler.compileStoreTail(new C6000PipelineCompiler.StoreTailContract(2,"Synthetic observation: no caller access until the stores commit")).schedule():compiler.compile();}finally{C6000PipelineCompiler.maxStates=cap;}
     }
     if(row.has("refused"))throw new AssertionError("Accepted "+name);accepted++;
     if(row.has("max_states")&&schedule.states()>row.get("max_states").getAsInt())throw new AssertionError(name+" states="+schedule.states()+" expected at most "+row.get("max_states"));

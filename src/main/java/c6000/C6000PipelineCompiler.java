@@ -54,7 +54,16 @@ public final class C6000PipelineCompiler {
         if(!states.isEmpty()||!instructions.isEmpty()||!b.code.isEmpty()||traceContract!=null||closedCall!=null||callerTail!=null||storeTailContract!=null)
             throw fail("store-tail compiler instance already used");
         storeTailContract=Objects.requireNonNull(contract);
-        return new StoreTailResult(compileInternal(),contract,storeTailBoundaries);
+        try{return new StoreTailResult(compileInternal(),contract,storeTailBoundaries);}
+        catch(IllegalArgumentException e){
+            // the same retries as compile()
+            if(widenDrained>0||!refine||lastTry||!oversize(e))throw e;
+            for(int level=0;level<=4;level++){
+                try{return relaxed(level).compileStoreTail(contract);}
+                catch(IllegalArgumentException again){if(level<4&&(level==0||level==3||oversize(again)))continue;if(level<3){level=2;continue;}throw e;}
+            }
+            throw e;
+        }
     }
 
     private List<StoreTailWrite> storeTailWrites(Insn instruction,int age) {

@@ -121,6 +121,9 @@ def main():
  # lowered state cap it compiles again without the split.
  plain('unrefined_retry',[mvk(0,0,2)|4<<29,mvk(1,8),mvk(2,7),ret(),4<<13],{'A8':1,'A7':2,'PC':0x9000},{'A1':1})
  rows[-1]['state_cap']=12  # 17 states with the split
+ # The same under the store-tail contract, which retries the same way.
+ plain('unrefined_retry_store_tail',[mvk(0,0,2)|4<<29,mvk(1,8),mvk(2,7),ret(),4<<13],{'A8':1,'A7':2,'PC':0x9000},{'A1':1})
+ rows[-1]['state_cap']=12;rows[-1]['store_tail']=True
  # Over a lowered state cap (33 states, cap 20), and the merged retries lose the fact it needs:
  # only the last retry, refined with the caps raised, compiles it.
  predicate_write('relaxed_retry_after_lost_fact',1,1);rows[-1]['state_cap']=20
