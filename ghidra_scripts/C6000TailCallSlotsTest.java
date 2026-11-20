@@ -5,6 +5,7 @@
 
 import c6000.C6000PacketContext;
 import ghidra.app.script.GhidraScript;
+import ghidra.program.model.listing.FlowOverride;
 import ghidra.program.model.listing.Function;
 import ghidra.program.model.listing.Instruction;
 
@@ -38,10 +39,12 @@ public class C6000TailCallSlotsTest extends GhidraScript {
 		if (past != null && past.isInDelaySlot()) {
 			throw new AssertionError("0x1248 recovered as a tail-call slot of " + describe(getInstructionAt(toAddr(0x1244L))));
 		}
-		// A BNOP whose B3 already holds its return address is a call, not a tail call.
-		Instruction arg = getInstructionAt(toAddr(0x130cL));
-		if (arg != null && arg.isInDelaySlot()) {
-			throw new AssertionError("0x130c recovered as a tail-call slot of " + describe(getInstructionAt(toAddr(0x1308L))));
+		// A BNOP whose B3 already holds its return address is a call, not a tail call (issue #69):
+		// its window holds call slots, never tail-call ones.
+		Instruction bnop = getInstructionAt(toAddr(0x1308L));
+		if (bnop == null || bnop.getFlowOverride() != FlowOverride.CALL || !toAddr(0x1314L).equals(bnop.getFallThrough()) ||
+			getInstructionAt(toAddr(0x130cL)) == null) {
+			throw new AssertionError("0x1308 is not a call returning to 0x1314 over a decoded window: " + describe(bnop));
 		}
 		println("C6000_TAIL_CALL_SLOTS_OK");
 	}

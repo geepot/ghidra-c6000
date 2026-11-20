@@ -142,6 +142,7 @@ TI = [
     case("pipeline-postloop", "PostLoopDispatch", "C6000_POSTLOOP_OK", "json"),
     case("pipeline-selfguard-loop", "SelfGuardLoop", "C6000_SELFGUARD_LOOP_OK", "json"),
     case("nested-window", "NestedWindow", "C6000_NESTED_WINDOW_OK", "json", analysis=True),
+    case("bnop-call", "BnopCall", "C6000_BNOP_CALL_OK", "json", analysis=True),
 ]
 
 
@@ -326,6 +327,8 @@ def main():
                     command += ["-preScript", "C6000PipelineEntryDelayTest.java", "prepare", directory / "cases.json"]
                 elif fixture == "nested-window":
                     command += ["-preScript", "C6000NestedWindowTest.java", "prepare", directory / "cases.json"]
+                elif fixture == "bnop-call":
+                    command += ["-preScript", "C6000BnopCallTest.java", "prepare", directory / "cases.json"]
                 elif fixture not in ELF:
                     command += ["-preScript", "C6000SetEntry.java", "1000"]
                 for script, script_args, _ in scripts:

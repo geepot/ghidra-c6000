@@ -22,6 +22,10 @@
   address in B3 is at or before it (SPRUFE8B 3.5, 4.2.6; issues #64, #65, #66). Functions
   with an active reviewed schedule are skipped, and so is a jump continued past the
   return that preempts it (#50).
+* A `BNOP` whose delay window sets B3 to its return address is a call, as the same
+  shape written with `B` already was (SPRUFE8B 3.12 BNOP, 4.2.6). It was lifted as a tail
+  call or a jump, leaving its window and return point undecoded. A `BNOP n` window is the
+  5 - n delay cycles after its NOPs (issue #69).
 
 ## 1.3.0 - 2026-11-18
 

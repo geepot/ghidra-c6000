@@ -102,8 +102,8 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 			monitor.checkCancelled();
 			Instruction branch = instructions.next();
 			String op = baseName(branch);
-			// A B B3 is a call too when its slots set B3 past the window (issue #39).
-			if ((op.equals("B.S1") || op.equals("B.S2")) &&
+			// A B B3 is a call too when its slots set B3 past the window (issue #39), and so is a BNOP (issue #69).
+			if ((op.equals("B.S1") || op.equals("B.S2") || op.equals("BNOP.S1") || op.equals("BNOP.S2")) &&
 				(reclassifiable(program, branch) || missingTarget(branch))) {
 				branches.add(branch.getAddress());
 			}
@@ -317,15 +317,16 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 				if (value != null && value[1] == FULL) target = value[0];
 			}
 
-			// The rest of the branch's execute packet, then five delay cycles.
+			// The rest of the branch's execute packet, then its delay cycles: five, or 5 - n after BNOP n.
 			Register b3 = program.getRegister("B3");
+			int delay = delayCycles(branch);
 			Instruction current = branch;
 			int cycles = 0;
 			int seen = 0;
 			boolean compact = branch.getLength() != 4;
 			boolean branchPacket = true;
 			try {
-				window: while (cycles < DELAY_CYCLES) {
+				window: do {
 					int packetCycles = 1;
 					do {
 						if (branchPacket && !parallelWithNext(current)) break;
@@ -352,7 +353,7 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 					} while (parallelWithNext(current));
 					if (!branchPacket) cycles += packetCycles;
 					branchPacket = false;
-				}
+				} while (cycles < delay);
 			}
 			catch (MemoryAccessException e) {
 				return null;
@@ -905,9 +906,9 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 			return false;
 		}
 
-		/** The rest of {@code jump}'s execute packet and its five delay cycles; null on an incomplete window. */
+		/** The rest of {@code jump}'s execute packet and its delay cycles (delayCycles); null on an incomplete window. */
 		private List<Instruction> window(Instruction jump) {
-			return window(jump, DELAY_CYCLES);
+			return window(jump, delayCycles(jump));
 		}
 
 		/** The rest of {@code jump}'s execute packet and {@code delay} cycles after it; null on an incomplete window. */
