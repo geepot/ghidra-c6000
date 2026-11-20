@@ -474,8 +474,10 @@ public final class C6000PipelineCompiler {
     private TaskMonitor monitor=TaskMonitor.DUMMY;
     // SPRUFE8B ANDN pp.145-146: .L/.S/.D read both inputs and write dst in E1.
     // SPRUFE8B PACK2 pp.397-398 / PACKL4 pp.407-408: E1 source reads and dst write.
-    // SPRUFE8B ADDU pp.135-136, SUBC pp.539-540, SUBU pp.546-547, RCPSP pp.411-412, RSQRSP pp.420-421: single-cycle.
-    private static final Set<String> SINGLE=Set.of("ADD","ADDK","ADDAW","ADDAD","ADDAH","ADDAB","SUBAW","SUBAH","SUBAB","SUB","AND","ANDN","OR","XOR","NOT","MV","MVK","MVKH","MVKL","MVKLH","SHL","SHR","SHRU","EXT","EXTU","SET","CLR","CMPEQ","CMPGT","CMPLT","CMPEQSP","CMPGTSP","CMPLTSP","CMPGTU","CMPLTU","ZERO","NEG","ABS","NORM","LMBD","ABSSP","DINT","RINT","PACK2","PACKL4","ADDU","SUBU","SUBC","RCPSP","RSQRSP");
+    // SPRUFE8B ADDU pp.135-136, SUBC pp.539-540, SUBU pp.546-547, RCPSP pp.411-412, RSQRSP pp.420-421; SSHL p.493, SHR2 p.453,
+    // CMPEQ2 p.179, PACKHL2 p.403 (SPRUFE8B 4.2.1): single-cycle.
+    private static final Set<String> SINGLE=Set.of("ADD","ADDK","ADDAW","ADDAD","ADDAH","ADDAB","SUBAW","SUBAH","SUBAB","SUB","AND","ANDN","OR","XOR","NOT","MV","MVK","MVKH","MVKL","MVKLH","SHL","SHR","SHRU","EXT","EXTU","SET","CLR","CMPEQ","CMPGT","CMPLT","CMPEQSP","CMPGTSP","CMPLTSP","CMPGTU","CMPLTU","ZERO","NEG","ABS","NORM","LMBD","ABSSP","DINT","RINT","PACK2","PACKL4","ADDU","SUBU","SUBC","RCPSP","RSQRSP",
+        "SSHL","SHR2","CMPEQ2","PACKHL2");
     // SPRUFE8B MPYH..MPYLUHS pp.320-350: Multiply (16 x 16), E1 reads, dst in E2.
     private static final Set<String> MULTIPLY16=Set.of("MPY","MPYSU","MPYU","MPYUS","MPYH","MPYHU","MPYHUS","MPYHSU","MPYHL","MPYHLU","MPYHULS","MPYHSLU","MPYLH","MPYLHU","MPYLUHS","MPYLSHU");
 
@@ -594,8 +596,10 @@ public final class C6000PipelineCompiler {
         else if(load)latency=5;
         else if(store)latency=3;
         // SPRUFE8B MPYLI pp.344--345: E1 reads, simultaneous pair write E4, .M use E1.
-        // SPRUFE8B INTSPU p.278: four-cycle, dst in E4.
-        else if(Set.of("MPYLI","ADDSP","SUBSP","MPYSP","MVD","DPSP","DPINT","DPTRUNC","INTSP","INTSPU","SPINT","SPTRUNC").contains(name))latency=4;
+        // SPRUFE8B INTSPU p.278: four-cycle, dst in E4; MPY32, MPY32SU, MPY32U and
+        // MPY32US pp.369-373, DOTP2 p.235 and DOTPU4 p.252 likewise (SPRUFE8B 4.2.8).
+        else if(Set.of("MPYLI","ADDSP","SUBSP","MPYSP","MVD","DPSP","DPINT","DPTRUNC","INTSP","INTSPU","SPINT","SPTRUNC",
+                "MPY32","MPY32U","MPY32SU","MPY32US","DOTP2","DOTPU4").contains(name))latency=4;
         // SPRUFE8B ROTL pipeline, pp.414--415: both sources in E1, dst in E2.
         else if(MULTIPLY16.contains(name)||Set.of("ROTL","SPDP","ABSDP","RCPDP","RSQRDP","CMPEQDP","CMPLTDP","CMPGTDP").contains(name))latency=2;
         else if(Set.of("ADDDP","SUBDP","MPYSPDP").contains(name))latency=7;
