@@ -16,7 +16,7 @@ public class C6000DelayedCallTest extends GhidraScript {
 		for (long entry : new long[] { 0x1040L, 0x1060L, 0x10a0L, 0x1140L, 0x1200L, 0x1280L,
 			0x1300L, 0x1380L, 0x1400L, 0x1480L, 0x1500L, 0x1580L, 0x1600L, 0x1680L, 0x1700L,
 			0x1780L, 0x1800L, 0x1880L, 0x1c00L, 0x1c40L, 0x1d00L, 0x1d80L, 0x1e00L, 0x1e80L, 0x1f00L, 0x1f80L,
-			0x2000L, 0x2080L, 0x2100L }) {
+			0x2000L, 0x2080L, 0x2100L, 0x1900L, 0x1980L, 0x19c0L }) {
 			disassemble(toAddr(entry));
 			createFunction(toAddr(entry), null);
 		}
@@ -28,6 +28,18 @@ public class C6000DelayedCallTest extends GhidraScript {
 			throw new AssertionError("jump arm at 0x1068: " + jump +
 				(jump == null ? "" : " flow=" + jump.getFlowType()) +
 				" function at 0x1080=" + getFunctionAt(toAddr(0x1080L)));
+		}
+		// If/else pairs: the arm still in flight is the partner however many bytes back it is,
+		// and the arm whose target is another function is the call however near it is.
+		for (long[] pair : new long[][] { { 0x1908L, 0x1100L, 0x1924L, 0x1940L }, { 0x19a8L, 0x19c0L, 0x19acL, 0x1984L } }) {
+			Instruction call = getInstructionAt(toAddr(pair[0])), other = getInstructionAt(toAddr(pair[2]));
+			if (call == null || !call.getFlowType().isCall() || !calls(call, pair[1]) || other == null ||
+				other.getFlowType().isCall() || !other.getFlowType().isConditional() || getFunctionAt(toAddr(pair[3])) != null) {
+				throw new AssertionError("if/else pair at " + toAddr(pair[0]) + ": " + call +
+					(call == null ? "" : " flow=" + call.getFlowType()) + "; " + other +
+					(other == null ? "" : " flow=" + other.getFlowType()) + " function at " + toAddr(pair[3]) + "=" +
+					getFunctionAt(toAddr(pair[3])));
+			}
 		}
 		// A B3 set in a jump's delay slots for the call after it belongs to that call.
 		for (long[] jt : new long[][] { { 0x10a0L, 0x10e0L }, { 0x1148L, 0x1180L }, { 0x120cL, 0x1240L },

@@ -655,7 +655,8 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 				if (Boolean.FALSE.equals(runs)) {
 					if (via == null && isFlow(insn) && complementary(insn, branch) &&
 						stable(execution, i, branchIndex, predicate(branch), true) &&
-						branch.getMinAddress().subtract(insn.getMinAddress()) <= 24) partner = insn;
+						// The other arm is still in flight when this one issues (SPRUFE8B 3.5).
+						issue[branchIndex] - issue[i] <= DELAY_CYCLES) partner = insn;
 					continue;
 				}
 				trace.before(issue[i]);
@@ -1393,7 +1394,24 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 		if (mine == null) return false;
 		if (theirs == null) return true;
 		if (java.util.Arrays.equals(branch.getFlows(), partner.getFlows())) return false;
+		// Where the function bodies already say which target is the caller's own code, that decides.
+		Boolean local = localTarget(branch), other = localTarget(partner);
+		if (local != null && other != null && !local.equals(other)) return local;
+		// ponytail: distance only while bodies are incomplete; the nearer target is the local else-block.
 		return mine < theirs;
+	}
+
+	/** True when an immediate branch targets its own function's code, false for another function's entry or body; null if unknown. */
+	private static Boolean localTarget(Instruction insn) {
+		Address[] flows = insn.getDefaultFlows();
+		if (insn.getRegister(0) != null || flows.length != 1) return null;
+		var functions = insn.getProgram().getFunctionManager();
+		Function caller = functions.getFunctionContaining(insn.getMinAddress());
+		Function entered = functions.getFunctionAt(flows[0]);
+		if (entered != null) return caller == null ? null : entered.equals(caller);
+		Function owner = functions.getFunctionContaining(flows[0]);
+		if (caller == null || owner == null) return null;
+		return owner.equals(caller);
 	}
 
 	/** Distance to an immediate branch target, or null for a register branch. */

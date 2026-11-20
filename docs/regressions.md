@@ -525,6 +525,18 @@ Regenerate `c6000_flow_delay.sinc` with `python3 tools/gen_flow_delay.py`;
 generated delay choices cover at most 254 bytes. Longer or unsupported windows remain
 outside native delay recovery.
 
+## If/else call pairs by issue cycle and target ownership
+
+`delayed-call.py` 1900 is an if/else pair whose jump arm (1924) issues three cycles but
+28 bytes after its call arm (1908), past two wide execute packets: the call arm is still
+in flight when the jump arm issues, so they are partners and the jump arm stays a jump,
+with no function at its local target 1940. Matching partners by a 24-byte distance made
+it a call. 19a8/19ac is the reverse layout: the call targets 19c0, a function of its own
+declared by the check, which is nearer than the jump arm's target, the caller's loop head
+at 1984. The arm whose target is another function's code is the call; choosing the
+nearer target as the local block made 19a8 a jump and gave 1984 a function. Target
+distance decides only while the function bodies cannot.
+
 ## Delayed-call predicate facts
 
 `delayed-call.py IMAGE [be]` and `C6000DelayedCallTest.java` (with

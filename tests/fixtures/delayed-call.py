@@ -72,6 +72,15 @@ B3 set in the reaching jump's delay slots:
   1408  B.S1    0x1100  (call)   1444  MVK.S2  0x1410,B3
   1410  B.S2 B3                  1448  MVKH.S2 0x0,B3 ; 144c  NOP 3
 
+An if/else pair whose jump arm (1924) issues 3 cycles but 28 bytes after its call arm
+(1908), past two wide packets; and one (19a8/19ac) whose call target, the helper function
+at 19c0, is nearer than the jump arm's target, the caller's loop head at 1984:
+
+  1900  MVK/MVKH 0x192c,B3       1924  [!A1]B.S1 0x1940 (jump) 192c  B.S2 B3
+  1908  [A1]B.S1 0x1100 (call) || three MVKs; 1918 two MVKs; 1920 MVK; 1928 NOP 5
+  19a0  MVK/MVKH 0x19b4,B3       19ac  [!A1]B.S1 0x1984 (jump)
+  19a8  [A1]B.S1 0x19c0 (call)   19b0  NOP 5 ; 19b4 B.S2 B3 ; 19c0 B.S2 B3
+
 A predicated reaching jump; the write under the opposite predicate does not count:
 
   1480  B.S1    0x14c0 (jump)    14c0  [A1]B.S1  0x1488 (jump)
@@ -264,7 +273,29 @@ def taken_only(base, predicate):
     }
 
 
+# Issue cycles, not bytes, decide an if/else pair: the jump arm at 1924 issues three
+# cycles after the call arm at 1908 but 28 bytes later, past two wide packets.
+PARTNER_FAR = {
+    0x1900: mvk(0x192C, 3), 0x1904: mvkh(0, 3),
+    0x1908: A1 | b_s1(0x1908, CALLEE) | PAR, 0x190C: mvk(0x11, 5) | PAR,
+    0x1910: mvk_l1(3, 7) | PAR, 0x1914: mvk_l1(4, 7) | 2,
+    0x1918: (mvk(0x22, 5) & ~2) | PAR, 0x191C: mvk(0x33, 6),
+    0x1920: mvk_l1(5, 8),
+    0x1924: NOT_A1 | b_s1(0x1924, 0x1940), 0x1928: nop(5),
+    0x192C: B_B3, 0x1930: nop(5), 0x1940: B_B3, 0x1944: nop(5),
+}
+
+# Where the targets lie decides which arm is the call: the helper at 19c0, a function of
+# its own, sits closer to the pair than the caller's loop head at 1984.
+NEAR_HELPER = {
+    0x1980: mvk_l1(1, 9), **{0x1984 + 4 * k: mvk_l1(2 + k, 9) for k in range(7)},
+    0x19A0: mvk(0x19B4, 3), 0x19A4: mvkh(0, 3),
+    0x19A8: A1 | b_s1(0x19A8, 0x19C0), 0x19AC: NOT_A1 | b_s1(0x19AC, 0x1984), 0x19B0: nop(5),
+    0x19B4: B_B3, 0x19B8: nop(5), 0x19C0: B_B3, 0x19C4: nop(5),
+}
+
 CASES = {
+    **PARTNER_FAR, **NEAR_HELPER,
     0x1300: b_s1(0x1300, 0x1340), 0x1304: nop(5),
     0x1308: b_s1(0x1308, CALLEE), 0x130C: nop(5), 0x1310: B_B3, 0x1314: nop(5),
     0x1340: mvk(0x1310, 3), 0x1344: mvkh(0, 3),

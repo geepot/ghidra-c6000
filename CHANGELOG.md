@@ -18,6 +18,13 @@
 
 ### Fixed
 
+* The two arms of an if/else call pair are matched by issue cycle, not by being within
+  24 bytes: an arm still in flight when the other issues is its partner, however wide
+  the execute packets between. A jump arm past wide packets was recovered as a call.
+* Which arm of an if/else call pair is the call is decided by where the targets lie when
+  the function bodies say: the arm targeting another function is the call, and the one
+  targeting the caller's own code is the jump. Choosing the nearer target as the local
+  block turned a call to a helper placed right after the caller into a jump.
 * Auto-analysis no longer loops for ever on a jump preempted by a return when the
   return's cut window runs past a fetch-packet header. Once that window was laid, the
   header decoded as a delay-slot instruction (`_CPKT`) and counted as a cycle of the
