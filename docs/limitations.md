@@ -200,8 +200,8 @@ Reciprocal estimates implement documented special cases and FAUCR flags with an
 eight-bit-accurate seed. TI does not publish the seed lookup table, so ordinary results
 are not proven bit-exact against hardware.
 
-The `analysis` language variants simplify single-precision arithmetic and use an opaque
-status userop. They are reading aids; use the default languages for emulation and exact
+The `analysis` language variants simplify floating-point arithmetic and use an opaque
+status userop for the single-precision operations. They are reading aids; use the default languages for emulation and exact
 rounding/status checks.
 
 The published RPACK2 execution rule and compiler guide specify a saturating left shift.
