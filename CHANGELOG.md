@@ -113,6 +113,11 @@
   (`MVC … ,TSCL`). They lift to the `c6000_tscl_read`, `c6000_tsch_read` and
   `c6000_tsc_start` userops, which the compiler refused as opaque semantics, so any
   function that reads the clock had no exact schedule.
+* Exact schedules for functions whose entry packet issues a branch accept a native delay
+  window of compact (16-bit) instructions or one that holds a fetch-packet header. The
+  window was walked by Ghidra's delay-slot depth, which doesn't count such slots, so it
+  was refused as "does not match its N delay bytes" or "is not straight-line code". It is
+  now walked by its bytes.
 
 * The call analyzer's look-back treats every register the ABI lets a callee change as
   unknown once an earlier call has returned (all but A10-A15 and B10-B15), and at code that
