@@ -9,8 +9,12 @@
   and the DP comparisons plain floating-point p-code, as they already did for the
   single-precision arithmetic. The bit-exact models with rounding modes and status
   flags made each of these a long block of integer code in the decompiled output. The
-  plain forms round to nearest and write no status; the `default` and `c67x` languages
-  keep the exact models.
+  plain forms round to nearest and report status through the same opaque
+  `c6000_fp_status` userop; the `default` and `c67x` languages keep the exact models.
+* Exact schedules accept the analysis languages' `c6000_fp_status` update as the
+  instruction's status write (its result joins the register's event bits at writeback).
+  Before, any float instruction in an analysis-language function refused the schedule as
+  "opaque semantics".
 
 * All eight languages are now version 3.0: the context register is 128 bits, which makes
   room for the latched-branch fields (bits 64-122). Programs saved with version 2, or with

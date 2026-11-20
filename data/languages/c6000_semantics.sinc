@@ -621,13 +621,15 @@ macro c6000_sem_unpkhu4(a, d) {
   d = ((a >> 8) & 0x00ff0000) | ((a >> 16) & 0xff);
 }
 # SEM: ABSDP
-# Reading aid: in the analysis language floating point is plain p-code. Status flags are not
-# written and the rounding mode is round to nearest (halfway cases of SPINT/DPINT round away from
-# zero), as compiled C runs; the bit-exact models below stay in the default language
-# (SPRUFE8B 2.10.1-2.10.3, 3.12).
+# Reading aid: in the analysis language floating point is plain p-code, rounding to nearest
+# (halfway cases of SPINT/DPINT round away from zero), as compiled C runs. Status effects go
+# through the opaque c6000_fp_status userop, as for the single-precision arithmetic; the
+# bit-exact models below stay in the default language (SPRUFE8B 2.10.1-2.10.3, 3.12).
 @if FP_MODEL == "analysis"
 macro c6000_sem_absdp(a, d, side) {
+  local sideShift:4 = side;
   d = abs(a);
+  FAUCR = c6000_fp_status(FAUCR, a, sideShift);
 }
 @else
 macro c6000_sem_absdp(a, d, side) {
@@ -1496,7 +1498,9 @@ macro c6000_sem_set_r(s, v, d) {
 # SEM: ABSSP
 @if FP_MODEL == "analysis"
 macro c6000_sem_abssp(a, d, side) {
+  local sideShift:4 = side;
   d = abs(a);
+  FAUCR = c6000_fp_status(FAUCR, a, sideShift);
 }
 @else
 macro c6000_sem_abssp(a, d, side) {
@@ -1599,6 +1603,7 @@ macro c6000_sem_round_qp_to_dp(exact, d, mode, flags) {
 # a and b are the encoded source ports.  Reverse SUBDP forms compute b-a.
 @if FP_MODEL == "analysis"
 macro c6000_sem_addsub_dp(a, b, d, side, subtract, reverse) {
+  local sideShift:4 = side;
   local subtracting:4 = subtract;
   local reversed:4 = reverse;
   if (subtracting != 0) goto <doSub>;
@@ -1609,7 +1614,7 @@ macro c6000_sem_addsub_dp(a, b, d, side, subtract, reverse) {
   d = a f- b;
   goto <done>;
   <doReverse> d = b f- a;
-  <done>
+  <done> FADCR = c6000_fp_status(FADCR, a, b, sideShift);
 }
 @else
 macro c6000_sem_addsub_dp(a, b, d, side, subtract, reverse) {
@@ -1750,7 +1755,9 @@ macro c6000_sem_addsub_dp(a, b, d, side, subtract, reverse) {
 # SEM: MPYDP
 @if FP_MODEL == "analysis"
 macro c6000_sem_mpydp(a, b, d, side) {
+  local sideShift:4 = side;
   d = a f* b;
+  FMCR = c6000_fp_status(FMCR, a, b, sideShift);
 }
 @else
 macro c6000_sem_mpydp(a, b, d, side) {
@@ -1822,8 +1829,10 @@ macro c6000_sem_mpydp(a, b, d, side) {
 # SEM: MPYSPDP
 @if FP_MODEL == "analysis"
 macro c6000_sem_mpyspdp(a, b, d, side) {
+  local sideShift:4 = side;
   local wide:8 = float2float(a);
   d = wide f* b;
+  FMCR = c6000_fp_status(FMCR, a, b, sideShift);
 }
 @else
 macro c6000_sem_mpyspdp(a, b, d, side) {
@@ -1914,9 +1923,11 @@ macro c6000_sem_fp_select64(condition, yes, no, out) {
 }
 @if FP_MODEL == "analysis"
 macro c6000_sem_mpysp2dp(a, b, d, side) {
+  local sideShift:4 = side;
   local left:8 = float2float(a);
   local right:8 = float2float(b);
   d = left f* right;
+  FMCR = c6000_fp_status(FMCR, a, b, sideShift);
 }
 @else
 macro c6000_sem_mpysp2dp(a, b, d, side) {
@@ -2093,7 +2104,9 @@ macro c6000_sem_intdpu(a, d) { local unsigned:8 = zext(a); d = int2float(unsigne
 # SEM: SPDP
 @if FP_MODEL == "analysis"
 macro c6000_sem_spdp(a, d, side) {
+  local sideShift:4 = side;
   d = float2float(a);
+  FAUCR = c6000_fp_status(FAUCR, a, sideShift);
 }
 @else
 macro c6000_sem_spdp(a, d, side) {
@@ -2174,7 +2187,9 @@ macro c6000_sem_round_dp_to_sp(a, d, mode, flags) {
 # SEM: DPSP
 @if FP_MODEL == "analysis"
 macro c6000_sem_dpsp(a, d, side) {
+  local sideShift:4 = side;
   d = float2float(a);
+  FADCR = c6000_fp_status(FADCR, a, sideShift);
 }
 @else
 macro c6000_sem_dpsp(a, d, side) {
@@ -2395,13 +2410,14 @@ macro c6000_sem_int_to_sp(a, d, side, unsignedMode) {
 # SEM: SPTRUNC
 @if FP_MODEL == "analysis"
 macro c6000_sem_sp_to_int(a, d, side, forceTrunc) {
+  local sideShift:4 = side;
   local forced:4 = forceTrunc;
   if (forced != 0) goto <truncate>;
   local rounded:4 = round(a);
   d = trunc(rounded);
   goto <done>;
   <truncate> d = trunc(a);
-  <done>
+  <done> FADCR = c6000_fp_status(FADCR, a, sideShift);
 }
 @else
 macro c6000_sem_sp_to_int(a, d, side, forceTrunc) {
@@ -2482,13 +2498,14 @@ macro c6000_sem_sp_to_int(a, d, side, forceTrunc) {
 # SEM: DPTRUNC
 @if FP_MODEL == "analysis"
 macro c6000_sem_dp_to_int(a, d, side, forceTrunc) {
+  local sideShift:4 = side;
   local forced:4 = forceTrunc;
   if (forced != 0) goto <truncate>;
   local rounded:8 = round(a);
   d = trunc(rounded);
   goto <done>;
   <truncate> d = trunc(a);
-  <done>
+  <done> FADCR = c6000_fp_status(FADCR, a, sideShift);
 }
 @else
 macro c6000_sem_dp_to_int(a, d, side, forceTrunc) {
@@ -2633,6 +2650,7 @@ macro c6000_sem_compare_sp(a, b, d, side, kind) {
 # SEM: CMPLTDP
 @if FP_MODEL == "analysis"
 macro c6000_sem_compare_dp(a, b, d, side, kind) {
+  local sideShift:4 = side;
   local operation:4 = kind;
   if (operation == 0) goto <equal>;
   if (operation == 1) goto <greater>;
@@ -2641,7 +2659,7 @@ macro c6000_sem_compare_dp(a, b, d, side, kind) {
   <equal> d = zext(a f== b);
   goto <done>;
   <greater> d = zext(a f> b);
-  <done>
+  <done> FAUCR = c6000_fp_status(FAUCR, a, b, sideShift);
 }
 @else
 macro c6000_sem_compare_dp(a, b, d, side, kind) {

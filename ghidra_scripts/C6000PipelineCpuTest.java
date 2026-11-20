@@ -52,7 +52,7 @@ public class C6000PipelineCpuTest extends GhidraScript {
                 state.setVar(toAddr(Long.parseLong(memory.getKey())), 4, false, arithmetic.fromConst(memory.getValue().getAsLong(), 4));
             var executor = new PcodeExecutor<byte[]>(language, arithmetic, state,
                 PcodeExecutorStatePiece.Reason.EXECUTE_READ);
-            var library = PcodeUseropLibrary.<byte[]>nil();
+            var library = new StatusLibrary();
             var frame = executor.begin(new PcodeProgram(language, Arrays.asList(result.code()), library.getSymbols(language)) {});
             int steps = 0, cycles = 0, stalls = 0;
             while (!frame.isFinished() && steps++ < 100000) {
@@ -131,5 +131,13 @@ public class C6000PipelineCpuTest extends GhidraScript {
             }
         }
         println("C6000_PIPELINE_CPU_OK cases=" + count + " language=" + originalId + " conversions=2 decompilations=1");
+    }
+
+    /** The analysis languages' opaque status update: no event bits. */
+    public static class StatusLibrary extends AnnotatedPcodeUseropLibrary<byte[]> {
+        @PcodeUserop(variadic = true)
+        public byte[] c6000_fp_status(byte[][] inputs) {
+            return new byte[4];
+        }
     }
 }
