@@ -41,19 +41,27 @@ public class C6000NestedWindowTest extends GhidraScript {
 		int warned = 0, clean = 0;
 		for (var item : cases) {
 			Set<Long> found = new TreeSet<>();
+			StringBuilder comments = new StringBuilder();
 			var range = new AddressSet(toAddr(item.entry), toAddr(item.end));
 			Iterator<Bookmark> bookmarks = currentProgram.getBookmarkManager().getBookmarksIterator(BookmarkType.WARNING);
 			while (bookmarks.hasNext()) {
 				Bookmark bookmark = bookmarks.next();
 				if (bookmark.getCategory().equals(CATEGORY) && range.contains(bookmark.getAddress())) {
 					found.add(bookmark.getAddress().getOffset());
+					comments.append(bookmark.getComment()).append('\n');
 					println(item.name + ": " + bookmark.getComment());
 				}
 			}
+			// One warning per chain of nested transfers, at its first; it names the rest.
 			Set<Long> expected = new TreeSet<>();
 			for (long at : item.warn) expected.add(at);
+			if (!expected.isEmpty()) expected = new TreeSet<>(Set.of(((TreeSet<Long>) expected).first()));
 			if (!found.equals(expected))
 				throw new AssertionError(item.name + ": warnings at " + hex(found) + ", want " + hex(expected));
+			for (long at : item.warn) {
+				if (!found.contains(at) && !comments.toString().contains(" at " + toAddr(at) + " "))
+					throw new AssertionError(item.name + ": no warning names the transfer at " + toAddr(at) + ": " + comments);
+			}
 			if (expected.isEmpty()) clean++;
 			else warned++;
 		}

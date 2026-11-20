@@ -15,6 +15,12 @@
  */
 package c6000;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+
 import ghidra.app.services.AbstractAnalyzer;
 import ghidra.app.services.AnalysisPriority;
 import ghidra.app.services.AnalyzerType;
@@ -60,6 +66,10 @@ public final class C6000NestedWindowAnalyzer extends AbstractAnalyzer {
 			bookmarks.removeBookmarks(function.getBody(), BookmarkType.WARNING, CATEGORY, monitor);
 			// An active reviewed schedule lifts every transfer in flight.
 			if (C6000ProgramActions.hasActiveReview(program, function)) continue;
+			// Nested pairs, outer then inner, chained where one's inner is another's outer: a pipelined
+			// loop's prolog nests a branch in every cycle, and one warning per chain says as much.
+			List<Instruction[]> pairs = new ArrayList<>();
+			Map<Address, Address> chain = new HashMap<>();
 			for (Instruction branch : program.getListing().getInstructions(function.getBody(), true)) {
 				monitor.checkCancelled();
 				String op = C6000CallAnalyzer.baseName(branch);
@@ -68,14 +78,13 @@ public final class C6000NestedWindowAnalyzer extends AbstractAnalyzer {
 				var preemption = walker.preempting(branch);
 				if (preemption != null && continued(preemption.jump())) continue;
 				Instruction inner = walker.nestedTransfer(branch);
+				// Lifted with no window, a branch whose delay cycles are idle when taken is exact: the
+				// transfers it nests are not taken with it.
+				if (inner != null && !branch.getFlowType().isCall() && !laid(program, branch) && walker.idleWhenTaken(branch))
+					inner = null;
 				if (inner != null) {
-					Address at = program.getListing().getInstructionAt(inner.getMinAddress()) != null ?
-						inner.getMinAddress() : branch.getMinAddress();
-					bookmarks.setBookmark(at, BookmarkType.WARNING, CATEGORY, inner + " at " + inner.getMinAddress() +
-						" issues in the delay window of " + branch + " at " + branch.getMinAddress() +
-						" and lands after it: native lifting cannot place it, so " + function.getName() +
-						" may decompile wrongly (issue #64)");
-					warned++;
+					pairs.add(new Instruction[] { branch, inner });
+					chain.put(root(chain, inner.getMinAddress()), root(chain, branch.getMinAddress()));
 				}
 				Address back = walker.predicatedBackwardCall(branch);
 				if (back != null) {
@@ -86,9 +95,39 @@ public final class C6000NestedWindowAnalyzer extends AbstractAnalyzer {
 					warned++;
 				}
 			}
+			Map<Address, List<Instruction[]>> chains = new LinkedHashMap<>();
+			for (Instruction[] pair : pairs)
+				chains.computeIfAbsent(root(chain, pair[0].getMinAddress()), k -> new ArrayList<>()).add(pair);
+			for (List<Instruction[]> links : chains.values()) {
+				Instruction branch = links.get(0)[0], inner = links.get(0)[1];
+				Address at = program.getListing().getInstructionAt(inner.getMinAddress()) != null ?
+					inner.getMinAddress() : branch.getMinAddress();
+				StringBuilder more = new StringBuilder();
+				for (int i = 1; i < links.size(); i++) more.append(i == 1 ? "" : ", ").append(links.get(i)[1].getMinAddress());
+				bookmarks.setBookmark(at, BookmarkType.WARNING, CATEGORY, inner + " at " + inner.getMinAddress() +
+					" issues in the delay window of " + branch + " at " + branch.getMinAddress() +
+					" and lands after it" + (links.size() > 1 ? ", and so do the transfers at " + more + " in the windows before them" : "") +
+					": native lifting cannot place them, so " + function.getName() + " may decompile wrongly (issue #64)");
+				warned++;
+			}
 		}
 		if (warned > 0) Msg.info(this, getName() + "> " + warned + " warning(s)");
 		return true;
+	}
+
+	private static Address root(Map<Address, Address> chain, Address at) {
+		for (Address up = chain.get(at); up != null && !up.equals(at); up = chain.get(at)) at = up;
+		return at;
+	}
+
+	/** A native window past the branch's own execute packet. */
+	private static boolean laid(Program program, Instruction branch) {
+		try {
+			return branch.getPrototype().getDelaySlotByteCount() > C6000ExecutionPackets.parallelBytes(program, branch.getAddress());
+		}
+		catch (ghidra.program.model.mem.MemoryAccessException e) {
+			return true;
+		}
 	}
 
 	/** A jump continued past a return that preempts it (C6000DelaySlots.neutralise): its taken edge is gone. */

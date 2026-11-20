@@ -263,6 +263,28 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 			return null;
 		}
 
+		/**
+		 * True when {@code branch}'s delay cycles do nothing on its taken path: each instruction after its
+		 * packet is a NOP or guarded by the opposite of its still-stable predicate. Lifted as an immediate
+		 * branch, it is then exact, whatever transfers it nests (SPRUFE8B 3.5, 4.2.6).
+		 */
+		boolean idleWhenTaken(Instruction branch) {
+			String p = predicate(branch);
+			List<Instruction> slots = window(branch, delayCycles(branch));
+			if (p == null || slots == null) return false;
+			List<Instruction> path = new ArrayList<>(lookBack(branch));
+			int at = path.size();
+			path.add(branch);
+			path.addAll(slots);
+			int[] issue = issueCycles(path);
+			for (int i = at + 1; i < path.size(); i++) {
+				Instruction slot = path.get(i);
+				if (issue[i] == issue[at] || baseName(slot).equals("NOP")) continue;
+				if (!complementary(branch, slot) || !stable(path, i, at, p, true)) return false;
+			}
+			return true;
+		}
+
 		Call recognize(Instruction branch) {
 			Map<Register, long[]> regs = new HashMap<>();
 			Instruction partner = null;

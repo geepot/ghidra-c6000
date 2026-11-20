@@ -9,7 +9,10 @@
   cycle of another branch, which lands after it, and a predicated call whose return
   address in B3 is at or before it (SPRUFE8B 3.5, 4.2.6; issues #64, #65, #66). Functions
   with an active reviewed schedule are skipped, and so is a jump continued past the
-  return that preempts it (#50).
+  return that preempts it (#50). A chain of transfers each nested in the one before, as
+  in a software-pipelined loop's prolog, gets one warning naming them all. A predicated
+  branch with no native window whose delay cycles do nothing when it is taken (each a NOP
+  or guarded by the opposite of its predicate) is exact, and gets none.
 
 ### Fixed
 

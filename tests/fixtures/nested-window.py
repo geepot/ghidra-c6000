@@ -181,12 +181,14 @@ CASES = [
   [ A2] SUB     .L1     A2,1,A2
         NOP             4
 """ + RET),
-    # BNOP n spends n of its five delay cycles: a branch in the fifth is in its window
+    # BNOP n spends n of its five delay cycles: a branch in the fifth is in its window, and the ADD
+    # beside it runs on the taken path too
     ("bnop4", True, """{n}:
         MV      .L1     A4,A1
   [ A1] BNOP    .S1     {n}_t,4
 {n}_in:
   [!A1] B       .S1     {n}_u
+||      ADD     .L1     A4,1,A4
         NOP             5
 {n}_t:
         B       .S2     B3
@@ -243,6 +245,20 @@ CASES = [
     ("bnop5", False, """{n}:
         MV      .L1     A4,A1
   [ A1] BNOP    .S1     {n}_t,5
+  [!A1] B       .S1     {n}_u
+        NOP             5
+{n}_t:
+        B       .S2     B3
+        NOP             5
+{n}_u:
+        B       .S2     B3
+        MVK     .S1     1,A4
+        NOP             4
+"""),
+    # Its delay cycle holds only the opposite arm: taken, the BNOP is exact as an immediate jump
+    ("bnop4idle", False, """{n}:
+        MV      .L1     A4,A1
+  [ A1] BNOP    .S1     {n}_t,4
   [!A1] B       .S1     {n}_u
         NOP             5
 {n}_t:
