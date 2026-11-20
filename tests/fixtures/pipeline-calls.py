@@ -2,8 +2,9 @@
 # SPDX-License-Identifier: Apache-2.0
 """Sequential leaf calls, CALLP and saved return links; IMAGE JSON [be].
 Independent synthetic fields: SPRUFE8B 3.5, 3.7, 3.8.10, 4.2.6, CALLP p.172,
-B/register and BNOP/register, compact Scs10 Figure F-19, and a load disabled at
-issue still in flight when the return lands. No firmware bytes.
+B/register and BNOP/register, compact Scs10 Figure F-19, a load disabled at issue still
+in flight when the return lands, and complementary writers across a branch that decides
+their predicate. No firmware bytes.
 """
 from pathlib import Path
 import json,struct,sys
@@ -96,6 +97,14 @@ def main():
  plain('dead_flight_at_return',[mvk(0,1)|1,3<<18|0x362,2<<13,4<<29|3<<23|4<<18|0x64,0],{'A3':0,'A1':0,'PC':0x9000},memory={0x8200:0x1234})
  # The same load issued in the packet the return lands in: its predicate is sampled at issue.
  plain('dead_flight_in_return_packet',[mvk(0,1)|1,3<<18|0x362,3<<13,4<<29|3<<23|4<<18|0x64,0],{'A3':0,'A1':0,'PC':0x9000},memory={0x8200:0x1234})
+ # [!A0] LDW *B10,B0 in cycle 0 and [A0] MVK 0,B0 in cycle 4 write B0 in the same cycle, on
+ # complementary senses of A0, with [!A0] B skip in cycle 1 forking the facts on A0 while the
+ # load is in flight: on each path one of the two is known not to run.
+ for a0 in (1,0):
+  c=0x1000+len(rows)*0x800;skip=c+0x40
+  ldw=6<<29|1<<28|10<<18|0x64|1<<7|1<<1  # [!A0] LDW.D2T2 *B10,B0
+  words=[ldw,6<<29|1<<28|branch(c+4,skip),0,0,6<<29|mvk(0,0,2),0,mvk(1,9),bnop(3)];words+=[0]*(16-len(words))+[bnop(3)]
+  plain(f'fork_collision_a{a0}',words,{'B0':0 if a0 else 0x77,'A9':1,'PC':0x9000},{'A0':a0,'B10':0x8200},memory={0x8200:0x77})
  assert len(rows)*0x800<=len(image)
  Path(sys.argv[1]).write_bytes(image);Path(sys.argv[2]).write_text(json.dumps(rows,indent=2)+'\n')
 if __name__=='__main__':main()

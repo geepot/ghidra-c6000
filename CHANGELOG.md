@@ -105,6 +105,10 @@
   caller's cycles; the stores it issued in the delay slots stay pending under the
   store-tail contract, and TSR.SPLX is cleared. It was refused as an unresolved control
   effect. The refusals now name the landing and the branch or store in the way.
+* An instruction in flight whose predicate sampled a value that a later branch decides
+  (`[!A0] LDW`, then `[!A0] B` on the same A0) is known to run or not on each path.
+  Exact schedules refused a complementary writer landing in the same cycle
+  (`[A0] MVK … ,B0` with the load's `B0`) as a potential simultaneous write.
 
 * The call analyzer's look-back treats every register the ABI lets a callee change as
   unknown once an earlier call has returned (all but A10-A15 and B10-B15), and at code that
