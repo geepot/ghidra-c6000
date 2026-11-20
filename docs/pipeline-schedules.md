@@ -131,16 +131,35 @@ previously issued writes still mature. TSR.SPLX tracks buffer activity independe
 fetch.
 
 Normal post-loop execution resumes at the SPKERNEL delay, capped at the end of the
-epilog (SPRUFE8B p.481, 7.9.4, 7.12). It does not add six cycles for a fresh
-PG-through-DC fetch: the general pipeline diagram in 4.1.4 does not establish that a
-suspended sequential stream is discarded. Abrupt SPLOOPW exits retain their separate
-conservative transition contract; nested reloads are unsupported. No C674x
-silicon-equivalence claim is made. A required X-path or AMR stall for a buffered
+epilog (SPRUFE8B p.481, 7.9.4, 7.12). A counted loop that stops before SPKERNEL is
+loaded (an early exit) never reaches a kernel stage boundary, so that delay does not
+apply: fetch resumes only when the buffer is idle (7.8.2, 7.9.4). Neither adds six
+cycles for a fresh PG-through-DC fetch: the general pipeline diagram in 4.1.4 does not
+establish that a suspended sequential stream is discarded. Abrupt SPLOOPW exits retain
+their separate conservative transition contract; nested reloads are unsupported. No
+C674x silicon-equivalence claim is made. A required X-path or AMR stall for a buffered
 instruction is refused because 7.15.2 specifies LBX/MSX exception behavior, not an
 automatic stall. Program memory instructions retain automatic stalls; unchanged
 complementary sampled predicates are permitted for buffered E1 readers. The separate
 `C6000LoopBuffer` helper reports abstract buffer issue cycles and exposes an external
 post-body fetch window; it is not a complete frontend or instruction writeback emulator.
+
+This two-path rule is taken verbatim from SPRUFE8B. §7.9.4 delays post-loop fetch
+"until the following conditions are all true: the loop has reached the last kernel stage
+boundary; the loop is not interrupt draining; the draining counter has reached the delay
+value specified by fstg and fcyc" (`delay = fstg * ii + fcyc`), and says that after that
+boundary instructions "are fetched from program memory and executed in parallel with"
+the epilog. An early exit is §7.8.2's pattern where "the epilog execution pattern begins
+before the prolog execution pattern is complete" -- the loop drains before it finishes
+loading, so it never reaches the last kernel stage boundary and the first §7.9.4
+condition is never met; §7.9.4 and §7.12.2 then enable fetch "if the loop buffer goes
+idle" with "the fetch enable delay ignored." The model follows both: `postFetch` grants
+the fstg/fcyc delay only to a refilled (fully loaded) frame, and `loopFinished` retires
+an early-exit frame once its buffer is idle. Because a normal exit does fetch into the
+epilog in parallel, a post-loop write can genuinely contend for a body unit;
+`loop-counter-proof`'s `loaded_exit_unit_collision` row pins that (a full-counter run
+whose `.D1` unit sits one bundle earlier), so the collision check stays exercised while
+the four early-exit rows are accepted.
 
 ## Entry and exit contracts
 

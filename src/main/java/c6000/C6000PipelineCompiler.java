@@ -1277,7 +1277,8 @@ public final class C6000PipelineCompiler {
                 int time=loopNextTime(loop,s.loop().time());int drain=s.loop().drain()<0?-1:s.loop().drain()+1;
                 normal=loopFinished(loop,s.loop())?null:new LoopFrame(loop.start(),time,drain,s.loop().zero(),s.loop().refill()||s.loop().drain()<0&&s.loop().time()>=loop.cells().size()-1,s.loop().abrupt());
                 if(!loop.kind().equals("SPLOOPW")&&s.loop().drain()<0&&(s.loop().time()+1)%loop.ii()==0&&(loop.kind().equals("SPLOOP")||s.loop().time()>=3)){
-                    loopTest=counterBefore;stopped=new LoopFrame(loop.start(),time,1,false,s.loop().refill(),false);
+                    // refill: loading is complete; a stop in the SPKERNEL cycle is not an early exit
+                    loopTest=counterBefore;stopped=new LoopFrame(loop.start(),time,1,false,s.loop().refill()||s.loop().time()>=loop.cells().size()-1,false);
                     if(loopFinished(loop,new LoopFrame(loop.start(),s.loop().time(),0,false,s.loop().refill(),false)))stopped=null;
                 }
             }
@@ -1709,6 +1710,7 @@ public final class C6000PipelineCompiler {
         if(frame.abrupt()&&!frame.refill())return frame.time()>=plan.cells().size()-1;
         if(!bufferFinished(plan,frame))return false;
         if(frame.zero())return true;
+        if(!frame.abrupt()&&!frame.refill())return true;  // early exit: fetch resumes when the buffer is idle
         var next=new LoopFrame(frame.start(),loopNextTime(plan,frame.time()),frame.drain()+1,false,frame.refill(),frame.abrupt());
         return postFetch(plan,frame)||postFetch(plan,next);
     }
@@ -1719,6 +1721,10 @@ public final class C6000PipelineCompiler {
         // new branch target: do not infer six extra E1 cycles from 4.1.4's
         // general fetch pipeline. Abrupt branch-like exit remains separate.
         if(frame.abrupt())return frame.drain()>=7;
+        // SPRUFE8B 7.8.2/7.9.4: draining that began before SPKERNEL was loaded (early exit) never reaches a
+        // kernel stage boundary, so the SPKERNEL delay doesn't apply: program fetch resumes only
+        // when the buffer goes idle (loopFinished)
+        if(!frame.refill())return false;
         int delay=Math.min(plan.fetchDelay(),Math.max(0,plan.cells().size()-plan.ii()));
         return frame.time()>=plan.cells().size()&&frame.drain()>=1+delay;
     }
