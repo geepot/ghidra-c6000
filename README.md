@@ -29,7 +29,7 @@ Each zip is tied to the Ghidra version it was built against. Releases include bu
 |---|---|
 | `C6000:LE:32:default` | little-endian C674x / C64x+ / C64x timing, shared superset decoder |
 | `C6000:BE:32:default` | big-endian variant |
-| `C6000:LE:32:analysis` / `C6000:BE:32:analysis` | simplified single-precision p-code for *reading* float-heavy code; flag values are not suitable for emulation |
+| `C6000:LE:32:analysis` / `C6000:BE:32:analysis` | simplified floating-point p-code for *reading* float-heavy code; flag values are not suitable for emulation |
 | `C6000:LE:32:c67x` / `C6000:BE:32:c67x` | C67x / C67x+ cross-path timing with exact floating-point p-code |
 | `C6000:LE:32:c67x-analysis` / `C6000:BE:32:c67x-analysis` | C67x / C67x+ cross-path timing with simplified floating-point p-code |
 

@@ -308,6 +308,10 @@ variant for C67x/C67x+, when importing a program. These variants use native
 single-precision p-code for `INTSP`, `INTSPU`, `MPYSP`, `ADDSP`, `SUBSP`, and the SP
 comparisons. It represents status-register effects with the opaque `c6000_fp_status`
 userop, so its flag values and special rounding cases are not suitable for emulation.
+`ABSSP`, `ABSDP`, `ADDDP`, `SUBDP`, `MPYDP`, `MPYSPDP`, `MPYSP2DP`, `SPDP`, `DPSP`,
+`SPINT`, `SPTRUNC`, `DPINT`, `DPTRUNC` and the DP comparisons are native p-code too,
+without status writes: round to nearest, with `SPINT`/`DPINT` halfway cases rounded
+away from zero, as compiled C runs them.
 Use these languages to inspect control and data flow, then use the corresponding
 exact language (`default` or `c67x`) for
 detailed arithmetic and status checks.

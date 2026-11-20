@@ -124,6 +124,7 @@ CORE = [
     case("mvc-tscl", "MvcControl", "C6000_MVC_CONTROL_OK"),
     case("circular-addressing", "CircularAddress", "C6000_CIRCULAR_ADDRESS_OK"),
     case("nonalign-circular", "NonalignedCircular", "C6000_NONALIGNED_CIRCULAR_OK"),
+    case("analysis-float", "AnalysisFloat", "C6000_ANALYSIS_FLOAT_OK", "json"),
     case("elf-local-label", "ElfLocalLabel", "C6000_ELF_LOCAL_LABEL_OK", None, analysis=True),
     case("elf-asm-label", "ElfAsmLabel", "C6000_ELF_ASM_LABEL_OK", None, analysis=True),
     case("elf-compact", "ElfCompact", "C6000_ELF_COMPACT_OK", None, analysis=True),
@@ -272,7 +273,8 @@ def main():
         project.mkdir()
         runs = [(item, variant) for item in cases for variant in
                 (("default", "analysis", "c67x", "c67x-analysis")
-                 if item[0] in {"pipeline-c67x", "pipeline-resources", "delayed-call-timing"} else ("default",))]
+                 if item[0] in {"pipeline-c67x", "pipeline-resources", "delayed-call-timing",
+                                "analysis-float"} else ("default",))]
         for index, ((fixture, manifests, scripts, analysis), variant) in enumerate(runs):
             directory = work / endian / f"{index:02d}-{fixture}-{variant}"
             directory.mkdir()

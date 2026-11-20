@@ -4,6 +4,14 @@
 
 ### Changed
 
+* The `analysis` and `c67x-analysis` languages give `ABSSP`, `ABSDP`, `ADDDP`, `SUBDP`,
+  `MPYDP`, `MPYSPDP`, `MPYSP2DP`, `SPDP`, `DPSP`, `SPINT`, `SPTRUNC`, `DPINT`, `DPTRUNC`
+  and the DP comparisons plain floating-point p-code, as they already did for the
+  single-precision arithmetic. The bit-exact models with rounding modes and status
+  flags made each of these a long block of integer code in the decompiled output. The
+  plain forms round to nearest and write no status; the `default` and `c67x` languages
+  keep the exact models.
+
 * All eight languages are now version 3.0: the context register is 128 bits, which makes
   room for the latched-branch fields (bits 64-122). Programs saved with version 2, or with
   version 1, upgrade on open with every context field carried over by name. As with
