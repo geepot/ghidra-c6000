@@ -18,6 +18,16 @@
 
 ### Fixed
 
+* A jump preempted by a return in its window (#50) is continued whenever the proposed
+  lifting, the jump run straight on and the return's window cut where the jump lands,
+  runs what the hardware runs on every predicate outcome. That replaces a list of
+  accepted shapes, so a `BNOP B3,n` return, compact code and NOP generators in the jump's
+  packet are accepted where exact. `BNOP` returns kept their jump's target before.
+* One cycle count serves the call analyzer, the delay-slot window layer and the low-half
+  reference analyzer (C6000ExecutionPackets.cycles). The window layer did not count a
+  `BNOP`'s NOP cycles in its packet, so a `BNOP` return's cut window overshot its cut by one
+  instruction, and the call analyzer charged a predicated protected load the four NOP
+  cycles SPRUFE8B specifies only for an unconditional one; both now treat that as untimed.
 * A switch table's bound comes only from an unsigned compare of the register the table is
   indexed with, unchanged until the load, whose result keeps the dispatch from issuing
   past it: the dispatch is predicated on it, or a branch taken on it lands first. The last

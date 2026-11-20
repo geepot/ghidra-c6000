@@ -21,10 +21,10 @@ import ghidra.program.model.symbol.SourceType;
 
 public class C6000PreemptedJumpTest extends GhidraScript {
 	private static final long[] ENTRIES = { 0x1080L, 0x1000L, 0x10a0L, 0x1100L, 0x1140L,
-		0x1180L, 0x11c0L, 0x1200L, 0x1220L, 0x1280L, 0x1298L, 0x1300L, 0x1380L, 0x13c0L, 0x1400L };
+		0x1180L, 0x11c0L, 0x1200L, 0x1220L, 0x1280L, 0x1298L, 0x1300L, 0x1380L, 0x13c0L, 0x1400L, 0x1480L };
 	private static final String[] NAMES = { "callee", "padret", "padtail", "padcode",
 		"padother", "padwritten", "padshort", "padleak", "padcall", "padentry", "padinside", "padenter", "padpre",
-		"padfar", "padheader" };
+		"padfar", "padheader", "padbnop" };
 	private int checks;
 
 	@Override
@@ -84,6 +84,10 @@ public class C6000PreemptedJumpTest extends GhidraScript {
 		continues(0x1404L, 0x140cL, 0x1440L);
 		paired(0x1404L, 0x1410L, 0x1423L);
 		returns(0x1400L, "0x111", "0x133");
+		// padbnop: a BNOP return preempts the jump as a B does; its NOP cycle is no slot.
+		continues(0x1484L, 0x1488L, 0x14b0L);
+		window(0x148cL, 3, FlowOverride.RETURN);
+		returns(0x1480L, "0x111", "0x333");
 		once();
 		println("C6000_PREEMPTED_JUMP_OK checks=" + checks);
 	}

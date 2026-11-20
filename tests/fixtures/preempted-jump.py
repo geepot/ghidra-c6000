@@ -35,6 +35,8 @@ a landing branch ends a multicycle NOP (SPRUFE8B 3.5, 4.2.6 B, NOP):
   1380 padpre     padret with ADDK || [A1] B B3: the return has an execute-packet prefix
   13c0 padfar     padtail whose window is followed by B to padpre's return: decoding the
                   window once padfar continues gives that return an incoming jump
+  1480 padbnop    padret with the return written [A1] BNOP B3,1: its NOP cycle delays the
+                  rest, so the cut window holds three instructions: a ? 0x111 : 0x333
   Prepare also gives padcode's jump a stale analysis override and padshort's jump a
   user override: the first is removed, the second stands. The check also recovers
   copies of padret, padenter and padpre/padfar once, without analysis passes between.
@@ -102,12 +104,18 @@ WORDS = {
 # padentry: padret moved by 0x280, a whole number of fetch packets, so displacements hold.
 WORDS.update({a + 0x280: w for a, w in list(WORDS.items()) if 0x1000 <= a < 0x1040})
 
+# padbnop: padret moved by 0x480 with its return written [A1] BNOP B3,1 (hand-encoded,
+# SPRUFE8B 3.12 BNOP register form). Its NOP cycle delays what follows by one, so the
+# jump's window, and the return's cut window, end one instruction earlier.
+WORDS.update({a + 0x480: w for a, w in list(WORDS.items()) if 0x1000 <= a < 0x1040})
+WORDS[0x148C] = 0x80000000 | 1 << 23 | 3 << 18 | 1 << 13 | 0x362 | 1     # [A1] BNOP.S2 B3,1 ||
+
 
 def main():
     if len(sys.argv) not in (2, 3) or (len(sys.argv) == 3 and sys.argv[2] != "be"):
         raise SystemExit(__doc__)
     endian = ">" if len(sys.argv) == 3 else "<"
-    image = bytearray(0x480)
+    image = bytearray(0x500)
     for address, word in WORDS.items():
         struct.pack_into(endian + "I", image, address - 0x1000, word)
     Path(sys.argv[1]).write_bytes(image)

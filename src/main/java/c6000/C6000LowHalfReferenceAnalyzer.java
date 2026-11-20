@@ -21,7 +21,6 @@ public final class C6000LowHalfReferenceAnalyzer extends AbstractAnalyzer {
     // SPRUFE8B 4.2.6, Table 4-11: a branch lands six cycles after it issues, so none issued at or after the MVK lands within five.
     private static final int WINDOW = 5;
     private static final Set<String> BRANCHES = Set.of("B", "BNOP", "BDEC", "BPOS", "CALLP");
-    private static final Set<String> UNTIMED = Set.of("IDLE", "SPLOOP", "SPLOOPD", "SPLOOPW", "SPKERNEL", "SPKERNELR", "SPMASK", "SPMASKR");
 
     public C6000LowHalfReferenceAnalyzer() {
         super("C6000 Low-Half References",
@@ -157,13 +156,9 @@ public final class C6000LowHalfReferenceAnalyzer extends AbstractAnalyzer {
 
     // SPRUFE8B 3.8.10: a packet lasts as long as its multicycle NOP; IDLE and loop-buffer timing are not modelled.
     private static int cycles(Program program, Instruction i) throws MemoryAccessException {
-        String name = op(i);
-        if (UNTIMED.contains(name)) throw new IllegalArgumentException("untimed packet at " + i.getAddress());
-        if (name.equals("BNOP")) return 1 + C6000ExecutionPackets.bnopCount(program, i);
-        if (name.equals("CALLP")) return 6;
-        var count = name.equals("NOP") ? i.getScalar(0) : name.equals("ADDKPC") ? i.getScalar(2) : null;
-        if (count == null) return 1;
-        return name.equals("NOP") ? Math.max(1, (int) count.getUnsignedValue()) : 1 + (int) count.getUnsignedValue();
+        Integer cycles = C6000ExecutionPackets.cycles(program, i);
+        if (cycles == null) throw new IllegalArgumentException("untimed packet at " + i.getAddress());
+        return cycles;
     }
 
     private static boolean writes(Instruction i, Register r) {

@@ -784,6 +784,12 @@ cut window runs past the header, and once that window is laid the header decodes
 `_CPKT`. The jump must stay continued, its return must hold the window cut at 1423, and
 the function must return `a ? 0x111 : 0x133`; before the fix, recovery restored and
 re-continued the jump on every pass and auto-analysis never finished (SPRUFE8B 3.10).
+`padbnop` (1480) is `padret` with the return written `[A1] BNOP B3,1`: its NOP cycle
+delays the rest by one, the jump continues, the return's cut window holds three
+instructions and the function returns `a ? 0x111 : 0x333`. A preemption is accepted when
+the proposed lifting (the jump continued, the return's window cut at the jump's
+landing) runs what the hardware runs on every path; the old acceptance admitted only a
+`B` return, so `padbnop` kept its target.
 
 ## Predicated register jumps and returns (issue #70)
 

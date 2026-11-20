@@ -57,6 +57,34 @@ public final class C6000ExecutionPackets {
             a.getUnsignedValue() == b.getUnsignedValue();
     }
 
+    /**
+     * Cycles an instruction holds its execute packet, idle cycles included: NOP n holds n, BNOP n
+     * and ADDKPC n hold 1 + n, CALLP 6 (SPRUFE8B 3.12 NOP, BNOP, ADDKPC, CALLP), a load in a
+     * protected header-based fetch packet 5 (3.10.2.2), anything else 1. Null where the timing is
+     * outside this model: IDLE, which waits for an interrupt, loop-buffer control, and a predicated
+     * protected load, whose NOPs SPRUFE8B specifies only for the unconditional case. Every analysis
+     * that counts cycles uses this one count.
+     */
+    static Integer cycles(Program program, Instruction insn) throws MemoryAccessException {
+        String name = C6000CallAnalyzer.baseName(insn);
+        if (name.equals("IDLE") || name.startsWith("SPLOOP") || name.startsWith("SPKERNEL") ||
+            name.startsWith("SPMASK") || name.equals("SWE") || name.equals("SWENR")) return null;
+        if (protectedLoad(program, insn)) return insn.getMnemonicString().contains("[") ? null : 5;
+        if (name.startsWith("CALLP")) return 6;
+        if (name.startsWith("BNOP")) return 1 + bnopCount(program, insn);
+        if (name.equals("NOP")) { Integer n = count(insn, 0); return n == null ? 1 : Math.max(1, n); }
+        if (name.startsWith("ADDKPC")) { Integer n = count(insn, 2); return n == null ? 1 : 1 + n; }
+        return 1;
+    }
+
+    /** An idle-count operand, as a scalar or a literal. */
+    private static Integer count(Instruction insn, int operand) {
+        var scalar = insn.getScalar(operand);
+        if (scalar != null) return (int) scalar.getUnsignedValue();
+        try { return Integer.decode(insn.getDefaultOperandRepresentation(operand)); }
+        catch (NumberFormatException | NullPointerException e) { return null; }
+    }
+
     /** PROT adds four NOP cycles to either load width: SPRUFE8B 3.10.2.2. */
     static boolean protectedLoad(Program program, Instruction instruction)
             throws MemoryAccessException {

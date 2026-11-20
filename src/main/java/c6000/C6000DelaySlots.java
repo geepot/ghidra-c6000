@@ -737,8 +737,7 @@ public final class C6000DelaySlots {
             while(next!=null&&C6000CallAnalyzer.baseName(next).equals("CPKT"))next=decode(next.getMaxAddress().next());return next;}
         Window window(Instruction issue,TaskMonitor monitor)throws CancelledException {
             C6000CallAnalyzer.Preemption preemption=null;
-            String op=C6000CallAnalyzer.baseName(issue);
-            if((op.equals("B.S1")||op.equals("B.S2"))&&issue.getLength()==4&&preemptingTransfer(issue)){
+            if(preemptingTransfer(issue)){
                 if(cuts!=null)preemption=cuts.get(issue.getAddress());
                 else{preemption=new C6000CallAnalyzer.Walker(program).preempting(issue);
                     if(preemption!=null&&!(preemption.exact()&&continues(program,preemption.jump())))preemption=null;}
@@ -750,7 +749,7 @@ public final class C6000DelaySlots {
             int remaining=5;
             String name=C6000CallAnalyzer.baseName(issue);
             if(name.startsWith("CALLP"))remaining=0;
-            else if(name.startsWith("BNOP")){var n=issue.getScalar(1);if(n==null)return null;remaining=Math.max(0,5-(int)n.getValue());}
+            // A BNOP's NOP cycles count in its own packet (C6000ExecutionPackets.cycles).
             // Issued in a preempted jump's window: that jump lands first and its target only idles.
             Address cut=null;
             if(preemption!=null){remaining=5-preemption.cycle();cut=preemption.windowEnd();}
@@ -803,17 +802,8 @@ public final class C6000DelaySlots {
                 return new Window(issue,current.getMaxAddress(),owner);
             }catch(MemoryAccessException e){return null;}
         }
-        int packetCycles(Instruction i)throws MemoryAccessException {String name=C6000CallAnalyzer.baseName(i);
-            // Loop control / asynchronous wakeup needs a pipeline model.
-            if(name.equals("IDLE")||name.startsWith("SPLOOP")||name.startsWith("SPKERNEL")||name.startsWith("SPMASK")||name.equals("SWE")||name.equals("SWENR"))return -1;
-            if(C6000ExecutionPackets.protectedLoad(program,i)) {
-                // The unconditional case is specified by SPRUFE8B 3.10.2.2.
-                // Do not assume a false load predicate still inserts its NOPs.
-                if(i.getMnemonicString().contains("["))return -1;
-                return 5;
-            }
-            if(name.equals("NOP")){var n=i.getScalar(0);return n==null?1:Math.max(1,(int)n.getValue());}
-            if(name.startsWith("ADDKPC.")){var n=i.getScalar(2);return n==null?1:1+(int)n.getValue();}
-            return 1;}
+        int packetCycles(Instruction i)throws MemoryAccessException {
+            Integer cycles=C6000ExecutionPackets.cycles(program,i);
+            return cycles==null?-1:cycles;}
     }
 }

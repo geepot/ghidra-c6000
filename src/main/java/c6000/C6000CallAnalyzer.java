@@ -328,10 +328,10 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 		String nativeMismatch(Instruction outer) {
 			// Start where nothing is in flight; a jump into outer from elsewhere starts there too.
 			Instruction first = settled(outer);
-			String why = compare(first, outer);
+			String why = compare(first, outer, null);
 			if (why == null && first != outer) {
 				for (Reference ref : program.getReferenceManager().getReferencesTo(outer.getMinAddress())) {
-					if (ref.getReferenceType().isFlow() && !ref.getReferenceType().isFallthrough()) return compare(outer, outer);
+					if (ref.getReferenceType().isFlow() && !ref.getReferenceType().isFallthrough()) return compare(outer, outer, null);
 				}
 			}
 			return why;
@@ -378,8 +378,17 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 			return start;
 		}
 
-		/** Compare from {@code first}, where nothing is in flight, through {@code outer}'s windows. */
-		private String compare(Instruction first, Instruction outer) {
+		/**
+		 * A lifting the window layer may apply instead of the listing's: {@code jump} continued to its
+		 * fall-through, and {@code transfer}'s window cut after {@code cut} (issue #50).
+		 */
+		private record Proposal(Instruction jump, Instruction transfer, Address cut) {}
+
+		/**
+		 * Compare from {@code first}, where nothing is in flight, through {@code outer}'s windows, with
+		 * the listing's lifting or, given a proposal, that one.
+		 */
+		private String compare(Instruction first, Instruction outer, Proposal proposal) {
 			List<Instruction> stretch = new ArrayList<>();
 			long end = Math.max(windowEnd(first), windowEnd(outer));
 			if (windowEnd(first) < 0 || windowEnd(outer) < 0) return "a delay window there is incomplete";
@@ -428,7 +437,7 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 				if (!consistent) continue;
 				Run hardware = hardware(first, region, taken, facts);
 				if (hardware.unproven() != null) return hardware.unproven();
-				Run lifted = lifted(first, region, taken, facts);
+				Run lifted = proposal == null ? lifted(first, region, taken, facts) : proposed(first, region, taken, facts, proposal);
 				if (lifted.unproven() != null) return lifted.unproven();
 				if (!hardware.trace().equals(lifted.trace()) || !hardware.exit().equals(lifted.exit()))
 					return difference(region, taken, hardware, lifted);
@@ -527,8 +536,8 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 					while (true) {
 						if (!issued.add(insn.getMinAddress())) return new Run(trace, "issues " + insn.getMinAddress() + " again", null);
 						if (issued.size() > MAX_ISSUED) return Run.unproven("its windows issue too many instructions to compare");
+						if (untimed(program, insn)) return Run.unproven(insn + " at " + insn.getMinAddress() + " has timing outside the cycle model");
 						span = Math.max(span, 1 + extraCycles(program, insn));
-						if (baseName(insn).startsWith("CALLP")) span = Math.max(span, 1 + DELAY_CYCLES);
 						if (transfer(insn)) {
 							Boolean go = predicate(insn) == null ? Boolean.TRUE : taken.get(insn.getMinAddress());
 							if (go == null) return Run.unproven(insn + " at " + insn.getMinAddress() + " issues with transfers in flight, on a predicate this check cannot follow");
@@ -618,6 +627,41 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 				else if (!idle(insn) && runs(insn, region, facts)) trace.add(at.toString());
 				if (next == null) return new Run(trace, "stops after " + at, null);
 				insn = listing.getInstructionAt(next);
+			}
+		}
+
+		/** The proposal's lifting: the jump runs straight on, the transfer's window ends at the cut, every other transfer keeps its whole window. */
+		private Run proposed(Instruction first, Stretch region, Map<Address, Boolean> taken, List<PredicateFact> facts, Proposal proposal) {
+			List<String> trace = new ArrayList<>();
+			Set<Address> seen = new HashSet<>();
+			Instruction insn = first;
+			while (true) {
+				if (insn == null) return Run.unproven("the proposed lifting runs into code that does not decode");
+				Address at = insn.getMinAddress();
+				if (!inside(at, region)) return new Run(trace, "continues at " + at, null);
+				if (!seen.add(at)) return new Run(trace, "issues " + at + " again", null);
+				Instruction next = next(insn);
+				if (transfer(insn) && !at.equals(proposal.jump().getMinAddress())) {
+					List<Instruction> slots;
+					if (at.equals(proposal.transfer().getMinAddress())) {
+						slots = new ArrayList<>();
+						for (Instruction slot = next; slot != null && slot.getMaxAddress().compareTo(proposal.cut()) <= 0; slot = next(slot)) slots.add(slot);
+					}
+					else slots = window(insn);
+					if (slots == null) return Run.unproven("the window of " + insn + " at " + at + " is incomplete");
+					for (Instruction slot : slots) if (!idle(slot) && runs(slot, region, facts)) trace.add(slot.getMinAddress().toString());
+					if (!slots.isEmpty()) next = next(slots.get(slots.size() - 1));
+					Boolean go = predicate(insn) == null ? Boolean.TRUE : taken.get(at);
+					if (go == null) return Run.unproven(insn + " at " + at + " is lifted on a predicate this check cannot follow");
+					if (go) {
+						Address target = insn.getRegister(0) != null || insn.getDefaultFlows().length != 1 ? null : insn.getDefaultFlows()[0];
+						if (target == null && insn.getRegister(0) == null) return Run.unproven(insn + " at " + at + " has no single target");
+						if (target == null || !inside(target, region)) return new Run(trace, "continues at " + destination(insn, target), null);
+						next = decode(target);
+					}
+				}
+				else if (!transfer(insn) && !idle(insn) && runs(insn, region, facts)) trace.add(at.toString());
+				insn = next;
 			}
 		}
 
@@ -742,6 +786,7 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 						}
 						if (next.getLength() != 4) compact = true;
 						trace.instruction(next, executes(execution, index, facts), issue[index], index);
+						if (untimed(program, next)) return null;
 						packetCycles = Math.max(packetCycles, 1 + extraCycles(program, next));
 						current = next;
 					} while (parallelWithNext(current));
@@ -842,13 +887,13 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 		Preemption preemption(Instruction jump) {
 			if (!displacementJump(jump)) return null;
 			Address target = jump.getDefaultFlows()[0];
-			// idle() below needs a NOP at the target: most jumps stop here, before the window is decoded.
+			// The target must idle while the transfer is in flight: most jumps stop here, before the window is decoded.
 			Instruction first = decode(target);
-			if (first == null || first.getLength() != 4 || !baseName(first).equals("NOP")) return null;
+			if (first == null || !baseName(first).equals("NOP")) return null;
 			try {
 				for (Address at : C6000ExecutionPackets.issuePrefix(program, jump.getMinAddress())) {
 					Instruction prior = decode(at);
-					if (prior == null || prior.getLength() != 4 || transfer(prior)) return null;
+					if (prior == null || transfer(prior)) return null;
 				}
 			}
 			catch (MemoryAccessException e) {
@@ -856,12 +901,7 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 			}
 			List<Instruction> slots = window(jump);
 			if (slots == null || slots.isEmpty()) return null;
-			for (Instruction slot : slots) {
-				String name = baseName(slot);
-				// Unbounded or loop-buffer timing: no cycle count to compare.
-				if (slot.getLength() != 4 || name.equals("IDLE") || name.startsWith("SPLOOP") || name.startsWith("SPKERNEL") ||
-					name.startsWith("SPMASK") || name.equals("SWE") || name.equals("SWENR")) return null;
-			}
+			for (Instruction slot : slots) if (untimed(program, slot)) return null;
 			List<Instruction> execution = new ArrayList<>(lookBack(jump));
 			int at = execution.size();
 			execution.add(jump);
@@ -871,8 +911,6 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 			int found = -1;
 			for (int i = at + 1; i < execution.size(); i++) {
 				Instruction slot = execution.get(i);
-				// A NOP generator in the jump's own packet already spends delay cycles.
-				if (issue[i] == issue[at] && extraCycles(program, slot) > 0) return null;
 				if (!transfer(slot)) continue;
 				if (issue[i] == issue[at]) return null;
 				if (complementary(jump, slot) && stable(execution, i, at, guard, true)) continue;
@@ -881,30 +919,16 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 			}
 			if (found < 0) return null;
 			Instruction transfer = execution.get(found);
-			String op = baseName(transfer);
-			if (!op.equals("B.S1") && !op.equals("B.S2")) return null;
 			int cycle = issue[found] - issue[at];
-			if (cycle < 1 || cycle > DELAY_CYCLES) return null;
-			// Taken with the jump: unconditional, or under the jump's own stable predicate.
-			String own = predicate(transfer);
-			boolean exclusive;
-			if (own == null) exclusive = guard == null;
-			else if (own.equals(guard) && stable(execution, found, at, guard, true)) exclusive = true;
-			else return null;
 			int end = execution.size() - 1;
 			Address windowEnd = execution.get(end).getMaxAddress();
 			if (target.compareTo(jump.getMinAddress()) >= 0 && target.compareTo(windowEnd) <= 0) return null;
+			// Where the transfer lands in the jump's target, once its remaining cycles idle there.
 			Address landing = idle(decode(target), cycle);
 			if (landing == null) return null;
-			// Not taken, the transfer's last cycles run straight on: the rest
-			// of a multicycle NOP that outlasts the jump's window, then what follows.
-			int span = 1;
-			for (int i = end; i > at && issue[i] == issue[end]; i--) {
-				span = Math.max(span, 1 + extraCycles(program, execution.get(i)));
-			}
-			int beyond = issue[end] + span - 1 - (issue[at] + DELAY_CYCLES);
-			boolean idleAfter = beyond >= cycle || idle(next(execution.get(end)), cycle - Math.max(0, beyond)) != null;
-			return new Preemption(jump, transfer, cycle, windowEnd, landing, exclusive || idleAfter);
+			// Exact when the proposed lifting runs what the hardware runs on every path.
+			boolean exact = compare(jump, jump, new Proposal(jump, transfer, windowEnd)) == null;
+			return new Preemption(jump, transfer, cycle, windowEnd, landing, exact);
 		}
 
 		/** The address after {@code cycles} cycles of NOP-only execute packets from {@code start}, else null. */
@@ -914,7 +938,7 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 				while (current != null) {
 					int span = 1;
 					while (true) {
-						if (current.getLength() != 4 || !baseName(current).equals("NOP")) return null;
+						if (!baseName(current).equals("NOP")) return null;
 						span = Math.max(span, 1 + extraCycles(program, current));
 						if (!parallelWithNext(current)) break;
 						current = next(current);
@@ -1322,7 +1346,7 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 					do {
 						if (branchPacket && !parallelWithNext(current)) break;
 						Instruction next = next(current);
-						if (next == null || slots.size() >= MAX_WINDOW) return null;
+						if (next == null || slots.size() >= MAX_WINDOW || untimed(program, next)) return null;
 						slots.add(next);
 						packetCycles = Math.max(packetCycles, 1 + extraCycles(program, next));
 						current = next;
@@ -1512,28 +1536,19 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 	}
 
 	/** Cycles beyond the first that an instruction idles its execute packet. */
+	/** Idle cycles beyond the issue cycle, from C6000ExecutionPackets.cycles; none where untimed. */
 	private static int extraCycles(Program program, Instruction insn) {
-		String op = baseName(insn);
-		// SPRUFE8B 3.10.2.2: PROT inserts four idle cycles for loads,
-		// including full-width loads inside a header-based fetch packet.
-		if (op.startsWith("LD")) {
-			try { return C6000ExecutionPackets.protectedLoad(program, insn) ? 4 : 0; }
-			catch (MemoryAccessException unavailable) { return 0; }
-		}
-		int operand;
-		if (op.equals("NOP")) operand = 0;
-		else if (op.startsWith("ADDKPC")) operand = 2;
-		// SPRUFE8B 3.12 BNOP: the NOP cycles are inserted whether or not
-		// the branch is taken.
-		else if (op.startsWith("BNOP")) operand = 1;
-		else return 0;
 		try {
-			int count = Integer.decode(insn.getDefaultOperandRepresentation(operand));
-			return op.equals("NOP") ? count - 1 : count;
+			Integer cycles = C6000ExecutionPackets.cycles(program, insn);
+			return cycles == null ? 0 : cycles - 1;
 		}
-		catch (NumberFormatException | NullPointerException e) {
-			return 0;
-		}
+		catch (MemoryAccessException unavailable) { return 0; }
+	}
+
+	/** Timing outside the cycle model (C6000ExecutionPackets.cycles). */
+	private static boolean untimed(Program program, Instruction insn) {
+		try { return C6000ExecutionPackets.cycles(program, insn) == null; }
+		catch (MemoryAccessException unavailable) { return true; }
 	}
 
 	/** Mnemonic without a predicate prefix or the compact underscore marker. */
