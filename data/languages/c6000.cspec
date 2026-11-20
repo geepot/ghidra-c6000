@@ -65,11 +65,16 @@
           <hidden_return voidlock="true"/>
         </rule>
       </output>
+      <!-- Prologues save the callee-saved registers in pairs (STDW A11:A10), so the pairs are
+           listed too; otherwise the decompiler reports every saved pair as an input
+           (SPRAB89 §3.2, §4.4.4.1; SPRUFE8B 2.2 and Table 2-1, register pairs). -->
       <unaffected>
         <register name="A10"/><register name="A11"/><register name="A12"/>
         <register name="A13"/><register name="A14"/><register name="A15"/>
         <register name="B10"/><register name="B11"/><register name="B12"/>
         <register name="B13"/><register name="B14"/><register name="B15"/>
+        <register name="A11_A10"/><register name="A13_A12"/><register name="A15_A14"/>
+        <register name="B11_B10"/><register name="B13_B12"/><register name="B15_B14"/>
       </unaffected>
     </prototype>
   </default_proto>
