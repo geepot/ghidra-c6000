@@ -199,8 +199,11 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 		return true;
 	}
 
-	/** A recognised call; {@code target} for a known register branch, {@code returnTo} for a return to earlier code. */
-	private record Call(Address target, Address returnTo) {
+	/**
+	 * A recognised call; {@code target} for a known register branch, {@code link} the address B3 holds
+	 * when it lands, {@code returnTo} that address when it is earlier code, which has no window to wait for.
+	 */
+	private record Call(Address target, Address returnTo, Address link) {
 	}
 
 	/**
@@ -700,20 +703,85 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 			return entry.startsWith("calls ") ? entry : "runs " + entry;
 		}
 
+		/** A branch taken: what has issued when it lands, the target it read, and what led there. */
+		private record Arrival(Landed landed, Long target, List<PredicateFact> facts, int branchIndex) {}
+
 		Call recognize(Instruction branch) {
+			Arrival arrival = arrive(branch);
+			if (arrival == null) return null;
+			Landed landed = arrival.landed();
+			Long target = arrival.target();
+			List<PredicateFact> facts = arrival.facts();
+			int branchIndex = arrival.branchIndex();
+			Register b3 = program.getRegister("B3");
+			Instruction partner = landed.partner();
+			if (partner != null && jumpArm(branch, partner)) return null;
+			long[] ret = landed.values().get(b3);
+			// B3 may also be set on the look-back path.
+			if (ret == null || ret[1] != FULL) return null;
+			long branchAt = branch.getMinAddress().getOffset();
+			long windowEnd = landed.end();
+			Address callee = target == null ? null :
+				branch.getMinAddress().getNewAddress(target & 0xffffffffL);
+			if (callee != null && !program.getMemory().contains(callee)) callee = null;
+			if (predicate(branch) != null && partner == null && branch.getRegister(0) == null && ret[0] <= branchAt) {
+				// A predicated call needs two fall-throughs, the return and the not-taken path (issue #66).
+				backwardReturn = loopReturn(branch, ret[0]);
+				return null;
+			}
+			if (ret[0] < branchAt) {
+				// A register call has no native window.
+				timedPath = landed.issued();
+				timedCycles = landed.cycles();
+				try {
+					Address loop = partner == null && predicate(branch) == null && branch.getRegister(0) == null &&
+						freshLink(landed.issued(), branchIndex, b3, facts) ? loopReturn(branch, ret[0]) : null;
+					return loop == null ? null : new Call(null, loop, loop);
+				}
+				finally {
+					timedPath = null;
+				}
+			}
+			// B3 already held the return address when the B read it: a computed jump
+			// to the fall-through, not a call (issue #39).
+			if (target != null && (target & 0xffffffffL) == (ret[0] & 0xffffffffL)) return null;
+			// A call returns to where its caller goes on: right after what this arm issued before it
+			// landed, or after what the other arm of its if/else pair issued, where the two join. Only
+			// a fetch-packet header, which never issues, may lie before that point.
+			if (!joins(branch, windowEnd, ret[0])) {
+				Instruction saved = viaInsn;
+				Arrival other = partner == null ? null : arrive(partner);
+				viaInsn = saved;
+				if (other == null || !joins(branch, other.landed().end(), ret[0])) return null;
+			}
+			return new Call(callee, null, branch.getMinAddress().getNewAddress(ret[0] & 0xffffffffL));
+		}
+
+		/** Where the callee of a recognised call returns to: the address B3 holds when the call lands; else null. */
+		Address returnPoint(Instruction branch) {
+			Call call = recognize(branch);
+			return call == null ? null : call.link();
+		}
+
+		/** {@code ret} is {@code end}, or the first instruction past a fetch-packet header at {@code end}. */
+		private boolean joins(Instruction near, long end, long ret) {
+			return ret == end || ((end & 31) == 28 && headerAt(near, end) && ret == end + 4);
+		}
+
+		private Arrival arrive(Instruction branch) {
 			Map<Register, long[]> regs = new HashMap<>();
 			Instruction partner = null;
 			List<Instruction> path = lookBack(branch);
 			List<Instruction> via = viaJump(branch, path);
 			if (via != null) path = via;
-			List<Instruction> slots = window(branch);
-			if (slots == null) return null;
 			List<Instruction> execution = new ArrayList<>(path);
 			int branchIndex = execution.size();
 			execution.add(branch);
-			execution.addAll(slots);
 			int[] issue = issueCycles(execution);
 			Constants trace = new Constants(regs);
+			// The branch is taken with nothing else in flight. An earlier transfer still in flight is
+			// lifted as an immediate jump, so the lifted code reaches the branch only when that one is not
+			// taken; the path where both are is the nested-window check's to compare.
 			List<PredicateFact> facts = new ArrayList<>();
 
 			for (int i = 0; i < path.size(); i++) {
@@ -755,82 +823,81 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 				if (value != null && value[1] == FULL) target = value[0];
 			}
 
-			// The rest of the branch's execute packet, then its delay cycles: five, or 5 - n after BNOP n.
-			Register b3 = program.getRegister("B3");
-			int delay = delayCycles(branch);
-			Instruction current = branch;
-			int cycles = 0;
-			int seen = 0;
-			boolean compact = branch.getLength() != 4;
-			boolean branchPacket = true;
+			// What the hardware has issued when the branch lands: B3 then is where the callee returns to.
+			Landed landed = land(branch, execution, issue, branchIndex, regs, trace, facts, partner);
+			if (landed == null) return null;
+			return new Arrival(landed, target, facts, branchIndex);
+		}
+
+		/** The registers when the branch lands, the address after the last instruction issued before that, and the issue order. */
+		private record Landed(Map<Register, long[]> values, long end, Instruction partner, List<Instruction> issued, int[] cycles) {}
+
+		/**
+		 * Issue what the hardware issues from {@code branch}'s packet until {@code branch}, taken, lands six
+		 * cycles later: the rest of its packet, then each next packet (SPRUFE8B 3.5, 4.2.6). Constants and
+		 * predicates follow that order. Null when it does not decode, cannot be timed, or issues a transfer
+		 * that may be taken with the branch.
+		 */
+		private Landed land(Instruction branch, List<Instruction> prefix, int[] prefixCycles, int branchIndex,
+				Map<Register, long[]> values, Constants trace, List<PredicateFact> facts, Instruction partner) {
+			List<Instruction> issued = new ArrayList<>(prefix);
+			int[] cycles = java.util.Arrays.copyOf(prefixCycles, prefix.size() + MAX_WINDOW + 1);
+			List<Instruction> outerPath = timedPath;
+			int[] outerCycles = timedCycles;
+			timedPath = issued;
+			timedCycles = cycles;
 			try {
-				window: do {
-					int packetCycles = 1;
-					do {
-						if (branchPacket && !parallelWithNext(current)) break;
-						Instruction next = next(current);
-						if (next == null || ++seen > MAX_WINDOW) return null;
-						// Reaching the return address B3 already holds ends the
-						// window, even where compact packets skew the cycle count.
-						int index = branchIndex + 1 + slotIndex(slots, next);
-						trace.before(issue[index]);
-						long[] ra = regs.get(b3);
-						if (ra != null && ra[1] == FULL &&
-							next.getMinAddress().getOffset() == ra[0]) break window;
-						// A branch in the window must be the other arm of an
-						// if/else call pair: exactly the opposite predicate.
-						if (isFlow(next)) {
-							if (!complementary(branch, next) ||
-								!stable(execution, branchIndex + 1 + slotIndex(slots, next), branchIndex, predicate(branch), true)) return null;
-							if (partner == null) partner = next;
+				int cycle = cycles[branchIndex];
+				long ours = cycle + 1 + DELAY_CYCLES;
+				int span = 1;
+				for (int i = branchIndex; i >= 0 && cycles[i] == cycle; i--) {
+					if (untimed(program, prefix.get(i))) return null;
+					span = Math.max(span, 1 + extraCycles(program, prefix.get(i)));
+				}
+				Instruction last = branch;
+				long end = branch.getMaxAddress().getOffset() + 1;
+				Instruction at = parallelWithNext(branch) ? next(branch) : null;
+				if (at == null && parallelWithNext(branch)) return null;
+				while (true) {
+					for (Instruction insn = at; insn != null;) {
+						int index = issued.size();
+						if (index - prefix.size() >= MAX_WINDOW || untimed(program, insn)) return null;
+						issued.add(insn);
+						cycles[index] = cycle;
+						Boolean runs = executes(issued, index, facts);
+						if (transfer(insn)) {
+							// One that may be taken with the branch lands in the callee: no call to place here.
+							if (!Boolean.FALSE.equals(runs)) return null;
+							if (partner == null && complementary(branch, insn)) partner = insn;
 						}
-						if (next.getLength() != 4) compact = true;
-						trace.instruction(next, executes(execution, index, facts), issue[index], index);
-						if (untimed(program, next)) return null;
-						packetCycles = Math.max(packetCycles, 1 + extraCycles(program, next));
-						current = next;
-					} while (parallelWithNext(current));
-					if (!branchPacket) cycles += packetCycles;
-					branchPacket = false;
-				} while (cycles < delay);
+						trace.before(cycle);
+						trace.instruction(insn, runs, cycle, index);
+						span = Math.max(span, 1 + extraCycles(program, insn));
+						last = insn;
+						end = insn.getMaxAddress().getOffset() + 1;
+						if (!parallelWithNext(insn)) break;
+						insn = next(insn);
+						if (insn == null) return null;
+					}
+					long nextCycle = cycle + (long) span;
+					if (ours <= nextCycle) break;
+					at = next(last);
+					cycle = (int) nextCycle;
+					if (at == null) return null;
+					span = 1;
+				}
+				// Retire every pending write: a load's E5 or a later multi-cycle result supersedes an
+				// earlier E1 link even after the callee is entered.
+				trace.before(Integer.MAX_VALUE);
+				return new Landed(values, end, partner, issued, cycles);
 			}
 			catch (MemoryAccessException e) {
 				return null;
 			}
-			// Retire every pending write, including idle cycles represented by
-			// ADDKPC/NOP/BNOP. A load's E5, or a later multi-cycle result
-			// (MPYI lands in E9), supersedes an earlier E1 link even after the
-			// callee is entered.
-			trace.before(Integer.MAX_VALUE);
-			if (partner != null && jumpArm(branch, partner)) return null;
-			long[] ret = regs.get(b3);
-			// B3 may also be set on the look-back path.
-			if (ret == null || ret[1] != FULL) return null;
-			long branchAt = branch.getMinAddress().getOffset();
-			long windowEnd = current.getMaxAddress().getOffset() + 1;
-			Address callee = target == null ? null :
-				branch.getMinAddress().getNewAddress(target & 0xffffffffL);
-			if (callee != null && !program.getMemory().contains(callee)) callee = null;
-			if (predicate(branch) != null && partner == null && branch.getRegister(0) == null && ret[0] <= branchAt) {
-				// A predicated call needs two fall-throughs, the return and the not-taken path (issue #66).
-				backwardReturn = loopReturn(branch, ret[0]);
-				return null;
+			finally {
+				timedPath = outerPath;
+				timedCycles = outerCycles;
 			}
-			if (ret[0] < branchAt) {
-				// A register call has no native window.
-				Address loop = partner == null && predicate(branch) == null && branch.getRegister(0) == null &&
-					freshLink(execution, branchIndex, b3, facts) ? loopReturn(branch, ret[0]) : null;
-				return loop == null ? null : new Call(null, loop);
-			}
-			if (ret[0] < branchAt + 4 || ret[0] > windowEnd + 8) return null;
-			// B3 already held the return address when the B read it: a computed jump
-			// to the fall-through, not a call (issue #39).
-			if (target != null && (target & 0xffffffffL) == (ret[0] & 0xffffffffL)) return null;
-			boolean headerAtEnd = (windowEnd & 31) == 28 && headerAt(branch, windowEnd);
-			long partnerEnd = partner == null ? -1 : windowEnd(partner);
-			if (ret[0] != windowEnd && !(compact && ret[0] <= windowEnd + 8) &&
-				!(headerAtEnd && ret[0] == windowEnd + 4) && ret[0] != partnerEnd) return null;
-			return new Call(callee, null);
 		}
 
 		/** B3 was last written after every earlier branch's window, so it is not an earlier call's link. */
@@ -972,6 +1039,8 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 
 		/** Relative E1 cycle of each physical instruction, including idle spans. */
 		private int[] issueCycles(List<Instruction> path) {
+			// A sequence built in issue order (land) carries its own cycles; address order says nothing there.
+			if (path == timedPath) return timedCycles;
 			int[] cycles = new int[path.size()];int cycle = 0, span = 1;
 			for (int i = 0; i < path.size(); i++) {
 				if (i > 0) {
@@ -1020,11 +1089,15 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 
 		private record Write(Register register, long[] value, int owner) {}
 
+		private List<Instruction> timedPath;
+		private int[] timedCycles;
+
 		/** Constants visible before E1 reads, with atomic packet commits and E5 invalidations. */
 		private final class Constants {
 			private final Map<Register, long[]> values;
 			private final TreeMap<Integer, List<Write>> pending = new TreeMap<>();
 			Constants(Map<Register, long[]> values) { this.values = values; }
+
 			void write(int cycle, Register register, long[] value, int owner) {
 				pending.computeIfAbsent(cycle, k -> new ArrayList<>()).add(new Write(register, value == null ? null : value.clone(), owner));
 			}
@@ -1258,16 +1331,10 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 			return value == null ? null : value & 0xffffffffL;
 		}
 
+		/** One execute packet issues in one cycle, and no other does. */
 		private boolean samePacket(List<Instruction> path, int first, int last) {
-			try {
-				for (int i = first; i < last; i++) {
-					Instruction following = next(path.get(i));
-					if (!parallelWithNext(path.get(i)) || following == null ||
-						!following.getMinAddress().equals(path.get(i + 1).getMinAddress())) return false;
-				}
-				return true;
-			}
-			catch (MemoryAccessException e) { return false; }
+			int[] cycles = issueCycles(path);
+			return cycles[first] == cycles[last];
 		}
 
 		/** True when {@code later} is in {@code jump}'s execute packet or five delay cycles. */

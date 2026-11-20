@@ -150,6 +150,11 @@ public final class C6000DelaySlots {
         Instruction now = program.getListing().getInstructionAt(at);
         boolean generic = now.getFlowType().hasFallthrough() && !now.isFallThroughOverridden();
         Address resume = resume(program, window.end());
+        // A call's slots are laid: its callee returns where B3 points, which the hardware decides.
+        if (delayedCall) {
+            Address link = new C6000CallAnalyzer.Walker(program).returnPoint(now);
+            if (link != null) resume = link;
+        }
         if ((delayedCall || generic) && !resume.equals(now.getFallThrough())) {
             now.setFallThrough(resume);
             if(nativeReady)result.add(new Repair(at.toString(),window.end().toString(),bytes,

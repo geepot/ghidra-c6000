@@ -16,7 +16,7 @@ public class C6000DelayedCallTest extends GhidraScript {
 		for (long entry : new long[] { 0x1040L, 0x1060L, 0x10a0L, 0x1140L, 0x1200L, 0x1280L,
 			0x1300L, 0x1380L, 0x1400L, 0x1480L, 0x1500L, 0x1580L, 0x1600L, 0x1680L, 0x1700L,
 			0x1780L, 0x1800L, 0x1880L, 0x1c00L, 0x1c40L, 0x1d00L, 0x1d80L, 0x1e00L, 0x1e80L, 0x1f00L, 0x1f80L,
-			0x2000L, 0x2080L, 0x2100L, 0x1900L, 0x1980L, 0x19c0L, 0x1a00L }) {
+			0x2000L, 0x2080L, 0x2100L, 0x1900L, 0x1980L, 0x19c0L, 0x1a00L, 0x1a40L }) {
 			disassemble(toAddr(entry));
 			createFunction(toAddr(entry), null);
 		}
@@ -46,6 +46,12 @@ public class C6000DelayedCallTest extends GhidraScript {
 		if (added == null || !added.getFlowType().isCall() || !calls(added, 0x1100L) || !toAddr(0x1a14L).equals(added.getFallThrough())) {
 			throw new AssertionError("call at 0x1a08: " + added + (added == null ? "" : " flow=" + added.getFlowType() +
 				" fallthrough=" + added.getFallThrough()));
+		}
+		// B3 inside the B's own window: the hardware has issued that code before the B lands.
+		Instruction inside = getInstructionAt(toAddr(0x1a48L));
+		if (inside == null || inside.getFlowOverride() == FlowOverride.CALL) {
+			throw new AssertionError("B at 0x1a48 with B3 in its own window: " + inside +
+				(inside == null ? "" : " override=" + inside.getFlowOverride() + " fallthrough=" + inside.getFallThrough()));
 		}
 		// A B3 set in a jump's delay slots for the call after it belongs to that call.
 		for (long[] jt : new long[][] { { 0x10a0L, 0x10e0L }, { 0x1148L, 0x1180L }, { 0x120cL, 0x1240L },
@@ -86,9 +92,9 @@ public class C6000DelayedCallTest extends GhidraScript {
 		// The generic SLEIGH predicate guard also gives unpredicated register
 		// branches a conditional flow type. Require it for predicated calls only.
 		// A call with a proven window, displacement (issue #34) or register, returns after it, at B3.
-		// Arms whose fifth slot holds another transfer keep site+4.
+		// An arm with the other arm in its window has no native window and keeps site+4.
 		long[][] returns = { { 0x1008L, 0x1018L }, { 0x1018L, 0x1020L }, { 0x1048L, 0x104cL },
-			{ 0x104cL, 0x1050L }, { 0x106cL, 0x1070L }, { 0x10b8L, 0x10c0L } };
+			{ 0x104cL, 0x1054L }, { 0x106cL, 0x1074L }, { 0x10b8L, 0x10c0L } };
 		for (long[] pair : returns) {
 			long site = pair[0];
 			Instruction call = getInstructionAt(toAddr(site));

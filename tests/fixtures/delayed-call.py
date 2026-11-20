@@ -14,14 +14,14 @@ SPRUFE8B's MVK/MVKH, B, BNOP, ADDKPC and NOP opcode diagrams:
 An if/else call pair, B3 set before the first arm:
 
   1040  MVK.S2  0x1054,B3        104c  [A1]B.S1  0x1100      (call)
-  1044  MVKH.S2 0x0,B3           1050  NOP     4
+  1044  MVKH.S2 0x0,B3           1050  NOP     5
   1048  [!A1]B.S1 0x1100 (call)  1054  B.S2 B3 ; NOP 5
 
 A call-or-jump pair: call 0x1100 if A1, else jump to the local block 0x1080.
 Only the far arm is a call:
 
   1060  MVK.S2  0x1074,B3        106c  [A1]B.S1  0x1100      (call)
-  1064  MVKH.S2 0x0,B3           1070  NOP     4
+  1064  MVKH.S2 0x0,B3           1070  NOP     5
   1068  [!A1]B.S1 0x1080 (jump)  1074  B.S2 B3 ; ...  1080  B.S2 B3
 
 B3 set in a jump's delay slots is the next call's (10b8); 10a0 stays a jump:
@@ -85,6 +85,11 @@ A call whose B3 is finished by ADDK in its window returns past the window (1a08)
 
   1a00  MVK/MVKH 0x1a10,B3       1a0c  ADDK.S2 4,B3   1a14  B.S2 B3
   1a08  B.S1    0x1100  (call)   1a10  NOP 4
+
+A B whose B3 points into its own window is not a call (1a48); its slots would run twice:
+
+  1a40  MVK/MVKH 0x1a54,B3       1a4c  NOP ; NOP      1a54  MVK 1,A9 ; MVK 2,A9 ; NOP
+  1a48  B.S1    0x1100  (jump)                        1a60  B.S2 B3
 
 A predicated reaching jump; the write under the opposite predicate does not count:
 
@@ -306,8 +311,16 @@ ADDK_RETURN = {
     0x1A0C: 0x01800252, 0x1A10: nop(4), 0x1A14: B_B3, 0x1A18: nop(5),
 }
 
+# Known-bad: B3 points into the B's own window (1a54 issues in its third delay cycle), so a
+# return there would run 1a54-1a5c a second time. A tail call's epilogue looks like this.
+INSIDE_WINDOW = {
+    0x1A40: mvk(0x1A54, 3), 0x1A44: mvkh(0, 3), 0x1A48: b_s1(0x1A48, CALLEE),
+    0x1A4C: nop(1), 0x1A50: nop(1), 0x1A54: mvk_l1(1, 9), 0x1A58: mvk_l1(2, 9), 0x1A5C: nop(1),
+    0x1A60: B_B3, 0x1A64: nop(5),
+}
+
 CASES = {
-    **PARTNER_FAR, **NEAR_HELPER, **ADDK_RETURN,
+    **PARTNER_FAR, **NEAR_HELPER, **ADDK_RETURN, **INSIDE_WINDOW,
     0x1300: b_s1(0x1300, 0x1340), 0x1304: nop(5),
     0x1308: b_s1(0x1308, CALLEE), 0x130C: nop(5), 0x1310: B_B3, 0x1314: nop(5),
     0x1340: mvk(0x1310, 3), 0x1344: mvkh(0, 3),
@@ -406,14 +419,14 @@ WORDS = {
     0x1044: mvkh(0, 3),
     0x1048: 0x90000010 | (0x30 << 7),       # [!A1] B.S1 packet+0xc0
     0x104C: 0x80000010 | (0x30 << 7),       # [A1] B.S1 packet+0xc0
-    0x1050: nop(4),
+    0x1050: nop(5),
     0x1054: B_B3,
     0x1058: nop(5),
     0x1060: mvk(0x1074, 3),
     0x1064: mvkh(0, 3),
     0x1068: 0x90000010 | (0x08 << 7),       # [!A1] B.S1 packet+0x20 (jump)
     0x106C: 0x80000010 | (0x28 << 7),       # [A1] B.S1 packet+0xa0 (call)
-    0x1070: nop(4),
+    0x1070: nop(5),
     0x1074: B_B3,
     0x1078: nop(5),
     0x1080: B_B3,

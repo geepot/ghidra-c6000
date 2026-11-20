@@ -18,6 +18,13 @@
 
 ### Fixed
 
+* A call's return address is what B3 holds when the branch lands, after the instructions
+  the hardware issues until then, and the branch is a call only when that address is where
+  this arm or the other arm of its if/else pair stops issuing. That replaces a walk that
+  stopped at whatever address B3 held and a list of accepted distances (a compact slack, a
+  header, the partner's window). A `B` whose B3 pointed into its own window, such as a tail
+  call that reloads B3 in its slots, was made a call. A laid call falls through to that
+  return address.
 * The call analyzer's register constants come from each instruction's p-code, with the
   known registers as inputs, instead of a list of mnemonics (`MVK`/`MVKL`/`MVKH`/`ADDKPC`
   and copies, with 32-bit `MVK.L`/`MVK.D` dropped). A return address finished by other

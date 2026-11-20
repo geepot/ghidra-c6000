@@ -551,6 +551,17 @@ after `MVK`/`MVKH 0x1a10`: it returns to 1a14. Constants come from each instruct
 p-code with the known registers as inputs; tracking only `MVK`, `MVKL`, `MVKH`, `ADDKPC`
 and copies lost B3 at the `ADDK` and made 1a08 a tail call.
 
+A call's return address is B3 when the branch lands, after what the hardware issues
+until then: the rest of its packet and each next packet for six cycles, with constants and
+predicates followed in that order. It is a call when that address is where this arm, or
+the other arm of its if/else pair, stops issuing (a fetch-packet header may lie between).
+`delayed-call.py` 1a48 is a known-bad: B3 points at 1a54, which issues in the B's third
+delay cycle, so a return there would run its last slots twice; the old window walk
+stopped at the address B3 held and made it a call. The if/else pairs at 1040 and 1060 now
+end their later arm with `NOP 5`: with `NOP 4` the shared return `B B3` issued in that
+arm's fifth delay cycle, which the same early stop hid. Once a call's slots are laid, its
+fall-through is that return address.
+
 ## Delayed-call predicate facts
 
 `delayed-call.py IMAGE [be]` and `C6000DelayedCallTest.java` (with
