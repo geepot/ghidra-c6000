@@ -352,11 +352,20 @@ for shared-entry rules, stale-source refusals and regression commands.
 Unsupported timing contracts fail closed. These include changing repeated DP source
 reads, nested/predicated loop reloads (SPKERNELR/SPMASKR), loop interrupt entry/restart
 in this compiler, unplanned or nested calls, unproved register transfers and return
-links, special control-register side effects, and unproved dynamic control-flow scopes. No
-whole-ISA pipeline-completeness claim is made. Raw instruction decode remains available
-for unsupported functions. Other function ownership and defined data are never absorbed
-into a schedule. Schedules beyond 4096 states or one million p-code operations are
-refused; increasing the decompiler timeout is not a workaround.
+links, special control-register side effects, and unproved dynamic control-flow scopes.
+No whole-ISA pipeline-completeness claim is made. Raw instruction decode remains
+available for unsupported functions. Other function ownership and defined data are never
+absorbed into a schedule. A schedule beyond 4096 states
+(`C6000PipelineCompiler.maxStates`) or `maxPcodeOps` p-code operations (by default
+the builder's one million) is compiled again: without the refinements, then
+forgetting predicate facts wherever the pipeline is drained, then wherever no branch is
+pending and no loop runs, which merges copies of the same code that differ only in
+facts. Forgetting a fact is sound; it only costs a refusal when the fact was needed. A
+last try doubles the state cap and raises the operation cap by a third, refined and merged.
+A schedule over them still is refused, and the builder's one million operations stay a
+hard limit; increasing the decompiler timeout is not a workaround. Facts about a
+predicate register that is written again before anything reads it are forgotten on every
+attempt.
 
 `pipeline-contracts.py` / `C6000PipelineContractTest.java` reproduce the issue #16
 parallel-input, MPYSP-result and updating-load hazards in each endian mode, then

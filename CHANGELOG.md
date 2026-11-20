@@ -4,6 +4,17 @@
 
 ### Changed
 
+* A schedule over the caps is merged before it is refused. Most of a large schedule is
+  the same code compiled again for each combination of predicate facts reaching it. After
+  the retry without the predicate-write fork (under Fixed), it is compiled forgetting the facts wherever
+  the pipeline is drained, then wherever no branch is pending and no loop runs; a last
+  try doubles the state cap and raises the operation cap by a third, refined and merged.
+  Facts about a predicate register that is written again before anything reads it are
+  forgotten on every attempt.
+* The p-code operation cap is a setting, `C6000PipelineCompiler.maxPcodeOps`, by default
+  the builder's one million. Decompile time grows quickly with size (about 17 s at 69,000
+  operations, 160 s at 99,000), so a caller with a timeout may lower it.
+
 * The analysis languages lift `LDNW`, `LDNDW`, `STNW` and `STNDW` as one 4- or 8-byte
   access instead of one access per byte. The decompiler merged the byte loads step by
   step and could keep some of them, so a device word read through `LDNDW` was read twice

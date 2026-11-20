@@ -19,7 +19,7 @@ def branch(pc,target,side=1):return 0x10|((target-(pc&~31))>>2&0x1fffff)<<7|(sid
 def bnop(src=3,cross=False):return 0x800362|src<<18|5<<13|int(cross)<<12
 
 def main():
- endian='>' if len(sys.argv)>3 else '<';image=bytearray(0x20000);rows=[]
+ endian='>' if len(sys.argv)>3 else '<';image=bytearray(0x40000);rows=[]
  def add(name,mode='callp',side=2,variant='',error=None):
   c=0x1000+len(rows)*0x800;f=c+0x200;g=c+0x300;words=[];helper=[];sites=[];expected={'A0':0x9000,'PC':0x9000,'B15':0x8100,'A9':0,'B9':0}
   if mode=='ordinary':
@@ -121,6 +121,26 @@ def main():
  # lowered state cap it compiles again without the split.
  plain('unrefined_retry',[mvk(0,0,2)|4<<29,mvk(1,8),mvk(2,7),ret(),4<<13],{'A8':1,'A7':2,'PC':0x9000},{'A1':1})
  rows[-1]['state_cap']=12  # 17 states with the split
+ # Over a lowered state cap (33 states, cap 20), and the merged retries lose the fact it needs:
+ # only the last retry, refined with the caps raised, compiles it.
+ predicate_write('relaxed_retry_after_lost_fact',1,1);rows[-1]['state_cap']=20
+ # [B0] B join: the paths meet at join knowing B0 nonzero and zero, and B0 is overwritten
+ # three packets later without being read. The dead fact is dropped at join, so the paths
+ # share their states from there.
+ for b0 in (1,0):
+  c=0x1000+len(rows)*0x800
+  plain(f'dead_fact_merges_b{b0}',[branch(c,c+0x40)|1<<29,4<<13,mvk(1,9)],{'A9':0 if b0 else 1,'A8':2,'A7':3,'B0':0,'PC':0x9000},{'B0':b0},
+        at={0x40:[mvk(2,8),mvk(3,7),mvk(0,0,2),bnop(3)]})
+  rows[-1]['max_states']=34  # 37 when the dead fact is kept
+ # [B0] B join, or MVK 1,A9 and B join: both paths arrive drained, knowing B0 nonzero and
+ # zero, and [B0] MVK 5,A6 after join still reads it. Over a lowered cap only the retry that
+ # forgets facts where the pipeline is drained compiles it; B0 is then tested at run time.
+ for b0 in (1,0):
+  c=0x1000+len(rows)*0x800
+  plain(f'merged_at_drained_join_b{b0}',[branch(c,c+0x40)|1<<29,4<<13,mvk(1,9),branch(c+12,c+0x40),4<<13],
+        {'A9':0 if b0 else 1,'A8':2,'A7':3,'A6':5 if b0 else 0x12345678,'PC':0x9000},{'B0':b0},
+        at={0x40:[mvk(2,8),mvk(3,7),0,mvk(5,6)|1<<29,bnop(3)]})
+  rows[-1]['state_cap']=rows[-1]['max_states']=30  # 33 refined; merged 28
  assert len(rows)*0x800<=len(image)
  Path(sys.argv[1]).write_bytes(image);Path(sys.argv[2]).write_text(json.dumps(rows,indent=2)+'\n')
 if __name__=='__main__':main()

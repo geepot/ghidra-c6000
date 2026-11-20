@@ -32,6 +32,7 @@ public class C6000PipelineCallsTest extends GhidraScript {
      try{schedule=new C6000PipelineCompiler(currentProgram,function).compile();}finally{C6000PipelineCompiler.maxStates=cap;}
     }
     if(row.has("refused"))throw new AssertionError("Accepted "+name);accepted++;
+    if(row.has("max_states")&&schedule.states()>row.get("max_states").getAsInt())throw new AssertionError(name+" states="+schedule.states()+" expected at most "+row.get("max_states"));
    }catch(IllegalArgumentException error){if(!row.has("refused")||!error.getMessage().contains(row.get("refused").getAsString()))throw new AssertionError(name+" unexpected refusal "+error);row.addProperty("error",error.toString());records.add(row);refused++;println("EXPECTED_REFUSAL "+name+" "+error.getMessage());continue;}
    if(!oldBody.equals(function.getBody().toString())||!oldHash.equals(hash(c,c+0x400)))throw new AssertionError("Source/owner changed");
    var state=new BytesPcodeExecutorState(currentProgram.getLanguage(),PcodeStateCallbacks.NONE);for(var register:currentProgram.getLanguage().getRegisters())if(!register.isProcessorContext()&&register.getMinimumByteSize()==4)state.setVar(register,arithmetic.fromConst(0,4));
