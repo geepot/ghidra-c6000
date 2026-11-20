@@ -32,9 +32,17 @@ def main():
     case('dint_field_timing',[0x10004000,(4<<23)|(1<<18)|0x3e2,(5<<23)|(26<<18)|0x3e2,0xc0362,0x8000],{'CSR':0x201,'TSR':0x8001},{'B4':0x200,'B5':0x8002,'CSR':0x200,'TSR':0x8002})
     case('rint_field_timing',[0x10006000,(4<<23)|(1<<18)|0x3e2,(5<<23)|(26<<18)|0x3e2,0xc0362,0x8000],{'CSR':0x200,'TSR':0x8002},{'B4':0x201,'B5':0x8001,'CSR':0x201,'TSR':0x8001})
     case('same_count_multicycle_nops',[mv(2,4),0x2001,0x2000,0xc0362,0x8000],{'A2':0x12345678},{'A4':0x12345678})
+    # A writer inside MPYDP's src2-high read window (as mpydp_unstable_high below) is harmless
+    # when its predicate is known false, or opposite to the MPYDP's on the same B1 value.
+    b0,b1,not_b1=1<<29,2<<29,2<<29|1<<28
+    case('mpydp_disabled_writer',[opcode('MPYDP','M'),0x2a,mvkh(0x4008,3)|b0,0x10000,0xc0362,0x8000],{'A1':0x3ff00000,'A3':0x40000000},{'A5':0x40000000,'A4':0,'A3':0x40000000,'B0':0})
+    for value in (1,0):
+        case(f'mpydp_complementary_writer_b1_{value}',[opcode('MPYDP','M')|b1,0,mvkh(0x4008,3)|not_b1,0x10000,0xc0362,0x8000],{'A1':0x3ff00000,'A3':0x40000000,'B1':value},
+             {'A5':0x40000000 if value else 0,'A4':0,'A3':0x40000000 if value else 0x40080000})
     for name,words,reason in [
         ('mpydp_unstable_low',[opcode('MPYDP','M')|1,mvkh(0x4008,0),0x10000,0xc0362,0x8000],'source-read stability'),
         ('mpydp_unstable_high',[opcode('MPYDP','M'),0,mvkh(0x4008,3),0x10000,0xc0362,0x8000],'source-read stability'),
+        ('mpydp_same_sense_writer',[opcode('MPYDP','M')|b1,0,mvkh(0x4008,3)|b1,0x10000,0xc0362,0x8000],'source-read stability'),
         ('adddp_unit_occupied',[opcode('ADDDP'),mv(6,7),0x10000,0xc0362,0x8000],'still occupied'),
         ('compare_duplicate_unit',[opcode('CMPEQDP','S')|1,mvkh(0x4008,3),0x10000,0xc0362,0x8000],'functional-unit collision'),
         ('loop_reload_not_guessed',[0x80038000,0x34000,0xc0362,0x8000],'requires reload state'),
