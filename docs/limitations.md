@@ -114,9 +114,14 @@ call whose return address in B3 is at or before it, which needs both that return
 the not-taken path as successors (SPRUFE8B 3.5, 4.2.6). The C is then wrong, so the
 `C6000 Nested Delay Windows` analyzer puts a warning bookmark on each such transfer
 (issues #64-#66), one per chain of transfers each nested in the one before, as in a
-software-pipelined loop's prolog. A predicated branch lifted with no window is exact when
-each instruction in its delay cycles is a NOP or carries the opposite of its stable
-predicate, so it does nothing when the branch is taken; it gets no warning. Shapes seen in `cl6x` output: a call and a return on complementary
+software-pipelined loop's prolog. A nested transfer is warned only where native lifting
+runs something other than the hardware: for each consistent outcome of the predicates
+involved, the analyzer builds the hardware's issue order (packets, idle cycles, landings,
+calls) and the listing's lifted order (laid windows, lifted flows and fall-throughs) and
+compares the instructions run and where control goes. The warning names the first
+difference. Predicates are known from other transfers on the same stable register, or
+from the last constant written to it (evaluated from p-code) before it is read, and
+never across a call. Shapes seen in `cl6x` output: a call and a return on complementary
 predicates one cycle apart; a call issued with a jump, landing in the jump's target; a
 second jump on an independent predicate; overlapping returns chosen by a predicated
 write; a jump onto `NOP 5` whose window issues a call (a return there is continued

@@ -829,9 +829,11 @@ an `ADD` that also runs when the `BNOP` is taken. The known-goods must have none
 ordinary call (`plain`), a predicated call returning past its window (`predcall`), a loop
 branch to its own head with B3 set there (`loopjump`), a branch in the cycle after a
 window (`adjacent`) or after a `BNOP 5` (`bnop5`), `bnop4idle` (`bnop4` without the `ADD`:
-taken, the `BNOP`'s delay cycle does nothing, so lifting it as an immediate jump is
-exact and gives `x == 0 ? 1 : x`), a jump and a return in one execute packet (`samepkt`),
-and issue #50's continued jump with its preempting return (`preempt`). Both endians.
+taken, the `BNOP`'s delay cycle does nothing, so the hardware and the lifted listing run
+the same instructions on every path and the C, `x == 0 ? 1 : x`, is exact), a jump and a
+return in one execute packet (`samepkt`), and issue #50's continued jump with its
+preempting return (`preempt`), which matches the lifted listing once the jump is
+continued. Both endians.
 
 ## BNOP calls (issue #69)
 

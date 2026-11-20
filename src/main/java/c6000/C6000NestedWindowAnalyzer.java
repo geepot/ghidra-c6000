@@ -31,8 +31,6 @@ import ghidra.program.model.listing.BookmarkType;
 import ghidra.program.model.listing.Function;
 import ghidra.program.model.listing.Instruction;
 import ghidra.program.model.listing.Program;
-import ghidra.program.model.symbol.RefType;
-import ghidra.program.model.symbol.Reference;
 import ghidra.util.Msg;
 import ghidra.util.exception.CancelledException;
 import ghidra.util.task.TaskMonitor;
@@ -70,20 +68,17 @@ public final class C6000NestedWindowAnalyzer extends AbstractAnalyzer {
 			// loop's prolog nests a branch in every cycle, and one warning per chain says as much.
 			List<Instruction[]> pairs = new ArrayList<>();
 			Map<Address, Address> chain = new HashMap<>();
+			Map<Address, String> reasons = new HashMap<>();
 			for (Instruction branch : program.getListing().getInstructions(function.getBody(), true)) {
 				monitor.checkCancelled();
 				String op = C6000CallAnalyzer.baseName(branch);
-				if (!op.startsWith("B") || op.startsWith("BITC") || op.startsWith("BITR") || continued(branch)) continue;
-				// A continued jump's preempting return has a window cut where the jump lands.
-				var preemption = walker.preempting(branch);
-				if (preemption != null && continued(preemption.jump())) continue;
+				if (!op.startsWith("B") || op.startsWith("BITC") || op.startsWith("BITR")) continue;
 				Instruction inner = walker.nestedTransfer(branch);
-				// Lifted with no window, a branch whose delay cycles are idle when taken is exact: the
-				// transfers it nests are not taken with it.
-				if (inner != null && !branch.getFlowType().isCall() && !laid(program, branch) && walker.idleWhenTaken(branch))
-					inner = null;
-				if (inner != null) {
+				// Nesting only matters where native lifting runs something other than the hardware.
+				String why = inner == null ? null : walker.nativeMismatch(branch);
+				if (why != null) {
 					pairs.add(new Instruction[] { branch, inner });
+					reasons.put(branch.getMinAddress(), why);
 					chain.put(root(chain, inner.getMinAddress()), root(chain, branch.getMinAddress()));
 				}
 				Address back = walker.predicatedBackwardCall(branch);
@@ -106,8 +101,9 @@ public final class C6000NestedWindowAnalyzer extends AbstractAnalyzer {
 				for (int i = 1; i < links.size(); i++) more.append(i == 1 ? "" : ", ").append(links.get(i)[1].getMinAddress());
 				bookmarks.setBookmark(at, BookmarkType.WARNING, CATEGORY, inner + " at " + inner.getMinAddress() +
 					" issues in the delay window of " + branch + " at " + branch.getMinAddress() +
-					" and lands after it" + (links.size() > 1 ? ", and so do the transfers at " + more + " in the windows before them" : "") +
-					": native lifting cannot place them, so " + function.getName() + " may decompile wrongly (issue #64)");
+					(links.size() > 1 ? ", and so do the transfers at " + more + " in the windows before them" : "") +
+					": " + reasons.get(branch.getMinAddress()) + ", so " + function.getName() +
+					" may decompile wrongly (issue #64)");
 				warned++;
 			}
 		}
@@ -118,24 +114,5 @@ public final class C6000NestedWindowAnalyzer extends AbstractAnalyzer {
 	private static Address root(Map<Address, Address> chain, Address at) {
 		for (Address up = chain.get(at); up != null && !up.equals(at); up = chain.get(at)) at = up;
 		return at;
-	}
-
-	/** A native window past the branch's own execute packet. */
-	private static boolean laid(Program program, Instruction branch) {
-		try {
-			return branch.getPrototype().getDelaySlotByteCount() > C6000ExecutionPackets.parallelBytes(program, branch.getAddress());
-		}
-		catch (ghidra.program.model.mem.MemoryAccessException e) {
-			return true;
-		}
-	}
-
-	/** A jump continued past a return that preempts it (C6000DelaySlots.neutralise): its taken edge is gone. */
-	private static boolean continued(Instruction branch) {
-		for (Reference ref : branch.getReferencesFrom()) {
-			if (ref.getReferenceType() == RefType.JUMP_OVERRIDE_UNCONDITIONAL && ref.isPrimary() &&
-				ref.getToAddress().compareTo(branch.getMaxAddress()) > 0) return true;
-		}
-		return false;
 	}
 }

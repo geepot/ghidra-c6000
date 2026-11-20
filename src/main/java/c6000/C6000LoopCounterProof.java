@@ -37,6 +37,15 @@ public final class C6000LoopCounterProof {
         return value==null?null:proof.arithmetic.toLong(value,PcodeArithmetic.Purpose.INSPECT);
     }
 
+    /** constantOutput with one register known first, such as the predicate that lets the code run. */
+    static Long constantOutput(Language language,PcodeOp[] code,long offset,int size,long knownOffset,int knownSize,long knownValue) {
+        var proof=new C6000LoopCounterProof(language);
+        proof.write(proof.registers,knownOffset,knownSize,proof.arithmetic.fromConst(knownValue,knownSize));
+        var image=proof.evaluate(new Operation(code,List.of(),null,false));
+        if(image==null)return null;var value=proof.read(image,offset,size);
+        return value==null?null:proof.arithmetic.toLong(value,PcodeArithmetic.Purpose.INSPECT);
+    }
+
     /** Value visible to the next packet, before any of its E1 writes. */
     public Long registerValue(long offset,int size) {
         var value=read(registers,offset,size);
@@ -105,7 +114,12 @@ public final class C6000LoopCounterProof {
             var output=op.getOutput();
             if (output!=null) {
                 byte[] value=null;
-                if (INTEGER.contains(opcode) && op.getNumInputs()<=2) {
+                // x - x and x ^ x are zero whatever x holds.
+                if ((opcode==PcodeOp.INT_SUB || opcode==PcodeOp.INT_XOR) && op.getNumInputs()==2 &&
+                    op.getInput(0).equals(op.getInput(1)) && !op.getInput(0).isConstant()) {
+                    value=new byte[output.getSize()];
+                }
+                else if (INTEGER.contains(opcode) && op.getNumInputs()<=2) {
                     byte[] first=read(op.getInput(0),image,unique);
                     byte[] second=op.getNumInputs()==2?read(op.getInput(1),image,unique):null;
                     if (first!=null && (op.getNumInputs()==1 || second!=null)) {

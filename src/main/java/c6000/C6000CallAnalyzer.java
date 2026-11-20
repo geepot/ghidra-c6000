@@ -263,26 +263,360 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 			return null;
 		}
 
+		/** What one model runs on one path: instructions and calls in order, then where control goes. */
+		private record Run(List<String> trace, String exit, String unproven) {
+			static Run unproven(String why) { return new Run(List.of(), null, why); }
+		}
+
+		/** The instructions a comparison covers, and what it knows about them. */
+		private record Stretch(Address start, Address stop, List<Instruction> path, Map<Address, Integer> index,
+				List<Integer> predicated, List<Address> returns) {}
+
+		private static final int MAX_PATH_TRANSFERS = 12, MAX_ISSUED = 512;
+
 		/**
-		 * True when {@code branch}'s delay cycles do nothing on its taken path: each instruction after its
-		 * packet is a NOP or guarded by the opposite of its still-stable predicate. Lifted as an immediate
-		 * branch, it is then exact, whatever transfers it nests (SPRUFE8B 3.5, 4.2.6).
+		 * Null when native lifting runs exactly what the hardware runs through {@code outer}'s delay
+		 * window and every window issued in it, on each consistent outcome of their predicates; otherwise
+		 * what native lifting gets wrong there.
+		 *
+		 * Hardware: each execute packet issues in its cycle; a taken B, BNOP or CALLP lands six cycles
+		 * after its packet, cutting idle cycles short, and execution goes on at its target while other
+		 * transfers are still in flight (SPRUFE8B 3.5, 3.12 BNOP/NOP/CALLP, 4.2.6). Native: each listing
+		 * instruction in address order, a laid window's slots before its branch, then the branch's lifted
+		 * flow, overrides included, or its fall-through. In both, a call that lands with nothing else in
+		 * flight runs its callee and resumes at its return point, and a walk ends when control leaves the
+		 * compared stretch with nothing in flight. An instruction whose predicate is false on a path does
+		 * nothing, so it is left out of both traces.
 		 */
-		boolean idleWhenTaken(Instruction branch) {
-			String p = predicate(branch);
-			List<Instruction> slots = window(branch, delayCycles(branch));
-			if (p == null || slots == null) return false;
-			List<Instruction> path = new ArrayList<>(lookBack(branch));
-			int at = path.size();
-			path.add(branch);
-			path.addAll(slots);
-			int[] issue = issueCycles(path);
-			for (int i = at + 1; i < path.size(); i++) {
-				Instruction slot = path.get(i);
-				if (issue[i] == issue[at] || baseName(slot).equals("NOP")) continue;
-				if (!complementary(branch, slot) || !stable(path, i, at, p, true)) return false;
+		String nativeMismatch(Instruction outer) {
+			// Start where nothing is in flight; a jump into outer from elsewhere starts there too.
+			Instruction first = settled(outer);
+			String why = compare(first, outer);
+			if (why == null && first != outer) {
+				for (Reference ref : program.getReferenceManager().getReferencesTo(outer.getMinAddress())) {
+					if (ref.getReferenceType().isFlow() && !ref.getReferenceType().isFallthrough()) return compare(outer, outer);
+				}
 			}
-			return true;
+			return why;
+		}
+
+		/** The instructions physically before {@code insn} that issue in the cycles a transfer can stay in flight. */
+		private List<Instruction> before(Instruction insn) {
+			List<Instruction> prior = new ArrayList<>();
+			Instruction at = insn;
+			while (prior.size() < MAX_WINDOW) {
+				Instruction previous = listing.getInstructionBefore(at.getMinAddress());
+				if (previous == null || (!adjacent(previous, at) && !headerBetween(previous, at))) break;
+				prior.add(0, previous);
+				at = previous;
+				List<Instruction> path = new ArrayList<>(prior);
+				path.add(insn);
+				int[] issue = issueCycles(path);
+				if (issue[path.size() - 1] - issue[0] > 1 + DELAY_CYCLES) break;
+			}
+			return prior;
+		}
+
+		/** Only a fetch-packet header lies between {@code a} and {@code b}. */
+		private boolean headerBetween(Instruction a, Instruction b) {
+			long gap = a.getMaxAddress().getOffset() + 1;
+			return (gap & 31) == 28 && headerAt(a, gap) && gap + 4 == b.getMinAddress().getOffset();
+		}
+
+		/** The earliest transfer physically before {@code transfer} that may still be in flight when it issues. */
+		private Instruction settled(Instruction transfer) {
+			Instruction start = transfer;
+			for (int guard = 0; guard < 8; guard++) {
+				List<Instruction> path = new ArrayList<>(before(start));
+				int at = path.size();
+				path.add(start);
+				int[] issue = issueCycles(path);
+				Instruction earliest = null;
+				for (int j = 0; j < at && earliest == null; j++) {
+					if (transfer(path.get(j)) && issue[j] + 1 + DELAY_CYCLES >= issue[at]) earliest = path.get(j);
+				}
+				if (earliest == null) return start;
+				start = earliest;
+			}
+			return start;
+		}
+
+		/** Compare from {@code first}, where nothing is in flight, through {@code outer}'s windows. */
+		private String compare(Instruction first, Instruction outer) {
+			List<Instruction> stretch = new ArrayList<>();
+			long end = Math.max(windowEnd(first), windowEnd(outer));
+			if (windowEnd(first) < 0 || windowEnd(outer) < 0) return "a delay window there is incomplete";
+			Instruction current = first;
+			while (current != null && current.getMinAddress().getOffset() < end) {
+				if (stretch.size() > 4 * MAX_WINDOW) return "its nested windows are too long to compare";
+				stretch.add(current);
+				if (transfer(current)) {
+					long e = windowEnd(current);
+					if (e < 0) return "the window of " + current + " at " + current.getMinAddress() + " is incomplete";
+					end = Math.max(end, e);
+				}
+				current = next(current);
+			}
+			if (current == null) return "the code after its windows does not decode";
+			List<Instruction> path = new ArrayList<>(before(first));
+			int base = path.size();
+			path.addAll(stretch);
+			Map<Address, Integer> index = new HashMap<>();
+			List<Integer> predicated = new ArrayList<>();
+			List<Address> returns = new ArrayList<>();
+			for (int i = base; i < path.size(); i++) {
+				Instruction insn = path.get(i);
+				index.put(insn.getMinAddress(), i);
+				if (!transfer(insn)) continue;
+				if (predicate(insn) != null) predicated.add(i);
+				Instruction listed = listing.getInstructionAt(insn.getMinAddress());
+				if (listed != null && listed.getFlowType().isCall() && listed.getFallThrough() != null) returns.add(listed.getFallThrough());
+			}
+			if (predicated.size() > MAX_PATH_TRANSFERS) return "it has too many predicated transfers to compare";
+			Stretch region = new Stretch(first.getMinAddress(), current.getMinAddress(), path, index, predicated, returns);
+
+			for (int mask = 0; mask < 1 << predicated.size(); mask++) {
+				// One outcome per predicated transfer, kept only when its predicates can agree.
+				Map<Address, Boolean> taken = new HashMap<>();
+				List<PredicateFact> facts = new ArrayList<>();
+				boolean consistent = true;
+				for (int v = 0; v < predicated.size() && consistent; v++) {
+					int i = predicated.get(v);
+					boolean value = (mask >> v & 1) != 0;
+					Boolean forced = holds(region, i, facts);
+					consistent = forced == null || forced == value;
+					taken.put(path.get(i).getMinAddress(), value);
+					addFact(facts, i, path.get(i), value);
+				}
+				if (!consistent) continue;
+				Run hardware = hardware(first, region, taken, facts);
+				if (hardware.unproven() != null) return hardware.unproven();
+				Run lifted = lifted(first, region, taken, facts);
+				if (lifted.unproven() != null) return lifted.unproven();
+				if (!hardware.trace().equals(lifted.trace()) || !hardware.exit().equals(lifted.exit()))
+					return difference(region, taken, hardware, lifted);
+			}
+			return null;
+		}
+
+		/** The facts that still hold at {@code i}: a callee may change any predicate register, so none crosses a call's return. */
+		private static List<PredicateFact> factsFor(Stretch region, int i, List<PredicateFact> facts) {
+			if (region.returns().isEmpty()) return facts;
+			int segment = segment(region, i);
+			List<PredicateFact> kept = new ArrayList<>();
+			for (PredicateFact fact : facts) if (segment(region, fact.index()) == segment) kept.add(fact);
+			return kept;
+		}
+
+		private static int segment(Stretch region, int i) {
+			Address at = region.path().get(i).getMinAddress();
+			int count = 0;
+			for (Address back : region.returns()) if (back.compareTo(at) <= 0) count++;
+			return count;
+		}
+
+		/** False when a predicate known on this path keeps {@code insn} from running. */
+		private boolean runs(Instruction insn, Stretch region, List<PredicateFact> facts) {
+			Integer i = region.index().get(insn.getMinAddress());
+			if (i == null || predicate(insn) == null) return true;
+			return holds(region, i, facts) != Boolean.FALSE;
+		}
+
+		/**
+		 * Whether the predicate of path instruction {@code i} holds on this path: from another
+		 * transfer's outcome on the same stable register, or else from the last write to that register
+		 * that lands before it reads it, when that write runs and its p-code gives a constant. Null when
+		 * neither decides it. Nothing is carried across a call's return.
+		 */
+		private Boolean holds(Stretch region, int i, List<PredicateFact> facts) {
+			List<Instruction> path = region.path();
+			List<PredicateFact> known = factsFor(region, i, facts);
+			Boolean value = executes(path, i, known);
+			if (value != null) return value;
+			String p = predicate(path.get(i));
+			Register register = program.getRegister(p.replace("!", ""));
+			int[] cycles = issueCycles(path);
+			Set<Integer> skipped = new HashSet<>();
+			while (true) {
+				int last = -1;
+				long lands = Long.MIN_VALUE;
+				boolean tie = false;
+				for (int w = 0; w < i; w++) {
+					if (skipped.contains(w)) continue;
+					Instruction writer = path.get(w);
+					Register load = loadDestination(writer);
+					boolean writes = load != null ? overlaps(load, register) :
+						issueWrites(writer).stream().anyMatch(r -> overlaps(r, register));
+					long at = cycles[w] + resultDelay(writer);
+					if (!writes || at >= cycles[i]) continue;
+					if (at > lands) { lands = at; last = w; tie = false; }
+					else if (at == lands) tie = true;
+				}
+				if (last < 0 || tie || segment(region, last) != segment(region, i)) return null;
+				Boolean runs = predicate(path.get(last)) == null ? Boolean.TRUE : executes(path, last, known);
+				if (runs == null) return null;
+				if (!runs) { skipped.add(last); continue; }
+				Long written = constantWrite(path.get(last), register);
+				return written == null ? null : (written != 0) != p.startsWith("!");
+			}
+		}
+
+		private static boolean idle(Instruction insn) {
+			String op = baseName(insn);
+			return op.equals("NOP") || op.equals("CPKT");
+		}
+
+		private static boolean inside(Address at, Stretch region) {
+			return at.compareTo(region.start()) >= 0 && at.compareTo(region.stop()) < 0;
+		}
+
+		private static String destination(Instruction transfer, Address target) {
+			return target != null ? target.toString() : "the address in " + transfer.getRegister(0) + " read at " + transfer.getMinAddress();
+		}
+
+		private record Flight(long lands, Instruction transfer) {}
+
+		private Run hardware(Instruction first, Stretch region, Map<Address, Boolean> taken, List<PredicateFact> facts) {
+			List<String> trace = new ArrayList<>();
+			List<Flight> flights = new ArrayList<>();
+			Set<Address> issued = new HashSet<>();
+			Instruction at = first;
+			long cycle = 0;
+			try {
+				while (true) {
+					// One execute packet, issued in this cycle.
+					int span = 1;
+					Instruction insn = at;
+					while (true) {
+						if (!issued.add(insn.getMinAddress())) return new Run(trace, "issues " + insn.getMinAddress() + " again", null);
+						if (issued.size() > MAX_ISSUED) return Run.unproven("its windows issue too many instructions to compare");
+						span = Math.max(span, 1 + extraCycles(program, insn));
+						if (baseName(insn).startsWith("CALLP")) span = Math.max(span, 1 + DELAY_CYCLES);
+						if (transfer(insn)) {
+							Boolean go = predicate(insn) == null ? Boolean.TRUE : taken.get(insn.getMinAddress());
+							if (go == null) return Run.unproven(insn + " at " + insn.getMinAddress() + " issues with transfers in flight, on a predicate this check cannot follow");
+							if (go) flights.add(new Flight(cycle + 1 + DELAY_CYCLES, insn));
+						}
+						else if (!idle(insn) && runs(insn, region, facts)) trace.add(insn.getMinAddress().toString());
+						if (!parallelWithNext(insn)) break;
+						insn = next(insn);
+						if (insn == null) return Run.unproven("an execute packet does not decode");
+					}
+					long nextCycle = cycle + span;
+					Flight landing = null;
+					for (Flight flight : flights) if (landing == null || flight.lands() < landing.lands()) landing = flight;
+					if (landing != null && landing.lands() <= nextCycle) {
+						// The landing cuts idle cycles short and redirects fetch.
+						flights.remove(landing);
+						Instruction transfer = landing.transfer();
+						Address target = transfer.getRegister(0) != null || transfer.getDefaultFlows().length != 1 ? null :
+							transfer.getDefaultFlows()[0];
+						Instruction listed = listing.getInstructionAt(transfer.getMinAddress());
+						if (listed != null && listed.getFlowType().isCall()) {
+							// The callee runs to its return, which needs nothing else in flight.
+							if (!flights.isEmpty()) return new Run(trace, "calls " + destination(transfer, target) + " with transfers in flight", null);
+							trace.add("calls " + destination(transfer, target));
+							if (listed.getFallThrough() == null) return new Run(trace, "does not return", null);
+							at = decode(listed.getFallThrough());
+							cycle = landing.lands();
+						}
+						else {
+							if (target == null) {
+								if (flights.isEmpty()) return new Run(trace, "continues at " + destination(transfer, null), null);
+								return Run.unproven(transfer + " at " + transfer.getMinAddress() + " lands at a register target with transfers still in flight");
+							}
+							if (flights.isEmpty() && !inside(target, region)) return new Run(trace, "continues at " + target, null);
+							at = decode(target);
+							cycle = landing.lands();
+						}
+						if (at == null) return Run.unproven("code at a landing does not decode");
+						if (flights.isEmpty() && !inside(at.getMinAddress(), region))
+							return new Run(trace, "continues at " + at.getMinAddress(), null);
+						continue;
+					}
+					at = next(insn);
+					if (at == null) return Run.unproven("the code after " + insn.getMinAddress() + " does not decode");
+					cycle = nextCycle;
+					if (flights.isEmpty() && !inside(at.getMinAddress(), region))
+						return new Run(trace, "continues at " + at.getMinAddress(), null);
+				}
+			}
+			catch (MemoryAccessException e) {
+				return Run.unproven("a packet's parallel bits cannot be read");
+			}
+		}
+
+		private Run lifted(Instruction first, Stretch region, Map<Address, Boolean> taken, List<PredicateFact> facts) {
+			List<String> trace = new ArrayList<>();
+			Set<Address> seen = new HashSet<>();
+			Instruction insn = listing.getInstructionAt(first.getMinAddress());
+			while (true) {
+				if (insn == null) return new Run(trace, "has no instruction to lift", null);
+				Address at = insn.getMinAddress();
+				if (!inside(at, region)) return new Run(trace, "continues at " + at, null);
+				if (!seen.add(at)) return new Run(trace, "issues " + at + " again", null);
+				Address next = insn.getFallThrough();
+				if (transfer(insn)) {
+					// A laid window's slots run before the branch; Ghidra lays none that holds a transfer.
+					Address last = insn.getMaxAddress().add(insn.getPrototype().getDelaySlotByteCount());
+					for (Instruction slot = listing.getInstructionAfter(insn.getMaxAddress());
+							slot != null && slot.getMinAddress().compareTo(last) <= 0;
+							slot = listing.getInstructionAfter(slot.getMaxAddress())) {
+						if (!idle(slot) && runs(slot, region, facts)) trace.add(slot.getMinAddress().toString());
+					}
+					Boolean go = predicate(insn) == null ? Boolean.TRUE : taken.get(at);
+					if (go == null) return Run.unproven(insn + " at " + at + " is lifted on a predicate this check cannot follow");
+					if (go) {
+						Address target = insn.getRegister(0) != null ? null : liftedTarget(insn);
+						if (target == null && insn.getRegister(0) == null)
+							return Run.unproven(insn + " at " + at + " has no single lifted target");
+						if (insn.getFlowType().isCall()) {
+							trace.add("calls " + destination(insn, target));
+							if (next == null) return new Run(trace, "does not return", null);
+						}
+						else if (target == null || !inside(target, region)) return new Run(trace, "continues at " + destination(insn, target), null);
+						else next = target;
+					}
+				}
+				else if (!idle(insn) && runs(insn, region, facts)) trace.add(at.toString());
+				if (next == null) return new Run(trace, "stops after " + at, null);
+				insn = listing.getInstructionAt(next);
+			}
+		}
+
+		/** Where Ghidra sends a taken transfer: its one flow reference that is not a fall-through, the primary one if several. */
+		private static Address liftedTarget(Instruction insn) {
+			Address found = null, primary = null;
+			int count = 0;
+			for (Reference ref : insn.getReferencesFrom()) {
+				if (!ref.getReferenceType().isFlow() || ref.getReferenceType().isFallthrough()) continue;
+				count++;
+				found = ref.getToAddress();
+				if (ref.isPrimary()) primary = found;
+			}
+			if (count == 0) return insn.getDefaultFlows().length == 1 ? insn.getDefaultFlows()[0] : null;
+			return count == 1 ? found : primary;
+		}
+
+		private String difference(Stretch region, Map<Address, Boolean> taken, Run hardware, Run lifted) {
+			StringBuilder when = new StringBuilder();
+			for (int i : region.predicated()) {
+				Instruction t = region.path().get(i);
+				when.append(when.length() == 0 ? "" : ", ").append(t).append(" at ").append(t.getMinAddress())
+					.append(taken.get(t.getMinAddress()) ? " taken" : " not taken");
+			}
+			List<String> h = hardware.trace(), n = lifted.trace();
+			int k = 0;
+			while (k < h.size() && k < n.size() && h.get(k).equals(n.get(k))) k++;
+			String what = k < h.size() || k < n.size() ?
+				"the hardware " + (k < h.size() ? step(h.get(k)) : "runs nothing more") + " where native lifting " +
+					(k < n.size() ? step(n.get(k)) : "runs nothing more") :
+				"the hardware " + hardware.exit() + " where native lifting " + lifted.exit();
+			return (when.length() == 0 ? "" : "with " + when + ", ") + what;
+		}
+
+		private static String step(String entry) {
+			return entry.startsWith("calls ") ? entry : "runs " + entry;
 		}
 
 		Call recognize(Instruction branch) {
@@ -896,14 +1230,18 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 		}
 
 		/** The constant an MVK/MVKL or a self-subtracting SUB writes to register, else null. */
-		private static Long constantWrite(Instruction insn, Register register) {
-			String name = baseName(insn);
-			if ((name.startsWith("MVK.") || name.startsWith("MVKL.")) &&
-				register.equals(insn.getRegister(1)) && insn.getScalar(0) != null) return insn.getScalar(0).getValue();
-			// SUB x,x,dst writes 0, the form dis6x lists as ZERO (SPRUFE8B 3.12 SUB, ZERO).
-			if (name.startsWith("SUB.") && insn.getNumOperands() == 3 && register.equals(insn.getRegister(2)) &&
-				insn.getRegister(0) != null && insn.getRegister(0).equals(insn.getRegister(1))) return 0L;
-			return null;
+		/** The constant {@code insn} writes to {@code register} when it runs, from its p-code; null if none. */
+		private Long constantWrite(Instruction insn, Register register) {
+			if (transfer(insn)) return null;
+			String p = predicate(insn);
+			Register guard = p == null ? null : program.getRegister(p.replace("!", ""));
+			var code = insn.getPcode();
+			long offset = register.getAddress().getOffset();
+			int size = register.getMinimumByteSize();
+			if (guard == null) return C6000LoopCounterProof.constantOutput(program.getLanguage(), code, offset, size);
+			// Running means its predicate held.
+			return C6000LoopCounterProof.constantOutput(program.getLanguage(), code, offset, size,
+				guard.getAddress().getOffset(), guard.getMinimumByteSize(), p.startsWith("!") ? 0 : 1);
 		}
 
 		private boolean samePacket(List<Instruction> path, int first, int last) {
