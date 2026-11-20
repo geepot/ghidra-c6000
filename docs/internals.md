@@ -139,6 +139,17 @@ followers, so the late pass corrects fallthrough using the proved physical windo
 Mixed-width stock-emulator stepping remains limited; listing p-code and decompilation
 use address-specific context.
 
+Native p-code lifts an execute packet's members one after another, but every member reads
+its operands before any member writes (SPRUFE8B 3.5). `C6000SamePacketHazardAnalyzer`
+(`C6000 Same-Packet Hazards`) bookmarks each member that reads a register an earlier
+member writes, and puts one `WARNING: C6000 same-packet hazard` line in the function's
+header comment, replacing its own line on each pass. A branch reads only its target and
+predicate; its p-code holds its window. Two members that both read-modify-write a control
+register only OR in sticky flags (CSR SAT, FADCR/FAUCR/FMCR), which commute, so that pair
+is not warned, and neither is a pair under opposite predicates on one register that the
+writer leaves alone, since at most one of them executes. Functions with an active
+reviewed schedule are skipped (issue #71).
+
 ### Branch targets
 
 C6000 direct transfers are PCE1-relative: the base is the start of the containing
