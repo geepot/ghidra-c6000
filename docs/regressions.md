@@ -800,3 +800,17 @@ absorber alone is refused too. `callee` (10c0) reads that packet only through a 
 entry-source window, which its source hash also reads: the absorber must be refused in a
 batch with it and while its review is recorded. A jump into the slots from another
 function is refused as an alternate entry.
+
+## Transfers native lifting cannot place (issues #64-#66)
+
+`tests/fixtures/nested-window.py` assembles 15 functions with `cl6x` 8.3.15, each with
+its own `h(x) = 2x`, one per 0x100 bytes from 0x1000; `C6000NestedWindowTest.java`
+(`prepare` declares the functions) checks the `C6000 Nested Delay Window` warnings in
+each. The known-bads must be warned at exactly their labelled transfers: issue #64's
+`callret`, `busytgt`, `indep` and `tri` (two nested branches), issue #65's `pjcall` and
+`pjreg`, issue #66's `loopcall` (the predicated call), and `bnop4`, a branch in the last
+delay cycle of a `BNOP 4`. The known-goods must have none: an ordinary call (`plain`), a
+predicated call returning past its window (`predcall`), a loop branch to its own head
+with B3 set there (`loopjump`), a branch in the cycle after a window (`adjacent`) or after
+a `BNOP 5` (`bnop5`), a jump and a return in one execute packet (`samepkt`), and issue
+#50's continued jump with its preempting return (`preempt`). Both endians.

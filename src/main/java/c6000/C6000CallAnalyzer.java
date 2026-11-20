@@ -232,11 +232,35 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 		 * constant, while the delay window decides whether a call exists.
 		 */
 		private boolean throughData;
+		/** Set by recognize: a predicated call's return to earlier code (issue #66). */
+		private Address backwardReturn;
 
 		Walker(Program program) {
 			this.program = program;
 			this.listing = program.getListing();
 			this.pseudo = new PseudoDisassembler(program);
+		}
+
+		/** The return point, in its caller at or before it, of a predicated displacement B to another function; else null. */
+		Address predicatedBackwardCall(Instruction branch) {
+			backwardReturn = null;
+			if (predicate(branch) == null || !(baseName(branch).equals("B.S1") || baseName(branch).equals("B.S2")) ||
+				branch.getRegister(0) != null) return null;
+			recognize(branch);
+			return backwardReturn;
+		}
+
+		/** The first transfer issued in a delay cycle of {@code branch}, which lands after it (SPRUFE8B 3.5, 4.2.6); else null. */
+		Instruction nestedTransfer(Instruction branch) {
+			List<Instruction> slots = window(branch, delayCycles(branch));
+			if (slots == null) return null;
+			List<Instruction> execution = new ArrayList<>(slots);
+			execution.add(0, branch);
+			int[] issue = issueCycles(execution);
+			for (int i = 1; i < execution.size(); i++) {
+				if (issue[i] > 0 && transfer(execution.get(i))) return execution.get(i);
+			}
+			return null;
 		}
 
 		Call recognize(Instruction branch) {
@@ -347,8 +371,13 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 			Address callee = target == null ? null :
 				branch.getMinAddress().getNewAddress(target & 0xffffffffL);
 			if (callee != null && !program.getMemory().contains(callee)) callee = null;
+			if (predicate(branch) != null && partner == null && branch.getRegister(0) == null && ret[0] <= branchAt) {
+				// A predicated call needs two fall-throughs, the return and the not-taken path (issue #66).
+				backwardReturn = loopReturn(branch, ret[0]);
+				return null;
+			}
 			if (ret[0] < branchAt) {
-				// A predicated call needs two fall-throughs, and a register call has no native window.
+				// A register call has no native window.
 				Address loop = partner == null && predicate(branch) == null && branch.getRegister(0) == null &&
 					freshLink(execution, branchIndex, b3, facts) ? loopReturn(branch, ret[0]) : null;
 				return loop == null ? null : new Call(null, loop);

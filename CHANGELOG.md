@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+* A `C6000 Nested Delay Windows` warning bookmark where native lifting cannot place a
+  transfer, so the function's C is wrong with no other sign: a branch issued in a delay
+  cycle of another branch, which lands after it, and a predicated call whose return
+  address in B3 is at or before it (SPRUFE8B 3.5, 4.2.6; issues #64, #65, #66). Functions
+  with an active reviewed schedule are skipped, and so is a jump continued past the
+  return that preempts it (#50).
+
 ## 1.3.0 - 2026-11-18
 
 ### Changed
