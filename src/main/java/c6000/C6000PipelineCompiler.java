@@ -505,7 +505,16 @@ public final class C6000PipelineCompiler {
             writes.add(p.getRegister(name).getAddress().getOffset());
         }
         entryWrites=List.copyOf(writes);
+        entryNames=Set.copyOf(previousE1Writes);
     }
+    private final Set<String> entryNames;
+    /** The first attempt also splits paths on predicated constant writes that change a predicate
+     * register's truth. That costs states; a schedule over the state cap is compiled again
+     * without it. */
+    private boolean refine=true;
+    /** The state cap, taken when a compiler is made. */
+    public static int maxStates=4096;
+    private final int stateCap=maxStates;
 
     private static final Set<String> COUNTER_OPS=Set.of("c6000_tscl_read","c6000_tsch_read","c6000_tsc_start");
     private boolean counterOp(PcodeOp op){
@@ -547,7 +556,7 @@ public final class C6000PipelineCompiler {
     private int state(State s){
         Integer n=states.get(s);
         if(n!=null)return n;
-        if(states.size()>=4096)throw fail("schedule exceeds 4096 distinct pipeline states");
+        if(states.size()>=stateCap)throw fail("schedule exceeds "+stateCap+" distinct pipeline states");
         int i=states.size();
         states.put(s,i);
         return i;
@@ -997,7 +1006,12 @@ public final class C6000PipelineCompiler {
 
     public Result compile()throws Exception{
         if(traceContract!=null||closedCall!=null||callerTail!=null||storeTailContract!=null)throw fail("trace compiler is not an ordinary function schedule");
-        return compileInternal();
+        try{return compileInternal();}
+        catch(IllegalArgumentException e){
+            if(!refine||e.getMessage()==null||!e.getMessage().contains("distinct pipeline states"))throw e;
+            var retry=new C6000PipelineCompiler(program,function,entryNames);retry.refine=false;retry.monitor=monitor;
+            try{return retry.compileInternal();}catch(IllegalArgumentException again){throw e;}
+        }
     }
     public Result compile(TaskMonitor monitor)throws Exception{
         this.monitor=Objects.requireNonNull(monitor);
@@ -1316,6 +1330,20 @@ public final class C6000PipelineCompiler {
 
     private void emitTransfer(State source,ReturnFlow returnFlow,List<Insn> pack,long pc,int idle,List<Flight> flights,List<Branch> branches,List<Hazard> hazards,LoopFrame loop,Insn issueBranch,Map<Long,Map<Long,Varnode>> captured,Map<Long,Eval> issued,boolean updateLoopStatus,boolean finishedCurrentBuffer){
         if(updateLoopStatus){var tsr=new Varnode(program.getRegister("TSR").getAddress(),4);boolean active=loop!=null&&!loop.abrupt()&&!finishedCurrentBuffer;b.op(active?PcodeOp.INT_OR:PcodeOp.INT_AND,tsr,tsr,c(active?0x4000:0xffffbfffL,4));}
+        // A predicated constant into a predicate register ([B0] MVK 0,A0) ties the two: split on
+        // the issue-time predicate, so the path where it ran knows the value and the other keeps
+        // the old one. Without it [B0] B x and [A0] B y look as if both could be taken (SPRUFE8B 3.6).
+        if(refine)for(var i:pack){
+            if(i.predicate()==null||predicateTruth(i,source.facts())>=0||!knownPredicateWrite(i,source.facts()))continue;
+            int index=predicateIndex(i.predicate().getAddress().getOffset());var e=issued.get(i.instruction().getAddress().getOffset());
+            if(index<0||e==null||e.predicate()==null)continue;
+            var ran=source.facts().constrain(index,i.inverted()?0:1);var skipped=source.facts().constrain(index,i.inverted()?1:0);
+            if(ran==null||skipped==null)continue;
+            String no="write_not_taken_"+b.labelCounter++;b.jump(PcodeOp.CBRANCH,no,invert(e.predicate()));
+            emitTransfer(withFacts(source,ran),returnFlow,pack,pc,idle,flights,branches,hazards,loop,issueBranch,captured,issued,false,finishedCurrentBuffer);
+            b.label(no);emitTransfer(withFacts(source,skipped),returnFlow,pack,pc,idle,flights,branches,hazards,loop,issueBranch,captured,issued,false,finishedCurrentBuffer);
+            return;
+        }
         if(issueBranch==null){emitFactTransfer(source,returnFlow,pack,pc,idle,flights,branches,hazards,loop,source.facts());return;}
         var instruction=issueBranch.instruction();long at=instruction.getAddress().getOffset();var register=instruction.getRegister(0);var plan=closedCalls.get(at);boolean call=plan!=null||issueBranch.name().equals("CALLP");
         Long origin=register==null?null:source.returns().links().get(register.getAddress().getOffset());
@@ -1375,6 +1403,19 @@ public final class C6000PipelineCompiler {
 
     private Varnode invert(Varnode value){var inverted=temp(1);b.op(PcodeOp.BOOL_NEGATE,inverted,value);return inverted;}
     private int predicateIndex(long offset){for(int k=0;k<6;k++){String name=(k<3?"A":"B")+(k%3);if(program.getRegister(name).getAddress().getOffset()==offset)return k;}return -1;}
+    /** A single-cycle write of a known zero/nonzero value over a whole predicate register, whose
+     * truth differs from the register's (or the register's is unknown). A write of the truth the
+     * register already has keeps it on both paths; advanceFacts handles that without a split. */
+    private boolean knownPredicateWrite(Insn instruction,PredicateFacts facts){
+        for(var d:instruction.outputs()){
+            int index=predicateIndex(d.offset());
+            if(d.phase()!=1||d.flags()||d.size()!=4||d.mask()!=-1||d.sourceWrite()>=0||index<0)continue;
+            int written=outputFact(instruction,facts,-1).truth();
+            if(written>=0&&written!=facts.values().get(index).truth())return true;
+        }
+        return false;
+    }
+    private static State withFacts(State s,PredicateFacts facts){return new State(s.pc(),s.idle(),s.flights(),s.branches(),s.hazards(),s.loop(),facts,s.returns());}
     private int predicateToken(Insn instruction,PredicateFacts facts){
         if(instruction.predicate()==null)return -1;int index=predicateIndex(instruction.predicate().getAddress().getOffset());return index<0?-1:facts.values().get(index).token();
     }

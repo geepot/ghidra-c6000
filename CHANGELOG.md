@@ -141,6 +141,15 @@
 
 ### Fixed
 
+* A predicated constant write that changes a predicate register's truth
+  (`[A1] MVK 0,B0` while B0 is nonzero or unknown) forks on its own predicate: where it
+  ran the register is known, where it didn't it keeps its old value. Without it
+  `[A1] B B3` followed by `[B0] B y` looked as if both could be taken, and the return
+  looked as if it could land with another branch pending. A write of the truth the
+  register already has is left to the existing rule, which keeps the truth with a fresh
+  token. The fork costs states, so a schedule over the state cap is compiled once more
+  without it before it is refused. `C6000PipelineCompiler.maxStates` holds the cap (4096).
+
 * `LDW` loads from its address as it is. The alignment mask it had hid a pointer into the
   frame from the decompiler, which dropped the frame stores such a load reads (issue #162).
 * `C6000 Code Pointers` refuses an address that undecoded code runs on into: a word of data

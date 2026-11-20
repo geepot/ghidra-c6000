@@ -410,9 +410,12 @@ nonzero), with no write to it in flight; a predicated instruction whose conditio
 false does not write its destination (SPRUFE8B 3.5). A multi-cycle instruction whose
 predicate value was unknown at issue takes that value's truth once a later branch forks
 the facts on it, so a complementary writer is still proved exclusive (SPRUFE8B 3.6).
-Counter branches retain their actual
-raw taken condition and do not infer predicate truth from a failed sign test. This
-pruning never permits a resource collision or flushes a pending effect early.
+A predicated constant write that changes a predicate register's truth (`[A1] MVK 0,B0`)
+forks on its own predicate, so the path where it ran knows the value and the other keeps
+the old one. The fork costs states; a schedule over the state cap is compiled once more
+without it before it is refused. Counter branches retain their actual raw taken condition
+and do not infer predicate truth from a failed sign test. This pruning never permits a
+resource collision or flushes a pending effect early.
 
 `loop-counter-proof.py` / `C6000LoopCounterProofTest.java` check known and unknown
 counts, both parallel setup forms, E4 counter visibility and preserved refusals.
