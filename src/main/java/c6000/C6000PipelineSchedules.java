@@ -97,11 +97,14 @@ public final class C6000PipelineSchedules {
     /** Last address of the entry's native slot window: only its own straight-line slots, entered from nowhere else. */
     private static Address entryWindowEnd(Program program, Function function, Instruction entry,
             TaskMonitor monitor) throws Exception {
-        int depth = entry.getDelaySlotDepth(), bytes = entry.getPrototype().getDelaySlotByteCount();
+        int bytes = entry.getPrototype().getDelaySlotByteCount();
         Address start = entry.getAddress(), end = entry.getMaxAddress();
-        if (depth == 0 && bytes == 0) return end;
+        if (bytes == 0) return end;
         var listing = program.getListing();
-        for (int slot = 0; slot < depth; slot++) {
+        // Walk the window by its bytes. Ghidra's delay-slot depth doesn't count the slot
+        // instructions when they are compact (16-bit) or include a fetch-packet header
+        // (SPRUFE8B 3.10, 4.2.6).
+        while (end.subtract(entry.getMaxAddress()) < bytes) {
             var instruction = listing.getInstructionAt(end.next());
             if (instruction == null || !instruction.isInDelaySlot() || instruction.getDelaySlotDepth() != 0 ||
                     !instruction.getFlowType().isFallthrough() || instruction.getFlowOverride() != FlowOverride.NONE)
@@ -109,7 +112,7 @@ public final class C6000PipelineSchedules {
             end = instruction.getMaxAddress();
         }
         var after = listing.getInstructionAt(end.next());
-        if (depth == 0 || end.subtract(entry.getMaxAddress()) != bytes || after != null && after.isInDelaySlot())
+        if (end.subtract(entry.getMaxAddress()) != bytes || after != null && after.isInDelaySlot())
             throw new IllegalArgumentException("entry native delay window does not match its " + bytes + " delay bytes");
         var functions = program.getFunctionManager();
         var references = program.getReferenceManager();

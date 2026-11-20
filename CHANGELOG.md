@@ -59,6 +59,12 @@
 
 ### Fixed
 
+* Exact schedules for functions whose entry packet issues a branch accept a native delay
+  window of compact (16-bit) instructions or one that holds a fetch-packet header. The
+  window was walked by Ghidra's delay-slot depth, which doesn't count such slots, so it
+  was refused as "does not match its N delay bytes" or "is not straight-line code". It is
+  now walked by its bytes.
+
 * The call analyzer's look-back treats every register the ABI lets a callee change as
   unknown once an earlier call has returned (all but A10-A15 and B10-B15), and at code that
   nothing falls into, after a jump or return that always goes, it takes the registers from
