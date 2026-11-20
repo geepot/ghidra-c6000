@@ -127,8 +127,9 @@ edge to the NOPs is dropped, so no jump enters the delay slots of the return tha
 The jump is continued only once the return's window is proven to end where the jump lands
 on every path and that window is laid, and an analysis override whose condition no longer
 holds is removed. When issue #52's release takes the return's window, the jump gets its edge back.
-Register-target predicated branches that are not calls or such returns, and
-BDEC/BPOS, retain conservative native treatment. Exact scheduling handles its own
+Predicated register jumps and returns get their whole window too (issue #70); a return's
+cut window that no continued jump supports any more is released if the whole window is
+not proven. BDEC/BPOS retain conservative native treatment. Exact scheduling handles its own
 supported branch phases.
 
 CALLP supplies five implied idle cycles. Its parallel companions execute before the

@@ -107,8 +107,8 @@ falls into.
 | Closed-call schedules | Pending effects through explicitly proved caller/callee boundaries; normal decompiler injection for complete reviewed callers. | Sequential leaf calls and pinned ownership/entry assumptions; explicit activation only. |
 | Read-only caller continuations | Pending effects through explicit immutable caller windows. | Bounded plans and entry proofs; not automatically installed as callee-only schedules. |
 
-Native delay recovery remains conservative for nested transfers, register-target
-predicated branches that are not calls, and BDEC/BPOS. Native lifting cannot place a
+Native delay recovery remains conservative for nested transfers and BDEC/BPOS.
+Native lifting cannot place a
 branch issued in another branch's delay window, which lands after it, or a predicated
 call whose return address in B3 is at or before it, which needs both that return and
 the not-taken path as successors (SPRUFE8B 3.5, 4.2.6). The C is then wrong, so the

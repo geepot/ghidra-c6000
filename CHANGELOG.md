@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+### Added
+
+* A `C6000 Nested Delay Windows` warning bookmark where native lifting cannot place a
+  transfer, so the function's C is wrong with no other sign: a branch issued in a delay
+  cycle of another branch, which lands after it, and a predicated call whose return
+  address in B3 is at or before it (SPRUFE8B 3.5, 4.2.6; issues #64, #65, #66). Functions
+  with an active reviewed schedule are skipped, and so is a jump continued past the
+  return that preempts it (#50).
+
 ### Fixed
 
 * Auto-analysis no longer loops for ever on a jump preempted by a return when the
@@ -14,18 +23,15 @@
   the predicated `B` had a terminal form, so the predicated `BNOP` failed with "Unable
   to resolve constructor". Its terminal form takes the branch on the predicate and
   falls through otherwise, like the predicated `B.S2`.
-### Added
-
-* A `C6000 Nested Delay Windows` warning bookmark where native lifting cannot place a
-  transfer, so the function's C is wrong with no other sign: a branch issued in a delay
-  cycle of another branch, which lands after it, and a predicated call whose return
-  address in B3 is at or before it (SPRUFE8B 3.5, 4.2.6; issues #64, #65, #66). Functions
-  with an active reviewed schedule are skipped, and so is a jump continued past the
-  return that preempts it (#50).
 * A `BNOP` whose delay window sets B3 to its return address is a call, as the same
   shape written with `B` already was (SPRUFE8B 3.12 BNOP, 4.2.6). It was lifted as a tail
   call or a jump, leaving its window and return point undecoded. A `BNOP n` window is the
   5 - n delay cycles after its NOPs (issue #69).
+* A predicated register `B` that is not a call now gets its delay window, so work in its
+  slots runs on both paths, as on hardware (SPRUFE8B 4.2.6, B). A jump such as
+  `[A1] B B4` and a return such as `[A1] B B3` were lifted with their slots on the
+  not-taken path only. A predicated return whose cut window no cut supports any more is
+  still released when its full window cannot be proven (issue #70).
 
 ## 1.3.0 - 2026-11-18
 
