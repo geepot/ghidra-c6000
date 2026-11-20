@@ -124,6 +124,11 @@
   window was walked by Ghidra's delay-slot depth, which doesn't count such slots, so it
   was refused as "does not match its N delay bytes" or "is not straight-line code". It is
   now walked by its bytes.
+* The decompiler no longer takes a callee-saved pair (`A11:A10` … `B15:B14`) as an
+  input when a function saves it with `STDW` and calls another function before restoring
+  it. The default calling convention listed only the single registers as unaffected, so
+  across the call the pair's value was unknown and the save read `in_A11_A10`. The six
+  pairs are now listed as well.
 
 * The call analyzer's look-back treats every register the ABI lets a callee change as
   unknown once an earlier call has returned (all but A10-A15 and B10-B15), and at code that

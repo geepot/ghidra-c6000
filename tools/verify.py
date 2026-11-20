@@ -55,6 +55,7 @@ CORE = [
     case("packet-window-fallthrough", "PacketWindowFallthrough", "C6000_PACKET_WINDOW_FALLTHROUGH_OK", None, analysis=True),
     case("delayed-call-safety", "DelayedCallSafety", "C6000_DELAYED_CALL_SAFETY_OK", "json"),
     case("abi-pairs", "AbiPairs", "C6000_ABI_PAIRS_OK", None, analysis=True),
+    case("saved-pairs", "SavedPairs", "C6000_SAVED_PAIRS_OK", None, analysis=True),
     ("jump-table", [], [("JumpTable", [], "C6000_JUMP_TABLE_OK"),
                         ("SwitchOwnership", [], "C6000_SWITCH_OWNERSHIP_OK")], True),
     case("constant-branch-target", "ConstantBranchTarget", "C6000_CONSTANT_BRANCH_TARGET_OK",
@@ -323,6 +324,8 @@ def main():
                     command += ["-preScript", "C6000WideCallWindowTest.java", "prepare"]
                 elif fixture == "abi-pairs":
                     command += ["-preScript", "C6000AbiPairsTest.java", "prepare"]
+                elif fixture == "saved-pairs":
+                    command += ["-preScript", "C6000SavedPairsTest.java", "prepare"]
                 elif fixture == "tail-call-slots":
                     command += ["-preScript", "C6000TailCallSlotsTest.java", "prepare"]
                 elif fixture == "packet-window-fallthrough":
