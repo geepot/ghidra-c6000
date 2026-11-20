@@ -263,6 +263,43 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 			return null;
 		}
 
+		/**
+		 * True when {@code flag}, written at path index {@code compare} and nonzero for an index out of
+		 * range, keeps the transfer at {@code dispatch} from issuing taken out of range: the dispatch is
+		 * predicated on the flag being zero, or a branch taken on the flag lands before the dispatch can
+		 * issue, and the flag is unchanged meanwhile (SPRUFE8B 3.5, 3.6, 4.2.6).
+		 */
+		boolean guards(List<Instruction> path, int compare, Register flag, int dispatch) {
+			int[] cycles = issueCycles(path);
+			String own = predicate(path.get(dispatch));
+			if (own != null && own.equals("!" + flag.getName()) && cycles[compare] < cycles[dispatch] &&
+				unchanged(path, cycles, compare, dispatch, flag)) return true;
+			for (int j = compare + 1; j < dispatch; j++) {
+				Instruction t = path.get(j);
+				if (!transfer(t) || !flag.getName().equals(predicate(t))) continue;
+				if (cycles[compare] < cycles[j] && cycles[j] + 1 + DELAY_CYCLES <= cycles[dispatch] &&
+					unchanged(path, cycles, compare, j, flag)) return true;
+			}
+			return false;
+		}
+
+		/** No write to {@code register} lands from the write at {@code from} up to the read at {@code to}. */
+		boolean unchanged(List<Instruction> path, int from, int to, Register register) {
+			return unchanged(path, issueCycles(path), from, to, register);
+		}
+
+		private boolean unchanged(List<Instruction> path, int[] cycles, int from, int to, Register register) {
+			for (int k = 0; k < path.size(); k++) {
+				if (k == from) continue;
+				Instruction insn = path.get(k);
+				Register load = loadDestination(insn);
+				boolean writes = load != null ? overlaps(load, register) : issueWrites(insn).stream().anyMatch(r -> overlaps(r, register));
+				long lands = cycles[k] + resultDelay(insn);
+				if (writes && lands >= cycles[from] && lands < cycles[to]) return false;
+			}
+			return true;
+		}
+
 		/** What one model runs on one path: instructions and calls in order, then where control goes. */
 		private record Run(List<String> trace, String exit, String unproven) {
 			static Run unproven(String why) { return new Run(List.of(), null, why); }

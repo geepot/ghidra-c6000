@@ -30,7 +30,7 @@ public class C6000SwitchOwnershipTest extends GhidraScript {
   while(it.hasNext()){var i=it.next();b.append(i.getAddress()).append(':').append(i).append(':').append(i.getFlowOverride()).append(':').append(Arrays.toString(i.getFlows())).append('\n');}return b.toString();
  }
  protected void run() throws Exception {
-  Function owner=getFunctionAt(toAddr(0x1000));Address at=toAddr(0x1014);
+  Function owner=getFunctionAt(toAddr(0x1000));Address at=toAddr(0x1018);
   if(owner==null)throw new AssertionError("Missing switch function");
   Symbol marker=switchAt(owner,at);Namespace table=marker.getParentNamespace();
   Map<Long,String> before=labels(table);String code=listing();AddressSet body=new AddressSet(owner.getBody());

@@ -60,6 +60,15 @@ checks idempotence, persisted plan/hazard round trips and review/record/analyzer
 activation. Stale source/plan/ownership/selector changes and alternate interior entries
 refuse; incomplete, cancelled and unsafe activations leave no options or binding.
 
+`tests/fixtures/jump-table.py` and `C6000JumpTableTest.java` check that a switch table's
+bound comes only from an unsigned compare of the index the table is read with, whose
+result keeps the dispatch from issuing past it. 1000 is guarded by a default branch that
+lands before the dispatch issues, 1400 by the dispatch's own `[!B0]` predicate; each gets
+exactly its three cases although its table continues with valid code addresses. 1200
+adds a later `CMPLTU 5,B6,B1` of another register: taking the last compare as the bound
+gave the dispatch two extra cases. 1600's compare result guards nothing, so no table is
+read. Each guarded switch must decompile as a `switch`.
+
 `C6000SwitchOwnershipTest.java` runs after `C6000JumpTableTest.java` on the existing
 `tests/fixtures/jump-table.py` image. Run both with little- and big-endian languages.
 Six checks cover stable override label IDs on repeat analysis, lossless rehoming,

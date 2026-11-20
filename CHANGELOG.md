@@ -18,6 +18,11 @@
 
 ### Fixed
 
+* A switch table's bound comes only from an unsigned compare of the register the table is
+  indexed with, unchanged until the load, whose result keeps the dispatch from issuing
+  past it: the dispatch is predicated on it, or a branch taken on it lands first. The last
+  `CMPLTU`/`CMPGTU` before the dispatch was taken, whatever it compared, so an unrelated
+  compare could add cases past the table.
 * The two arms of an if/else call pair are matched by issue cycle, not by being within
   24 bytes: an arm still in flight when the other issues is its partner, however wide
   the execute packets between. A jump arm past wide packets was recovered as a call.

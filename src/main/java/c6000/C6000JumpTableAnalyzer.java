@@ -267,35 +267,57 @@ public class C6000JumpTableAnalyzer extends AbstractAnalyzer {
 		return owner instanceof Function ? (Function) owner : null;
 	}
 
-	/** The table entries a register branch dispatches to, or an empty list. */
+	/** An unsigned compare of {@code compared} against {@code limit}, setting {@code flag} when it is past it. */
+	private record Guard(int at, Register flag, Register compared, long limit) {}
+
+	/** Where a table address or entry came from: the table, and the index register added to it and where. */
+	private record Indexed(long table, Register index, int at) {}
+
+	/**
+	 * The table entries a register branch dispatches to, or an empty list. The table's bound comes only
+	 * from an unsigned compare of the index the table is read with, still unchanged when it is used,
+	 * whose result keeps the dispatch from issuing past the bound (SPRUFE8B 3.12 CMPLTU/CMPGTU).
+	 */
 	static List<Address> targets(Program program, C6000CallAnalyzer.Walker walker,
 			Instruction branch) {
 		Map<Register, long[]> regs = new HashMap<>();
-		Map<Register, Long> tableBase = new HashMap<>();	// holds table (+ index)
-		Map<Register, Long> loaded = new HashMap<>();		// holds an entry of table
-		Long bound = null;
-		for (Instruction insn : walker.lookBack(branch)) {
+		Map<Register, Indexed> tableBase = new HashMap<>();	// holds table (+ index)
+		Map<Register, Indexed> loaded = new HashMap<>();	// holds an entry of table
+		List<Guard> guards = new ArrayList<>();
+		List<Instruction> path = new ArrayList<>(walker.lookBack(branch));
+		for (int at = 0; at < path.size(); at++) {
+			Instruction insn = path.get(at);
 			String op = C6000CallAnalyzer.baseName(insn);
 			String name = op.contains(".") ? op.substring(0, op.indexOf('.')) : op;
 			int n = insn.getNumOperands();
 			Register dst = n > 0 ? insn.getRegister(n - 1) : null;
-			Long base = null, entryOf = null;
+			Indexed base = null, entryOf = null;
 			if ((name.equals("ADD") || name.equals("ADDAW")) && n == 3) {
-				base = table(program, regs, tableBase, insn.getRegister(0));
-				if (base == null) base = table(program, regs, tableBase, insn.getRegister(1));
+				Long table = table(program, regs, tableBase, insn.getRegister(0));
+				if (table != null) base = new Indexed(table, insn.getRegister(1), at);
+				else if ((table = table(program, regs, tableBase, insn.getRegister(1))) != null)
+					base = new Indexed(table, insn.getRegister(0), at);
 			}
 			else if (name.equals("LDW") && n == 2) {
+				Register index = null;
+				Long table = null;
 				for (Object o : insn.getOpObjects(0)) {
-					if (o instanceof Register r && entryOf == null) {
-						entryOf = table(program, regs, tableBase, r);
+					if (!(o instanceof Register r)) continue;
+					Long found = table(program, regs, tableBase, r);
+					if (found != null && table == null) {
+						table = found;
+						if (tableBase.containsKey(r)) index = tableBase.get(r).index();
 					}
+					else index = r;
 				}
+				if (table != null) entryOf = new Indexed(table, index, at);
 			}
 			else if ((name.equals("CMPLTU") || name.equals("CMPGTU")) && n == 3) {
-				// The guard: CMPLTU K,idx (K < idx) or CMPGTU idx,K (idx > K)
-				// flags an index past K; K may be an immediate or a constant register.
-				Long limit = operandValue(insn, name.equals("CMPLTU") ? 0 : 1, regs);
-				if (limit != null) bound = limit;
+				// CMPLTU K,idx (K < idx) or CMPGTU idx,K (idx > K) flags an index past K.
+				int limitAt = name.equals("CMPLTU") ? 0 : 1;
+				Long limit = operandValue(insn, limitAt, regs);
+				Register compared = insn.getRegister(1 - limitAt);
+				if (limit != null && compared != null && dst != null) guards.add(new Guard(at, dst, compared, limit));
 			}
 			for (Object written : insn.getResultObjects()) {
 				if (written instanceof Register r) {
@@ -307,7 +329,18 @@ public class C6000JumpTableAnalyzer extends AbstractAnalyzer {
 			if (dst != null && base != null) tableBase.put(dst, base);
 			if (dst != null && entryOf != null) loaded.put(dst, entryOf);
 		}
-		Long table = loaded.get(branch.getRegister(0));
+		path.add(branch);
+		Indexed read = loaded.get(branch.getRegister(0));
+		Long bound = null;
+		if (read != null && read.index() != null) {
+			for (Guard guard : guards) {
+				// The compare and the load read the same index value, in either order.
+				if (guard.compared().equals(read.index()) &&
+					walker.unchanged(path, Math.min(guard.at(), read.at()), Math.max(guard.at(), read.at()), read.index()) &&
+					walker.guards(path, guard.at(), guard.flag(), path.size() - 1)) bound = guard.limit();
+			}
+		}
+		Long table = read == null ? null : read.table();
 		List<Address> targets = new ArrayList<>();
 		// No guard, no table: reading until a non-code word runs into the next table.
 		if (table == null || bound == null) return targets;
@@ -340,10 +373,10 @@ public class C6000JumpTableAnalyzer extends AbstractAnalyzer {
 
 	/** Table address held by a register: an in-image constant, or table + index. */
 	private static Long table(Program program, Map<Register, long[]> regs,
-			Map<Register, Long> tableBase, Register r) {
+			Map<Register, Indexed> tableBase, Register r) {
 		if (r == null) return null;
-		Long base = tableBase.get(r);
-		if (base != null) return base;
+		Indexed base = tableBase.get(r);
+		if (base != null) return base.table();
 		long[] value = regs.get(r);
 		if (value == null || value[1] != C6000CallAnalyzer.FULL) return null;
 		long address = value[0] & 0xffffffffL;
