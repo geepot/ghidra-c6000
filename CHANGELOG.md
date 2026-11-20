@@ -90,6 +90,11 @@
   (`idx - k`, with the bias folded into the address), as compilers emit for a switch whose
   cases don't start at zero. The bound came only from a compare of the very register the
   load indexed with, so these dispatches got no targets.
+* Exact schedules no longer refuse a return that lands while an instruction disabled at
+  issue is still in flight (`[A1] LDW` issued after A1 was cleared). Such an instruction
+  does nothing more, so it is not a pending effect, also for a store-tail return. Its
+  predicate is sampled when it issues, so this holds for one issued in the return's own
+  landing packet too.
 
 * The call analyzer's look-back treats every register the ABI lets a callee change as
   unknown once an earlier call has returned (all but A10-A15 and B10-B15), and at code that

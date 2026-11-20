@@ -1183,7 +1183,9 @@ public final class C6000PipelineCompiler {
                     copy(moves,slot("hazard",pc,0,0,1),writesWhen(i,e));
                 }
                 if(i.latency()>1){
-                    nextFlights.add(new Flight(pc,1,-1));
+                    // its predicate is sampled now: a landing or return in this packet must already
+                    // know a flight disabled at issue does nothing (emitFactTransfer refines it later)
+                    nextFlights.add(new Flight(pc,1,predicateTruth(i,s.facts())));
                     copy(moves,slot("predicate",pc,1,0,1),e.predicate());
                     if(observesStores()&&i.name().equals("STW")){var store=traceEvaluatedStores.get(pc);if(store==null)throw fail("trace STW capture missing");copy(moves,slot("store_address",pc,1,0,4),store.address());copy(moves,slot("store_value",pc,1,0,4),store.value());}
                     if(storeTailContract!=null&&i.store())moveStoreTail(moves,i,0,1);
@@ -1219,9 +1221,10 @@ public final class C6000PipelineCompiler {
                         returnFlow=new ReturnFlow(NO_CALL,returnFlow.links());
                     }
                     else if(traceContract!=null)nextPc=continueReturn(landing,nextFlights,nextBranches,issueBranch,loop);
-                    else if(storeTailContract!=null){storeTailReturn(s,landing,nextFlights,nextBranches,issueBranch,loop,hazards);continue;}
+                    // an instruction whose predicate was false at issue does nothing more (SPRUFE8B 3.6)
+                    else if(storeTailContract!=null){storeTailReturn(s,landing,live(nextFlights),nextBranches,issueBranch,loop,hazards);continue;}
                     else {
-                        if(!nextFlights.isEmpty()||!nextBranches.isEmpty()||issueBranch!=null)throw fail("return leaves architectural pipeline effects pending; source="+s+"; next="+nextFlights);
+                        if(!live(nextFlights).isEmpty()||!nextBranches.isEmpty()||issueBranch!=null)throw fail("return leaves architectural pipeline effects pending; source="+s+"; next="+nextFlights);
                         if(closedCall!=null){if(!Objects.equals(landing.pc(),closedCall.callerReturnPc()))throw fail("closed-call undeclared return");closedBoundary("CALLER_RETURN",landing,nextFlights,hazards,closedCall);var writes=closedHazards(hazards);if(closedExitWrites!=null&&!closedExitWrites.equals(writes))throw fail("closed-call incompatible return hazards");closedExitWrites=writes;}
                         b.op(PcodeOp.COPY,new Varnode(program.getRegister("C6000_PIPE_RET").getAddress(),4),slot("target",landing.pc(),landing.age(),0,4));
                         if(loop!=null){var tsr=program.getRegister("TSR");b.op(PcodeOp.INT_AND,new Varnode(tsr.getAddress(),4),new Varnode(tsr.getAddress(),4),c(0xffffbfffL,4));}
@@ -1322,6 +1325,8 @@ public final class C6000PipelineCompiler {
         emitFactTransfer(source,returnFlow,pack,pc,idle,flights,yes,hazards,loop,taken);b.label(no);
         emitFactTransfer(source,returnFlow,pack,pc,idle,flights,branches,hazards,loop,skipped);
     }
+
+    private static List<Flight> live(List<Flight> flights){return flights.stream().filter(f->f.predicateTruth()!=0).toList();}
 
     private long callpContinuation(Insn call){
         var link=callLinkRegister(call);Long value=C6000LoopCounterProof.constantOutput(program.getLanguage(),call.raw(),link.getAddress().getOffset(),4);
