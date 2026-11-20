@@ -59,7 +59,7 @@ public final class C6000DelaySlots {
         List<Repair> result = new ArrayList<>();
         int preempted = neutralise(program, cuts, result, monitor);
         if (preempted > 0) log.appendMsg("C6000 Delay Slots", "continued " + preempted + " preempted jump(s)");
-        List<Address> candidates = new ArrayList<>(), stale = new ArrayList<>();
+        List<Address> candidates = new ArrayList<>(), stale = new ArrayList<>(), uncut = new ArrayList<>();
         var it = program.getListing().getInstructions(true);
         while (it.hasNext()) {
             var ins = it.next();
@@ -72,15 +72,18 @@ public final class C6000DelaySlots {
             // slots, so predicated and delayed-call displacement branches are
             // lifted correctly once their window is proven.
             // The register form also captures predicate and target first, so a
-            // register call gets its window too (SPRUFE8B 4.2.6, B). A predicated
-            // register return gets one only when it preempts a continued jump.
+            // register call, jump or return gets its window too (SPRUFE8B 4.2.6, B; issue #70).
             boolean displacement = ins.getRegister(0) == null;
             boolean tail = override == FlowOverride.CALL_RETURN && !full.startsWith("[") && !name.startsWith("CALLP");
             if (full.startsWith("[") && !displacement && override != FlowOverride.CALL && !cuts.containsKey(ins.getAddress())) {
-                // Only a cut gives a predicated return a window: without one this pass, it is stale.
-                if (preemptingTransfer(ins) && ins.getPrototype().getDelaySlotByteCount() > parallelBytes(program, ins.getAddress()))
-                    stale.add(ins.getAddress());
-                continue;
+                // A return's window that no cut supports this pass is stale unless its full window is proven.
+                boolean cut = preemptingTransfer(ins) &&
+                    ins.getPrototype().getDelaySlotByteCount() > parallelBytes(program, ins.getAddress());
+                if (override != FlowOverride.NONE && override != FlowOverride.RETURN) {
+                    if (cut) stale.add(ins.getAddress());
+                    continue;
+                }
+                if (cut) uncut.add(ins.getAddress());
             }
             if (override != FlowOverride.NONE && override != FlowOverride.RETURN &&
                     override != FlowOverride.CALL && !tail) continue;
@@ -90,7 +93,8 @@ public final class C6000DelaySlots {
         Reader reader = new Reader(program, cuts);
         for (Address at : candidates) {
             monitor.checkCancelled();
-            lay(program, reader, at, cuts.get(at), result, monitor);
+            if (!lay(program, reader, at, cuts.get(at), result, monitor) && uncut.contains(at))
+                result.add(release(program, program.getListing().getInstructionAt(at)));
         }
         // Windows lay() did not lay or confirm: the packet primer's parallel-peer windows, say.
         List<Instruction> windowed = new ArrayList<>();

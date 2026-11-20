@@ -761,6 +761,17 @@ return (13c0, 1380) an incoming jump after its cut was proven, and `padpre`'s ju
 continue only if that return still holds its cut; and one `relieveOverlaps()` that
 releases the copy of `padenter`'s return gives its jump the target back.
 
+## Predicated register jumps and returns (issue #70)
+
+`tests/fixtures/predicated-register-jump.py` assembles four functions `f(c, t, p)` with
+`cl6x` 8.3.15, one per 0x40 bytes from 0x1000; `C6000PredicatedRegisterJumpTest.java`
+(`prepare` declares them) decompiles each. In `jump` (`[A1] B B4` with `MVK 5,A5` and
+`STW A5,*A6` in its window) and `return` (the same through `[A1] B B3`, then `*p = 7` on
+the fall-through path) the store's `MVK` must be a delay slot and `*p = 5` must precede
+the condition. In `after` and `return_after` the store follows a `NOP 5` window, so it
+must not be a slot and must follow the condition. Without the fix `jump` fails; admitting
+jumps but not returns fails `return`. Both endians.
+
 ## ADDDP/SUBDP upper-word read timing (issue #20)
 
 Both lower source words are sampled in E1 and both upper words in E2, before

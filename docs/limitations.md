@@ -107,8 +107,7 @@ falls into.
 | Closed-call schedules | Pending effects through explicitly proved caller/callee boundaries; normal decompiler injection for complete reviewed callers. | Sequential leaf calls and pinned ownership/entry assumptions; explicit activation only. |
 | Read-only caller continuations | Pending effects through explicit immutable caller windows. | Bounded plans and entry proofs; not automatically installed as callee-only schedules. |
 
-Native delay recovery remains conservative for nested transfers, register-target
-predicated branches that are not calls, and BDEC/BPOS. Ghidra's stock instruction-step
+Native delay recovery remains conservative for nested transfers and BDEC/BPOS. Ghidra's stock instruction-step
 emulator can fail on mixed-width delay windows; direct listing p-code execution and
 native decompilation have separate checks. A native window that a jump from outside
 enters decompiles correctly with an "overlaps instruction" warning, but Ghidra 12.2

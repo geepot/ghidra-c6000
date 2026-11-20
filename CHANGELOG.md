@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+* A predicated register `B` that is not a call now gets its delay window, so work in its
+  slots runs on both paths, as on hardware (SPRUFE8B 4.2.6, B). A jump such as
+  `[A1] B B4` and a return such as `[A1] B B3` were lifted with their slots on the
+  not-taken path only. A predicated return whose cut window no cut supports any more is
+  still released when its full window cannot be proven (issue #70).
+
 ## 1.3.0 - 2026-11-18
 
 ### Changed
