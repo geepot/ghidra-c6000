@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+* Auto-analysis no longer loops for ever on a jump preempted by a return when the
+  return's cut window runs past a fetch-packet header. Once that window was laid, the
+  header decoded as a delay-slot instruction (`_CPKT`) and counted as a cycle of the
+  jump's window, so the cut no longer matched: each recovery pass restored the jump and
+  released the window, and the next continued and laid them again (SPRUFE8B 3.10).
+
 ## 1.3.0 - 2026-11-18
 
 ### Changed

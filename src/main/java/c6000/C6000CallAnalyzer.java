@@ -630,7 +630,7 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 				Instruction insn;
 				try {
 					insn = decode(at.getNewAddress(start));
-					if (insn != null && insn.getMnemonicString().equals("CPKT")) insn = next(insn);
+					if (insn != null && baseName(insn).equals("CPKT")) insn = next(insn);
 					while (insn != null && insn.getMinAddress().compareTo(at) < 0) {
 						before.add(insn);
 						insn = next(insn);
@@ -939,7 +939,9 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 
 		private Instruction next(Instruction current) {
 			Instruction next = decode(current.getMaxAddress().next());
-			while (next != null && next.getMnemonicString().equals("CPKT")) {
+			// A header decoded in a laid delay window is "_CPKT": skip it as well, or it takes a cycle
+			// (SPRUFE8B 3.10).
+			while (next != null && baseName(next).equals("CPKT")) {
 				next = decode(next.getMaxAddress().next());
 			}
 			return next;

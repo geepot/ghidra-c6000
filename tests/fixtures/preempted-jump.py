@@ -38,6 +38,15 @@ a landing branch ends a multicycle NOP (SPRUFE8B 3.5, 4.2.6 B, NOP):
   Prepare also gives padcode's jump a stale analysis override and padshort's jump a
   user override: the first is removed, the second stands. The check also recovers
   copies of padret, padenter and padpre/padfar once, without analysis passes between.
+  1400 padheader  hand-encoded, not cl6x output: padret's shape in a fetch packet with a
+                  header. MV A4,A1 ; [A1] B .S2 pad5 || MVK 0x100,A4 ; NOP ;
+                  [A1] B B3 ; ADDK 0x11,A4 ; NOP ; <header> ; NOP ; ADDK 0x22,A4 ; B B3 ;
+                  NOP 5 ; pad5: NOP ; NOP ; MVK 0x999,A4. The return issues in c2, and its
+                  window cut at the landing (c6) runs 1414, 1418 and 1420 past the header
+                  at 141c. Once that window is laid, the header decodes as _CPKT; counted as
+                  a slot, it ended the jump's window a cycle early, so the cut no longer
+                  matched and recovery restored and re-continued the jump on every pass:
+                  a ? 0x111 : 0x133
 """
 
 from pathlib import Path
@@ -84,6 +93,9 @@ WORDS = {
     0x13AC: 0x00002000, 0x13B0: 0x00002000, 0x13C0: 0x00000410, 0x13C4: 0x02018028,
     0x13C8: 0x000C0362, 0x13CC: 0x02001850, 0x13D0: 0x020001D0, 0x13D8: 0x0FFFFA10,
     0x13DC: 0x00008000, 0x13E0: 0x00002000,
+    0x1400: 0x00900FD8, 0x1404: 0x80000813, 0x1408: 0x02008028, 0x1410: 0x800C0362,
+    0x1414: 0x020008D0, 0x141C: 0xE0000000, 0x1424: 0x02001150, 0x1428: 0x000C0362,
+    0x142C: 0x00008000, 0x1448: 0x0204CCA8,
 }
 
 
@@ -95,7 +107,7 @@ def main():
     if len(sys.argv) not in (2, 3) or (len(sys.argv) == 3 and sys.argv[2] != "be"):
         raise SystemExit(__doc__)
     endian = ">" if len(sys.argv) == 3 else "<"
-    image = bytearray(0x400)
+    image = bytearray(0x480)
     for address, word in WORDS.items():
         struct.pack_into(endian + "I", image, address - 0x1000, word)
     Path(sys.argv[1]).write_bytes(image)
