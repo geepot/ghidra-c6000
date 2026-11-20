@@ -329,8 +329,10 @@ comparisons. It represents status-register effects with the opaque `c6000_fp_sta
 userop, so its flag values and special rounding cases are not suitable for emulation.
 `ABSSP`, `ABSDP`, `ADDDP`, `SUBDP`, `MPYDP`, `MPYSPDP`, `MPYSP2DP`, `SPDP`, `DPSP`,
 `SPINT`, `SPTRUNC`, `DPINT`, `DPTRUNC` and the DP comparisons are native p-code too,
-without status writes: round to nearest, with `SPINT`/`DPINT` halfway cases rounded
-away from zero, as compiled C runs them.
+with the same opaque status update: round to nearest, with `SPINT`/`DPINT` halfway cases
+rounded away from zero, as compiled C runs them. Exact schedules accept the status
+update as a write to the status register's event bits at the instruction's writeback,
+so float functions get exact schedules in the analysis languages too.
 Use these languages to inspect control and data flow, then use the corresponding
 exact language (`default` or `c67x`) for
 detailed arithmetic and status checks.
