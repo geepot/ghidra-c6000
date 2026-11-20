@@ -101,7 +101,7 @@ falls into.
 
 | Model | Supported behavior | Boundary |
 |---|---|---|
-| Default instruction p-code | Instruction effects and proved native B/BNOP/CALLP delay windows. | Parallel instructions are lifted individually; ordinary writeback latency is not scheduled. |
+| Default instruction p-code | Instruction effects and proved native B/BNOP/CALLP delay windows. | Parallel instructions are lifted individually; ordinary writeback latency is not scheduled. A member that reads what an earlier member of its packet writes is warned (`C6000 Same-Packet Hazards`, issue #71). |
 | [Exact packet schedules](pipeline-schedules.md) | Supported parallel reads, pending branches and register/memory/status phases through E10; normal software loops. | Reviewed drained entry and incoming E1 hazards; only unchanged recorded contracts activate automatically. Unsupported or stale contracts are refused. |
 | [Loop replay](software-loop-conformance.md) | Buffer issue order, masks, loop counters and supported drain/restart behavior. | Does not execute instruction p-code, retire writes or enter interrupt handlers. |
 | Closed-call schedules | Pending effects through explicitly proved caller/callee boundaries; normal decompiler injection for complete reviewed callers. | Sequential leaf calls and pinned ownership/entry assumptions; explicit activation only. |

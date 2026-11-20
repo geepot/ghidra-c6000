@@ -1,5 +1,18 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+* A `C6000 Same-Packet Hazards` warning where a packet member reads a register that an
+  earlier member of its execute packet writes. Every member reads before any writes
+  (SPRUFE8B 3.5), but native lifting runs them in order, so the C uses the new value. The
+  reader gets a warning bookmark, and the function's header comment, which the decompiler
+  shows, gets a warning line. Two updates that only OR sticky flags into CSR, FADCR,
+  FAUCR or FMCR commute and are not warned, and neither are members under opposite
+  predicates on a register the writer leaves alone, of which at most one runs. Functions with an active reviewed schedule
+  are skipped (issue #71).
+
 ## 1.3.0 - 2026-11-18
 
 ### Changed

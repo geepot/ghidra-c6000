@@ -761,6 +761,26 @@ return (13c0, 1380) an incoming jump after its cut was proven, and `padpre`'s ju
 continue only if that return still holds its cut; and one `relieveOverlaps()` that
 releases the copy of `padenter`'s return gives its jump the target back.
 
+## Same-packet hazards (issue #71)
+
+`tests/fixtures/same-packet-hazard.py` assembles eleven functions with `cl6x` 8.3.15, one
+per 0x40 bytes from 0x1000; `C6000SamePacketHazardTest.java` (`prepare` declares them)
+checks the `C6000 Same-Packet Hazard` bookmarks in each, and that the decompiled C
+carries the header warning exactly when there is one. Issue #71's `ps0` (`MV B4,A4 ||
+MV A4,A5`), `timer` (the same with `MVC B5,TSCL` in the packet) and `branch` (`MV B5,B3
+|| B B3`), `rounding` (`MVC B0,FADCR || ADDSP`, whose rounding mode is the old one) and
+`predicate` (`[!B0] MVK 1,B0 || [B0] ADD`, where the writer sets the reader's predicate)
+must be warned at their reader. `sticky` (two `ADDSP`s, which only OR flags into FADCR),
+`exclusive` (`[!B0] MVK 5,A4 || [B0] ADD A4,1,A4`, of which at most one runs), `slot`
+(the same pair in a return's delay window, whose mnemonics Ghidra prefixes with `_`), `order`
+(the reader first) and `serial` (separate packets) must have none. `reviewed`, `ps0` after an `MVK` packet (an active schedule
+lifts the whole function at its entry), is warned until the check activates a reviewed
+schedule for it and runs the analyzer again, which must clear the bookmark and the
+warning line. Without the analyzer, skipping no reviewed function,
+comparing members in both orders, ignoring the p-bit, dropping the header line, warning
+sticky-flag pairs, exempting every control register, warning opposite predicates, exempting
+them when the writer sets the predicate, or missing the `_` prefix each fail. Both endians.
+
 ## ADDDP/SUBDP upper-word read timing (issue #20)
 
 Both lower source words are sampled in E1 and both upper words in E2, before

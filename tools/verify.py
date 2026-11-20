@@ -141,6 +141,7 @@ TI = [
          "json", ["cases.json", "results.json"]),
     case("pipeline-postloop", "PostLoopDispatch", "C6000_POSTLOOP_OK", "json"),
     case("pipeline-selfguard-loop", "SelfGuardLoop", "C6000_SELFGUARD_LOOP_OK", "json"),
+    case("same-packet-hazard", "SamePacketHazard", "C6000_SAME_PACKET_HAZARD_OK", "json", analysis=True),
 ]
 
 
@@ -323,6 +324,8 @@ def main():
                     command += ["-preScript", "C6000PacketWindowFallthroughTest.java", "prepare"]
                 elif fixture == "pipeline-entry-delay":
                     command += ["-preScript", "C6000PipelineEntryDelayTest.java", "prepare", directory / "cases.json"]
+                elif fixture == "same-packet-hazard":
+                    command += ["-preScript", "C6000SamePacketHazardTest.java", "prepare", directory / "cases.json"]
                 elif fixture not in ELF:
                     command += ["-preScript", "C6000SetEntry.java", "1000"]
                 for script, script_args, _ in scripts:
