@@ -108,7 +108,17 @@ falls into.
 | Read-only caller continuations | Pending effects through explicit immutable caller windows. | Bounded plans and entry proofs; not automatically installed as callee-only schedules. |
 
 Native delay recovery remains conservative for nested transfers, register-target
-predicated branches that are not calls, and BDEC/BPOS. Ghidra's stock instruction-step
+predicated branches that are not calls, and BDEC/BPOS. Native lifting cannot place a
+branch issued in another branch's delay window, which lands after it, or a predicated
+call whose return address in B3 is at or before it, which needs both that return and
+the not-taken path as successors (SPRUFE8B 3.5, 4.2.6). The C is then wrong, so the
+`C6000 Nested Delay Windows` analyzer puts a warning bookmark on each such transfer
+(issues #64-#66). Shapes seen in `cl6x` output: a call and a return on complementary
+predicates one cycle apart; a call issued with a jump, landing in the jump's target; a
+second jump on an independent predicate; overlapping returns chosen by a predicated
+write; a jump onto `NOP 5` whose window issues a call (a return there is continued
+instead, issue #50); and a counted loop of calls that return to the loop head. Functions
+with an active reviewed schedule get no warning. Ghidra's stock instruction-step
 emulator can fail on mixed-width delay windows; direct listing p-code execution and
 native decompilation have separate checks. A native window that a jump from outside
 enters decompiles correctly with an "overlaps instruction" warning, but Ghidra 12.2
