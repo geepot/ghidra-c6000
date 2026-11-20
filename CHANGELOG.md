@@ -64,6 +64,12 @@
 
 ### Fixed
 
+* Both arms of an if/else call pair (`[!A1] B f || [A1] B g`, one B3) become calls when
+  both targets are function entries. Between two immediate arms the nearer target was
+  always taken for the local else-block, so the call to the nearer function stayed a
+  conditional jump. A known function entry or external entry point is never an
+  else-block.
+
 * The call analyzer's look-back treats every register the ABI lets a callee change as
   unknown once an earlier call has returned (all but A10-A15 and B10-B15), and at code that
   nothing falls into, after a jump or return that always goes, it takes the registers from

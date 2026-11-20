@@ -46,6 +46,7 @@ CORE = [
     case("branch-flow", "DelaySafety", "C6000_DELAY_SAFETY_OK", args=[]),
     case("branch-flow", "FlowTarget", "C6000_FLOW_TARGET_OK"),
     case("delayed-call", "DelayedCall", "C6000_DELAYED_CALL_OK", None, analysis=True),
+    case("far-call-pair", "FarCallPair", "C6000_FAR_CALL_PAIR_OK", None, analysis=True),
     case("delayed-call-timing", "DelayedCallTiming", "C6000_DELAYED_CALL_TIMING_OK", "json", ["check", "cases.json"], analysis=True),
     case("idle-call", "IdleCall", "C6000_IDLE_CALL_OK", None, analysis=True),
     case("wide-call-window", "WideCallWindow", "C6000_WIDE_CALL_WINDOW_OK", None, analysis=True),
@@ -319,6 +320,8 @@ def main():
                     command += ["-preScript", "C6000IdleCallTest.java", "prepare"]
                 elif fixture == "wide-call-window":
                     command += ["-preScript", "C6000WideCallWindowTest.java", "prepare"]
+                elif fixture == "far-call-pair":
+                    command += ["-preScript", "C6000FarCallPairTest.java", "prepare"]
                 elif fixture == "abi-pairs":
                     command += ["-preScript", "C6000AbiPairsTest.java", "prepare"]
                 elif fixture == "tail-call-slots":
