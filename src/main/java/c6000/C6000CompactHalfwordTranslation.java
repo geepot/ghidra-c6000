@@ -16,7 +16,12 @@ import ghidra.util.task.TaskMonitor;
  */
 abstract class C6000CompactHalfwordTranslation extends LanguageTranslatorAdapter {
 	C6000CompactHalfwordTranslation(String id) {
-		super(new LanguageID(id), 1, new LanguageID(id), 2);
+		this(id, 1, 2);
+	}
+
+	/** A later big-endian version step needs c_h16 primed after Ghidra's re-decode just the same. */
+	C6000CompactHalfwordTranslation(String id, int from, int to) {
+		super(new LanguageID(id), from, new LanguageID(id), to);
 	}
 
 	@Override

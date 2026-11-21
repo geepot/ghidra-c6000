@@ -426,9 +426,11 @@ calls are recovered from the corrected order. The big-endian C67x variants were 
 released at version 1.
 
 All eight languages are version 3.0: `contextreg` grew from 64 to 128 bits for latched
-branches. `data/languages/old/` describes each version 2 language with a `.trans` file,
-and Ghidra's default translator carries each field over by name, after the version 1 to
-2 step where one applies. The notes below on re-analysis and reviewed schedules apply to
+branches. `data/languages/old/` describes each version 2 language. Little-endian ones
+have a `.trans` file, and Ghidra's default translator carries each field over by name.
+Big-endian ones have a Java translator (`C6000Be*V2LanguageTranslator`) that also primes
+`c_h16` again after Ghidra's re-decode, as the version 1 to 2 step does; with only a
+`.trans` file a version 1 big-endian program came out with its compact code undecoded. The notes below on re-analysis and reviewed schedules apply to
 this step too.
 
 Little-endian languages became version 2.0 in v1.3.0: `contextreg` grew from 32 to 64 bits. The
