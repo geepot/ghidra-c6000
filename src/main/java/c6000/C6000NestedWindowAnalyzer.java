@@ -77,6 +77,10 @@ public final class C6000NestedWindowAnalyzer extends AbstractAnalyzer {
 				// Nesting only matters where native lifting runs something other than the hardware.
 				String why = inner == null ? null : walker.nativeMismatch(branch);
 				if (why != null) {
+					// Say why latching the branches (C6000 Nested Branch Lifting) does not fix it.
+					var plan = walker.liftPlan(branch);
+					String unlifted = plan == null ? walker.liftRefusal : walker.liftMismatch(plan, branch);
+					if (unlifted != null) why += "; not lifted by latching because " + (plan == null ? unlifted : "then " + unlifted);
 					pairs.add(new Instruction[] { branch, inner });
 					reasons.put(branch.getMinAddress(), why);
 					chain.put(root(chain, inner.getMinAddress()), root(chain, branch.getMinAddress()));

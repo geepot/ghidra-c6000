@@ -49,9 +49,9 @@ import ghidra.util.task.TaskMonitor;
  * stays for the same-packet hazard warning.
  */
 public final class C6000PacketStagingAnalyzer extends AbstractAnalyzer {
-	private static final String[] FIELDS = { "c_staged", "c_defer", "c_defer_reg", "c_cm1", "c_cm1_reg", "c_cm2", "c_cm2_reg" };
+	private static final String[] FIELDS = { "c_staged", "c_defer", "c_defer_pair", "c_defer_reg", "c_cm1", "c_cm1_reg", "c_cm2", "c_cm2_reg" };
 	/** Every field that changes native lifting only: staging, and latched branches with their landings. */
-	static final String[] LIFTING = { "c_staged", "c_defer", "c_defer_reg", "c_cm1", "c_cm1_reg", "c_cm2", "c_cm2_reg",
+	static final String[] LIFTING = { "c_staged", "c_defer", "c_defer_pair", "c_defer_reg", "c_cm1", "c_cm1_reg", "c_cm2", "c_cm2_reg",
 		"c_inert_wrap", "c_inert", "c_latch_t", "c_land1", "c_land1_ind", "c_land1_t", "c_land1_disp",
 		"c_land2", "c_land2_ind", "c_land2_t", "c_land2_disp" };
 
@@ -162,16 +162,42 @@ public final class C6000PacketStagingAnalyzer extends AbstractAnalyzer {
 		Register defer = program.getRegister("c_defer");
 		if (defer == null) return false;
 		BigInteger on = writer.getValue(defer, false);
-		Integer index = index(program, register);
+		int[] index = index(program, register);
 		// An unset field reads as null: register 0 (A0) is then what it selects.
 		BigInteger held = writer.getValue(program.getRegister("c_defer_reg"), false);
-		return on != null && on.intValue() == 1 && index != null && index == (held == null ? 0 : held.intValue());
+		BigInteger pair = writer.getValue(program.getRegister("c_defer_pair"), false);
+		if (on == null || on.intValue() != 1 || index == null) return false;
+		int reg = held == null ? 0 : held.intValue();
+		boolean both = pair != null && pair.intValue() == 1;
+		for (int i : index) if (i != reg && !(both && i == (reg ^ 1))) return false;
+		return true;
 	}
 
-	/** The staging index of a whole A or B register, 0-31 and 32-63; null for anything else. */
-	private static Integer index(Program program, Varnode v) {
-		Register r = program.getRegister(v.getAddress(), v.getSize());
-		if (r == null || v.getSize() != 4 || !r.getName().matches("[AB]([0-9]|[12][0-9]|3[01])")) return null;
+	/**
+	 * The staging indexes a write covers: one whole A or B register (0-31, 32-63), or both halves
+	 * of a register pair, even half first; null for anything else.
+	 */
+	private static int[] index(Program program, Varnode v) {
+		if (v.getSize() == 8) {
+			Register pair = program.getRegister(v.getAddress(), 8);
+			if (pair == null) return null;
+			int[] halves = new int[2];
+			int n = 0;
+			for (Register half : pair.getChildRegisters()) {
+				Integer i = half.getMinimumByteSize() == 4 ? index(half) : null;
+				if (i == null || n == 2) return null;
+				halves[n++] = i;
+			}
+			if (n != 2 || (halves[0] ^ halves[1]) != 1) return null;
+			return new int[] { Math.min(halves[0], halves[1]), Math.max(halves[0], halves[1]) };
+		}
+		Register r = v.getSize() == 4 ? program.getRegister(v.getAddress(), 4) : null;
+		Integer i = r == null ? null : index(r);
+		return i == null ? null : new int[] { i };
+	}
+
+	private static Integer index(Register r) {
+		if (!r.getName().matches("[AB]([0-9]|[12][0-9]|3[01])")) return null;
 		return (r.getName().charAt(0) == 'B' ? 32 : 0) + Integer.parseInt(r.getName().substring(1));
 	}
 
@@ -181,7 +207,7 @@ public final class C6000PacketStagingAnalyzer extends AbstractAnalyzer {
 	}
 
 	/** One staged write: the member that writes, its register, and the member after which the result is committed. */
-	private record Stage(Instruction writer, int register, Instruction committer) {}
+	private record Stage(Instruction writer, int[] registers, Instruction committer) {}
 
 	private static int stage(Program program, Function function, TaskMonitor monitor) throws Exception {
 		// The old reads of each writer's register, grouped by writer.
@@ -192,14 +218,17 @@ public final class C6000PacketStagingAnalyzer extends AbstractAnalyzer {
 		Map<Address, Integer> commits = new HashMap<>();
 		for (var reads : byWriter.values()) {
 			Instruction writer = reads.get(0).writer();
-			Integer register = index(program, reads.get(0).register());
-			// One whole A or B register per writer; a transfer's own writes are not its peers' to read.
-			if (register == null || transfer(writer) ||
+			int[] registers = index(program, reads.get(0).register());
+			// One whole A or B register, or one pair, per writer; a transfer's own writes are not its peers' to read.
+			if (registers == null || transfer(writer) ||
 				reads.stream().anyMatch(r -> !r.register().equals(reads.get(0).register()))) continue;
 			Instruction last = reads.get(reads.size() - 1).reader();
-			// Two results at most are committed after one member.
-			if (commits.merge(last.getAddress(), 1, Integer::sum) > 2) continue;
-			stages.add(new Stage(writer, register, last));
+			// Two results at most are committed after one member; a pair takes both.
+			if (commits.merge(last.getAddress(), registers.length, Integer::sum) > 2) {
+				commits.merge(last.getAddress(), -registers.length, Integer::sum);
+				continue;
+			}
+			stages.add(new Stage(writer, registers, last));
 		}
 		Map<Address, Map<String, Integer>> wanted = wanted(stages);
 		apply(program, function, wanted, monitor);
@@ -216,13 +245,16 @@ public final class C6000PacketStagingAnalyzer extends AbstractAnalyzer {
 			var writer = wanted.computeIfAbsent(stage.writer().getAddress(), k -> new HashMap<>());
 			writer.put("c_staged", 1);
 			writer.put("c_defer", 1);
-			writer.put("c_defer_reg", stage.register());
+			writer.put("c_defer_reg", stage.registers()[0]);
+			if (stage.registers().length == 2) writer.put("c_defer_pair", 1);
 			var committer = wanted.computeIfAbsent(stage.committer().getAddress(), k -> new HashMap<>());
 			// A branch commits after its own reads, inside its delay table; anything else in the wrapper.
 			if (!transfer(stage.committer())) committer.put("c_staged", 1);
-			String slot = committer.containsKey("c_cm1") ? "c_cm2" : "c_cm1";
-			committer.put(slot, 1);
-			committer.put(slot + "_reg", stage.register());
+			for (int register : stage.registers()) {
+				String slot = committer.containsKey("c_cm1") ? "c_cm2" : "c_cm1";
+				committer.put(slot, 1);
+				committer.put(slot + "_reg", register);
+			}
 		}
 		return wanted;
 	}
@@ -252,17 +284,21 @@ public final class C6000PacketStagingAnalyzer extends AbstractAnalyzer {
 
 	/** The writer's p-code holds its result, and the committer's p-code moves it into the register. */
 	private static boolean holds(Program program, Stage stage) {
-		String name = (stage.register() >= 32 ? "B" : "A") + (stage.register() & 31);
-		Register real = program.getRegister(name), held = program.getRegister("C6000_NEW_" + name);
 		Instruction writer = program.getListing().getInstructionAt(stage.writer().getAddress());
 		Instruction committer = program.getListing().getInstructionAt(stage.committer().getAddress());
-		if (real == null || held == null || writer == null || committer == null) return false;
-		boolean holds = false, commits = false;
-		for (PcodeOp op : writer.getPcode()) holds |= writes(op, held);
-		for (PcodeOp op : committer.getPcode())
-			commits |= op.getOpcode() == PcodeOp.COPY && writes(op, real) && op.getInput(0).isRegister() &&
-				op.getInput(0).getAddress().equals(held.getAddress());
-		return holds && commits;
+		if (writer == null || committer == null) return false;
+		for (int register : stage.registers()) {
+			String name = (register >= 32 ? "B" : "A") + (register & 31);
+			Register real = program.getRegister(name), held = program.getRegister("C6000_NEW_" + name);
+			if (real == null || held == null) return false;
+			boolean holds = false, commits = false;
+			for (PcodeOp op : writer.getPcode()) holds |= writes(op, held);
+			for (PcodeOp op : committer.getPcode())
+				commits |= op.getOpcode() == PcodeOp.COPY && writes(op, real) && op.getInput(0).isRegister() &&
+					op.getInput(0).getAddress().equals(held.getAddress());
+			if (!holds || !commits) return false;
+		}
+		return true;
 	}
 
 	private static boolean writes(PcodeOp op, Register register) {

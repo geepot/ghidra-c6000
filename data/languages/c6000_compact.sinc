@@ -824,8 +824,8 @@ CTgt10: reloc is cq_scst10 [ reloc = (inst_start & 0xffffffe0) + (cq_scst10 << 2
 # scale (see the CTgt tables above).
 # ---------------------------------------------------------------------------
 
-:BNOP^CUnitS CTgt7, CN3 is c_is16=1 & CUnitS & j5=0 & j4=0 & j3=1 & j2=0 & j1=1 & c_br=1 & CTgt7 & CN3 & CFlowDelay { build CFlowDelay; goto CTgt7; }
-:BNOP^CUnitS CTgt8, 5 is c_is16=1 & CUnitS & j15=1 & j14=1 & j5=0 & j4=0 & j3=1 & j2=0 & j1=1 & c_br=1 & CTgt8 & CFlowDelay { build CFlowDelay; goto CTgt8; }
+:BNOP^CUnitS CTgt7, CN3 is c_is16=1 & CUnitS & j5=0 & j4=0 & j3=1 & j2=0 & j1=1 & c_br=1 & CTgt7 & CN3 & c_inert_wrap=0 & CFlowDelay { build CFlowDelay; goto CTgt7; }
+:BNOP^CUnitS CTgt8, 5 is c_is16=1 & CUnitS & j15=1 & j14=1 & j5=0 & j4=0 & j3=1 & j2=0 & j1=1 & c_br=1 & CTgt8 & c_inert_wrap=0 & CFlowDelay { build CFlowDelay; goto CTgt8; }
 
 # ---------------------------------------------------------------------------
 # Figure F-19. Scs10 (CALLP) - SPRUFE8B appendix F.4.  The return address
@@ -840,14 +840,14 @@ CTgt10: reloc is cq_scst10 [ reloc = (inst_start & 0xffffffe0) + (cq_scst10 << 2
 # is inverted when z = 1.
 # ---------------------------------------------------------------------------
 
-:^CPred20^"BNOP"^CUnitS CTgt7, CN3 is c_is16=1 & CPred20 & CUnitS & c_br=1 & q_s=0 & j4=0 & j5=1 & j3=1 & j2=0 & j1=1 & CTgt7 & CN3 & CFlowDelay { local take:1 = (A0 != 0); build CFlowDelay; if (take != 0) goto CTgt7; }
-:^CPred20^"BNOP"^CUnitS CTgt8, 5 is c_is16=1 & CPred20 & CUnitS & c_br=1 & q_s=0 & j4=0 & j15=1 & j14=1 & j5=1 & j3=1 & j2=0 & j1=1 & CTgt8 & CFlowDelay { local take:1 = (A0 != 0); build CFlowDelay; if (take != 0) goto CTgt8; }
-:^CPred20^"BNOP"^CUnitS CTgt7, CN3 is c_is16=1 & CPred20 & CUnitS & c_br=1 & q_s=1 & j4=0 & j5=1 & j3=1 & j2=0 & j1=1 & CTgt7 & CN3 & CFlowDelay { local take:1 = (B0 != 0); build CFlowDelay; if (take != 0) goto CTgt7; }
-:^CPred20^"BNOP"^CUnitS CTgt8, 5 is c_is16=1 & CPred20 & CUnitS & c_br=1 & q_s=1 & j4=0 & j15=1 & j14=1 & j5=1 & j3=1 & j2=0 & j1=1 & CTgt8 & CFlowDelay { local take:1 = (B0 != 0); build CFlowDelay; if (take != 0) goto CTgt8; }
-:^CPred20^"BNOP"^CUnitS CTgt7, CN3 is c_is16=1 & CPred20 & CUnitS & c_br=1 & q_s=0 & j4=1 & j5=1 & j3=1 & j2=0 & j1=1 & CTgt7 & CN3 & CFlowDelay { local take:1 = (A0 == 0); build CFlowDelay; if (take != 0) goto CTgt7; }
-:^CPred20^"BNOP"^CUnitS CTgt8, 5 is c_is16=1 & CPred20 & CUnitS & c_br=1 & q_s=0 & j4=1 & j15=1 & j14=1 & j5=1 & j3=1 & j2=0 & j1=1 & CTgt8 & CFlowDelay { local take:1 = (A0 == 0); build CFlowDelay; if (take != 0) goto CTgt8; }
-:^CPred20^"BNOP"^CUnitS CTgt7, CN3 is c_is16=1 & CPred20 & CUnitS & c_br=1 & q_s=1 & j4=1 & j5=1 & j3=1 & j2=0 & j1=1 & CTgt7 & CN3 & CFlowDelay { local take:1 = (B0 == 0); build CFlowDelay; if (take != 0) goto CTgt7; }
-:^CPred20^"BNOP"^CUnitS CTgt8, 5 is c_is16=1 & CPred20 & CUnitS & c_br=1 & q_s=1 & j4=1 & j15=1 & j14=1 & j5=1 & j3=1 & j2=0 & j1=1 & CTgt8 & CFlowDelay { local take:1 = (B0 == 0); build CFlowDelay; if (take != 0) goto CTgt8; }
+:^CPred20^"BNOP"^CUnitS CTgt7, CN3 is c_is16=1 & CPred20 & CUnitS & c_br=1 & q_s=0 & j4=0 & j5=1 & j3=1 & j2=0 & j1=1 & CTgt7 & CN3 & c_inert_wrap=0 & CFlowDelay { local take:1 = (A0 != 0); build CFlowDelay; if (take != 0) goto CTgt7; }
+:^CPred20^"BNOP"^CUnitS CTgt8, 5 is c_is16=1 & CPred20 & CUnitS & c_br=1 & q_s=0 & j4=0 & j15=1 & j14=1 & j5=1 & j3=1 & j2=0 & j1=1 & CTgt8 & c_inert_wrap=0 & CFlowDelay { local take:1 = (A0 != 0); build CFlowDelay; if (take != 0) goto CTgt8; }
+:^CPred20^"BNOP"^CUnitS CTgt7, CN3 is c_is16=1 & CPred20 & CUnitS & c_br=1 & q_s=1 & j4=0 & j5=1 & j3=1 & j2=0 & j1=1 & CTgt7 & CN3 & c_inert_wrap=0 & CFlowDelay { local take:1 = (B0 != 0); build CFlowDelay; if (take != 0) goto CTgt7; }
+:^CPred20^"BNOP"^CUnitS CTgt8, 5 is c_is16=1 & CPred20 & CUnitS & c_br=1 & q_s=1 & j4=0 & j15=1 & j14=1 & j5=1 & j3=1 & j2=0 & j1=1 & CTgt8 & c_inert_wrap=0 & CFlowDelay { local take:1 = (B0 != 0); build CFlowDelay; if (take != 0) goto CTgt8; }
+:^CPred20^"BNOP"^CUnitS CTgt7, CN3 is c_is16=1 & CPred20 & CUnitS & c_br=1 & q_s=0 & j4=1 & j5=1 & j3=1 & j2=0 & j1=1 & CTgt7 & CN3 & c_inert_wrap=0 & CFlowDelay { local take:1 = (A0 == 0); build CFlowDelay; if (take != 0) goto CTgt7; }
+:^CPred20^"BNOP"^CUnitS CTgt8, 5 is c_is16=1 & CPred20 & CUnitS & c_br=1 & q_s=0 & j4=1 & j15=1 & j14=1 & j5=1 & j3=1 & j2=0 & j1=1 & CTgt8 & c_inert_wrap=0 & CFlowDelay { local take:1 = (A0 == 0); build CFlowDelay; if (take != 0) goto CTgt8; }
+:^CPred20^"BNOP"^CUnitS CTgt7, CN3 is c_is16=1 & CPred20 & CUnitS & c_br=1 & q_s=1 & j4=1 & j5=1 & j3=1 & j2=0 & j1=1 & CTgt7 & CN3 & c_inert_wrap=0 & CFlowDelay { local take:1 = (B0 == 0); build CFlowDelay; if (take != 0) goto CTgt7; }
+:^CPred20^"BNOP"^CUnitS CTgt8, 5 is c_is16=1 & CPred20 & CUnitS & c_br=1 & q_s=1 & j4=1 & j15=1 & j14=1 & j5=1 & j3=1 & j2=0 & j1=1 & CTgt8 & c_inert_wrap=0 & CFlowDelay { local take:1 = (B0 == 0); build CFlowDelay; if (take != 0) goto CTgt8; }
 
 # ---------------------------------------------------------------------------
 # Figure F-22. S3 - SPRUFE8B appendix F.4.  BR must be 0 for the
@@ -943,7 +943,7 @@ CTgt10: reloc is cq_scst10 [ reloc = (inst_start & 0xffffffe0) + (cq_scst10 << 2
 # to this form, so it is decoded regardless of the header BR bit.
 # ---------------------------------------------------------------------------
 
-:BNOP^CUnitS RB710, CN3 is c_is16=1 & CUnitS & j12=0 & j11=0 & j6=1 & j5=1 & j4=0 & j3=1 & j2=1 & j1=1 & RB710 & CN3 & CFlowDelay { local target:4 = RB710; build CFlowDelay; goto [target]; }
+:BNOP^CUnitS RB710, CN3 is c_is16=1 & CUnitS & j12=0 & j11=0 & j6=1 & j5=1 & j4=0 & j3=1 & j2=1 & j1=1 & RB710 & CN3 & c_inert_wrap=0 & CFlowDelay { local target:4 = RB710; build CFlowDelay; goto [target]; }
 
 # ---------------------------------------------------------------------------
 # Figures G-1/G-2. LSDmvto / LSDmvfr - SPRUFE8B appendix G.3.

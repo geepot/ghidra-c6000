@@ -779,6 +779,10 @@ def main():
                         sem = "if (Cond == 0) goto inst_next; %s" % sem
                     elif not fixed_pred:
                         sem = "if (Cond == 0) goto <skip>; %s <skip>" % sem
+                    # A latched branch has its own form (tools/gen_latched.py), selected by c_inert_wrap;
+                    # SLEIGH does not prefer it as the more specific pattern, so the two must be disjoint.
+                    if mnem == "B":
+                        pat.append("c_inert_wrap=0")
                     if mnem == "B" and ops and ops[0] == "BranchTarget":
                         # Emit an unguarded direct branch for the always-true
                         # predicate. A constant Cond export inside a p-code

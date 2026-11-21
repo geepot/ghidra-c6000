@@ -95,28 +95,28 @@
 
 :"BNOP.S1" BnopTgt, bnopc is c_is16=0 & creg=0 & z=0 & BnopTgt & bnopc
   & i1=0 & i12=0 & i11=0 & i10=0 & i9=0 & i8=1 & i7=0 & i6=0 & i5=1 & i4=0 & i3=0 & i2=0
-  & CFlowDelay
+  & CFlowDelay & c_inert_wrap=0
 { build CFlowDelay; goto BnopTgt; }
 :^Cond^"BNOP.S1" BnopTgt, bnopc is c_is16=0 & Cond & creg!=0 & creg!=7 & BnopTgt & bnopc
   & i1=0 & i12=0 & i11=0 & i10=0 & i9=0 & i8=1 & i7=0 & i6=0 & i5=1 & i4=0 & i3=0 & i2=0
-  & CFlowDelay
+  & CFlowDelay & c_inert_wrap=0
 {
   local take:1 = Cond; build CFlowDelay; if (take != 0) goto BnopTgt;
 }
 :"BNOP.S2" BnopTgt, bnopc is c_is16=0 & creg=0 & z=0 & BnopTgt & bnopc
   & i1=1 & i12=0 & i11=0 & i10=0 & i9=0 & i8=1 & i7=0 & i6=0 & i5=1 & i4=0 & i3=0 & i2=0
-  & CFlowDelay
+  & CFlowDelay & c_inert_wrap=0
 { build CFlowDelay; goto BnopTgt; }
 :^Cond^"BNOP.S2" BnopTgt, bnopc is c_is16=0 & Cond & creg!=0 & creg!=7 & BnopTgt & bnopc
   & i1=1 & i12=0 & i11=0 & i10=0 & i9=0 & i8=1 & i7=0 & i6=0 & i5=1 & i4=0 & i3=0 & i2=0
-  & CFlowDelay
+  & CFlowDelay & c_inert_wrap=0
 {
   local take:1 = Cond; build CFlowDelay; if (take != 0) goto BnopTgt;
 }
 
 :"BNOP.S2" Src2, bnopc is c_is16=0 & creg=0 & z=0 & c_branch_terminal=1 & Src2 & bnopc & CFlowDelay
   & i27=0 & i26=0 & i25=0 & i24=0 & i23=1 & i17=0 & i16=0
-  & i11=0 & i10=0 & i9=1 & i8=1 & i7=0 & i6=1 & i5=1 & i4=0 & i3=0 & i2=0 & i1=1
+  & i11=0 & i10=0 & i9=1 & i8=1 & i7=0 & i6=1 & i5=1 & i4=0 & i3=0 & i2=0 & i1=1 & c_inert_wrap=0
 {
   local target:4 = Src2; build CFlowDelay; goto [target];
 }
@@ -125,7 +125,7 @@
 :^Cond^"BNOP.S2" Src2, bnopc is c_is16=0 & Cond & creg!=0 & creg!=7 & c_branch_terminal=1 & Src2 & bnopc
   & i27=0 & i26=0 & i25=0 & i24=0 & i23=1 & i17=0 & i16=0
   & i11=0 & i10=0 & i9=1 & i8=1 & i7=0 & i6=1 & i5=1 & i4=0 & i3=0 & i2=0 & i1=1
-  & CFlowDelay
+  & CFlowDelay & c_inert_wrap=0
 {
   local take:1 = Cond; local target:4 = Src2;
   build CFlowDelay;
@@ -135,7 +135,7 @@
 :^Cond^"BNOP.S2" Src2, bnopc is c_is16=0 & Cond & creg!=7 & c_branch_terminal=0 & Src2 & bnopc
   & i27=0 & i26=0 & i25=0 & i24=0 & i23=1 & i17=0 & i16=0
   & i11=0 & i10=0 & i9=1 & i8=1 & i7=0 & i6=1 & i5=1 & i4=0 & i3=0 & i2=0 & i1=1
-  & CFlowDelay
+  & CFlowDelay & c_inert_wrap=0
 {
   local take:1 = Cond; local target:4 = Src2;
   build CFlowDelay;

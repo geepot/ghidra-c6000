@@ -96,15 +96,15 @@ define register offset=0x3200 size=4 [ C6000_PIPE_RET C6000_PIPE_ILC C6000_PIPE_
 # reads its operands before any member writes).  A member whose result a later
 # member of its packet still has to read as it was keeps the register unchanged
 # and holds the result here until the last such reader has run.
-define register offset=0x3300 size=4 [ C6000_STAGE_OLD ];
+define register offset=0x3300 size=4 [ C6000_STAGE_OLD C6000_STAGE_OLD2 ];
 
 # Latched branches (SPRUFE8B 3.5, 4.2.6: a branch reads its predicate and target
 # when it issues and redirects fetch six cycles later).  A branch whose delay
 # window native lifting cannot hold, because another branch issues in it, only
 # records what it read; the instruction after which it lands carries the transfer.
 define register offset=0x3400 size=4
-  [ C6000_LATCH_T0 C6000_LATCH_T1 C6000_LATCH_T2 C6000_LATCH_T3
-    C6000_LATCH_PC0 C6000_LATCH_PC1 C6000_LATCH_PC2 C6000_LATCH_PC3 ];
+  [ C6000_LATCH_T0 C6000_LATCH_T1 C6000_LATCH_T2 C6000_LATCH_T3 C6000_LATCH_T4 C6000_LATCH_T5 C6000_LATCH_T6 C6000_LATCH_T7
+    C6000_LATCH_PC0 C6000_LATCH_PC1 C6000_LATCH_PC2 C6000_LATCH_PC3 C6000_LATCH_PC4 C6000_LATCH_PC5 C6000_LATCH_PC6 C6000_LATCH_PC7 ];
 define register offset=0x4000 size=4
   [ C6000_NEW_A0 C6000_NEW_A1 C6000_NEW_A2 C6000_NEW_A3 C6000_NEW_A4 C6000_NEW_A5 C6000_NEW_A6 C6000_NEW_A7 C6000_NEW_A8 C6000_NEW_A9 C6000_NEW_A10 C6000_NEW_A11 C6000_NEW_A12 C6000_NEW_A13 C6000_NEW_A14 C6000_NEW_A15 C6000_NEW_A16 C6000_NEW_A17 C6000_NEW_A18 C6000_NEW_A19 C6000_NEW_A20 C6000_NEW_A21 C6000_NEW_A22 C6000_NEW_A23 C6000_NEW_A24 C6000_NEW_A25 C6000_NEW_A26 C6000_NEW_A27 C6000_NEW_A28 C6000_NEW_A29 C6000_NEW_A30 C6000_NEW_A31
     C6000_NEW_B0 C6000_NEW_B1 C6000_NEW_B2 C6000_NEW_B3 C6000_NEW_B4 C6000_NEW_B5 C6000_NEW_B6 C6000_NEW_B7 C6000_NEW_B8 C6000_NEW_B9 C6000_NEW_B10 C6000_NEW_B11 C6000_NEW_B12 C6000_NEW_B13 C6000_NEW_B14 C6000_NEW_B15 C6000_NEW_B16 C6000_NEW_B17 C6000_NEW_B18 C6000_NEW_B19 C6000_NEW_B20 C6000_NEW_B21 C6000_NEW_B22 C6000_NEW_B23 C6000_NEW_B24 C6000_NEW_B25 C6000_NEW_B26 C6000_NEW_B27 C6000_NEW_B28 C6000_NEW_B29 C6000_NEW_B30 C6000_NEW_B31 ];
@@ -135,18 +135,21 @@ define context contextreg
   c_cm1_reg   = (49,54) noflow
   c_cm2       = (55,55) noflow
   c_cm2_reg   = (56,61) noflow
+  c_defer_pair = (62,62) noflow # hold the other half of c_defer_reg's register pair too
   # Latched branches, set by the nested-branch lifting analyzer.
+  # Big-endian Ghidra rejects the language when a field reaches past bit 122 of this register, so
+  # these stop there: 21-bit displacements, and c_inert in the bit left below.
+  c_inert       = (63,63) noflow # this branch does not transfer where it issues
   c_inert_wrap  = (64,65) noflow # 1: latch this branch's predicate; 2: and its register target
-  c_inert       = (66,66) noflow # this branch does not transfer where it issues
-  c_latch_t     = (67,68) noflow # the latch it records into
+  c_latch_t     = (66,68) noflow # the latch it records into
   c_land1       = (69,70) noflow # a latched branch lands after this instruction: 1 jump, 2 call, 3 return
   c_land1_ind   = (71,71) noflow # to the latched register target, else to c_land1_disp
-  c_land1_t     = (72,73) noflow
-  c_land1_disp  = (74,95) signed noflow # halfwords from this instruction's fetch packet
+  c_land1_t     = (72,74) noflow
+  c_land1_disp  = (75,95) signed noflow # halfwords from this instruction's fetch packet
   c_land2       = (96,97) noflow
   c_land2_ind   = (98,98) noflow
-  c_land2_t     = (99,100) noflow
-  c_land2_disp  = (101,122) signed noflow
+  c_land2_t     = (99,101) noflow
+  c_land2_disp  = (102,122) signed noflow
 @if ENDIAN == "big"
 @include "c6000_compact_context.sinc"
 @endif
@@ -598,9 +601,12 @@ define pcodeop c6000_fp_status;
 # that reads the old one.  A branch reads its predicate and target, then builds
 # CFlowDelay, so a commit there follows its reads on every path.
 StagePre: is c_defer=0 { }
-StagePre: is c_defer=1 & DeferReg { C6000_STAGE_OLD = DeferReg; }
+StagePre: is c_defer=1 & c_defer_pair=0 & DeferReg { C6000_STAGE_OLD = DeferReg; }
+StagePre: is c_defer=1 & c_defer_pair=1 & DeferReg & DeferReg2 { C6000_STAGE_OLD = DeferReg; C6000_STAGE_OLD2 = DeferReg2; }
 StagePost: is c_defer=0 { }
-StagePost: is c_defer=1 & DeferReg & DeferNew { DeferNew = DeferReg; DeferReg = C6000_STAGE_OLD; }
+StagePost: is c_defer=1 & c_defer_pair=0 & DeferReg & DeferNew { DeferNew = DeferReg; DeferReg = C6000_STAGE_OLD; }
+StagePost: is c_defer=1 & c_defer_pair=1 & DeferReg & DeferNew & DeferReg2 & DeferNew2
+{ DeferNew = DeferReg; DeferReg = C6000_STAGE_OLD; DeferNew2 = DeferReg2; DeferReg2 = C6000_STAGE_OLD2; }
 StageCommit1: is c_cm1=0 { }
 StageCommit1: is c_cm1=1 & Cm1Reg & Cm1New { Cm1Reg = Cm1New; }
 StageCommit2: is c_cm2=0 { }
@@ -630,24 +636,9 @@ define pcodeop c6000_pipeline;
 # operand BEFORE the userop. The native return hides the physical CFG; dynamic
 # injection supplies the exact scheduled CFG and its captured return target.
 :^instruction is c_schedule_entry=1 & instruction [ c_schedule_entry=0; c_flow_delay=0; ] { c6000_pipeline(); return [C6000_PIPE_RET]; build instruction; }
-# A latched branch records its predicate, and its register target, as it issues,
-# and holds no transfer: the instruction it lands behind carries that (Land).
-# These are the 32-bit B and BNOP forms of c6000_decode.sinc and c6000_manual.sinc.
-:^Cond^"B.S1" BranchTarget is c_inert_wrap=1 & i2=0 & i3=0 & i4=1 & i5=0 & i6=0 & i1=0 & BranchTarget & c_schedule_entry=0 & c_is16=0 & Cond & creg!=7 & (creg!=0 | z=0) & LatchT & Land1 & Land2
-{ LatchT = zext(Cond); build Land1; build Land2; }
-:^Cond^"B.S2" BranchTarget is c_inert_wrap=1 & i2=0 & i3=0 & i4=1 & i5=0 & i6=0 & i1=1 & BranchTarget & c_schedule_entry=0 & c_is16=0 & Cond & creg!=7 & (creg!=0 | z=0) & LatchT & Land1 & Land2
-{ LatchT = zext(Cond); build Land1; build Land2; }
-:^Cond^"B.S2" Src2 is c_inert_wrap=2 & i1=1 & i2=0 & i3=0 & i4=0 & i5=1 & i6=1 & i7=0 & i8=1 & i9=1 & i10=0 & i11=0 & i13=0 & i14=0 & i15=0 & i16=0 & i17=0 & i23=0 & i24=0 & i25=0 & i26=0 & i27=0 & Src2 & LatchPc & c_schedule_entry=0 & c_is16=0 & Cond & creg!=7 & (creg!=0 | z=0) & LatchT & Land1 & Land2
-{ LatchT = zext(Cond); LatchPc = Src2; build Land1; build Land2; }
-:^Cond^"BNOP.S1" BnopTgt, bnopc is c_inert_wrap=1 & i1=0 & i12=0 & i11=0 & i10=0 & i9=0 & i8=1 & i7=0 & i6=0 & i5=1 & i4=0 & i3=0 & i2=0 & BnopTgt & bnopc & c_schedule_entry=0 & c_is16=0 & Cond & creg!=7 & (creg!=0 | z=0) & LatchT & Land1 & Land2
-{ LatchT = zext(Cond); build Land1; build Land2; }
-:^Cond^"BNOP.S2" BnopTgt, bnopc is c_inert_wrap=1 & i1=1 & i12=0 & i11=0 & i10=0 & i9=0 & i8=1 & i7=0 & i6=0 & i5=1 & i4=0 & i3=0 & i2=0 & BnopTgt & bnopc & c_schedule_entry=0 & c_is16=0 & Cond & creg!=7 & (creg!=0 | z=0) & LatchT & Land1 & Land2
-{ LatchT = zext(Cond); build Land1; build Land2; }
-:^Cond^"BNOP.S2" Src2, bnopc is c_inert_wrap=2 & i27=0 & i26=0 & i25=0 & i24=0 & i23=1 & i17=0 & i16=0 & i11=0 & i10=0 & i9=1 & i8=1 & i7=0 & i6=1 & i5=1 & i4=0 & i3=0 & i2=0 & i1=1 & Src2 & bnopc & LatchPc & c_schedule_entry=0 & c_is16=0 & Cond & creg!=7 & (creg!=0 | z=0) & LatchT & Land1 & Land2
-{ LatchT = zext(Cond); LatchPc = Src2; build Land1; build Land2; }
-:^instruction is c_schedule_entry=0 & c_inert_wrap=0 & c_staged=1 & StagePre & StagePost & StageCommit1 & StageCommit2 & Land1 & Land2 & instruction [ c_staged=0; ]
+:^instruction is c_schedule_entry=0 & c_staged=1 & StagePre & StagePost & StageCommit1 & StageCommit2 & Land1 & Land2 & instruction [ c_staged=0; ]
 { build StagePre; build instruction; build StagePost; build StageCommit1; build StageCommit2; build Land1; build Land2; }
-with : c_schedule_entry=0 & c_staged=0 & c_inert_wrap=0 {
+with : c_schedule_entry=0 & c_staged=0 {
 # Figure F-8 pointer branches use op=110 (IRP) or 111 (NRP).
 # The op field overlaps the five-bit register field of Figure F-7; match
 # these fully encoded forms before the general B-register constructors.
@@ -688,10 +679,18 @@ define pcodeop c6000_spmaskr;
 @if ENDIAN == "big"
 with : (c_padbit=0 | c_padbit=1) {
 @include "c6000_compact.sinc"
+@include "c6000_compact_latched.sinc"
 }
 @else
 @include "c6000_compact.sinc"
+@include "c6000_compact_latched.sinc"
 @endif
 @include "c6000_manual.sinc"
+# A latched branch records its predicate, and its register target, as it issues, and holds
+# no transfer: the instruction it lands behind carries that (Land). Each latched form is the
+# ordinary constructor's pattern with c_inert_wrap 1 or 2 where that has 0, generated by
+# tools/gen_latched.py and tools/gen_compact.py: SLEIGH does not prefer the more specific
+# of two matching patterns, so the ordinary and the latched form must be disjoint.
+@include "c6000_latched.sinc"
 
 }

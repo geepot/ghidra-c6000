@@ -110,7 +110,8 @@ falls into.
 Native lifting stages same-packet writes: where a member of an execute packet reads a
 register an earlier member writes, the write is held until the last such reader has run
 (`C6000 Packet Staging`), so the member reads the old value as on hardware. It stages one
-whole A or B register per writer and commits at most two results after one member. A
+whole A or B register, or one register pair, per writer and commits at most two results
+after one member. A
 same-packet read it cannot stage, such as one of a control register, keeps its
 `C6000 Same-Packet Hazards` warning. Results that land cycles later (multiplies, loads,
 floating point) are still written at once by native lifting; only an exact schedule
@@ -121,8 +122,9 @@ the hardware runs on every path (`C6000 Nested Branch Lifting`): each such branc
 its predicate and target as it issues, and the instruction it lands behind transfers. That
 covers nests where at most one branch is taken on any path. It does not cover two branches
 that are both taken (the second lands in the first one's target code), a loop that comes
-round with a branch still in flight (software-pipelined loops), compact branches, `CALLP`,
-`BDEC` or `BPOS`; those keep the `C6000 Nested Delay Windows` warning.
+round with a branch still in flight (software-pipelined loops), `CALLP`, `BDEC` or `BPOS`;
+those keep the `C6000 Nested Delay Windows` warning, which says why latching does not fix
+them.
 
 Native delay recovery remains conservative for nested transfers and BDEC/BPOS.
 Native lifting cannot place a

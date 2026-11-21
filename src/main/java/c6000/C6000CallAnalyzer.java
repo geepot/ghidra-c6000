@@ -410,47 +410,63 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 		 * {@link #liftMismatch} says whether it is on every path. Null when a transfer has no latched
 		 * form or the stretch needs more latches or landings than there are.
 		 */
+		/** Why the last liftPlan gave no plan. */
+		String liftRefusal;
+
+		private Lifting refuse(String why) {
+			liftRefusal = why;
+			return null;
+		}
+
 		Lifting liftPlan(Instruction outer) {
+			liftRefusal = null;
 			Instruction first = settled(outer);
 			List<Instruction> stretch = new ArrayList<>();
 			long end = Math.max(windowEnd(first), windowEnd(outer));
-			if (windowEnd(first) < 0 || windowEnd(outer) < 0) return null;
+			if (windowEnd(first) < 0 || windowEnd(outer) < 0) return refuse("a delay window there does not decode");
 			Instruction current = first;
 			while (current != null && current.getMinAddress().getOffset() < end) {
-				if (stretch.size() > 4 * MAX_WINDOW) return null;
+				if (stretch.size() > 4 * MAX_WINDOW) return refuse("the nested windows are too long");
 				stretch.add(current);
 				if (transfer(current)) {
 					long e = windowEnd(current);
-					if (e < 0) return null;
+					if (e < 0) return refuse("a delay window there does not decode");
 					end = Math.max(end, e);
 				}
 				current = next(current);
 			}
-			if (current == null || stretch.isEmpty()) return null;
+			if (current == null || stretch.isEmpty()) return refuse("the code after the windows does not decode");
 			List<Instruction> timed = new ArrayList<>(stretch);
 			timed.add(current);
 			int[] issue = issueCycles(timed);
 			List<Latch> latches = new ArrayList<>();
 			Map<Address, Integer> landings = new HashMap<>();
+			int[] busy = new int[8];
+			java.util.Arrays.fill(busy, -1);
 			for (int i = 0; i < stretch.size(); i++) {
 				Instruction branch = stretch.get(i);
 				if (!transfer(branch)) continue;
 				String op = baseName(branch);
-				for (String form : UNLIFTABLE) if (op.startsWith(form)) return null;
-				if (branch.getLength() != 4 || latches.size() == 4 || untimed(program, branch)) return null;
+				for (String form : UNLIFTABLE) if (op.startsWith(form)) return refuse(branch + " at " + branch.getMinAddress() + " has no latched form");
+				if (untimed(program, branch)) return refuse("its timing is outside the cycle model");
 				int land = -1;
 				for (int j = i; j < stretch.size() && issue[j] < issue[i] + 1 + DELAY_CYCLES; j++) land = j;
-				if (land < 0 || issue[land + 1] < issue[i] + 1 + DELAY_CYCLES) return null;
+				if (land < 0 || issue[land + 1] < issue[i] + 1 + DELAY_CYCLES) return refuse("a branch lands past the end of the stretch");
 				Instruction behind = stretch.get(land);
-				if (landings.merge(behind.getMinAddress(), 1, Integer::sum) > 2) return null;
+				if (landings.merge(behind.getMinAddress(), 1, Integer::sum) > 2) return refuse("more than two branches land behind one instruction");
 				var flow = C6000PacketStagingAnalyzer.flow(branch);
 				boolean register = branch.getRegister(0) != null;
 				Address target = register || C6000PacketStagingAnalyzer.hardware(branch).getDefaultFlows().length != 1 ? null : C6000PacketStagingAnalyzer.hardware(branch).getDefaultFlows()[0];
-				if (!register && target == null) return null;
+				if (!register && target == null) return refuse("a branch has no single target");
 				int kind = flow.isCall() ? 2 : register && flow.isTerminal() ? 3 : 1;
-				latches.add(new Latch(branch, latches.size(), behind, kind, target));
+				// A latch is free again once the branch that used it has landed behind an earlier instruction.
+				int slot = -1;
+				for (int k = 0; k < busy.length && slot < 0; k++) if (busy[k] < i) slot = k;
+				if (slot < 0) return refuse("more than eight branches are in flight at once");
+				busy[slot] = land;
+				latches.add(new Latch(branch, slot, behind, kind, target));
 			}
-			return latches.isEmpty() ? null : new Lifting(first, stretch.get(stretch.size() - 1).getMaxAddress(), latches);
+			return latches.isEmpty() ? refuse("no branch to latch") : new Lifting(first, stretch.get(stretch.size() - 1).getMaxAddress(), latches);
 		}
 
 		/** Null when {@code plan} runs what the hardware runs on every consistent outcome; else the first difference. */

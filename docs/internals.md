@@ -83,8 +83,9 @@ bytes long. Little-endian languages keep the `insn16` token (issue #31). Java re
 
 Since language version 3 in both byte orders, `contextreg` is 128 bits and each field has
 the same position in both. Bits 0-23 hold the decode and recovery fields and big-endian
-bits 32-47 hold `c_h16`; bits 24-31 and 48-61 hold the packet staging fields and bits
-64-122 the latched-branch fields. Bits 62-63 and 123-127 are free. New fields are `noflow` with a
+bits 32-47 hold `c_h16`; bits 24-31 and 48-62 hold the packet staging fields and bits
+63-122 the latched-branch fields. Bits 123-127 are unused: big-endian Ghidra fails to load
+a language with a context field that reaches into them. New fields are `noflow` with a
 `c_` prefix, unless they really must flow.
 
 Only the eighth word of a compact fetch packet decodes as a 4-byte `CPKT` instruction.
@@ -169,7 +170,11 @@ runs the same hardware model as the warning against that lifting, for every cons
 outcome of the predicates; only a match is applied. `C6000DelaySlots.relift` decodes the
 stretch again as straight-line code with the fields set: `c_inert_wrap`, `c_inert` and
 `c_latch_t` on a branch select a form of the instruction that writes `C6000_LATCH_T<n>`
-(and `C6000_LATCH_PC<n>` for a register target) and holds no transfer; `c_land1`/`c_land2`
+(and `C6000_LATCH_PC<n>` for a register target) and holds no transfer. Those forms are
+generated from the ordinary `B` and `BNOP` constructors, 32-bit (`tools/gen_latched.py`)
+and compact (`tools/gen_compact.py`); the ordinary ones require `c_inert_wrap=0`, because
+SLEIGH does not prefer the more specific of two matching patterns. Eight latches are
+reused as branches land; `c_land1`/`c_land2`
 with a kind, a latch and a displacement on the landing instruction append a conditional
 jump, call or return. The listing is then checked again and put back if it does not match.
 A latched branch reports no flow to Ghidra, and its landing instruction does, so every

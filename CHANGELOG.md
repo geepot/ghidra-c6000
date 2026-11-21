@@ -22,8 +22,9 @@
   it runs what the hardware runs on every consistent outcome of the predicates, by the same
   comparison that decides the nested-window warning, so it covers stretches where at most
   one of the branches is taken on any path, such as a call and a return on opposite
-  predicates. Two branches that are both taken, a loop that comes round with a branch
-  still in flight, compact branches, `CALLP`, `BDEC` and `BPOS` keep the warning.
+  predicates, with 32-bit and compact branches and up to eight branches in flight. Two
+  branches that are both taken, a loop that comes round with a branch still in flight,
+  `CALLP`, `BDEC` and `BPOS` keep the warning, which now says why latching does not fix it.
 * Staged execute-packet writes. Every member of an execute packet reads its operands before
   any member writes (SPRUFE8B 3.5), but p-code runs the members in order. Where a member
   reads a register that an earlier member of its packet writes, the new `C6000 Packet
@@ -32,7 +33,7 @@
   A branch that is the last such reader commits the result after reading its predicate and
   target. The decompiled C is then the hardware's, for example `b - a` for
   `MV B4,A4 || MV A4,A5` followed by `SUB A4,A5,A4`, which was `0`. One whole A or B
-  register per writer and two commits per member are staged; anything else, such as a
+  register or one register pair per writer, and two commits per member, are staged; anything else, such as a
   control register, keeps its same-packet hazard warning. Exact schedules and the
   analyzers that model the pipeline read the instruction without staging. New context
   fields `c_staged`, `c_defer`, `c_defer_reg`, `c_cm1`, `c_cm1_reg`, `c_cm2` and `c_cm2_reg`

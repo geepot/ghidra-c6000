@@ -15,9 +15,13 @@ for table, field, prefix in (("DeferReg", "c_defer_reg", ""), ("DeferNew", "c_de
                              ("Cm2Reg", "c_cm2_reg", ""), ("Cm2New", "c_cm2_reg", "C6000_NEW_")):
     for index, name in enumerate(registers):
         lines.append(f"{table}: is {field}={index} {{ export {prefix}{name}; }}")
+# The other half of a register pair (SPRUFE8B 2.2: odd:even), for a staged 64-bit result.
+for table, prefix in (("DeferReg2", ""), ("DeferNew2", "C6000_NEW_")):
+    for index, name in enumerate(registers):
+        lines.append(f"{table}: is c_defer_reg={index} {{ export {prefix}{registers[index ^ 1]}; }}")
 for table, field, prefix in (("LatchT", "c_latch_t", "C6000_LATCH_T"), ("LatchPc", "c_latch_t", "C6000_LATCH_PC"),
                              ("Land1T", "c_land1_t", "C6000_LATCH_T"), ("Land1Pc", "c_land1_t", "C6000_LATCH_PC"),
                              ("Land2T", "c_land2_t", "C6000_LATCH_T"), ("Land2Pc", "c_land2_t", "C6000_LATCH_PC")):
-    for index in range(4):
+    for index in range(8):
         lines.append(f"{table}: is {field}={index} {{ export {prefix}{index}; }}")
 p.write_text("\n".join(lines) + "\n")

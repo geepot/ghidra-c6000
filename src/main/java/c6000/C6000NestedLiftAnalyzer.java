@@ -120,7 +120,7 @@ public final class C6000NestedLiftAnalyzer extends AbstractAnalyzer {
 			put(program, land, slot + "_t", latch.slot());
 			put(program, land, slot + "_ind", latch.target() == null ? 1 : 0);
 			long disp = latch.target() == null ? 0 : (latch.target().getOffset() - (at.getOffset() & ~31L)) / 2;
-			if (disp < -(1 << 21) || disp >= 1 << 21 || (latch.target() != null && (latch.target().getOffset() & 1) != 0))
+			if (disp < -(1 << 20) || disp >= 1 << 20 || (latch.target() != null && (latch.target().getOffset() & 1) != 0))
 				return false;
 			put(program, land, slot + "_disp", (int) disp);
 		}
@@ -129,6 +129,11 @@ public final class C6000NestedLiftAnalyzer extends AbstractAnalyzer {
 		// A latched branch falls through to its next instruction and holds no flow of its own any more.
 		for (var latch : plan.latches()) {
 			Instruction branch = program.getListing().getInstructionAt(latch.branch().getMinAddress());
+			if (branch == null || !branch.getFlowType().isFallthrough()) {
+				// This encoding has no latched form.
+				undo.putBack();
+				return false;
+			}
 			Instruction land = program.getListing().getInstructionAt(latch.land().getMinAddress());
 			if (branch.isFallThroughOverridden()) branch.clearFallThroughOverride();
 			for (Reference ref : branch.getReferencesFrom()) {
