@@ -921,6 +921,12 @@ return in one execute packet (`samepkt`), and issue #50's continued jump with it
 preempting return (`preempt`), which matches the lifted listing once the jump is
 continued. Both endians.
 
+`nested-window` now also has lifted cases: `callret`, `tri` and `bnop4` are no longer
+warned, because their branches are latched (issue #73), and the check requires a latched
+branch in each and the hardware's result in the C: `a ? h(b + 1) : b + 1` for `callret`,
+`a ? 3 : b ? 0x13 : 0x43b` for `tri` and `x ? x + 1 : 1` for `bnop4`. `busytgt`, `indep`,
+`pjcall` and `pjreg`, where two branches are both taken, keep their warning.
+
 ## BNOP calls (issue #69)
 
 `tests/fixtures/bnop-call.py` assembles six functions with `cl6x` 8.3.15, each with its

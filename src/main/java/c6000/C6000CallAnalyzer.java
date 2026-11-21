@@ -392,6 +392,171 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 		 * the listing's lifting or, given a proposal, that one.
 		 */
 		private String compare(Instruction first, Instruction outer, Proposal proposal) {
+			return compare(first, outer, proposal, null);
+		}
+
+		/** One latched branch: where it lands, as what (1 jump, 2 call, 3 return), and its target unless that is in a register. */
+		record Latch(Instruction branch, int slot, Instruction land, int kind, Address target) {}
+
+		/** A lifting of a stretch by latched branches, planned or read back from the listing. */
+		record Lifting(Instruction first, Address last, List<Latch> latches) {}
+
+		private static final String[] UNLIFTABLE = { "CALLP", "BDEC", "BPOS" };
+
+		/**
+		 * Latch every transfer from where nothing is in flight before {@code outer} to the end of the
+		 * windows issued there: each lands behind the last instruction that issues, in address order,
+		 * before its sixth cycle. That is the hardware's order whenever at most one of them is taken;
+		 * {@link #liftMismatch} says whether it is on every path. Null when a transfer has no latched
+		 * form or the stretch needs more latches or landings than there are.
+		 */
+		Lifting liftPlan(Instruction outer) {
+			Instruction first = settled(outer);
+			List<Instruction> stretch = new ArrayList<>();
+			long end = Math.max(windowEnd(first), windowEnd(outer));
+			if (windowEnd(first) < 0 || windowEnd(outer) < 0) return null;
+			Instruction current = first;
+			while (current != null && current.getMinAddress().getOffset() < end) {
+				if (stretch.size() > 4 * MAX_WINDOW) return null;
+				stretch.add(current);
+				if (transfer(current)) {
+					long e = windowEnd(current);
+					if (e < 0) return null;
+					end = Math.max(end, e);
+				}
+				current = next(current);
+			}
+			if (current == null || stretch.isEmpty()) return null;
+			List<Instruction> timed = new ArrayList<>(stretch);
+			timed.add(current);
+			int[] issue = issueCycles(timed);
+			List<Latch> latches = new ArrayList<>();
+			Map<Address, Integer> landings = new HashMap<>();
+			for (int i = 0; i < stretch.size(); i++) {
+				Instruction branch = stretch.get(i);
+				if (!transfer(branch)) continue;
+				String op = baseName(branch);
+				for (String form : UNLIFTABLE) if (op.startsWith(form)) return null;
+				if (branch.getLength() != 4 || latches.size() == 4 || untimed(program, branch)) return null;
+				int land = -1;
+				for (int j = i; j < stretch.size() && issue[j] < issue[i] + 1 + DELAY_CYCLES; j++) land = j;
+				if (land < 0 || issue[land + 1] < issue[i] + 1 + DELAY_CYCLES) return null;
+				Instruction behind = stretch.get(land);
+				if (landings.merge(behind.getMinAddress(), 1, Integer::sum) > 2) return null;
+				var flow = C6000PacketStagingAnalyzer.flow(branch);
+				boolean register = branch.getRegister(0) != null;
+				Address target = register || C6000PacketStagingAnalyzer.hardware(branch).getDefaultFlows().length != 1 ? null : C6000PacketStagingAnalyzer.hardware(branch).getDefaultFlows()[0];
+				if (!register && target == null) return null;
+				int kind = flow.isCall() ? 2 : register && flow.isTerminal() ? 3 : 1;
+				latches.add(new Latch(branch, latches.size(), behind, kind, target));
+			}
+			return latches.isEmpty() ? null : new Lifting(first, stretch.get(stretch.size() - 1).getMaxAddress(), latches);
+		}
+
+		/** Null when {@code plan} runs what the hardware runs on every consistent outcome; else the first difference. */
+		String liftMismatch(Lifting plan, Instruction outer) {
+			return compare(plan.first(), outer, null, plan);
+		}
+
+		/** The latched branches the listing already has from {@code first} to before {@code stop}; null if none. */
+		private Lifting listed(Instruction first, Address stop) {
+			List<Latch> latches = new ArrayList<>();
+			Map<Integer, Instruction> open = new HashMap<>();
+			Address last = first.getMaxAddress();
+			for (Instruction insn = listing.getInstructionAt(first.getMinAddress());
+					insn != null && insn.getMinAddress().compareTo(stop) < 0; insn = listing.getInstructionAfter(insn.getMaxAddress())) {
+				last = insn.getMaxAddress();
+				if (C6000PacketStagingAnalyzer.inert(insn)) open.put(field(insn, "c_latch_t"), insn);
+				for (String land : new String[] { "c_land1", "c_land2" }) {
+					int kind = field(insn, land);
+					Instruction branch = kind == 0 ? null : open.get(field(insn, land + "_t"));
+					if (branch == null) continue;
+					Address target = field(insn, land + "_ind") != 0 ? null :
+						insn.getMinAddress().getNewAddress((insn.getMinAddress().getOffset() & ~31L) + 2L * signed(insn, land + "_disp"));
+					latches.add(new Latch(branch, field(insn, land + "_t"), insn, kind, target));
+				}
+			}
+			return latches.isEmpty() ? null : new Lifting(first, last, latches);
+		}
+
+		/**
+		 * The register targets the latched branches landing behind {@code land} read as they issued,
+		 * where the look-back proves them; null when one of them is not proven.
+		 */
+		List<Long> landingTargets(Instruction land) {
+			List<Long> targets = new ArrayList<>();
+			for (String name : new String[] { "c_land1", "c_land2" }) {
+				if (field(land, name) == 0 || field(land, name + "_ind") == 0) continue;
+				int slot = field(land, name + "_t");
+				Instruction branch = null, at = land;
+				// The branch issued at most five cycles before; one with no delay cycles left lands behind itself.
+				for (int n = 0; n <= MAX_WINDOW && at != null && branch == null; n++) {
+					if (C6000PacketStagingAnalyzer.inert(at) && field(at, "c_latch_t") == slot) branch = at;
+					at = listing.getInstructionBefore(at.getMinAddress());
+				}
+				Long target = branch == null ? null : issueTarget(branch);
+				if (target == null) return null;
+				targets.add(target);
+			}
+			return targets;
+		}
+
+		private int field(Instruction insn, String name) {
+			Register register = program.getRegister(name);
+			var value = register == null ? null : insn.getValue(register, false);
+			return value == null ? 0 : value.intValue();
+		}
+
+		private int signed(Instruction insn, String name) {
+			Register register = program.getRegister(name);
+			var value = register == null ? null : insn.getValue(register, true);
+			return value == null ? 0 : value.intValue();
+		}
+
+		/**
+		 * The lifting by latched branches: instructions in address order; a latched branch only records
+		 * whether it is taken, and the instruction it lands behind then calls its target and goes on,
+		 * or leaves for it.
+		 */
+		private Run latched(Instruction first, Stretch region, Map<Address, Boolean> taken, List<PredicateFact> facts, Lifting lifting) {
+			Map<Address, Latch> latchAt = new HashMap<>();
+			Map<Address, List<Latch>> landAt = new HashMap<>();
+			for (Latch latch : lifting.latches()) {
+				latchAt.put(latch.branch().getMinAddress(), latch);
+				landAt.computeIfAbsent(latch.land().getMinAddress(), k -> new ArrayList<>()).add(latch);
+			}
+			List<String> trace = new ArrayList<>();
+			Set<Address> seen = new HashSet<>(), going = new HashSet<>();
+			Instruction insn = first;
+			while (true) {
+				if (insn == null) return Run.unproven("the latched lifting runs into code that does not decode");
+				Address at = insn.getMinAddress();
+				if (!inside(at, region)) return new Run(trace, "continues at " + at, null);
+				if (!seen.add(at)) {
+					if (!going.isEmpty()) return Run.unproven("the latched lifting loops back to " + at + " with a branch still to land");
+					return new Run(trace, "issues " + at + " again", null);
+				}
+				Instruction next = next(insn);
+				if (transfer(insn)) {
+					if (!latchAt.containsKey(at)) return Run.unproven(insn + " at " + at + " is not latched with the others");
+					Boolean go = predicate(insn) == null ? Boolean.TRUE : taken.get(at);
+					if (go == null) return Run.unproven(insn + " at " + at + " is latched on a predicate this check cannot follow");
+					if (go) going.add(at);
+				}
+				else if (!idle(insn) && runs(insn, region, facts)) trace.add(at.toString());
+				for (Latch latch : landAt.getOrDefault(at, List.of())) {
+					if (!going.remove(latch.branch().getMinAddress())) continue;
+					String where = destination(latch.branch(), latch.target());
+					if (latch.kind() == 2) { trace.add("calls " + where); continue; }
+					if (latch.target() == null || !inside(latch.target(), region)) return new Run(trace, "continues at " + where, null);
+					next = decode(latch.target());
+					break;
+				}
+				insn = next;
+			}
+		}
+
+		private String compare(Instruction first, Instruction outer, Proposal proposal, Lifting lifting) {
 			List<Instruction> stretch = new ArrayList<>();
 			long end = Math.max(windowEnd(first), windowEnd(outer));
 			if (windowEnd(first) < 0 || windowEnd(outer) < 0) return "a delay window there is incomplete";
@@ -419,10 +584,12 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 				if (!transfer(insn)) continue;
 				if (predicate(insn) != null) predicated.add(i);
 				Instruction listed = listing.getInstructionAt(insn.getMinAddress());
-				if (listed != null && listed.getFlowType().isCall() && listed.getFallThrough() != null) returns.add(listed.getFallThrough());
+				if (listed != null && C6000PacketStagingAnalyzer.flow(listed).isCall() && listed.getFallThrough() != null) returns.add(listed.getFallThrough());
 			}
 			if (predicated.size() > MAX_PATH_TRANSFERS) return "it has too many predicated transfers to compare";
 			Stretch region = new Stretch(first.getMinAddress(), current.getMinAddress(), path, index, predicated, returns);
+			// The listing may already lift this stretch by latched branches.
+			if (proposal == null && lifting == null) lifting = listed(first, current.getMinAddress());
 
 			for (int mask = 0; mask < 1 << predicated.size(); mask++) {
 				// One outcome per predicated transfer, kept only when its predicates can agree.
@@ -440,7 +607,8 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 				if (!consistent) continue;
 				Run hardware = hardware(first, region, taken, facts);
 				if (hardware.unproven() != null) return hardware.unproven();
-				Run lifted = proposal == null ? lifted(first, region, taken, facts) : proposed(first, region, taken, facts, proposal);
+				Run lifted = proposal != null ? proposed(first, region, taken, facts, proposal) :
+					lifting != null ? latched(first, region, taken, facts, lifting) : lifted(first, region, taken, facts);
 				if (lifted.unproven() != null) return lifted.unproven();
 				if (!hardware.trace().equals(lifted.trace()) || !hardware.exit().equals(lifted.exit()))
 					return difference(region, taken, hardware, lifted);
@@ -537,7 +705,11 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 					int span = 1;
 					Instruction insn = at;
 					while (true) {
-						if (!issued.add(insn.getMinAddress())) return new Run(trace, "issues " + insn.getMinAddress() + " again", null);
+						if (!issued.add(insn.getMinAddress())) {
+							// A loop: the same code again is only the same run with nothing in flight.
+							if (!flights.isEmpty()) return Run.unproven("it loops back to " + insn.getMinAddress() + " with transfers still in flight");
+							return new Run(trace, "issues " + insn.getMinAddress() + " again", null);
+						}
 						if (issued.size() > MAX_ISSUED) return Run.unproven("its windows issue too many instructions to compare");
 						if (untimed(program, insn)) return Run.unproven(insn + " at " + insn.getMinAddress() + " has timing outside the cycle model");
 						span = Math.max(span, 1 + extraCycles(program, insn));
@@ -558,15 +730,17 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 						// The landing cuts idle cycles short and redirects fetch.
 						flights.remove(landing);
 						Instruction transfer = landing.transfer();
-						Address target = transfer.getRegister(0) != null || transfer.getDefaultFlows().length != 1 ? null :
-							transfer.getDefaultFlows()[0];
+						Address target = transfer.getRegister(0) != null || C6000PacketStagingAnalyzer.hardware(transfer).getDefaultFlows().length != 1 ? null :
+							C6000PacketStagingAnalyzer.hardware(transfer).getDefaultFlows()[0];
 						Instruction listed = listing.getInstructionAt(transfer.getMinAddress());
-						if (listed != null && listed.getFlowType().isCall()) {
+						if (listed != null && C6000PacketStagingAnalyzer.flow(listed).isCall()) {
 							// The callee runs to its return, which needs nothing else in flight.
 							if (!flights.isEmpty()) return new Run(trace, "calls " + destination(transfer, target) + " with transfers in flight", null);
 							trace.add("calls " + destination(transfer, target));
-							if (listed.getFallThrough() == null) return new Run(trace, "does not return", null);
-							at = decode(listed.getFallThrough());
+							// It returns where B3 points; a latched call's listed fall-through is only its next instruction.
+							Address back = C6000PacketStagingAnalyzer.inert(listed) ? returnPoint(listed) : listed.getFallThrough();
+							if (back == null) return new Run(trace, "does not return", null);
+							at = decode(back);
 							cycle = landing.lands();
 						}
 						else {
@@ -619,7 +793,7 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 						Address target = insn.getRegister(0) != null ? null : liftedTarget(insn);
 						if (target == null && insn.getRegister(0) == null)
 							return Run.unproven(insn + " at " + at + " has no single lifted target");
-						if (insn.getFlowType().isCall()) {
+						if (C6000PacketStagingAnalyzer.flow(insn).isCall()) {
 							trace.add("calls " + destination(insn, target));
 							if (next == null) return new Run(trace, "does not return", null);
 						}
@@ -657,7 +831,7 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 					Boolean go = predicate(insn) == null ? Boolean.TRUE : taken.get(at);
 					if (go == null) return Run.unproven(insn + " at " + at + " is lifted on a predicate this check cannot follow");
 					if (go) {
-						Address target = insn.getRegister(0) != null || insn.getDefaultFlows().length != 1 ? null : insn.getDefaultFlows()[0];
+						Address target = insn.getRegister(0) != null || C6000PacketStagingAnalyzer.hardware(insn).getDefaultFlows().length != 1 ? null : C6000PacketStagingAnalyzer.hardware(insn).getDefaultFlows()[0];
 						if (target == null && insn.getRegister(0) == null) return Run.unproven(insn + " at " + at + " has no single target");
 						if (target == null || !inside(target, region)) return new Run(trace, "continues at " + destination(insn, target), null);
 						next = decode(target);
@@ -678,7 +852,7 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 				found = ref.getToAddress();
 				if (ref.isPrimary()) primary = found;
 			}
-			if (count == 0) return insn.getDefaultFlows().length == 1 ? insn.getDefaultFlows()[0] : null;
+			if (count == 0) return C6000PacketStagingAnalyzer.hardware(insn).getDefaultFlows().length == 1 ? C6000PacketStagingAnalyzer.hardware(insn).getDefaultFlows()[0] : null;
 			return count == 1 ? found : primary;
 		}
 
@@ -892,8 +1066,8 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 			for (int i = 0; i < path.size(); i++) {
 				Instruction insn = path.get(i);
 				if ((isFlow(insn) && predicate(insn) == null) || entered[i]) facts.clear();
-				if (via == null && predicate(insn) != null && insn.getFlowType().isJump() &&
-					!insn.getFlowType().isCall() && !insn.getFlowType().isTerminal() &&
+				if (via == null && predicate(insn) != null && C6000PacketStagingAnalyzer.flow(insn).isJump() &&
+					!C6000PacketStagingAnalyzer.flow(insn).isCall() && !C6000PacketStagingAnalyzer.flow(insn).isTerminal() &&
 					!inWindow(insn, branch)) {
 					// The straight-line path reaches branch only on this fall-through.
 					addFact(facts, i, insn, false);
@@ -929,9 +1103,9 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 				}
 				if (insn != viaInsn && isFlow(insn)) {
 					trace.write(issue[i], program.getRegister("B3"), null, i);
-					if (insn.getFlowType().isCall()) returns.add(issue[i] + 1 + DELAY_CYCLES);
+					if (C6000PacketStagingAnalyzer.flow(insn).isCall()) returns.add(issue[i] + 1 + DELAY_CYCLES);
 					// Past the window of a jump or return that always goes, nothing falls through.
-					if (!insn.getFlowType().isCall() && predicate(insn) == null) dead = issue[i] + 1 + DELAY_CYCLES;
+					if (!C6000PacketStagingAnalyzer.flow(insn).isCall() && predicate(insn) == null) dead = issue[i] + 1 + DELAY_CYCLES;
 				}
 				trace.instruction(insn, runs, issue[i], i);
 			}
@@ -1120,11 +1294,12 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 		/** A displacement B that Ghidra types as a jump; its target is the encoded one. */
 		static boolean displacementJump(Instruction insn) {
 			String op = baseName(insn);
-			var flow = insn.getFlowType();
-			return (op.equals("B.S1") || op.equals("B.S2")) && insn.getLength() == 4 &&
+			var flow = C6000PacketStagingAnalyzer.flow(insn);
+			// A latched branch transfers behind another instruction: it is no jump to continue or re-lay.
+			return !C6000PacketStagingAnalyzer.inert(insn) && (op.equals("B.S1") || op.equals("B.S2")) && insn.getLength() == 4 &&
 				insn.getRegister(0) == null && !insn.isInDelaySlot() &&
 				insn.getFlowOverride() == FlowOverride.NONE && flow.isJump() && !flow.isCall() &&
-				!flow.isTerminal() && insn.getDefaultFlows().length == 1;
+				!flow.isTerminal() && C6000PacketStagingAnalyzer.hardware(insn).getDefaultFlows().length == 1;
 		}
 
 		/** Any branch: a transfer in flight decides where execution continues. */
@@ -1139,7 +1314,7 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 		 */
 		Preemption preemption(Instruction jump) {
 			if (!displacementJump(jump)) return null;
-			Address target = jump.getDefaultFlows()[0];
+			Address target = C6000PacketStagingAnalyzer.hardware(jump).getDefaultFlows()[0];
 			// The target must idle while the transfer is in flight: most jumps stop here, before the window is decoded.
 			Instruction first = decode(target);
 			if (first == null || !baseName(first).equals("NOP")) return null;
@@ -1669,8 +1844,8 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 	}
 
 	private static boolean isFlow(Instruction insn) {
-		return insn.getFlowType().isJump() || insn.getFlowType().isCall() ||
-			insn.getFlowType().isTerminal();
+		return C6000PacketStagingAnalyzer.flow(insn).isJump() || C6000PacketStagingAnalyzer.flow(insn).isCall() ||
+			C6000PacketStagingAnalyzer.flow(insn).isTerminal();
 	}
 
 	/**
@@ -1681,6 +1856,10 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 	 */
 	static boolean jumpArm(Instruction branch, Instruction partner) {
 		Long mine = targetDistance(branch), theirs = targetDistance(partner);
+		// A branch through B3 reads the caller's return address as it issues: beside an arm that
+		// targets another function, the link set in the window is that arm's, and this one returns.
+		Register through = C6000PacketStagingAnalyzer.hardware(branch).getRegister(0);
+		if (through != null && through.getName().equals("B3") && Boolean.FALSE.equals(localTarget(partner))) return true;
 		if (mine == null) return false;
 		if (theirs == null) return true;
 		if (java.util.Arrays.equals(branch.getFlows(), partner.getFlows())) return false;
@@ -1693,7 +1872,7 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 
 	/** True when an immediate branch targets its own function's code, false for another function's entry or body; null if unknown. */
 	private static Boolean localTarget(Instruction insn) {
-		Address[] flows = insn.getDefaultFlows();
+		Address[] flows = C6000PacketStagingAnalyzer.hardware(insn).getDefaultFlows();
 		if (insn.getRegister(0) != null || flows.length != 1) return null;
 		var functions = insn.getProgram().getFunctionManager();
 		Function caller = functions.getFunctionContaining(insn.getMinAddress());

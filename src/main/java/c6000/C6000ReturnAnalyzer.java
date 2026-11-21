@@ -54,7 +54,7 @@ public class C6000ReturnAnalyzer extends AbstractAnalyzer {
 			if (!(name.endsWith("B.S1") || name.endsWith("B.S2") ||
 				name.endsWith("BNOP.S1") || name.endsWith("BNOP.S2"))) continue;
 			if (instruction.getFlowOverride() != FlowOverride.NONE ||
-				!instruction.getFlowType().isComputed() || instruction.getNumOperands() == 0 ||
+				!C6000PacketStagingAnalyzer.flow(instruction).isComputed() || instruction.getNumOperands() == 0 ||
 				!"B3".equals(instruction.getDefaultOperandRepresentation(0))) continue;
 			instruction.setFlowOverride(FlowOverride.RETURN);
 			recovered++;

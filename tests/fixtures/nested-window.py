@@ -297,6 +297,16 @@ CASES = [
         NOP             2
 """),
 ]
+# Known-bads that native lifting now gets right by latching their branches (issue #73): in each,
+# at most one of the nested branches is taken on any path. What their C must contain:
+#   callret  a ? h(b + 1) : b + 1, with h(x) = 2x
+#   tri      a ? 3 : b ? 0x13 : 0x43b
+#   bnop4    x ? x + 1 : 1
+LIFTED = {
+    "callret": ["param_2 + 1", "(param_2 + 1) * 2"],
+    "tri": ["return 3;", "0x13", "0x43b"],
+    "bnop4": ["param_1 + 1"],
+}
 LINK = re.compile(r"(MVK[LH]\s+\.S[12]\s+)(\w+)")
 
 
@@ -352,8 +362,10 @@ def main():
                       if label.startswith(name + "_in"))
         if bool(warn) != bad:
             raise ValueError("Known-bad " + name + " needs a _in label, and a known-good none")
+        # A lifted case is not warned: its branches are latched and its C is the hardware's.
         manifest.append(dict(name=name, entry=addresses[name], h=addresses[name + "_h"],
-                             end=0x1000 + index * SIZE + SIZE - 1, warn=warn))
+                             end=0x1000 + index * SIZE + SIZE - 1, warn=[] if name in LIFTED else warn,
+                             c=LIFTED.get(name, [])))
     if len(sys.argv) == 4:
         image = b"".join(image[index:index + 4][::-1] for index in range(0, len(image), 4))
     image_path.write_bytes(image)

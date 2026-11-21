@@ -56,7 +56,7 @@ public final class C6000SamePacketHazardAnalyzer extends AbstractAnalyzer {
 			AnalyzerType.FUNCTION_ANALYZER);
 		setDefaultEnablement(true);
 		// After the windows and reviewed schedules are final, and after packet staging.
-		setPriority(AnalysisPriority.FUNCTION_ANALYSIS.after().after().after().after());
+		setPriority(AnalysisPriority.FUNCTION_ANALYSIS.after().after().after().after().after());
 	}
 
 	@Override
@@ -171,7 +171,7 @@ public final class C6000SamePacketHazardAnalyzer extends AbstractAnalyzer {
 
 	/** A branch's p-code holds its laid window, so take only its target and predicate. */
 	private static boolean transfer(Instruction ins) {
-		var flow = ins.getFlowType();
+		var flow = C6000PacketStagingAnalyzer.flow(ins);
 		return flow.isJump() || flow.isCall() || flow.isTerminal() || ins.getPrototype().hasDelaySlots();
 	}
 

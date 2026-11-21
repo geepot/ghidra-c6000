@@ -65,7 +65,8 @@ public final class C6000DelaySlots {
         while (it.hasNext()) {
             var ins = it.next();
             String full = ins.getMnemonicString(), name = C6000CallAnalyzer.baseName(ins);
-            if (full.startsWith("_")) continue;
+            // A latched branch has no window: the instruction it lands behind transfers.
+            if (full.startsWith("_") || C6000PacketStagingAnalyzer.inert(ins)) continue;
             if (!(name.equals("B.S1") || name.equals("B.S2") || name.equals("BNOP.S1") ||
                     name.equals("BNOP.S2") || name.equals("CALLP.S1") || name.equals("CALLP.S2"))) continue;
             var override = ins.getFlowOverride();
@@ -303,7 +304,7 @@ public final class C6000DelaySlots {
     static boolean preemptingTransfer(Instruction transfer) {
         var register = transfer.getRegister(0);
         var override = transfer.getFlowOverride();
-        return register != null && register.getName().equals("B3") && !transfer.getFlowType().isCall() &&
+        return register != null && register.getName().equals("B3") && !C6000PacketStagingAnalyzer.flow(transfer).isCall() &&
             override != FlowOverride.CALL && override != FlowOverride.CALL_RETURN;
     }
 
@@ -681,6 +682,45 @@ public final class C6000DelaySlots {
         }
     }
 
+    /** What {@link #relift} replaced, to put back if the new lifting does not hold. */
+    interface Relifted {
+        void putBack();
+    }
+
+    /**
+     * Decode [start, end] again as straight-line code with the context fields in {@code fields}
+     * set, and with no native delay window on any instruction named there. Overrides, references
+     * and comments are kept; a failure puts everything back.
+     */
+    static Relifted relift(Program p, Address start, Address end, Map<Address, Map<Register, BigInteger>> fields)
+            throws Exception {
+        var listing = p.getListing();
+        Instruction first = listing.getInstructionAt(start);
+        if (first == null || first.isInDelaySlot()) throw new IllegalArgumentException("no instruction unit at " + start);
+        FlowOverride override = first.getFlowOverride();
+        List<SavedInstruction> saved = snapshot(p, start, end);
+        var undo = Undo.of(p, start, end, override, saved);
+        listing.clearCodeUnits(start, end, false);
+        try {
+            for (var entry : fields.entrySet())
+                for (var field : entry.getValue().entrySet())
+                    p.getProgramContext().setValue(field.getKey(), entry.getKey(), entry.getKey(), field.getValue());
+            Disassembler.getDisassembler(p, TaskMonitor.DUMMY, null).disassemble(start, new AddressSet(start, end), false);
+            for (var unit : undo.units()) {
+                Instruction now = listing.getInstructionAt(unit.at());
+                if (now == null || now.getLength() != unit.prototype().getLength() || now.isInDelaySlot() ||
+                    now.getPrototype().hasDelaySlots())
+                    throw new IllegalStateException("could not decode " + unit.at() + " as straight-line code");
+            }
+            listing.getInstructionAt(start).setFlowOverride(override);
+            restore(p, start, saved, false, null);
+            return () -> undo.putBack(new IllegalStateException("lifting taken back"));
+        }
+        catch (Exception failure) {
+            throw undo.putBack(failure);
+        }
+    }
+
     private record SavedUnit(Address at, InstructionPrototype prototype, RegisterValue context, int length) { }
 
     /** What clearing [at, end] removes: instructions and their context, stored context, annotations. */
@@ -817,7 +857,7 @@ public final class C6000DelaySlots {
                     if(issuePacket)for(var priorAt:C6000ExecutionPackets.issuePrefix(program,issue.getAddress())) {
                         if(++packetInstructions>8)return null;
                         var prior=decode(priorAt);if(prior==null)return null;
-                        if(prior.getFlowType().isJump()||prior.getFlowType().isCall()||prior.getFlowType().isTerminal())return null;
+                        if(C6000PacketStagingAnalyzer.flow(prior).isJump()||C6000PacketStagingAnalyzer.flow(prior).isCall()||C6000PacketStagingAnalyzer.flow(prior).isTerminal())return null;
                         var priorOwner=program.getFunctionManager().getFunctionContaining(priorAt);
                         // A physical predecessor's p bit does not prove that
                         // an alternate entry executed it. Require the owned
@@ -835,7 +875,7 @@ public final class C6000DelaySlots {
                     while(!issuePacket||C6000ExecutionPackets.parallelWithNext(program,current)) {
                         monitor.checkCancelled();if(++packetInstructions>8)return null;var next=next(current);if(next==null||++count>MAX_INSTRUCTIONS)return null;
                         if(next.getAddress().subtract(issue.getMaxAddress())>MAX_BYTES)return null;
-                        if(next.getFlowType().isJump()||next.getFlowType().isCall()||next.getFlowType().isTerminal())return null;
+                        if(C6000PacketStagingAnalyzer.flow(next).isJump()||C6000PacketStagingAnalyzer.flow(next).isCall()||C6000PacketStagingAnalyzer.flow(next).isTerminal())return null;
                         var other=program.getFunctionManager().getFunctionContaining(next.getAddress());
                         if(other!=null&&!other.equals(owner))return null;
                         if(program.getFunctionManager().getFunctionAt(next.getAddress())!=null)return null;

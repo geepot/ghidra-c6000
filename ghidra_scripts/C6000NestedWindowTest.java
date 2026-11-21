@@ -19,6 +19,7 @@ public class C6000NestedWindowTest extends GhidraScript {
 		String name;
 		long entry, h, end;
 		long[] warn;
+		String[] c;
 	}
 
 	@Override
@@ -38,7 +39,7 @@ public class C6000NestedWindowTest extends GhidraScript {
 			}
 			return;
 		}
-		int warned = 0, clean = 0;
+		int warned = 0, clean = 0, lifted = 0;
 		for (var item : cases) {
 			Set<Long> found = new TreeSet<>();
 			StringBuilder comments = new StringBuilder();
@@ -62,10 +63,25 @@ public class C6000NestedWindowTest extends GhidraScript {
 				if (!found.contains(at) && !comments.toString().contains(" at " + toAddr(at) + " "))
 					throw new AssertionError(item.name + ": no warning names the transfer at " + toAddr(at) + ": " + comments);
 			}
+			if (item.c != null && item.c.length > 0) {
+				// Lifted: its nested branches are latched, and the C is the hardware's.
+				boolean latched = false;
+				for (var insn : currentProgram.getListing().getInstructions(range, true))
+					latched |= java.math.BigInteger.ONE.equals(insn.getValue(currentProgram.getRegister("c_inert"), false));
+				if (!latched) throw new AssertionError(item.name + ": no branch is latched");
+				var decompiler = new ghidra.app.decompiler.DecompInterface();
+				decompiler.openProgram(currentProgram);
+				var result = decompiler.decompileFunction(getFunctionAt(toAddr(item.entry)), 60, monitor);
+				String c = result.decompileCompleted() ? result.getDecompiledFunction().getC() : String.valueOf(result.getErrorMessage());
+				decompiler.dispose();
+				for (String text : item.c)
+					if (!c.contains(text)) throw new AssertionError(item.name + ": C lacks \"" + text + "\":\n" + c);
+				lifted++;
+			}
 			if (expected.isEmpty()) clean++;
 			else warned++;
 		}
-		println("C6000_NESTED_WINDOW_OK warned=" + warned + " clean=" + clean);
+		println("C6000_NESTED_WINDOW_OK warned=" + warned + " clean=" + clean + " lifted=" + lifted);
 	}
 
 	private static List<String> hex(Set<Long> addresses) {

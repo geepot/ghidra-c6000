@@ -159,6 +159,29 @@ BPOS and ADDKPC. Full32 BNOP displacement counts words in ordinary packets and h
 in header-based packets. The primed `c_hdrpkt` context selects that scale. Targets are
 exported in RAM so Ghidra can follow them as code references.
 
+### Latched branches
+
+`C6000NestedLiftAnalyzer` takes each branch the nested-window comparison would warn about
+and asks `Walker.liftPlan` for a lifting of its stretch: every transfer from where nothing
+is in flight to the end of the windows issued there is latched, and lands behind the last
+instruction that issues, in address order, before its sixth cycle. `Walker.liftMismatch`
+runs the same hardware model as the warning against that lifting, for every consistent
+outcome of the predicates; only a match is applied. `C6000DelaySlots.relift` decodes the
+stretch again as straight-line code with the fields set: `c_inert_wrap`, `c_inert` and
+`c_latch_t` on a branch select a form of the instruction that writes `C6000_LATCH_T<n>`
+(and `C6000_LATCH_PC<n>` for a register target) and holds no transfer; `c_land1`/`c_land2`
+with a kind, a latch and a displacement on the landing instruction append a conditional
+jump, call or return. The listing is then checked again and put back if it does not match.
+A latched branch reports no flow to Ghidra, and its landing instruction does, so every
+analysis that models the hardware asks `C6000PacketStagingAnalyzer.hardware`, `flow` and
+`inert` instead of the listing. The constant-reference analyzer accepts a register
+landing's target only when it is what the latched branch provably read.
+
+Context fields must never be attached to register lists or share bits: Ghidra then treats
+them as following flow whatever `noflow` says. `tools/gen_stage.py` generates tables
+that pick the register from the field instead, and `C6000SamePacketHazardTest` checks that
+no context field follows flow.
+
 ### Staged execute-packet writes
 
 `C6000PacketStagingAnalyzer` takes each read of a register that an earlier member of the

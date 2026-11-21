@@ -13,6 +13,17 @@
 
 ### Added
 
+* Latched branches (issue #73). A branch issued in another branch's delay window lands
+  after it, and native lifting gives each branch one window that holds no other branch.
+  Where the hardware and the listing then run different instructions, the new `C6000
+  Nested Branch Lifting` analyzer latches the branches of the stretch: each records its
+  predicate, and its register target, as it issues and does not transfer, and the
+  instruction it lands behind carries its jump, call or return. A lifting is kept only when
+  it runs what the hardware runs on every consistent outcome of the predicates, by the same
+  comparison that decides the nested-window warning, so it covers stretches where at most
+  one of the branches is taken on any path, such as a call and a return on opposite
+  predicates. Two branches that are both taken, a loop that comes round with a branch
+  still in flight, compact branches, `CALLP`, `BDEC` and `BPOS` keep the warning.
 * Staged execute-packet writes. Every member of an execute packet reads its operands before
   any member writes (SPRUFE8B 3.5), but p-code runs the members in order. Where a member
   reads a register that an earlier member of its packet writes, the new `C6000 Packet

@@ -116,8 +116,8 @@ public class C6000JumpTableAnalyzer extends AbstractAnalyzer {
 			Instruction insn = instructions.next();
 			String op = C6000CallAnalyzer.baseName(insn);
 			if ((op.equals("B.S2") || op.equals("BNOP.S2")) && insn.getRegister(0) != null &&
-				!"B3".equals(insn.getDefaultOperandRepresentation(0)) &&
-				insn.getFlowOverride() == FlowOverride.NONE && insn.getFlowType().isComputed()) {
+				!C6000PacketStagingAnalyzer.inert(insn) && !"B3".equals(insn.getDefaultOperandRepresentation(0)) &&
+				insn.getFlowOverride() == FlowOverride.NONE && C6000PacketStagingAnalyzer.flow(insn).isComputed()) {
 				branches.add(insn.getAddress());
 			}
 		}
@@ -199,7 +199,7 @@ public class C6000JumpTableAnalyzer extends AbstractAnalyzer {
 			if (branch == null || branch.getRegister(0) == null ||
 				"B3".equals(branch.getDefaultOperandRepresentation(0)) ||
 				branch.getFlowOverride() != FlowOverride.NONE ||
-				!branch.getFlowType().isComputed()) continue;
+				!C6000PacketStagingAnalyzer.flow(branch).isComputed()) continue;
 			String op = C6000CallAnalyzer.baseName(branch);
 			if (!(op.equals("B.S2") || op.equals("BNOP.S2"))) continue;
 			List<Address> expected = targets(program, walker, branch);

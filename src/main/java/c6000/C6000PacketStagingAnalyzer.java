@@ -62,7 +62,7 @@ public final class C6000PacketStagingAnalyzer extends AbstractAnalyzer {
 			AnalyzerType.FUNCTION_ANALYZER);
 		setDefaultEnablement(true);
 		// After the windows are final; before the same-packet hazard warning.
-		setPriority(AnalysisPriority.FUNCTION_ANALYSIS.after().after().after());
+		setPriority(AnalysisPriority.FUNCTION_ANALYSIS.after().after().after().after());
 	}
 
 	@Override
@@ -129,6 +129,30 @@ public final class C6000PacketStagingAnalyzer extends AbstractAnalyzer {
 		}
 	}
 
+	/** The hardware instruction's flow, with the listing's override: a latched branch is still a branch, and the instruction it lands behind is not. */
+	static ghidra.program.model.symbol.FlowType flow(Instruction ins) {
+		Instruction hardware = hardware(ins);
+		if (hardware == ins) return ins.getFlowType();
+		return ghidra.program.model.listing.FlowOverride.getModifiedFlowType(hardware.getFlowType(), ins.getFlowOverride());
+	}
+
+	/** True when {@code ins} is a latched branch: it records its predicate and target and transfers elsewhere. */
+	static boolean inert(Instruction ins) {
+		Register field = ins.getProgram().getRegister("c_inert");
+		BigInteger value = field == null ? null : ins.getValue(field, false);
+		return value != null && value.signum() != 0;
+	}
+
+	/** True when a latched branch lands behind {@code ins}. */
+	static boolean landing(Instruction ins) {
+		for (String name : new String[] { "c_land1", "c_land2" }) {
+			Register field = ins.getProgram().getRegister(name);
+			BigInteger value = field == null ? null : ins.getValue(field, false);
+			if (value != null && value.signum() != 0) return true;
+		}
+		return false;
+	}
+
 	static PcodeOp[] hardwarePcode(Instruction ins) {
 		return hardware(ins).getPcode();
 	}
@@ -139,8 +163,9 @@ public final class C6000PacketStagingAnalyzer extends AbstractAnalyzer {
 		if (defer == null) return false;
 		BigInteger on = writer.getValue(defer, false);
 		Integer index = index(program, register);
-		return on != null && on.intValue() == 1 && index != null &&
-			index == writer.getValue(program.getRegister("c_defer_reg"), false).intValue();
+		// An unset field reads as null: register 0 (A0) is then what it selects.
+		BigInteger held = writer.getValue(program.getRegister("c_defer_reg"), false);
+		return on != null && on.intValue() == 1 && index != null && index == (held == null ? 0 : held.intValue());
 	}
 
 	/** The staging index of a whole A or B register, 0-31 and 32-63; null for anything else. */
@@ -151,7 +176,7 @@ public final class C6000PacketStagingAnalyzer extends AbstractAnalyzer {
 	}
 
 	private static boolean transfer(Instruction ins) {
-		var flow = ins.getFlowType();
+		var flow = C6000PacketStagingAnalyzer.flow(ins);
 		return flow.isJump() || flow.isCall() || flow.isTerminal() || ins.getPrototype().hasDelaySlots();
 	}
 
@@ -213,6 +238,8 @@ public final class C6000PacketStagingAnalyzer extends AbstractAnalyzer {
 				Register field = program.getRegister(name);
 				BigInteger now = ins.getValue(field, false);
 				int want = wanted.getOrDefault(ins.getAddress(), Map.of()).getOrDefault(name, 0);
+				// The wrapper also carries a latched branch's landing behind a plain instruction.
+				if (name.equals("c_staged") && landing(ins) && !inert(ins)) want = 1;
 				if ((now == null ? 0 : now.intValue()) != want) change.put(field, BigInteger.valueOf(want));
 			}
 			if (change.isEmpty()) continue;

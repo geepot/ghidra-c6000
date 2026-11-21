@@ -45,7 +45,7 @@ public final class C6000NestedWindowAnalyzer extends AbstractAnalyzer {
 			AnalyzerType.FUNCTION_ANALYZER);
 		setDefaultEnablement(true);
 		// After the windows, function bodies and issue #52 releases are final.
-		setPriority(AnalysisPriority.FUNCTION_ANALYSIS.after().after().after());
+		setPriority(AnalysisPriority.FUNCTION_ANALYSIS.after().after().after().after().after());
 	}
 
 	@Override

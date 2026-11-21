@@ -124,7 +124,7 @@ public final class C6000LowHalfReferenceAnalyzer extends AbstractAnalyzer {
                 span = Math.max(span, cycles(program, i));
             cycle -= span;
             for (var i = head; i != null && i.getAddress().compareTo(last.getAddress()) <= 0; i = next(program, i)) {
-                boolean branch = BRANCHES.contains(op(i)) || i.getFlowType().isJump() || i.getFlowType().isCall();
+                boolean branch = BRANCHES.contains(op(i)) || C6000PacketStagingAnalyzer.flow(i).isJump() || C6000PacketStagingAnalyzer.flow(i).isCall();
                 if (branch && cycle + 6 > 0 && cycle + 6 <= limit) return true;
             }
             start = head;

@@ -59,6 +59,13 @@ public class C6000BoundedConstantAnalyzer extends ConstantPropagationAnalyzer {
 					// is its target: a write in its own execute packet, or one a known predicate skips,
 					// has not happened yet (SPRUFE8B 3.5, Table 4-11). Register branches ignore low
 					// target bits by the target's fetch-packet form, so only a word-aligned value is exact.
+					// A latched branch transfers behind another instruction: only the target that branch
+					// provably read as it issued is one, never a value its register holds in between.
+					if (referenceType.isComputed() && referenceType.isFlow() && C6000PacketStagingAnalyzer.landing(instruction)) {
+						var proven = walker.landingTargets(instruction);
+						if (proven == null || !proven.contains(target.getOffset()) || (target.getOffset() & 3) != 0) return false;
+						return super.evaluateReference(context, instruction, pcodeop, target, size, type, referenceType);
+					}
 					Long exact = referenceType.isComputed() && referenceType.isFlow()
 						? walker.issueTarget(instruction) : null;
 					if (exact != null && (exact & 3) != 0) exact = null;

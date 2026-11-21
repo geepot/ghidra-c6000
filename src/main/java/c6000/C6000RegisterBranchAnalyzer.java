@@ -84,10 +84,10 @@ public class C6000RegisterBranchAnalyzer extends AbstractAnalyzer {
 			Instruction instruction = instructions.next();
 			String name = instruction.getMnemonicString();
 			FlowOverride override = instruction.getFlowOverride();
-			if (!(name.equals("B.S2") || name.equals("BNOP.S2")) ||
+			if (C6000PacketStagingAnalyzer.inert(instruction) || !(name.equals("B.S2") || name.equals("BNOP.S2")) ||
 				instruction.getNumOperands() == 0 ||
 				!instruction.getDefaultOperandRepresentation(0).matches("[AB]([0-9]|[12][0-9]|3[01])") ||
-				!((override == FlowOverride.NONE && instruction.getFlowType().isComputed()) ||
+				!((override == FlowOverride.NONE && C6000PacketStagingAnalyzer.flow(instruction).isComputed()) ||
 					(override == FlowOverride.RETURN &&
 						"B3".equals(instruction.getDefaultOperandRepresentation(0)))) ||
 				BigInteger.ONE.equals(program.getProgramContext().getValue(mode,

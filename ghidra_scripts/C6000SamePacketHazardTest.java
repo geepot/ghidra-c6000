@@ -46,6 +46,12 @@ public class C6000SamePacketHazardTest extends GhidraScript {
 			}
 			return;
 		}
+		// Every context field describes its own instruction. Ghidra makes a field that shares its bits
+		// with another one follow flow, whatever noflow says, so no field may have an alias.
+		for (var field : currentProgram.getLanguage().getContextBaseRegister().getChildRegisters()) {
+			if (field.followsFlow() || field.getAliases().iterator().hasNext())
+				throw new AssertionError("context field " + field.getName() + " follows flow or has an alias");
+		}
 		var decompiler = new DecompInterface();
 		decompiler.openProgram(currentProgram);
 		int warned = 0, clean = 0;

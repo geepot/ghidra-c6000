@@ -116,6 +116,14 @@ same-packet read it cannot stage, such as one of a control register, keeps its
 floating point) are still written at once by native lifting; only an exact schedule
 models that.
 
+Native lifting latches branches issued in each other's delay windows where that is what
+the hardware runs on every path (`C6000 Nested Branch Lifting`): each such branch records
+its predicate and target as it issues, and the instruction it lands behind transfers. That
+covers nests where at most one branch is taken on any path. It does not cover two branches
+that are both taken (the second lands in the first one's target code), a loop that comes
+round with a branch still in flight (software-pipelined loops), compact branches, `CALLP`,
+`BDEC` or `BPOS`; those keep the `C6000 Nested Delay Windows` warning.
+
 Native delay recovery remains conservative for nested transfers and BDEC/BPOS.
 Native lifting cannot place a
 branch issued in another branch's delay window, which lands after it, or a predicated
