@@ -894,11 +894,12 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 		private boolean meetEntries(Instruction label, Map<Register, long[]> regs, Constants trace, boolean only) {
 			boolean clean = true;
 			List<Instruction> jumps = new ArrayList<>();
+			Boolean external = null;
 			for (Reference ref : program.getReferenceManager().getReferencesTo(label.getMinAddress())) {
 				if (!ref.getReferenceType().isFlow() || ref.getReferenceType().isFallthrough()) continue;
 				Instruction jump = listing.getInstructionAt(ref.getFromAddress());
 				if (jump == null || ref.getReferenceType().isCall() || entryDepth == 0 || jumps.size() == ENTRY_PATHS ||
-					externalEntry(label)) {
+					(external == null ? (external = externalEntry(label)) : external)) {
 					trace.forget();
 					return true;
 				}
@@ -911,9 +912,13 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 			}
 			Instruction savedVia = viaInsn;
 			Address savedReturn = backwardReturn;
+			// Only a nested arrival's trace is read back (writtenSince), and only by the level above.
+			boolean topLevel = entryDepth == ENTRY_DEPTH;
 			entryDepth--;
 			try {
 				for (Instruction jump : jumps) {
+					// Nothing known to merge: another entering jump could only forget nothing.
+					if (!only && topLevel && trace.holdsNothing()) break;
 					// Only the registers at the landing matter here, whatever else is in flight with the jump.
 					boolean saved = targetOnly;
 					targetOnly = false;
@@ -1472,6 +1477,12 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 				for (List<Write> writes : pending.values())
 					writes.replaceAll(w -> registers.stream().anyMatch(c -> overlaps(c, w.register())) ? new Write(w.register(), null, w.owner()) : w);
 				for (Register r : registers) lastWriter.merge(r, at, Math::max);
+			}
+			/** No value is held or still to land. */
+			boolean holdsNothing() {
+				if (!values.isEmpty()) return false;
+				for (List<Write> writes : pending.values()) for (Write w : writes) if (w.value() != null) return false;
+				return true;
 			}
 			/** Every value, held or still to land, becomes unknown; the writes still land. */
 			void forget() {

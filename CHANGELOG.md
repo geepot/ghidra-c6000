@@ -8,6 +8,10 @@
   changed it, takes its flow type once, and decides whether two instructions share an
   execute packet from the issue cycles it already has. Analysis is about a third faster on
   a large image, with the same results.
+* Where jumps from elsewhere enter the call walker's look-back, it no longer follows the
+  entering jumps once it holds no register value to merge, and it checks whether the label
+  is an entry only once. With the change above, analysis takes about 57% of the time it
+  did, with the same results.
 * All eight languages are now version 3.0: the context register is 128 bits, which makes
   room for the latched-branch fields (bits 64-122). Programs saved with version 2, or with
   version 1, upgrade on open with every context field carried over by name. As with
