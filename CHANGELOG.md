@@ -18,6 +18,11 @@
 
 ### Fixed
 
+* The call analyzer's look-back no longer carries a register constant or a fall-through
+  fact across code that a jump from elsewhere enters, unless every entering jump arrives
+  with the same value or has not written the register since the label (a loop's back
+  edge). A register call entered with two different target values was given the one the
+  code physically before it set.
 * A call's return address is what B3 holds when the branch lands, after the instructions
   the hardware issues until then, and the branch is a call only when that address is where
   this arm or the other arm of its if/else pair stops issuing. That replaces a walk that

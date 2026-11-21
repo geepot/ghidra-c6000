@@ -91,6 +91,13 @@ A B whose B3 points into its own window is not a call (1a48); its slots would ru
   1a40  MVK/MVKH 0x1a54,B3       1a4c  NOP ; NOP      1a54  MVK 1,A9 ; MVK 2,A9 ; NOP
   1a48  B.S1    0x1100  (jump)                        1a60  B.S2 B3
 
+A register call that a jump also enters: its target is known only if both paths agree.
+1a90 is reached with B5 = 0x1100 by fall-through and 0x1ae0 from 1ac8, 1b10 with 0x1100
+either way:
+
+  1a80  MVK/MVKH 0x1100,B5       1a90  B.S2 B5 (call)          1ac0  MVK/MVKH 0x1ae0,B5
+  1a88  [A1]B.S1 0x1ac0          1a94  ADDKPC 0x1a98,B3,4      1ac8  B.S1 0x1a90
+
 A predicated reaching jump; the write under the opposite predicate does not count:
 
   1480  B.S1    0x14c0 (jump)    14c0  [A1]B.S1  0x1488 (jump)
@@ -319,8 +326,24 @@ INSIDE_WINDOW = {
     0x1A60: B_B3, 0x1A64: nop(5),
 }
 
+B_B5 = 0x362 | (5 << 18)
+
+
+def entered(base, other):
+    """B5 = CALLEE, then a register call at base+0x10 that a jump from base+0x48 also enters with B5 = other."""
+    return {
+        base: mvk(CALLEE, 5), base + 0x4: mvkh(0, 5), base + 0x8: A1 | b_s1(base + 0x8, base + 0x40), base + 0xC: nop(5),
+        base + 0x10: B_B5, base + 0x14: addkpc(base + 0x14, base + 0x18, 4), base + 0x18: B_B3, base + 0x1C: nop(5),
+        base + 0x40: mvk(other, 5), base + 0x44: mvkh(0, 5), base + 0x48: b_s1(base + 0x48, base + 0x10), base + 0x4C: nop(5),
+    }
+
+
+# A register constant holds across a label only when every path entering it agrees: 1a90 is
+# entered with B5 = 0x1100 or 0x1ae0, so its target is not known; 1b10 with 0x1100 either way.
+ENTERED = {**entered(0x1A80, 0x1AE0), 0x1AE0: B_B3, 0x1AE4: nop(5), **entered(0x1B00, CALLEE)}
+
 CASES = {
-    **PARTNER_FAR, **NEAR_HELPER, **ADDK_RETURN, **INSIDE_WINDOW,
+    **PARTNER_FAR, **NEAR_HELPER, **ADDK_RETURN, **INSIDE_WINDOW, **ENTERED,
     0x1300: b_s1(0x1300, 0x1340), 0x1304: nop(5),
     0x1308: b_s1(0x1308, CALLEE), 0x130C: nop(5), 0x1310: B_B3, 0x1314: nop(5),
     0x1340: mvk(0x1310, 3), 0x1344: mvkh(0, 3),

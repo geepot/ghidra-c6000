@@ -562,6 +562,13 @@ end their later arm with `NOP 5`: with `NOP 4` the shared return `B B3` issued i
 arm's fifth delay cycle, which the same early stop hid. Once a call's slots are laid, its
 fall-through is that return address.
 
+The look-back does not carry a register constant or a fall-through fact across code that
+a jump from elsewhere enters, unless every entering jump arrives with the same value or
+has not written the register since it last passed that label (a loop's back edge).
+`delayed-call.py` 1a90 is a register call entered with B5 = 0x1100 by fall-through and
+0x1ae0 by a jump: it is a call with no known target, where the look-back alone gave it
+0x1100. 1b10 is entered with 0x1100 both ways and keeps its target.
+
 ## Delayed-call predicate facts
 
 `delayed-call.py IMAGE [be]` and `C6000DelayedCallTest.java` (with

@@ -704,7 +704,62 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 		}
 
 		/** A branch taken: what has issued when it lands, the target it read, and what led there. */
-		private record Arrival(Landed landed, Long target, List<PredicateFact> facts, int branchIndex) {}
+		private record Arrival(Landed landed, Long target, List<PredicateFact> facts, int branchIndex, Constants trace) {}
+
+		/** How many jumps back an entry's own look-back is followed, and how many entering jumps are compared. */
+		private static final int ENTRY_DEPTH = 2, ENTRY_PATHS = 4;
+		private int entryDepth = ENTRY_DEPTH;
+
+		/**
+		 * Code a jump from elsewhere enters is also reached without what the look-back saw before it.
+		 * Keep a register constant across {@code label} only when every entering jump arrives with the
+		 * same value, or has not written the register since it last passed the label (a loop's back
+		 * edge). A call, or a path this cannot follow, leaves nothing known.
+		 */
+		private void meetEntries(Instruction label, Map<Register, long[]> regs, Constants trace) {
+			List<Instruction> jumps = new ArrayList<>();
+			for (Reference ref : program.getReferenceManager().getReferencesTo(label.getMinAddress())) {
+				if (!ref.getReferenceType().isFlow() || ref.getReferenceType().isFallthrough()) continue;
+				Instruction jump = listing.getInstructionAt(ref.getFromAddress());
+				if (jump == null || ref.getReferenceType().isCall() || entryDepth == 0 || jumps.size() == ENTRY_PATHS) {
+					trace.forget();
+					return;
+				}
+				jumps.add(jump);
+			}
+			Instruction savedVia = viaInsn;
+			Address savedReturn = backwardReturn;
+			entryDepth--;
+			try {
+				for (Instruction jump : jumps) {
+					// Only the registers at the landing matter here, whatever else is in flight with the jump.
+					Arrival other = arrive(jump, true);
+					if (other == null) {
+						trace.forget();
+						return;
+					}
+					List<Instruction> issued = other.landed().issued();
+					int since = -1;
+					for (int i = 0; i < issued.size(); i++) if (issued.get(i).getMinAddress().equals(label.getMinAddress())) since = i;
+					// A back edge whose look-back does not reach the label: every instruction from the label
+					// to the end of what the jump issues is a superset of the loop body's writes.
+					List<Register> body = since < 0 ? writesBetween(label, issued.get(issued.size() - 1)) : null;
+					Map<Register, long[]> theirs = other.landed().values();
+					for (Register r : new ArrayList<>(regs.keySet())) {
+						long[] mine = regs.get(r), value = theirs.get(r);
+						if (value != null && value[0] == mine[0] && value[1] == mine[1]) continue;
+						boolean written = since >= 0 ? other.trace().writtenSince(r, since) :
+							body == null || body.stream().anyMatch(w -> overlaps(w, r));
+						if (written) regs.remove(r);
+					}
+				}
+			}
+			finally {
+				entryDepth++;
+				viaInsn = savedVia;
+				backwardReturn = savedReturn;
+			}
+		}
 
 		Call recognize(Instruction branch) {
 			Arrival arrival = arrive(branch);
@@ -769,6 +824,11 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 		}
 
 		private Arrival arrive(Instruction branch) {
+			return arrive(branch, false);
+		}
+
+		/** {@code valuesOnly}: other transfers may issue in the window; only the registers at the landing are wanted. */
+		private Arrival arrive(Instruction branch, boolean valuesOnly) {
 			Map<Register, long[]> regs = new HashMap<>();
 			Instruction partner = null;
 			List<Instruction> path = lookBack(branch);
@@ -784,9 +844,14 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 			// taken; the path where both are is the nested-window check's to compare.
 			List<PredicateFact> facts = new ArrayList<>();
 
+			// Code a jump from elsewhere enters is also reached without what the look-back saw before it:
+			// neither a fall-through fact nor a register constant from before the entry holds there.
+			boolean[] entered = new boolean[execution.size()];
+			for (int i = 0; i < execution.size(); i++)
+				entered[i] = !(via != null && i == branchIndex) && enteredFromElsewhere(execution.get(i));
 			for (int i = 0; i < path.size(); i++) {
 				Instruction insn = path.get(i);
-				if (isFlow(insn) && predicate(insn) == null) facts.clear();
+				if ((isFlow(insn) && predicate(insn) == null) || entered[i]) facts.clear();
 				if (via == null && predicate(insn) != null && insn.getFlowType().isJump() &&
 					!insn.getFlowType().isCall() && !insn.getFlowType().isTerminal() &&
 					!inWindow(insn, branch)) {
@@ -795,6 +860,7 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 				}
 			}
 			// Taken-edge constraints take precedence over speculative physical look-back.
+			if (entered[branchIndex]) facts.clear();
 			if (via != null) addFact(facts, slotIndex(path, viaInsn), viaInsn, true);
 			addFact(facts, branchIndex, branch, true);
 			java.util.Collections.reverse(facts);
@@ -809,6 +875,7 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 					continue;
 				}
 				trace.before(issue[i]);
+				if (entered[i]) meetEntries(insn, regs, trace);
 				if (insn != viaInsn && isFlow(insn)) trace.write(issue[i], program.getRegister("B3"), null, i);
 				trace.instruction(insn, runs, issue[i], i);
 			}
@@ -816,6 +883,7 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 			// SPRUFE8B 3.5 / Tables 4-6 and 4-11: all members of a
 			// packet read the same E1 snapshot, before any E1 writer commits.
 			trace.before(issue[branchIndex]);
+			if (entered[branchIndex]) meetEntries(branch, regs, trace);
 			Register source = branch.getRegister(0);
 			Long target = null;
 			if (source != null) {
@@ -824,9 +892,33 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 			}
 
 			// What the hardware has issued when the branch lands: B3 then is where the callee returns to.
-			Landed landed = land(branch, execution, issue, branchIndex, regs, trace, facts, partner);
+			Landed landed = land(branch, execution, issue, branchIndex, regs, trace, facts, partner, valuesOnly);
 			if (landed == null) return null;
-			return new Arrival(landed, target, facts, branchIndex);
+			return new Arrival(landed, target, facts, branchIndex, trace);
+		}
+
+		/** Every register an instruction from {@code from} to {@code to}, in address order, can write; null when unknown. */
+		private List<Register> writesBetween(Instruction from, Instruction to) {
+			if (to.getMinAddress().compareTo(from.getMinAddress()) < 0) return null;
+			List<Register> writes = new ArrayList<>();
+			Instruction insn = from;
+			for (int guard = 0; guard < 1024; guard++) {
+				if (insn == null) return null;
+				writes.addAll(issueWrites(insn));
+				Register load = loadDestination(insn);
+				if (load != null) writes.add(load);
+				if (insn.getMinAddress().compareTo(to.getMinAddress()) >= 0) return writes;
+				insn = next(insn);
+			}
+			return null;
+		}
+
+		/** A jump, branch or call from another address targets {@code insn}. */
+		private boolean enteredFromElsewhere(Instruction insn) {
+			for (Reference ref : program.getReferenceManager().getReferencesTo(insn.getMinAddress())) {
+				if (ref.getReferenceType().isFlow() && !ref.getReferenceType().isFallthrough()) return true;
+			}
+			return false;
 		}
 
 		/** The registers when the branch lands, the address after the last instruction issued before that, and the issue order. */
@@ -839,7 +931,7 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 		 * that may be taken with the branch.
 		 */
 		private Landed land(Instruction branch, List<Instruction> prefix, int[] prefixCycles, int branchIndex,
-				Map<Register, long[]> values, Constants trace, List<PredicateFact> facts, Instruction partner) {
+				Map<Register, long[]> values, Constants trace, List<PredicateFact> facts, Instruction partner, boolean valuesOnly) {
 			List<Instruction> issued = new ArrayList<>(prefix);
 			int[] cycles = java.util.Arrays.copyOf(prefixCycles, prefix.size() + MAX_WINDOW + 1);
 			List<Instruction> outerPath = timedPath;
@@ -867,7 +959,7 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 						Boolean runs = executes(issued, index, facts);
 						if (transfer(insn)) {
 							// One that may be taken with the branch lands in the callee: no call to place here.
-							if (!Boolean.FALSE.equals(runs)) return null;
+							if (!Boolean.FALSE.equals(runs) && !valuesOnly) return null;
 							if (partner == null && complementary(branch, insn)) partner = insn;
 						}
 						trace.before(cycle);
@@ -1097,8 +1189,24 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 			private final Map<Register, long[]> values;
 			private final TreeMap<Integer, List<Write>> pending = new TreeMap<>();
 			Constants(Map<Register, long[]> values) { this.values = values; }
+			private final Map<Register, Integer> lastWriter = new HashMap<>();
+			private int forgotten = -1, at = -1;
+			/** True when {@code register} may have been written at or after issue-order index {@code since}. */
+			boolean writtenSince(Register register, int since) {
+				if (forgotten >= since) return true;
+				for (var entry : lastWriter.entrySet()) if (entry.getValue() >= since && overlaps(entry.getKey(), register)) return true;
+				return false;
+			}
+			/** Every value, held or still to land, becomes unknown; the writes still land. */
+			void forget() {
+				forgotten = at;
+				values.clear();
+				for (List<Write> writes : pending.values()) writes.replaceAll(w -> new Write(w.register(), null, w.owner()));
+			}
 
 			void write(int cycle, Register register, long[] value, int owner) {
+				lastWriter.merge(register, owner, Math::max);
+				at = Math.max(at, owner);
 				pending.computeIfAbsent(cycle, k -> new ArrayList<>()).add(new Write(register, value == null ? null : value.clone(), owner));
 			}
 			void before(int cycle) {
@@ -1110,6 +1218,7 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 				}
 			}
 			void instruction(Instruction insn, Boolean runs, int cycle, int owner) {
+				at = Math.max(at, owner);
 				if (Boolean.FALSE.equals(runs)) return;
 				Register load = loadDestination(insn);
 				if (load != null) {
