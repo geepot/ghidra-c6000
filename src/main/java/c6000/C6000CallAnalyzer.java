@@ -22,6 +22,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.WeakHashMap;
 
 import ghidra.app.cmd.function.CreateFunctionCmd;
 import ghidra.app.plugin.core.analysis.AutoAnalysisManager;
@@ -35,6 +36,7 @@ import ghidra.program.model.address.Address;
 import ghidra.program.model.address.AddressRange;
 import ghidra.program.model.address.AddressSet;
 import ghidra.program.model.address.AddressSetView;
+import ghidra.program.model.lang.InstructionPrototype;
 import ghidra.program.model.lang.Register;
 import ghidra.program.model.listing.FlowOverride;
 import ghidra.program.model.listing.Function;
@@ -1299,9 +1301,10 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 		/** A displacement B that Ghidra types as a jump; its target is the encoded one. */
 		static boolean displacementJump(Instruction insn) {
 			String op = baseName(insn);
+			if (!(op.equals("B.S1") || op.equals("B.S2"))) return false;
 			var flow = C6000PacketStagingAnalyzer.flow(insn);
 			// A latched branch transfers behind another instruction: it is no jump to continue or re-lay.
-			return !C6000PacketStagingAnalyzer.inert(insn) && (op.equals("B.S1") || op.equals("B.S2")) && insn.getLength() == 4 &&
+			return !C6000PacketStagingAnalyzer.inert(insn) && insn.getLength() == 4 &&
 				insn.getRegister(0) == null && !insn.isInDelaySlot() &&
 				insn.getFlowOverride() == FlowOverride.NONE && flow.isJump() && !flow.isCall() &&
 				!flow.isTerminal() && C6000PacketStagingAnalyzer.hardware(insn).getDefaultFlows().length == 1;
@@ -1964,9 +1967,20 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 		catch (MemoryAccessException unavailable) { return true; }
 	}
 
+	private static final Map<InstructionPrototype, String> MNEMONICS = java.util.Collections.synchronizedMap(new WeakHashMap<>());
+
+	/**
+	 * {@code insn.getMnemonicString()}, which prints it from the parse tree on every call. Every
+	 * piece of a mnemonic in this language is a literal or a subtable with constant text (no field
+	 * value), so it depends only on the constructors and the delay-slot flag: what a prototype is.
+	 */
+	static String mnemonic(Instruction insn) {
+		return MNEMONICS.computeIfAbsent(insn.getPrototype(), p -> insn.getMnemonicString());
+	}
+
 	/** Mnemonic without a predicate prefix or the compact underscore marker. */
 	static String baseName(Instruction insn) {
-		String name = insn.getMnemonicString();
+		String name = mnemonic(insn);
 		int predicate = name.indexOf(']');
 		if (predicate >= 0) name = name.substring(predicate + 1);
 		return name.startsWith("_") ? name.substring(1) : name;

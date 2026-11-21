@@ -15,6 +15,10 @@
 * Delay-window recovery, which runs over the whole program, returns at once when the
   program is unchanged since a recovery that changed nothing. With the two changes above,
   analysis takes under half the time it did, with the same results.
+* The analyzers read an instruction's mnemonic once per instruction prototype instead of
+  printing it again on every call, check it before reading the latch fields, and find the
+  switch overrides to repair by name instead of walking every symbol. With the three
+  changes above, analysis takes about a third of the time it did, with the same results.
 * All eight languages are now version 3.0: the context register is 128 bits, which makes
   room for the latched-branch fields (bits 64-122). Programs saved with version 2, or with
   version 1, upgrade on open with every context field carried over by name. As with

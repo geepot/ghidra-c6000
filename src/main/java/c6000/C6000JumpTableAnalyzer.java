@@ -181,13 +181,10 @@ public class C6000JumpTableAnalyzer extends AbstractAnalyzer {
 	public static int repairDetachedOverrides(Program program, TaskMonitor monitor,
 			MessageLog log) throws CancelledException {
 		var symbols = program.getSymbolTable();
+		// By name, in the order a walk of every symbol finds them: by address, then ID.
 		List<Symbol> switches = new ArrayList<>();
-		var iterator = symbols.getAllSymbols(true);
-		while (iterator.hasNext()) {
-			monitor.checkCancelled();
-			Symbol symbol = iterator.next();
-			if (symbol.getName().equals("switch")) switches.add(symbol);
-		}
+		for (Symbol symbol : symbols.getSymbols("switch")) switches.add(symbol);
+		switches.sort(java.util.Comparator.comparing(Symbol::getAddress).thenComparingLong(Symbol::getID));
 		C6000CallAnalyzer.Walker walker = new C6000CallAnalyzer.Walker(program);
 		int repaired = 0;
 		for (Symbol symbol : switches) {

@@ -50,7 +50,7 @@ public class C6000ReturnAnalyzer extends AbstractAnalyzer {
 		while (instructions.hasNext()) {
 			monitor.checkCancelled();
 			Instruction instruction = instructions.next();
-			String name = instruction.getMnemonicString();
+			String name = C6000CallAnalyzer.mnemonic(instruction);
 			if (!(name.endsWith("B.S1") || name.endsWith("B.S2") ||
 				name.endsWith("BNOP.S1") || name.endsWith("BNOP.S2"))) continue;
 			if (instruction.getFlowOverride() != FlowOverride.NONE ||
