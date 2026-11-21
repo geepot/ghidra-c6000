@@ -255,9 +255,14 @@ switches are being recovered.
 ### Switch dispatch
 
 `C6000JumpTableAnalyzer` recognizes a guarded table lookup: a CMPLTU/CMPGTU bound, an
-MVK/MVKH table base, scaled index, predicated LDW and register B/BNOP. It reads at most
-the guard's `K + 1` entries, stops at invalid targets, and creates computed-jump
-references and a jump-table override. Without a proved guard it recovers no table.
+MVK/MVKH table base, scaled index, predicated LDW and register B/BNOP. The index may reach
+the load through MV, ADD or SUB of a constant (immediate or a known register), ADDK and
+SHL, members of one execute packet reading the values from before it (an address built as
+`(idx << 2) + table`), and the compare may test a biased copy of it (`idx - k`, the bias
+folded into the address): both are followed as `scale * idx + offset` of the same index
+value. It reads at most the guard's `K + 1` entries, from the entry the compared value
+selects, stops at invalid targets, and creates computed-jump references and a jump-table
+override. Without a proved guard it recovers no table.
 
 New functions are considered as analysis discovers them. Unchanged overrides and bodies
 are not rewritten, avoiding repeated analysis. Override ownership is checked separately
@@ -288,7 +293,7 @@ The synthetic fixtures exercise these behaviors in both endian modes:
 | `call-packet-slots.py` | Delay slots and return point of a call with a parallel companion. |
 | `tail-call-slots.py` | Tail-call delay slots in the caller, and B3-setting `B` and `BNOP` calls kept out of tail-call recovery. |
 | `packet-window-fallthrough.py` | Fall-through and function body of conditional jumps whose windows mix 32-bit and compact instructions. |
-| `jump-table.py` | A guarded three-case table, an adjacent valid address outside the bound, and native switch output. |
+| `jump-table.py` | Guarded three-case tables (also through a biased index and an `SHL`-built address), an adjacent valid address outside the bound, and native switch output. |
 | `return-delay.py` / `packet-call.py` | Captured targets, tail effects, packet links and mixed-width windows. |
 
 See [verification](verification.md) and the [fixture catalog](regressions.md) for

@@ -264,11 +264,22 @@ public class C6000JumpTableAnalyzer extends AbstractAnalyzer {
 		return owner instanceof Function ? (Function) owner : null;
 	}
 
-	/** An unsigned compare of {@code compared} against {@code limit}, setting {@code flag} when it is past it. */
-	private record Guard(int at, Register flag, Register compared, long limit) {}
+	/** An unsigned compare of a value against {@code limit}, setting {@code flag} when it is past it. */
+	private record Guard(int at, Register flag, Linear compared, long limit) {}
 
-	/** Where a table address or entry came from: the table, and the index register added to it and where. */
-	private record Indexed(long table, Register index, int at) {}
+	/**
+	 * A register's value as {@code scale * src + offset}, where {@code src} is that register's
+	 * value at path position {@code at}. Compilers bias a switch index whose cases don't start at
+	 * zero (compare {@code idx - k}) and fold the bias into the table address ({@code (idx << 2) -
+	 * 4k + table}); both are linear in the same {@code idx}.
+	 */
+	private record Linear(Register src, int at, long scale, long offset) {
+		Linear plus(long c) { return new Linear(src, at, scale, offset + c); }
+		Linear shifted(int k) { return new Linear(src, at, scale << k, offset << k); }
+	}
+
+	/** Where a table address or entry came from: the table, and its byte offset as a linear value. */
+	private record Indexed(long table, Linear bytes, int at) {}
 
 	/**
 	 * The table entries a register branch dispatches to, or an empty list. The table's bound comes only
@@ -278,8 +289,14 @@ public class C6000JumpTableAnalyzer extends AbstractAnalyzer {
 	static List<Address> targets(Program program, C6000CallAnalyzer.Walker walker,
 			Instruction branch) {
 		Map<Register, long[]> regs = new HashMap<>();
-		Map<Register, Indexed> tableBase = new HashMap<>();	// holds table (+ index)
+		Map<Register, Indexed> tableBase = new HashMap<>();	// holds table + a byte offset
 		Map<Register, Indexed> loaded = new HashMap<>();	// holds an entry of table
+		Map<Register, Linear> linear = new HashMap<>();	// a value derived linearly from another
+		// Members of an execute packet read the values from before it, so its linear results
+		// land when it ends (SPRUFE8B 3.5); two members may write one register only on
+		// complementary predicates (3.8.8), so its value depends on the path and is dropped.
+		Map<Register, Linear> packet = new HashMap<>();
+		java.util.Set<Register> twice = new java.util.HashSet<>();
 		List<Guard> guards = new ArrayList<>();
 		List<Instruction> path = new ArrayList<>(walker.lookBack(branch));
 		for (int at = 0; at < path.size(); at++) {
@@ -289,52 +306,122 @@ public class C6000JumpTableAnalyzer extends AbstractAnalyzer {
 			int n = insn.getNumOperands();
 			Register dst = n > 0 ? insn.getRegister(n - 1) : null;
 			Indexed base = null, entryOf = null;
+			Linear derived = null;
 			if ((name.equals("ADD") || name.equals("ADDAW")) && n == 3) {
-				Long table = table(program, regs, tableBase, insn.getRegister(0));
-				if (table != null) base = new Indexed(table, insn.getRegister(1), at);
-				else if ((table = table(program, regs, tableBase, insn.getRegister(1))) != null)
-					base = new Indexed(table, insn.getRegister(0), at);
+				// ADD adds a byte offset to the table, ADDAW a word index (SPRUFE8B 3.12 ADD, ADDAW).
+				boolean words = name.equals("ADDAW");
+				Register r0 = insn.getRegister(0), r1 = insn.getRegister(1);
+				Scalar constant = insn.getScalar(0) != null ? insn.getScalar(0) : insn.getScalar(1);
+				if (constant != null && !words && (r0 != null || r1 != null)) {
+					Register r = r0 != null ? r0 : r1;
+					Indexed held = tableBase.get(r);
+					if (held != null && held.bytes() != null)
+						base = new Indexed(held.table(), held.bytes().plus(constant.getSignedValue()), at);
+					else derived = linearOf(linear, r, at).plus(constant.getSignedValue());
+				}
+				else if (r0 != null && r1 != null) {
+					// Only a plain table constant plus one index: two offsets don't make an entry.
+					Long table = tableBase.containsKey(r0) ? null : table(program, regs, tableBase, r0);
+					if (table != null) base = indexed(table, linearOf(linear, r1, at), words, at);
+					// ADDAW shifts src1, so only its src2 (the base) can be the table.
+					else if (!words && !tableBase.containsKey(r1) && (table = table(program, regs, tableBase, r1)) != null)
+						base = indexed(table, linearOf(linear, r0, at), false, at);
+					else if (!words && constant(regs, r1) != null) derived = linearOf(linear, r0, at).plus(constant(regs, r1));
+					else if (!words && constant(regs, r0) != null) derived = linearOf(linear, r1, at).plus(constant(regs, r0));
+				}
+			}
+			else if (name.equals("SUB") && n == 3 && insn.getRegister(0) != null) {
+				// SUB idx,K or SUB idx,r with r a known constant (MVK K,r). Written first minus second on
+				// every unit: .L/.S src1 - src2, .D (written src2, src1) src2 - src1 (SPRUFE8B 3.12 SUB).
+				Long k = insn.getScalar(1) != null ? (Long) insn.getScalar(1).getSignedValue() : constant(regs, insn.getRegister(1));
+				if (k != null) derived = linearOf(linear, insn.getRegister(0), at).plus(-k);
+			}
+			else if (name.equals("SHL") && n == 3 && insn.getRegister(0) != null && insn.getScalar(1) != null &&
+				insn.getScalar(1).getUnsignedValue() < 32) {
+				derived = linearOf(linear, insn.getRegister(0), at).shifted((int) insn.getScalar(1).getUnsignedValue());
+			}
+			else if (name.equals("MV") && n == 2 && insn.getRegister(0) != null) {
+				derived = linearOf(linear, insn.getRegister(0), at);
+			}
+			else if (name.equals("ADDK") && n == 2 && insn.getScalar(0) != null && insn.getRegister(1) != null) {
+				// ADDK adds a 16-bit constant in place (SPRUFE8B 3.12 ADDK).
+				derived = linearOf(linear, insn.getRegister(1), at).plus((short) insn.getScalar(0).getUnsignedValue());
 			}
 			else if (name.equals("LDW") && n == 2) {
-				Register index = null;
+				// *+table[idx] scales a word index; *table holds table + a byte offset itself. Only the
+				// positive-offset form without modification reads at base + offset (SPRUFE8B 3.9.3):
+				// *-R subtracts it, and *++R/*--R/*R++/*R-- change R or read at R itself.
+				String mode = insn.getDefaultOperandRepresentation(0).replace(" ", "");
+				boolean plain = mode.startsWith("*+") && !mode.startsWith("*++") || mode.matches("\\*[AB][0-9]+");
+				Linear bytes = null;
 				Long table = null;
+				boolean offset = !plain;
 				for (Object o : insn.getOpObjects(0)) {
+					if (o instanceof Scalar s && s.getValue() != 0) offset = true;
 					if (!(o instanceof Register r)) continue;
 					Long found = table(program, regs, tableBase, r);
 					if (found != null && table == null) {
 						table = found;
-						if (tableBase.containsKey(r)) index = tableBase.get(r).index();
+						Indexed held = tableBase.get(r);
+						if (held != null) bytes = held.bytes();
 					}
-					else index = r;
+					else bytes = linearOf(linear, r, at).shifted(2);
 				}
-				if (table != null) entryOf = new Indexed(table, index, at);
+				if (table != null && !offset) entryOf = new Indexed(table, bytes, at);
 			}
 			else if ((name.equals("CMPLTU") || name.equals("CMPGTU")) && n == 3) {
 				// CMPLTU K,idx (K < idx) or CMPGTU idx,K (idx > K) flags an index past K.
 				int limitAt = name.equals("CMPLTU") ? 0 : 1;
 				Long limit = operandValue(insn, limitAt, regs);
 				Register compared = insn.getRegister(1 - limitAt);
-				if (limit != null && compared != null && dst != null) guards.add(new Guard(at, dst, compared, limit));
+				if (limit != null && compared != null && dst != null)
+					guards.add(new Guard(at, dst, linearOf(linear, compared, at), limit));
 			}
-			for (Object written : C6000PacketStagingAnalyzer.hardware(insn).getResultObjects()) {
+			// A native delay carrier's results include its followers', which come later in this
+			// walk as instructions of their own (as Walker.issueWrites counts them).
+			if (insn.getDelaySlotDepth() == 0) for (Object written : C6000PacketStagingAnalyzer.hardware(insn).getResultObjects()) {
 				if (written instanceof Register r) {
 					tableBase.remove(r);
 					loaded.remove(r);
+					if (packet.containsKey(r)) twice.add(r);
+					packet.put(r, null);
 				}
 			}
 			walker.track(insn, regs);
 			if (dst != null && base != null) tableBase.put(dst, base);
 			if (dst != null && entryOf != null) loaded.put(dst, entryOf);
+			if (dst != null && derived != null) packet.put(dst, derived);
+			boolean ends = true;
+			try { ends = !C6000ExecutionPackets.parallelWithNext(program, insn); }
+			catch (MemoryAccessException e) { /* the packet ends here */ }
+			if (ends) {
+				for (var e : packet.entrySet()) {
+					if (e.getValue() == null || twice.contains(e.getKey())) linear.remove(e.getKey());
+					else linear.put(e.getKey(), e.getValue());
+				}
+				packet.clear();
+				twice.clear();
+			}
 		}
 		path.add(branch);
 		Indexed read = loaded.get(branch.getRegister(0));
 		Long bound = null;
-		if (read != null && read.index() != null) {
+		long first = 0;
+		// The entry the load reads, as a word index; null unless the byte offset is whole words.
+		Linear word = read == null || read.bytes() == null || read.bytes().scale() % 4 != 0 ||
+			read.bytes().offset() % 4 != 0 ? null :
+			new Linear(read.bytes().src(), read.bytes().at(), read.bytes().scale() / 4, read.bytes().offset() / 4);
+		if (word != null && word.scale() == 1) {
 			for (Guard guard : guards) {
-				// The compare and the load read the same index value, in either order.
-				if (guard.compared().equals(read.index()) &&
-					walker.unchanged(path, Math.min(guard.at(), read.at()), Math.max(guard.at(), read.at()), read.index()) &&
-					walker.guards(path, guard.at(), guard.flag(), path.size() - 1)) bound = guard.limit();
+				// The compare and the load derive from the same index value, in either order: the
+				// compared value x = idx + c, the entry read idx + d, so entries d - c .. d - c + K.
+				Linear compared = guard.compared();
+				if (compared.src().equals(word.src()) && compared.scale() == 1 &&
+					walker.unchanged(path, Math.min(compared.at(), word.at()), Math.max(compared.at(), word.at()), word.src()) &&
+					walker.guards(path, guard.at(), guard.flag(), path.size() - 1)) {
+					bound = guard.limit();
+					first = word.offset() - compared.offset();
+				}
 			}
 		}
 		Long table = read == null ? null : read.table();
@@ -344,7 +431,9 @@ public class C6000JumpTableAnalyzer extends AbstractAnalyzer {
 		Memory memory = program.getMemory();
 		MemoryBlock code = memory.getBlock(branch.getAddress());
 		long count = Math.min(bound + 1, MAX_ENTRIES);
-		Address entry = branch.getAddress().getNewAddress(table);
+		Address entry;
+		try { entry = branch.getAddress().getNewAddress(table + 4 * first); }
+		catch (ghidra.program.model.address.AddressOutOfBoundsException e) { return targets; }
 		for (int i = 0; i < count; i++) {
 			try {
 				Address target = branch.getAddress().getNewAddress(
@@ -359,6 +448,23 @@ public class C6000JumpTableAnalyzer extends AbstractAnalyzer {
 			}
 		}
 		return targets;
+	}
+
+	/** The linear value a register holds at path position {@code at}: derived, or its own value there. */
+	private static Linear linearOf(Map<Register, Linear> linear, Register r, int at) {
+		Linear held = linear.get(r);
+		return held != null ? held : new Linear(r, at, 1, 0);
+	}
+
+	/** A table plus an index, the index a byte offset or (ADDAW) a word index. */
+	private static Indexed indexed(long table, Linear index, boolean words, int at) {
+		return new Indexed(table, words ? index.shifted(2) : index, at);
+	}
+
+	/** A register's known 32-bit constant, signed; null when unknown. */
+	private static Long constant(Map<Register, long[]> regs, Register r) {
+		long[] value = r == null ? null : regs.get(r);
+		return value != null && value[1] == C6000CallAnalyzer.FULL ? (long) (int) value[0] : null;
 	}
 
 	private static Long operandValue(Instruction insn, int index, Map<Register, long[]> regs) {

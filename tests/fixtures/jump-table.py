@@ -21,6 +21,28 @@ reaches the dispatch, so the table has three cases. 1600 is a known-bad: CMPLTU
 table continues with valid code addresses past the bound, and 1300 to five, the
 decoy's bound. The CMPLTU and LDW words are firmware encodings with operands
 changed.
+
+Compilers also build the entry address with SHL and ADD, and bias the index of a
+switch whose cases don't start at zero: they compare a biased copy and fold the bias
+into the address (SPRUFE8B 3.12 ADD, SHL, LDW, CMPLTU):
+
+  1800  biased index                1a00  address by SHL            1c00  biased decoy
+  MVK/MVKH  0x1900,B5               MVK/MVKH  0x1b00,B5             as 1800, but
+  ADD.L2 -3,B4,B6                   CMPLTU.L2 2,B4,B0               ADD.L2 -3,B9,B6:
+  CMPLTU.L2 2,B6,B0                 [B0] B.S1 0x1aa0                the compared copy
+  [B0] B.S1 0x18a0                  SHL.S2 B4,2,B7                  is not of the index
+  SHL.S2 B4,2,B7                    ADD.L2 B5,B7,B7                 (no table)
+  ADD.L2 -12,B7,B7                  [!B0] LDW *+B7(0),B4
+  ADD.L2 B7,B5,B7                   NOP 4 ; B.S2 B4 (1a20)          1e00  as 1800, but
+  [!B0] LDW *+B7(0),B4              cases 1a40/1a60/1a80            ADD.L2 -8,B7,B7: the
+  NOP 4 ; B.S2 B4 (1828)                                            entry read is one past
+  cases 1840/1860/1880                                              the compared value, so
+                                                                    cases 1e60/1e80/1ec0
+2000 shifts the index in place in the packet that takes the biased copy (SHL B4,2,B4 ||
+ADD -3,B4,B6: the copy reads the old B4) and folds the bias with ADDK -12,B4; 2200 holds
+the bias in a register (MVK 3,B8; SUB B4,B8,B6). Both have cases at their table's first
+three entries. The ADD, ADDK, SUB, SHL, MVK and LDW words were assembled with cl6x 8.5.0
+and checked with GNU objdump.
 """
 
 from pathlib import Path
@@ -107,11 +129,70 @@ for case in (0x1620, 0x1640, 0x1660, 0x1680):
 table(0x1700, (0x1620, 0x1640, 0x1660, 0x1680))
 
 
+ADD_M3_B4_B6, ADD_M3_B9_B6 = 0x0313A05A, 0x0327A05A     # ADD.L2 -3,B4,B6 / -3,B9,B6
+SHL_B4_2_B7 = 0x03904CA2                                # SHL.S2 B4,2,B7
+ADD_M12_B7, ADD_M8_B7 = 0x039E805A, 0x039F005A          # ADD.L2 -12,B7,B7 / -8,B7,B7
+ADD_B7_B5_B7, ADD_B5_B7_B7 = 0x0394E07A, 0x039CA07A     # ADD.L2 B7,B5,B7 / B5,B7,B7
+LDW_B7 = 0x021C02E6                                     # LDW.D2T2 *+B7(0),B4
+
+
+def biased(at, copy, fold, entries):
+    """A dispatch comparing a biased copy, its bias folded into the table address."""
+    WORDS.update({
+        at: mvk(at + 0x100, 5), at + 4: mvkh(0, 5), at + 8: copy, at + 0xC: cmpltu(2, 6, 0),
+        at + 0x10: B0 | b_s1(at + 0x10, at + 0xA0), at + 0x14: SHL_B4_2_B7, at + 0x18: fold,
+        at + 0x1C: ADD_B7_B5_B7, at + 0x20: NOT_B0 | LDW_B7, at + 0x24: nop(4),
+        at + 0x28: B_B4, at + 0x2C: nop(5),
+    })
+    for case in (0x40, 0x60, 0x80, 0xA0, 0xC0, 0xE0):
+        routine(at + case)
+    table(at + 0x100, [at + e for e in entries])
+
+
+biased(0x1800, ADD_M3_B4_B6, ADD_M12_B7, (0x40, 0x60, 0x80, 0xC0))
+biased(0x1C00, ADD_M3_B9_B6, ADD_M12_B7, (0x40, 0x60, 0x80, 0xC0))
+biased(0x1E00, ADD_M3_B4_B6, ADD_M8_B7, (0x40, 0x60, 0x80, 0xC0, 0xE0))
+
+SHL_B4_2_B4_PAR, ADDK_M12_B4 = 0x02104CA3, 0x027FFA52     # SHL.S2 B4,2,B4 || ; ADDK.S2 -12,B4
+ADD_B4_B5_B7, MVK_3_B8, SUB_B4_B8_B6 = 0x0394807A, 0x040001AA, 0x032080FA
+
+# The index shifted in place beside its biased copy, the bias folded by ADDK.
+WORDS.update({
+    0x2000: mvk(0x2100, 5), 0x2004: mvkh(0, 5), 0x2008: SHL_B4_2_B4_PAR, 0x200C: ADD_M3_B4_B6,
+    0x2010: cmpltu(2, 6, 0), 0x2014: B0 | b_s1(0x2014, 0x20A0), 0x2018: ADDK_M12_B4,
+    0x201C: ADD_B4_B5_B7, 0x2020: NOT_B0 | LDW_B7, 0x2024: nop(4), 0x2028: B_B4, 0x202C: nop(5),
+})
+for case in (0x2040, 0x2060, 0x2080, 0x20A0, 0x20C0):
+    routine(case)
+table(0x2100, (0x2040, 0x2060, 0x2080, 0x20C0))
+
+# The bias held in a register.
+WORDS.update({
+    0x2200: mvk(0x2300, 5), 0x2204: mvkh(0, 5), 0x2208: MVK_3_B8, 0x220C: SUB_B4_B8_B6,
+    0x2210: cmpltu(2, 6, 0), 0x2214: B0 | b_s1(0x2214, 0x22A0), 0x2218: SHL_B4_2_B7,
+    0x221C: ADD_M12_B7, 0x2220: ADD_B7_B5_B7, 0x2224: NOT_B0 | LDW_B7, 0x2228: nop(4),
+    0x222C: B_B4, 0x2230: nop(5),
+})
+for case in (0x2240, 0x2260, 0x2280, 0x22A0, 0x22C0):
+    routine(case)
+table(0x2300, (0x2240, 0x2260, 0x2280, 0x22C0))
+
+# The entry address built by SHL and ADD from the compared index itself.
+WORDS.update({
+    0x1A00: mvk(0x1B00, 5), 0x1A04: mvkh(0, 5), 0x1A08: cmpltu(2, 4, 0),
+    0x1A0C: B0 | b_s1(0x1A0C, 0x1AA0), 0x1A10: SHL_B4_2_B7, 0x1A14: ADD_B5_B7_B7,
+    0x1A18: NOT_B0 | LDW_B7, 0x1A1C: nop(4), 0x1A20: B_B4, 0x1A24: nop(5),
+})
+for case in (0x1A40, 0x1A60, 0x1A80, 0x1AA0, 0x1AC0):
+    routine(case)
+table(0x1B00, (0x1A40, 0x1A60, 0x1A80, 0x1AC0))
+
+
 def main():
     if len(sys.argv) not in (2, 3) or (len(sys.argv) == 3 and sys.argv[2] != "be"):
         raise SystemExit(__doc__)
     endian = ">" if len(sys.argv) == 3 else "<"
-    image = bytearray(0x720)
+    image = bytearray(0x1320)
     for address, word in WORDS.items():
         struct.pack_into(endian + "I", image, address - 0x1000, word)
     Path(sys.argv[1]).write_bytes(image)
