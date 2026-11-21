@@ -64,6 +64,12 @@
 
 ### Fixed
 
+* Latched returns (issue #73). A `B B3` latched in another branch's delay window is a
+  return wherever it issues, so the instruction it lands behind now returns instead of
+  making a computed jump; a caller that jumps in with B3 set to a link no longer fails to
+  decompile ("Bad relative branch"). `C6000 Returns` now skips latched branches: its
+  return override on a branch that also carries an earlier jump's landing turned that jump
+  into a return, and the code after it was removed as unreachable.
 * The call analyzer's look-back treats every register the ABI lets a callee change as
   unknown once an earlier call has returned (all but A10-A15 and B10-B15), and at code that
   nothing falls into, after a jump or return that always goes, it takes the registers from

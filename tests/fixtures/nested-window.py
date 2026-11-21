@@ -296,6 +296,60 @@ CASES = [
 {n}_pad:
         NOP             2
 """),
+    # issue #73: a return in a jump's last slot carries the jump's landing, and the jump lands on the complementary
+    # return. The store at 3 runs on both paths, the one at 1 only when a == 0: the [ A1] return lands before it.
+    ("landret", True, """{n}:
+        B       .S1     {n}_x
+||      MV      .L1     A6,A1
+        NOP
+        NOP
+        NOP
+        NOP
+{n}_in:
+  [ A1] B       .S2     B3
+{n}_x:
+  [!A1] B       .S2     B3
+        NOP
+        NOP
+        NOP
+        STW     .D1T1   A5,*+A4[3]
+        STW     .D1T1   A5,*+A4[1]
+        NOP             5
+"""),
+    # issue #73: the same, entered by a jump that sets B3 to a link (not its fall-through) in its delay slots
+    ("landlink", True, """{n}:
+        STW     .D2T2   B3,*B15--[2]
+        MVK     .S2     1,B1
+        MVK     .S2     0,B0
+  [!B0] B       .S1     {n}_t
+  [ B1] MVKL    .S2     {n}_back,B3
+  [ B1] MVKH    .S2     {n}_back,B3
+        NOP             4
+        MVK     .S1     0x77,A4
+        NOP
+{n}_back:
+        LDW     .D2T2   *++B15[2],B3
+        NOP             4
+        B       .S2     B3
+        NOP             5
+{n}_t:
+        B       .S1     {n}_x
+||      MV      .L1     A6,A1
+        NOP
+        NOP
+        NOP
+        NOP
+{n}_in:
+  [ A1] B       .S2     B3
+{n}_x:
+  [!A1] B       .S2     B3
+        NOP
+        NOP
+        NOP
+        STW     .D1T1   A5,*+A4[3]
+        STW     .D1T1   A5,*+A4[1]
+        NOP             5
+"""),
 ]
 # Known-bads that native lifting now gets right by latching their branches (issue #73). What
 # their C must contain:
@@ -310,6 +364,8 @@ LIFTED = {
     "indep": ["0x11", "0x21", "0x101", "0x201", "+ 0x1000"],
     "tri": ["return 3;", "0x13", "0x43b"],
     "bnop4": ["param_1 + 1"],
+    "landret": ["param_1 + 0xc", "param_3 != 0", "param_1 + 4"],
+    "landlink": ["param_1 + 0xc", "param_3 != 0", "param_1 + 4"],
 }
 LINK = re.compile(r"(MVK[LH]\s+\.S[12]\s+)(\w+)")
 

@@ -53,6 +53,8 @@ public class C6000ReturnAnalyzer extends AbstractAnalyzer {
 			String name = instruction.getMnemonicString();
 			if (!(name.endsWith("B.S1") || name.endsWith("B.S2") ||
 				name.endsWith("BNOP.S1") || name.endsWith("BNOP.S2"))) continue;
+			// A latched branch transfers nothing; the instruction it lands behind carries the return (issue #73).
+			if (C6000PacketStagingAnalyzer.inert(instruction)) continue;
 			if (instruction.getFlowOverride() != FlowOverride.NONE ||
 				!C6000PacketStagingAnalyzer.flow(instruction).isComputed() || instruction.getNumOperands() == 0 ||
 				!"B3".equals(instruction.getDefaultOperandRepresentation(0))) continue;

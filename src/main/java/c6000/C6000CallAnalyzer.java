@@ -481,7 +481,10 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 				if (!register && target == null) return refuse("a branch has no single target");
 				Set<Boolean> called = calls.getOrDefault(branch.getMinAddress(), Set.of());
 				if (called.size() > 1) return refuse(branch + " at " + branch.getMinAddress() + " lands as a call on some paths only");
-				int kind = flow.isCall() || called.contains(true) ? 2 : register && flow.isTerminal() ? 3 : 1;
+				// A B through B3 returns wherever it issues, as C6000ReturnAnalyzer classifies one outside a window (SPRUFE8B 3.5, 4.2.6).
+				boolean ret = register && (flow.isTerminal() || "B3".equals(branch.getDefaultOperandRepresentation(0)) &&
+					(branch.getFlowOverride() == FlowOverride.NONE || branch.getFlowOverride() == FlowOverride.RETURN));
+				int kind = flow.isCall() || called.contains(true) ? 2 : ret ? 3 : 1;
 				// A latch is free again once the branch that used it has landed behind an earlier instruction.
 				int slot = -1;
 				for (int k = 0; k < busy.length && slot < 0; k++) if (busy[k] < i) slot = k;
