@@ -23,6 +23,7 @@ The phase contracts currently implemented are:
 | SAT (.L) | E1 | E1 register write; CSR.SAT and SSR unit bit E2 (SPRUFE8B p.437, Table 2-9, 2.9.13) |
 | 16 × 16 MPY, MPYH, MPYHL, MPYLH and their U/SU/US/ULS/SLU/UHS/SHU forms | E1 | E2 register write (SPRUFE8B pp.320-350) |
 | MPYLI | E1 | Simultaneous E4 register-pair write; .M occupancy only in E1 |
+| MPY32 / MPY32U / MPY32US / MPY32SU, DOTP2, DOTPU4 | E1 | E4 register or register-pair write (SPRUFE8B 4.2.8, pp.235, 252, 369-373) |
 | ADDSP / SUBSP / MPYSP | E1 | E4 result and sticky event flags |
 | SPDP / ABSDP / RCPDP / RSQRDP | E1 | Low word and FAUCR E1; high word E2 |
 | DPSP / DPINT / DPTRUNC / INTSP / INTSPU / SPINT / SPTRUNC / MVD | E1 | E4 result and applicable status events |
