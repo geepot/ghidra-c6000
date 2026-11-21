@@ -501,6 +501,10 @@ public final class C6000PipelineCompiler {
         entryWrites=List.copyOf(writes);
     }
 
+    private boolean statusUpdate(PcodeOp op){
+        return op.getOutput()!=null&&"c6000_fp_status".equals(program.getLanguage().getUserDefinedOpName((int)op.getInput(0).getOffset()));
+    }
+
     private Varnode temp(int size){
         long at=nextUnique;
         nextUnique+=(size+15)&~15;
@@ -622,7 +626,8 @@ public final class C6000PipelineCompiler {
         Set<Integer> loadWrites=load?C6000MemoryWritePhases.loadWrites(raw):Set.of();
         for(int rawIndex=0;rawIndex<raw.length;rawIndex++){
             var op=raw[rawIndex];
-            if(op.getOpcode()==PcodeOp.UNIMPLEMENTED||op.getOpcode()==PcodeOp.CALLOTHER)throw fail("opaque semantics at "+at);
+            // the analysis languages' opaque status update is a flag write like the exact models' (SPRUFE8B 2.10.1-2.10.3)
+            if(op.getOpcode()==PcodeOp.UNIMPLEMENTED||op.getOpcode()==PcodeOp.CALLOTHER&&!statusUpdate(op))throw fail("opaque semantics at "+at);
             List<Varnode> nodes=new ArrayList<>(Arrays.asList(op.getInputs()));
             if(op.getOutput()!=null)nodes.add(op.getOutput());
             for(var v:nodes)if(v.isRegister()){
@@ -878,6 +883,8 @@ public final class C6000PipelineCompiler {
             }
             var out=op.getOutput();
             if(out!=null&&out.isRegister()&&flags.containsKey(out.getOffset())){
+                // The analysis languages' opaque status update: its result joins the event bits.
+                if(opcode==PcodeOp.CALLOTHER){var events=temp(out.getSize());b.op(PcodeOp.CALLOTHER,events,inputs);b.op(PcodeOp.INT_OR,flags.get(out.getOffset()),flags.get(out.getOffset()),events);continue;}
                 // Keep the event bits, including already-set bits. Merging a
                 // computed old|flags value at E4 would undo an intervening MVC.
                 if(opcode!=PcodeOp.INT_OR)throw fail("unsupported sticky status update at "+i.instruction().getAddress());

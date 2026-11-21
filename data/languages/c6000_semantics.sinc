@@ -621,6 +621,17 @@ macro c6000_sem_unpkhu4(a, d) {
   d = ((a >> 8) & 0x00ff0000) | ((a >> 16) & 0xff);
 }
 # SEM: ABSDP
+# Reading aid: in the analysis language floating point is plain p-code, rounding to nearest
+# (halfway cases of SPINT/DPINT round away from zero), as compiled C runs. Status effects go
+# through the opaque c6000_fp_status userop, as for the single-precision arithmetic; the
+# bit-exact models below stay in the default language (SPRUFE8B 2.10.1-2.10.3, 3.12).
+@if FP_MODEL == "analysis"
+macro c6000_sem_absdp(a, d, side) {
+  local sideShift:4 = side;
+  d = abs(a);
+  FAUCR = c6000_fp_status(FAUCR, a, sideShift);
+}
+@else
 macro c6000_sem_absdp(a, d, side) {
   local raw:8 = a;
   local exponent:8 = (raw >> 52) & 2047;
@@ -646,6 +657,7 @@ macro c6000_sem_absdp(a, d, side) {
   flags = 0x12;
   <done> FAUCR = FAUCR | (flags << sideShift);
 }
+@endif
 
 # SEM: MV
 macro c6000_sem_mv(a, d) { d = a; }
@@ -1484,6 +1496,13 @@ macro c6000_sem_set_r(s, v, d) {
 # ---------------------------------------------------------------------------
 
 # SEM: ABSSP
+@if FP_MODEL == "analysis"
+macro c6000_sem_abssp(a, d, side) {
+  local sideShift:4 = side;
+  d = abs(a);
+  FAUCR = c6000_fp_status(FAUCR, a, sideShift);
+}
+@else
 macro c6000_sem_abssp(a, d, side) {
   local raw:4 = a;
   local exponent:4 = (raw >> 23) & 255;
@@ -1509,6 +1528,7 @@ macro c6000_sem_abssp(a, d, side) {
   flags = 0x12; # INVAL | NAN2
   <done> FAUCR = FAUCR | (flags << sideShift);
 }
+@endif
 # Round a finite quad-precision intermediate to a C6000 DP result.  A quad
 # significand retains the exact product of two DP significands and all but
 # the most widely separated DP additions; the add/sub caller handles those.
@@ -1581,6 +1601,22 @@ macro c6000_sem_round_qp_to_dp(exact, d, mode, flags) {
 # SEM: ADDDP
 # SEM: SUBDP
 # a and b are the encoded source ports.  Reverse SUBDP forms compute b-a.
+@if FP_MODEL == "analysis"
+macro c6000_sem_addsub_dp(a, b, d, side, subtract, reverse) {
+  local sideShift:4 = side;
+  local subtracting:4 = subtract;
+  local reversed:4 = reverse;
+  if (subtracting != 0) goto <doSub>;
+  d = a f+ b;
+  goto <done>;
+  <doSub>
+  if (reversed != 0) goto <doReverse>;
+  d = a f- b;
+  goto <done>;
+  <doReverse> d = b f- a;
+  <done> FADCR = c6000_fp_status(FADCR, a, b, sideShift);
+}
+@else
 macro c6000_sem_addsub_dp(a, b, d, side, subtract, reverse) {
   local aRaw:8 = a;
   local bRaw:8 = b;
@@ -1715,7 +1751,15 @@ macro c6000_sem_addsub_dp(a, b, d, side, subtract, reverse) {
   <canceledNegative> d = 0x8000000000000000;
   <done> FADCR = FADCR | (flags << sideShift);
 }
+@endif
 # SEM: MPYDP
+@if FP_MODEL == "analysis"
+macro c6000_sem_mpydp(a, b, d, side) {
+  local sideShift:4 = side;
+  d = a f* b;
+  FMCR = c6000_fp_status(FMCR, a, b, sideShift);
+}
+@else
 macro c6000_sem_mpydp(a, b, d, side) {
   local aRaw:8 = a;
   local bRaw:8 = b;
@@ -1781,7 +1825,16 @@ macro c6000_sem_mpydp(a, b, d, side) {
   <zero> d = sign;
   <done> FMCR = FMCR | (flags << sideShift);
 }
+@endif
 # SEM: MPYSPDP
+@if FP_MODEL == "analysis"
+macro c6000_sem_mpyspdp(a, b, d, side) {
+  local sideShift:4 = side;
+  local wide:8 = float2float(a);
+  d = wide f* b;
+  FMCR = c6000_fp_status(FMCR, a, b, sideShift);
+}
+@else
 macro c6000_sem_mpyspdp(a, b, d, side) {
   local aRaw:4 = a;
   local bRaw:8 = b;
@@ -1851,6 +1904,7 @@ macro c6000_sem_mpyspdp(a, b, d, side) {
   <zero> d = sign;
   <done> FMCR = FMCR | (flags << sideShift);
 }
+@endif
 # SEM: MPYSP2DP
 # A product of two normalized 24-bit SP significands fits exactly in the
 # 53-bit DP significand; the exponent range also fits DP, so normal inputs
@@ -1867,6 +1921,15 @@ macro c6000_sem_fp_select64(condition, yes, no, out) {
   local mask:8 = 0 - zext(condition);
   out = (yes & mask) | (no & ~mask);
 }
+@if FP_MODEL == "analysis"
+macro c6000_sem_mpysp2dp(a, b, d, side) {
+  local sideShift:4 = side;
+  local left:8 = float2float(a);
+  local right:8 = float2float(b);
+  d = left f* right;
+  FMCR = c6000_fp_status(FMCR, a, b, sideShift);
+}
+@else
 macro c6000_sem_mpysp2dp(a, b, d, side) {
   local leftRaw:4 = a;
   local rightRaw:4 = b;
@@ -1909,6 +1972,7 @@ macro c6000_sem_mpysp2dp(a, b, d, side) {
   d = result;
   FMCR = FMCR | (flags << sideShift);
 }
+@endif
 # SPRUFE8B RCPSP/RSQRSP/RCPDP/RSQRDP: special values and FAUCR status
 # are specified exactly. The ordinary seed is guaranteed only through the
 # eighth mantissa bit; TI does not publish its lookup table. Truncating an
@@ -2038,6 +2102,13 @@ macro c6000_sem_intdp(a, d) { d = int2float(a); }
 # SEM: INTDPU
 macro c6000_sem_intdpu(a, d) { local unsigned:8 = zext(a); d = int2float(unsigned); }
 # SEM: SPDP
+@if FP_MODEL == "analysis"
+macro c6000_sem_spdp(a, d, side) {
+  local sideShift:4 = side;
+  d = float2float(a);
+  FAUCR = c6000_fp_status(FAUCR, a, sideShift);
+}
+@else
 macro c6000_sem_spdp(a, d, side) {
   local raw:4 = a;
   local sign:4 = raw & 0x80000000;
@@ -2065,6 +2136,7 @@ macro c6000_sem_spdp(a, d, side) {
   flags = 0x12; # INVAL | NAN2
   <done> FAUCR = FAUCR | (flags << sideShift);
 }
+@endif
 # Convert a finite, non-denormal DP value to SP using the selected rounding
 # mode. The caller accumulates its warning bits in flags and writes the
 # instruction's FADCR or FMCR half after this macro returns.
@@ -2113,6 +2185,13 @@ macro c6000_sem_round_dp_to_sp(a, d, mode, flags) {
   d = result;
 }
 # SEM: DPSP
+@if FP_MODEL == "analysis"
+macro c6000_sem_dpsp(a, d, side) {
+  local sideShift:4 = side;
+  d = float2float(a);
+  FADCR = c6000_fp_status(FADCR, a, sideShift);
+}
+@else
 macro c6000_sem_dpsp(a, d, side) {
   local raw:8 = a;
   local exponent:8 = (raw >> 52) & 2047;
@@ -2141,6 +2220,7 @@ macro c6000_sem_dpsp(a, d, side) {
   <finite> c6000_sem_round_dp_to_sp(raw, d, roundMode, flags);
   <done> FADCR = FADCR | (flags << sideShift);
 }
+@endif
 # SEM: MPYSP
 @if FP_MODEL == "analysis"
 macro c6000_sem_mpysp(a, b, d, side) {
@@ -2328,6 +2408,18 @@ macro c6000_sem_int_to_sp(a, d, side, unsignedMode) {
 # SPRUFE8B sections 2.10.1 and 3.12, SPINT/SPTRUNC execution blocks.
 # SEM: SPINT
 # SEM: SPTRUNC
+@if FP_MODEL == "analysis"
+macro c6000_sem_sp_to_int(a, d, side, forceTrunc) {
+  local sideShift:4 = side;
+  local forced:4 = forceTrunc;
+  if (forced != 0) goto <truncate>;
+  local rounded:4 = round(a);
+  d = trunc(rounded);
+  goto <done>;
+  <truncate> d = trunc(a);
+  <done> FADCR = c6000_fp_status(FADCR, a, sideShift);
+}
+@else
 macro c6000_sem_sp_to_int(a, d, side, forceTrunc) {
   local sideShift:4 = side;
   local forced:4 = forceTrunc;
@@ -2401,8 +2493,21 @@ macro c6000_sem_sp_to_int(a, d, side, forceTrunc) {
   <done>
   FADCR = FADCR | (flags << sideShift);
 }
+@endif
 # SEM: DPINT
 # SEM: DPTRUNC
+@if FP_MODEL == "analysis"
+macro c6000_sem_dp_to_int(a, d, side, forceTrunc) {
+  local sideShift:4 = side;
+  local forced:4 = forceTrunc;
+  if (forced != 0) goto <truncate>;
+  local rounded:8 = round(a);
+  d = trunc(rounded);
+  goto <done>;
+  <truncate> d = trunc(a);
+  <done> FADCR = c6000_fp_status(FADCR, a, sideShift);
+}
+@else
 macro c6000_sem_dp_to_int(a, d, side, forceTrunc) {
   local sideShift:4 = side;
   local forced:4 = forceTrunc;
@@ -2478,6 +2583,7 @@ macro c6000_sem_dp_to_int(a, d, side, forceTrunc) {
   <done>
   FADCR = FADCR | (flags << sideShift);
 }
+@endif
 # SEM: CMPEQSP
 # SEM: CMPGTSP
 # SEM: CMPLTSP
@@ -2542,6 +2648,20 @@ macro c6000_sem_compare_sp(a, b, d, side, kind) {
 # SEM: CMPEQDP
 # SEM: CMPGTDP
 # SEM: CMPLTDP
+@if FP_MODEL == "analysis"
+macro c6000_sem_compare_dp(a, b, d, side, kind) {
+  local sideShift:4 = side;
+  local operation:4 = kind;
+  if (operation == 0) goto <equal>;
+  if (operation == 1) goto <greater>;
+  d = zext(a f< b);
+  goto <done>;
+  <equal> d = zext(a f== b);
+  goto <done>;
+  <greater> d = zext(a f> b);
+  <done> FAUCR = c6000_fp_status(FAUCR, a, b, sideShift);
+}
+@else
 macro c6000_sem_compare_dp(a, b, d, side, kind) {
   local left:8 = a;
   local right:8 = b;
@@ -2583,6 +2703,7 @@ macro c6000_sem_compare_dp(a, b, d, side, kind) {
   flags = flags | 0x10;
   <done> FAUCR = FAUCR | (flags << sideShift);
 }
+@endif
 
 # ---------------------------------------------------------------------------
 # Shifts - SPRUFE8B section 3.12, SHL / SHR / SHRU / SSHL.
