@@ -156,7 +156,8 @@ C6000PipelineSchedules.enable(program, function,
 Use an empty set only when there are no incoming E1 hazards. Conditional incoming
 hazards must be resolved for the selected entry contract; they are not guessed from a
 prototype. A return with pending effects is refused rather than dropping effects that
-belong in the caller.
+belong in the caller. An instruction whose predicate is false when it issues does
+nothing more, so it is not a pending effect, also for a store-tail return (SPRUFE8B 3.6).
 
 ### Post-return store observation
 
