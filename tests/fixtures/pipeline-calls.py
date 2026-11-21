@@ -2,7 +2,8 @@
 # SPDX-License-Identifier: Apache-2.0
 """Sequential leaf calls, CALLP and saved return links; IMAGE JSON [be].
 Independent synthetic fields: SPRUFE8B 3.5, 3.7, 3.8.10, 4.2.6, CALLP p.172,
-B/register and BNOP/register, compact Scs10 Figure F-19. No firmware bytes.
+B/register and BNOP/register, compact Scs10 Figure F-19, and a load disabled at
+issue still in flight when the return lands. No firmware bytes.
 """
 from pathlib import Path
 import json,struct,sys
@@ -84,5 +85,17 @@ def main():
   for variant,error in [('collision','simultaneous'),('nop_conflict','multicycle NOP'),('pending_branch','CALLP requires'),('clobber_saved','unresolved register branch'),('late_link','unresolved register branch'),('nonlocal_return','unresolved register branch')]:add(f'callp_s{side}_{variant}',side=side,variant=variant,error=error)
  for variant,error in [('',None),('copy_chain',None),('delay_overwrite',None),('disabled_clobber',None),('delay_late_overwrite',None),('unknown','unresolved register branch'),('overwrite','unresolved register branch'),('conditional','unresolved register branch'),('same_packet','unresolved register branch'),('late','unresolved register branch')]:add('saved_link_'+(variant or 'plain'),'ordinary',variant=variant,error=error)
  for variant,error in [('',None),('distinct',None),('clobber_target','target lacks exact'),('late_target','target lacks exact'),('clobber_alias','unresolved register branch')]:add('multi_'+(variant or 'reuse'),'multi',variant=variant,error=error)
+ def plain(name,words,expected,inputs=None,memory=None):
+  c=0x1000+len(rows)*0x800
+  for k,w in enumerate(words):struct.pack_into(endian+'I',image,c-0x1000+4*k,w)
+  row=dict(name=name,mode='plain',caller=c,caller_end=c+len(words)*4,sites=[],expected=expected,input=inputs or {})
+  if memory:row['memory']={str(k):v for k,v in memory.items()}
+  rows.append(row)
+ # [A1] LDW is issued after A1 was cleared, one cycle before the return lands: disabled at
+ # issue, it does nothing more, so the return doesn't leave it pending.
+ plain('dead_flight_at_return',[mvk(0,1)|1,3<<18|0x362,2<<13,4<<29|3<<23|4<<18|0x64,0],{'A3':0,'A1':0,'PC':0x9000},memory={0x8200:0x1234})
+ # The same load issued in the packet the return lands in: its predicate is sampled at issue.
+ plain('dead_flight_in_return_packet',[mvk(0,1)|1,3<<18|0x362,3<<13,4<<29|3<<23|4<<18|0x64,0],{'A3':0,'A1':0,'PC':0x9000},memory={0x8200:0x1234})
+ assert len(rows)*0x800<=len(image)
  Path(sys.argv[1]).write_bytes(image);Path(sys.argv[2]).write_text(json.dumps(rows,indent=2)+'\n')
 if __name__=='__main__':main()
