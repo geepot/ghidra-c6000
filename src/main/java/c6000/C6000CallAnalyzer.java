@@ -717,7 +717,8 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 		 * edge). A call, or a path this cannot follow, leaves nothing known. With {@code only}, nothing
 		 * falls into the label: what the entering jumps agree on replaces what the look-back held.
 		 */
-		private void meetEntries(Instruction label, Map<Register, long[]> regs, Constants trace, boolean only) {
+		private boolean meetEntries(Instruction label, Map<Register, long[]> regs, Constants trace, boolean only) {
+			boolean clean = true;
 			List<Instruction> jumps = new ArrayList<>();
 			for (Reference ref : program.getReferenceManager().getReferencesTo(label.getMinAddress())) {
 				if (!ref.getReferenceType().isFlow() || ref.getReferenceType().isFallthrough()) continue;
@@ -725,14 +726,14 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 				if (jump == null || ref.getReferenceType().isCall() || entryDepth == 0 || jumps.size() == ENTRY_PATHS ||
 					externalEntry(label)) {
 					trace.forget();
-					return;
+					return true;
 				}
 				jumps.add(jump);
 			}
 			if (jumps.isEmpty()) {
-				// A function or program entry: its callers are not known.
+				// A function or program entry, or an address held as data: how it is reached is not known.
 				trace.forget();
-				return;
+				return true;
 			}
 			Instruction savedVia = viaInsn;
 			Address savedReturn = backwardReturn;
@@ -746,8 +747,10 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 					targetOnly = saved;
 					if (other == null) {
 						trace.forget();
-						return;
+						return true;
 					}
+					// The jump arrives with another transfer of its window still in flight.
+					if (only && other.landed().nested()) clean = false;
 					List<Instruction> issued = other.landed().issued();
 					int since = -1;
 					for (int i = 0; i < issued.size(); i++) if (issued.get(i).getMinAddress().equals(label.getMinAddress())) since = i;
@@ -775,6 +778,7 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 				viaInsn = savedVia;
 				backwardReturn = savedReturn;
 			}
+			return clean;
 		}
 
 		Call recognize(Instruction branch) {
@@ -919,7 +923,8 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 					if (back.next() <= issue[i]) { back.remove(); trace.forget(callClobbered()); }
 				}
 				if (entered[i]) {
-					meetEntries(insn, regs, trace, dead <= issue[i]);
+					// Reached only with another transfer in flight: nothing from there is known.
+					if (!meetEntries(insn, regs, trace, dead <= issue[i])) trace.forget();
 					dead = Integer.MAX_VALUE;
 				}
 				if (insn != viaInsn && isFlow(insn)) {
@@ -935,7 +940,9 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 			// packet read the same E1 snapshot, before any E1 writer commits.
 			trace.before(issue[branchIndex]);
 			for (int back : returns) if (back <= issue[branchIndex]) trace.forget(callClobbered());
-			if (entered[branchIndex]) meetEntries(branch, regs, trace, dead <= issue[branchIndex]);
+			// A branch reached only by a jump with another transfer in flight does not arrive alone.
+			if (entered[branchIndex] && !meetEntries(branch, regs, trace, dead <= issue[branchIndex]) && !targetOnly && !valuesOnly)
+				return null;
 			Register source = branch.getRegister(0);
 			Long target = null;
 			if (source != null) {
@@ -982,10 +989,16 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 			return clobbered;
 		}
 
-		/** A function's entry or a program entry point: reached from callers this cannot see. */
+		/**
+		 * Reached in ways this cannot see: a function or program entry, or an address something holds as
+		 * data, at any byte of {@code insn}.
+		 */
 		private boolean externalEntry(Instruction insn) {
-			return program.getSymbolTable().isExternalEntryPoint(insn.getMinAddress()) ||
-				program.getFunctionManager().getFunctionAt(insn.getMinAddress()) != null;
+			for (Address at = insn.getMinAddress(); at.compareTo(insn.getMaxAddress()) <= 0; at = at.next()) {
+				if (program.getSymbolTable().isExternalEntryPoint(at) || program.getFunctionManager().getFunctionAt(at) != null) return true;
+				for (Reference ref : program.getReferenceManager().getReferencesTo(at)) if (ref.getReferenceType().isData()) return true;
+			}
+			return false;
 		}
 
 		/** A jump, branch or call from another address targets {@code insn}, or it is an entry. */
@@ -998,7 +1011,8 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 		}
 
 		/** The registers when the branch lands, the address after the last instruction issued before that, and the issue order. */
-		private record Landed(Map<Register, long[]> values, long end, Instruction partner, List<Instruction> issued, int[] cycles) {}
+		private record Landed(Map<Register, long[]> values, long end, Instruction partner, List<Instruction> issued, int[] cycles,
+				boolean nested) {}
 
 		/**
 		 * Issue what the hardware issues from {@code branch}'s packet until {@code branch}, taken, lands six
@@ -1023,6 +1037,7 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 					span = Math.max(span, 1 + extraCycles(program, prefix.get(i)));
 				}
 				Instruction last = branch;
+				boolean nested = false;
 				long end = branch.getMaxAddress().getOffset() + 1;
 				Instruction at = parallelWithNext(branch) ? next(branch) : null;
 				if (at == null && parallelWithNext(branch)) return null;
@@ -1035,7 +1050,10 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 						Boolean runs = executes(issued, index, facts);
 						if (transfer(insn)) {
 							// One that may be taken with the branch lands in the callee: no call to place here.
-							if (!Boolean.FALSE.equals(runs) && !valuesOnly) return null;
+							if (!Boolean.FALSE.equals(runs)) {
+								if (!valuesOnly) return null;
+								nested = true;
+							}
 							if (partner == null && complementary(branch, insn)) partner = insn;
 						}
 						trace.before(cycle);
@@ -1057,7 +1075,7 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 				// Retire every pending write: a load's E5 or a later multi-cycle result supersedes an
 				// earlier E1 link even after the callee is entered.
 				trace.before(Integer.MAX_VALUE);
-				return new Landed(values, end, partner, issued, cycles);
+				return new Landed(values, end, partner, issued, cycles, nested);
 			}
 			catch (MemoryAccessException e) {
 				return null;
