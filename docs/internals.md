@@ -158,6 +158,23 @@ BPOS and ADDKPC. Full32 BNOP displacement counts words in ordinary packets and h
 in header-based packets. The primed `c_hdrpkt` context selects that scale. Targets are
 exported in RAM so Ghidra can follow them as code references.
 
+### Staged execute-packet writes
+
+`C6000PacketStagingAnalyzer` takes each read of a register that an earlier member of the
+same execute packet writes (`C6000SamePacketHazardAnalyzer.oldReads`, from p-code) and
+sets context fields on two instructions. The writer gets `c_staged`, `c_defer` and
+`c_defer_reg`: a wrapper constructor saves the register, builds the instruction, moves the
+result to `C6000_NEW_<reg>` and restores the register. The last reader gets `c_cm1` or
+`c_cm2` with the register: the wrapper copies `C6000_NEW_<reg>` into the register after
+the instruction, or, for a branch, the `CFlowDelay` table does so right after the branch
+has read its predicate and target. `C6000DelaySlots.recontext` decodes the instruction
+unit again with the new fields and keeps its overrides, references and comments. The
+analyzer then checks from p-code that the write is held and committed, and takes back
+anything that is not. `C6000PacketStagingAnalyzer.hardware` gives the instruction without
+staging; the call analyzer, the hazard analyzer, the low-half and jump-table analyzers
+and the exact-schedule compiler and its hashes use it, so staging never changes what they
+see.
+
 ### Call and return recovery
 
 The call analyzer recognizes a B or BNOP transfer as a returning call when its delay

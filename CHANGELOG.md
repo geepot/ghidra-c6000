@@ -4,6 +4,19 @@
 
 ### Added
 
+* Staged execute-packet writes. Every member of an execute packet reads its operands before
+  any member writes (SPRUFE8B 3.5), but p-code runs the members in order. Where a member
+  reads a register that an earlier member of its packet writes, the new `C6000 Packet
+  Staging` analyzer now holds that write: the register keeps its old value and the result
+  waits in a `C6000_NEW_` register until the last member that reads the old value has run.
+  A branch that is the last such reader commits the result after reading its predicate and
+  target. The decompiled C is then the hardware's, for example `b - a` for
+  `MV B4,A4 || MV A4,A5` followed by `SUB A4,A5,A4`, which was `0`. One whole A or B
+  register per writer and two commits per member are staged; anything else, such as a
+  control register, keeps its same-packet hazard warning. Exact schedules and the
+  analyzers that model the pipeline read the instruction without staging. New context
+  fields `c_staged`, `c_defer`, `c_defer_reg`, `c_cm1`, `c_cm1_reg`, `c_cm2` and `c_cm2_reg`
+  use bits 24-31 and 48-61 in both byte orders.
 * A `C6000 Nested Delay Windows` warning bookmark where native lifting cannot place a
   transfer, so the function's C is wrong with no other sign: a branch issued in a delay
   cycle of another branch, which lands after it, and a predicated call whose return

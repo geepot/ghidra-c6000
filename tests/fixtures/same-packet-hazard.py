@@ -23,20 +23,20 @@ RET = """        B       .S2     B3
 # name, offsets of the warned members, body
 CASES = [
     # #71's ps0: return b - a, but sequential MVs give 0
-    ("ps0", [4], """{n}:
+    ("ps0", [], """{n}:
         MV      .L1X    B4,A4
 ||      MV      .S1     A4,A5
         SUB     .L1     A4,A5,A4
 """ + RET),
     # ps0 with a TSCL write, which a schedule refuses as opaque
-    ("timer", [4], """{n}:
+    ("timer", [], """{n}:
         MV      .L1X    B4,A4
 ||      MV      .S1     A4,A5
 ||      MVC     .S2     B5,TSCL
         SUB     .L1     A4,A5,A4
 """ + RET),
     # The return reads the caller's B3, not the B5 written beside it
-    ("branch", [4], """{n}:
+    ("branch", [], """{n}:
         MV      .L2     B5,B3
 ||      B       .S2     B3
         NOP             5
@@ -47,7 +47,7 @@ CASES = [
 ||      ADDSP   .L1     A4,A5,A4
 """ + RET),
     # A write to the predicate register runs before a reader under the opposite predicate
-    ("predicate", [8], """{n}:
+    ("predicate", [], """{n}:
         MV      .L2X    A4,B0
   [!B0] MVK     .S2     1,B0
 ||[B0]  ADD     .L1     A4,1,A4
@@ -83,15 +83,30 @@ CASES = [
         MV      .S1     A4,A5
         SUB     .L1     A4,A5,A4
 """ + RET),
+    # Three members: two read the old A5, and the last also the old A6, so one member commits two
+    # staged results. b + c on hardware; lifted in order it is 3 * a.
+    ("chain", [], """{n}:
+        MV      .L1X    B4,A5
+        MV      .L1     A4,A5
+||      ADD     .S1     A5,A5,A6
+||      ADD     .D1     A5,A6,A4
+""" + RET),
     # ps0 after an entry packet, which an active schedule makes its whole lifting;
     # the check activates a reviewed schedule for it
-    ("reviewed", [8], """{n}:
+    ("reviewed", [], """{n}:
         MVK     .S1     0,A6
         MV      .L1X    B4,A4
 ||      MV      .S1     A4,A5
         SUB     .L1     A4,A5,A4
 """ + RET),
 ]
+
+
+# What the decompiled C of a case whose packet is staged must contain: the hardware's result.
+EXPECTED_C = {
+    "ps0": ["param_2 - param_1"], "timer": ["param_2 - param_1"], "reviewed": ["param_2 - param_1"],
+    "predicate": ["param_1 + 1"], "chain": ["param_2 + param_3"],
+}
 
 
 def main():
@@ -125,7 +140,8 @@ def main():
             raise ValueError("Section too long for " + name)
         base = 0x1000 + index * SIZE
         image[index * SIZE:index * SIZE + len(words)] = words
-        manifest.append(dict(name=name, entry=base, end=base + SIZE - 1, warn=[base + w for w in warn]))
+        manifest.append(dict(name=name, entry=base, end=base + SIZE - 1, warn=[base + w for w in warn],
+                             c=EXPECTED_C.get(name, [])))
     if len(sys.argv) == 4:
         image = b"".join(image[index:index + 4][::-1] for index in range(0, len(image), 4))
     image_path.write_bytes(image)

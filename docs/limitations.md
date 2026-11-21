@@ -107,6 +107,15 @@ falls into.
 | Closed-call schedules | Pending effects through explicitly proved caller/callee boundaries; normal decompiler injection for complete reviewed callers. | Sequential leaf calls and pinned ownership/entry assumptions; explicit activation only. |
 | Read-only caller continuations | Pending effects through explicit immutable caller windows. | Bounded plans and entry proofs; not automatically installed as callee-only schedules. |
 
+Native lifting stages same-packet writes: where a member of an execute packet reads a
+register an earlier member writes, the write is held until the last such reader has run
+(`C6000 Packet Staging`), so the member reads the old value as on hardware. It stages one
+whole A or B register per writer and commits at most two results after one member. A
+same-packet read it cannot stage, such as one of a control register, keeps its
+`C6000 Same-Packet Hazards` warning. Results that land cycles later (multiplies, loads,
+floating point) are still written at once by native lifting; only an exact schedule
+models that.
+
 Native delay recovery remains conservative for nested transfers and BDEC/BPOS.
 Native lifting cannot place a
 branch issued in another branch's delay window, which lands after it, or a predicated

@@ -1250,7 +1250,7 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 			// their own physical instruction and issue time in this walk.
 			if (insn.getDelaySlotDepth() != 0) return writes;
 			Register load = loadDestination(insn);
-			for (Object result : insn.getResultObjects()) if (result instanceof Register r && (load == null || !overlaps(r, load))) writes.add(r);
+			for (Object result : C6000PacketStagingAnalyzer.hardware(insn).getResultObjects()) if (result instanceof Register r && (load == null || !overlaps(r, load))) writes.add(r);
 			if (load != null) { Register base = updatingBase(insn);if (base != null && !writes.contains(base)) writes.add(base); }
 			return writes;
 		}
@@ -1374,7 +1374,7 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 			// as delay slots; they are tracked separately, so skip its writes.
 			if (insn.getDelaySlotDepth() != 0 || transfer(insn)) return null;
 			List<Register> written = new ArrayList<>();
-			for (Object result : insn.getResultObjects()) if (result instanceof Register r) written.add(r);
+			for (Object result : C6000PacketStagingAnalyzer.hardware(insn).getResultObjects()) if (result instanceof Register r) written.add(r);
 			Long value = written.size() == 1 ? constantWrite(insn, written.get(0), regs) : null;
 			for (Register r : written) regs.keySet().removeIf(known -> overlaps(known, r));
 			if (value == null) return null;
@@ -1518,7 +1518,7 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 			String p = predicate(insn);
 			Register guard = p == null ? null : program.getRegister(p.replace("!", ""));
 			if (guard != null) seeds.add(new long[] { guard.getAddress().getOffset(), guard.getMinimumByteSize(), p.startsWith("!") ? 0 : 1 });
-			Long value = C6000LoopCounterProof.constantOutput(program.getLanguage(), insn.getPcode(),
+			Long value = C6000LoopCounterProof.constantOutput(program.getLanguage(), C6000PacketStagingAnalyzer.hardwarePcode(insn),
 				register.getAddress().getOffset(), register.getMinimumByteSize(), seeds);
 			return value == null ? null : value & 0xffffffffL;
 		}

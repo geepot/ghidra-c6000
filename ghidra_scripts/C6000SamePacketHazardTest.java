@@ -28,6 +28,7 @@ public class C6000SamePacketHazardTest extends GhidraScript {
 		String name;
 		long entry, end;
 		long[] warn;
+		String[] c;
 	}
 
 	@Override
@@ -93,6 +94,9 @@ public class C6000SamePacketHazardTest extends GhidraScript {
 		String c = result.getDecompiledFunction().getC();
 		if (c.contains(NOTE) == expected.isEmpty())
 			throw new AssertionError(item.name + ": note " + (expected.isEmpty() ? "present" : "missing") + " in\n" + c);
+		// A staged packet reads before it writes: the C is the hardware's result.
+		if (item.c != null) for (String text : item.c)
+			if (!c.contains(text)) throw new AssertionError(item.name + ": C lacks \"" + text + "\":\n" + c);
 	}
 
 	private static List<String> hex(Set<Long> addresses) {

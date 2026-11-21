@@ -55,8 +55,8 @@ public final class C6000SamePacketHazardAnalyzer extends AbstractAnalyzer {
 				"native lifting gives it the new value, so the function's C may be wrong unless an exact schedule is active",
 			AnalyzerType.FUNCTION_ANALYZER);
 		setDefaultEnablement(true);
-		// After the windows and reviewed schedules are final.
-		setPriority(AnalysisPriority.FUNCTION_ANALYSIS.after().after().after());
+		// After the windows and reviewed schedules are final, and after packet staging.
+		setPriority(AnalysisPriority.FUNCTION_ANALYSIS.after().after().after().after());
 	}
 
 	@Override
@@ -98,24 +98,28 @@ public final class C6000SamePacketHazardAnalyzer extends AbstractAnalyzer {
 	/** A packet member that reads register, which an earlier member of its execute packet writes. */
 	record Hazard(Instruction reader, Instruction writer, String register) {}
 
-	/** Each packet member that reads what an earlier member of its execute packet writes. */
-	static List<Hazard> hazards(Program program, Function function, TaskMonitor monitor)
+	/** A read of {@code register} that must see the value from before {@code writer}, an earlier member of packet {@code packet}. */
+	record OldRead(Instruction reader, Instruction writer, Varnode register, int packet) {}
+
+	/** Every such read in the function, in address order; a reader has one per register and writer. */
+	static List<OldRead> oldReads(Program program, Function function, TaskMonitor monitor)
 			throws CancelledException, MemoryAccessException {
-		List<Hazard> found = new ArrayList<>();
+		List<OldRead> found = new ArrayList<>();
 		List<Instruction> packet = new ArrayList<>();
 		Instruction previous = null;
+		int id = 0;
 		for (Instruction ins : program.getListing().getInstructions(function.getBody(), true)) {
 			monitor.checkCancelled();
 			if (C6000CallAnalyzer.baseName(ins).equals("CPKT")) continue;
 			if (previous == null || !C6000ExecutionPackets.parallelWithNext(program, previous) ||
-				!ins.getAddress().equals(next(program, previous))) packet.clear();
+				!ins.getAddress().equals(next(program, previous))) { packet.clear(); id++; }
 			Set<Varnode> reads = reads(program, ins);
 			for (Instruction earlier : packet) {
-				Varnode shared = shared(program, earlier, ins, reads);
-				if (shared != null) {
-					Register register = program.getRegister(shared.getAddress(), shared.getSize());
-					found.add(new Hazard(ins, earlier, register != null ? register.getName() : shared.toString()));
-					break;
+				if (exclusive(program, earlier, ins)) continue;
+				for (Varnode written : writes(earlier)) {
+					if (overlap(Set.of(written), reads) == null) continue;
+					if (written.getOffset() >= CONTROL && sticky(program, earlier, written) && sticky(program, ins, written)) continue;
+					found.add(new OldRead(ins, earlier, written, id));
 				}
 			}
 			packet.add(ins);
@@ -124,19 +128,23 @@ public final class C6000SamePacketHazardAnalyzer extends AbstractAnalyzer {
 		return found;
 	}
 
-	/**
-	 * A register earlier writes and ins reads. Two read-modify-writes of a control register
-	 * only OR in sticky flags, which commute (SPRUFE8B 2.8.4 CSR, 2.10 FADCR, FAUCR, FMCR).
-	 */
-	private static Varnode shared(Program program, Instruction earlier, Instruction ins, Set<Varnode> reads) {
-		if (exclusive(program, earlier, ins)) return null;
-		for (Varnode written : writes(earlier)) {
-			if (overlap(Set.of(written), reads) == null) continue;
-			if (written.getOffset() >= CONTROL && sticky(program, earlier, written) && sticky(program, ins, written)) continue;
-			return written;
+	/** Each packet member that reads what an earlier member of its execute packet writes, unless that write is staged. */
+	static List<Hazard> hazards(Program program, Function function, TaskMonitor monitor)
+			throws CancelledException, MemoryAccessException {
+		List<Hazard> found = new ArrayList<>();
+		Set<Address> seen = new java.util.HashSet<>();
+		for (OldRead read : oldReads(program, function, monitor)) {
+			if (C6000PacketStagingAnalyzer.staged(program, read.writer(), read.register()) || !seen.add(read.reader().getAddress())) continue;
+			Register register = program.getRegister(read.register().getAddress(), read.register().getSize());
+			found.add(new Hazard(read.reader(), read.writer(), register != null ? register.getName() : read.register().toString()));
 		}
-		return null;
+		return found;
 	}
+
+	/*
+	 * Two read-modify-writes of a control register only OR in sticky flags, which commute
+	 * (SPRUFE8B 2.8.4 CSR, 2.10 FADCR, FAUCR, FMCR): oldReads leaves that pair out.
+	 */
 
 	/** Opposite predicates on one register that earlier leaves alone: at most one of them executes. */
 	private static boolean exclusive(Program program, Instruction earlier, Instruction ins) {
@@ -181,7 +189,7 @@ public final class C6000SamePacketHazardAnalyzer extends AbstractAnalyzer {
 			return reads;
 		}
 		Set<Varnode> written = new LinkedHashSet<>();
-		for (PcodeOp op : ins.getPcode()) {
+		for (PcodeOp op : C6000PacketStagingAnalyzer.hardwarePcode(ins)) {
 			for (Varnode input : op.getInputs())
 				if (architectural(input) && (!external || overlap(written, Set.of(input)) == null)) reads.add(input);
 			if (architectural(op.getOutput())) written.add(op.getOutput());
@@ -193,7 +201,7 @@ public final class C6000SamePacketHazardAnalyzer extends AbstractAnalyzer {
 	private static Set<Varnode> writes(Instruction ins) {
 		Set<Varnode> writes = new LinkedHashSet<>();
 		if (transfer(ins)) return writes;
-		for (PcodeOp op : ins.getPcode())
+		for (PcodeOp op : C6000PacketStagingAnalyzer.hardwarePcode(ins))
 			if (architectural(op.getOutput())) writes.add(op.getOutput());
 		return writes;
 	}

@@ -319,7 +319,7 @@ public class C6000JumpTableAnalyzer extends AbstractAnalyzer {
 				Register compared = insn.getRegister(1 - limitAt);
 				if (limit != null && compared != null && dst != null) guards.add(new Guard(at, dst, compared, limit));
 			}
-			for (Object written : insn.getResultObjects()) {
+			for (Object written : C6000PacketStagingAnalyzer.hardware(insn).getResultObjects()) {
 				if (written instanceof Register r) {
 					tableBase.remove(r);
 					loaded.remove(r);

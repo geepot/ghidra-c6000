@@ -259,6 +259,8 @@ public final class C6000PipelineContracts {
                 var normalized = new ProcessorContextImpl(program.getLanguage());
                 if (value != null) normalized.setRegisterValue(value);
                 normalized.setRegisterValue(new RegisterValue(program.getRegister("c_schedule_entry"), BigInteger.ZERO));
+                // Packet staging is native lifting's; a schedule reads the hardware instruction.
+                C6000PacketStagingAnalyzer.unstage(program, normalized);
                 text.append(':').append(normalized.getRegisterValue(base)).append('\n');
                 if (!at.equals(entry) && schedule.covered().contains(at) &&
                     BigInteger.ONE.equals(context.getValue(program.getRegister("c_schedule_entry"), at, false))) {

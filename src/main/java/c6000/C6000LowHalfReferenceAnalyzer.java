@@ -162,12 +162,12 @@ public final class C6000LowHalfReferenceAnalyzer extends AbstractAnalyzer {
     }
 
     private static boolean writes(Instruction i, Register r) {
-        for (Object o : i.getResultObjects()) if (o instanceof Register w && overlaps(w, r)) return true;
+        for (Object o : C6000PacketStagingAnalyzer.hardware(i).getResultObjects()) if (o instanceof Register w && overlaps(w, r)) return true;
         return false;
     }
 
     private static boolean reads(Instruction i, Register r) {
-        for (Object o : i.getInputObjects()) if (o instanceof Register w && overlaps(w, r)) return true;
+        for (Object o : C6000PacketStagingAnalyzer.hardware(i).getInputObjects()) if (o instanceof Register w && overlaps(w, r)) return true;
         return false;
     }
 

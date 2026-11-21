@@ -92,6 +92,15 @@ define register offset=0x3000 size=8 [ contextreg ];
 define register offset=0x3100 size=4 [ PC ];
 define register offset=0x3200 size=4 [ C6000_PIPE_RET C6000_PIPE_ILC C6000_PIPE_RILC ];
 
+# Staged execute-packet writes (SPRUFE8B 3.5: every member of an execute packet
+# reads its operands before any member writes).  A member whose result a later
+# member of its packet still has to read as it was keeps the register unchanged
+# and holds the result here until the last such reader has run.
+define register offset=0x3300 size=4 [ C6000_STAGE_OLD ];
+define register offset=0x4000 size=4
+  [ C6000_NEW_A0 C6000_NEW_A1 C6000_NEW_A2 C6000_NEW_A3 C6000_NEW_A4 C6000_NEW_A5 C6000_NEW_A6 C6000_NEW_A7 C6000_NEW_A8 C6000_NEW_A9 C6000_NEW_A10 C6000_NEW_A11 C6000_NEW_A12 C6000_NEW_A13 C6000_NEW_A14 C6000_NEW_A15 C6000_NEW_A16 C6000_NEW_A17 C6000_NEW_A18 C6000_NEW_A19 C6000_NEW_A20 C6000_NEW_A21 C6000_NEW_A22 C6000_NEW_A23 C6000_NEW_A24 C6000_NEW_A25 C6000_NEW_A26 C6000_NEW_A27 C6000_NEW_A28 C6000_NEW_A29 C6000_NEW_A30 C6000_NEW_A31
+    C6000_NEW_B0 C6000_NEW_B1 C6000_NEW_B2 C6000_NEW_B3 C6000_NEW_B4 C6000_NEW_B5 C6000_NEW_B6 C6000_NEW_B7 C6000_NEW_B8 C6000_NEW_B9 C6000_NEW_B10 C6000_NEW_B11 C6000_NEW_B12 C6000_NEW_B13 C6000_NEW_B14 C6000_NEW_B15 C6000_NEW_B16 C6000_NEW_B17 C6000_NEW_B18 C6000_NEW_B19 C6000_NEW_B20 C6000_NEW_B21 C6000_NEW_B22 C6000_NEW_B23 C6000_NEW_B24 C6000_NEW_B25 C6000_NEW_B26 C6000_NEW_B27 C6000_NEW_B28 C6000_NEW_B29 C6000_NEW_B30 C6000_NEW_B31 ];
+
 # Every field is `noflow`: each describes the fetch packet that physically
 # contains the slot, so it must never be inherited from the instruction that
 # happens to precede it.  Without `noflow` the disassembler propagates the
@@ -110,6 +119,17 @@ define context contextreg
   c_flow_delay = (15,22) noflow # proven delay window in bytes, set by the late return pass
   c_schedule_entry = (23,23) noflow
   c_hdrpkt = (14,14) noflow # slot lies in a header-based (compact) fetch packet
+  # Staged execute-packet writes, set by the packet staging analyzer.
+  c_staged    = (24,24) noflow # wrap this instruction: defer its write and/or commit after it
+  c_defer     = (25,25) noflow # hold this instruction's write to c_defer_reg
+  c_defer_reg = (26,31) noflow # 0-31 A0-A31, 32-63 B0-B31
+  c_defer_new = (26,31) noflow
+  c_cm1       = (48,48) noflow # commit the held write to c_cm1_reg here
+  c_cm1_reg   = (49,54) noflow
+  c_cm1_new   = (49,54) noflow
+  c_cm2       = (55,55) noflow
+  c_cm2_reg   = (56,61) noflow
+  c_cm2_new   = (56,61) noflow
 @if ENDIAN == "big"
 @include "c6000_compact_context.sinc"
 @endif
@@ -553,6 +573,27 @@ define pcodeop c6000_tsch_read;
 @if FP_MODEL == "analysis"
 define pcodeop c6000_fp_status;
 @endif
+attach variables [ c_defer_reg c_cm1_reg c_cm2_reg ]
+  [ A0 A1 A2 A3 A4 A5 A6 A7 A8 A9 A10 A11 A12 A13 A14 A15 A16 A17 A18 A19 A20 A21 A22 A23 A24 A25 A26 A27 A28 A29 A30 A31
+    B0 B1 B2 B3 B4 B5 B6 B7 B8 B9 B10 B11 B12 B13 B14 B15 B16 B17 B18 B19 B20 B21 B22 B23 B24 B25 B26 B27 B28 B29 B30 B31 ];
+attach variables [ c_defer_new c_cm1_new c_cm2_new ]
+  [ C6000_NEW_A0 C6000_NEW_A1 C6000_NEW_A2 C6000_NEW_A3 C6000_NEW_A4 C6000_NEW_A5 C6000_NEW_A6 C6000_NEW_A7 C6000_NEW_A8 C6000_NEW_A9 C6000_NEW_A10 C6000_NEW_A11 C6000_NEW_A12 C6000_NEW_A13 C6000_NEW_A14 C6000_NEW_A15 C6000_NEW_A16 C6000_NEW_A17 C6000_NEW_A18 C6000_NEW_A19 C6000_NEW_A20 C6000_NEW_A21 C6000_NEW_A22 C6000_NEW_A23 C6000_NEW_A24 C6000_NEW_A25 C6000_NEW_A26 C6000_NEW_A27 C6000_NEW_A28 C6000_NEW_A29 C6000_NEW_A30 C6000_NEW_A31
+    C6000_NEW_B0 C6000_NEW_B1 C6000_NEW_B2 C6000_NEW_B3 C6000_NEW_B4 C6000_NEW_B5 C6000_NEW_B6 C6000_NEW_B7 C6000_NEW_B8 C6000_NEW_B9 C6000_NEW_B10 C6000_NEW_B11 C6000_NEW_B12 C6000_NEW_B13 C6000_NEW_B14 C6000_NEW_B15 C6000_NEW_B16 C6000_NEW_B17 C6000_NEW_B18 C6000_NEW_B19 C6000_NEW_B20 C6000_NEW_B21 C6000_NEW_B22 C6000_NEW_B23 C6000_NEW_B24 C6000_NEW_B25 C6000_NEW_B26 C6000_NEW_B27 C6000_NEW_B28 C6000_NEW_B29 C6000_NEW_B30 C6000_NEW_B31 ];
+
+# The staged write of a packet member.  StagePre and StagePost bracket the
+# member that writes: the register keeps its old value and the result waits.
+# StageCommit moves a waiting result into its register after the last member
+# that reads the old one.  A branch reads its predicate and target, then builds
+# CFlowDelay, so a commit there follows its reads on every path.
+StagePre: is c_defer=0 { }
+StagePre: is c_defer=1 & c_defer_reg { C6000_STAGE_OLD = c_defer_reg; }
+StagePost: is c_defer=0 { }
+StagePost: is c_defer=1 & c_defer_reg & c_defer_new { c_defer_new = c_defer_reg; c_defer_reg = C6000_STAGE_OLD; }
+StageCommit1: is c_cm1=0 { }
+StageCommit1: is c_cm1=1 & c_cm1_reg & c_cm1_new { c_cm1_reg = c_cm1_new; }
+StageCommit2: is c_cm2=0 { }
+StageCommit2: is c_cm2=1 & c_cm2_reg & c_cm2_new { c_cm2_reg = c_cm2_new; }
+
 @include "c6000_flow_delay.sinc"
 @include "c6000_semantics.sinc"
 define pcodeop c6000_pipeline;
@@ -560,7 +601,9 @@ define pcodeop c6000_pipeline;
 # operand BEFORE the userop. The native return hides the physical CFG; dynamic
 # injection supplies the exact scheduled CFG and its captured return target.
 :^instruction is c_schedule_entry=1 & instruction [ c_schedule_entry=0; c_flow_delay=0; ] { c6000_pipeline(); return [C6000_PIPE_RET]; build instruction; }
-with : c_schedule_entry=0 {
+:^instruction is c_schedule_entry=0 & c_staged=1 & StagePre & StagePost & StageCommit1 & StageCommit2 & instruction [ c_staged=0; ]
+{ build StagePre; build instruction; build StagePost; build StageCommit1; build StageCommit2; }
+with : c_schedule_entry=0 & c_staged=0 {
 # Figure F-8 pointer branches use op=110 (IRP) or 111 (NRP).
 # The op field overlaps the five-bit register field of Figure F-7; match
 # these fully encoded forms before the general B-register constructors.

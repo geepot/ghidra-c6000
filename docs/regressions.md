@@ -577,6 +577,14 @@ call, and has no known target; 1bd0 does the same through B10 and keeps 0x1100. 
 a jump or return that always goes is reached only by the jumps that enter it, so the
 registers there come from those jumps.
 
+`tests/fixtures/same-packet-hazard.py` now also checks the decompiled C of the cases whose
+packets are staged: `ps0`, `timer` and `reviewed` return `b - a`, `predicate` returns
+`a + 1` only for a nonzero `a`, and `chain`, three members of which two read the old A5 and
+the last also the old A6, returns `b + c` (lifted in order it was `3 * a`). None of them
+is warned any more; `rounding`, a control-register read, still is. `reviewed` then
+activates an exact schedule, which must compile the instructions without staging and
+give the same C.
+
 ## Delayed-call predicate facts
 
 `delayed-call.py IMAGE [be]` and `C6000DelayedCallTest.java` (with

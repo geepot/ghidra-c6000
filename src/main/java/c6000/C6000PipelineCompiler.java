@@ -573,6 +573,7 @@ public final class C6000PipelineCompiler {
         context.setRegisterValue(new RegisterValue(program.getRegister("c_flow_delay"),BigInteger.ZERO));
         context.setRegisterValue(new RegisterValue(program.getRegister("c_schedule_entry"),BigInteger.ZERO));
         context.setRegisterValue(new RegisterValue(program.getRegister("c_branch_terminal"),BigInteger.ONE));
+        C6000PacketStagingAnalyzer.unstage(program,context);
         var memory=new DumbMemBufferImpl(program.getMemory(),at);
         var prototype=program.getLanguage().parse(memory,context,false);
         var ins=new PseudoInstruction(program,at,prototype,memory,context);

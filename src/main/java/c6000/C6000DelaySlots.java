@@ -9,6 +9,7 @@ import ghidra.program.disassemble.Disassembler;
 import ghidra.program.model.address.*;
 import ghidra.program.model.lang.InstructionPrototype;
 import ghidra.program.model.lang.ProcessorContextImpl;
+import ghidra.program.model.lang.Register;
 import ghidra.program.model.lang.RegisterValue;
 import ghidra.program.model.listing.*;
 import ghidra.program.model.mem.DumbMemBufferImpl;
@@ -552,7 +553,7 @@ public final class C6000DelaySlots {
         for (Instruction i : packet) {
             if (i == null) return true;
             if (C6000CallAnalyzer.baseName(i).startsWith("LD")) continue;
-            for (Object o : i.getResultObjects()) {
+            for (Object o : C6000PacketStagingAnalyzer.hardware(i).getResultObjects()) {
                 if (o instanceof ghidra.program.model.lang.Register r && r.contains(b3)) return true;
             }
         }
@@ -628,6 +629,52 @@ public final class C6000DelaySlots {
                 body.add(at,window.end());window.owner().setBody(body);added=body.getNumAddresses()-before;
             }
             return new Repair(at.toString(),window.end().toString(),bytes,oldDepth,branch.getDelaySlotDepth(),added);
+        }
+        catch (Exception failure) {
+            throw undo.putBack(failure);
+        }
+    }
+
+    /** The instruction that owns {@code ins} when it is a delay slot, else {@code ins}. */
+    static Instruction unitOwner(Program p, Instruction ins) {
+        Instruction owner = ins;
+        while (owner != null && owner.isInDelaySlot()) owner = p.getListing().getInstructionBefore(owner.getAddress());
+        return owner == null ? ins : owner;
+    }
+
+    /**
+     * Decode the instruction at {@code at} and its native delay window again with context fields
+     * changed: {@code fields} maps an instruction's address to the fields to set there. Every
+     * instruction keeps its place, length, override, fall-through, references and comments; on a
+     * failure everything is put back as it was.
+     */
+    static void recontext(Program p, Address at, Map<Address, Map<Register, BigInteger>> fields) throws Exception {
+        var listing = p.getListing();
+        Instruction first = listing.getInstructionAt(at);
+        if (first == null || first.isInDelaySlot()) throw new IllegalArgumentException("no instruction unit at " + at);
+        Address end = first.getMaxAddress().add(first.getPrototype().getDelaySlotByteCount());
+        FlowOverride override = first.getFlowOverride();
+        List<SavedInstruction> saved = snapshot(p, at, end);
+        var undo = Undo.of(p, at, end, override, saved);
+        listing.clearCodeUnits(at, end, false);
+        try {
+            for (var unit : undo.units()) {
+                RegisterValue context = unit.context();
+                for (var field : fields.getOrDefault(unit.at(), Map.of()).entrySet()) {
+                    context = context.assign(field.getKey(), field.getValue());
+                    p.getProgramContext().setValue(field.getKey(), unit.at(), unit.at(), field.getValue());
+                }
+                var decode = new ProcessorContextImpl(p.getLanguage());
+                decode.setRegisterValue(context);
+                var buffer = new DumbMemBufferImpl(p.getMemory(), unit.at());
+                var prototype = p.getLanguage().parse(buffer, decode, unit.prototype().isInDelaySlot());
+                if (prototype.getLength() != unit.prototype().getLength() ||
+                    prototype.getDelaySlotByteCount() != unit.prototype().getDelaySlotByteCount())
+                    throw new IllegalStateException("context change alters the instruction at " + unit.at());
+                listing.createInstruction(unit.at(), prototype, buffer, decode, unit.length());
+            }
+            listing.getInstructionAt(at).setFlowOverride(override);
+            restore(p, at, saved, false, null);
         }
         catch (Exception failure) {
             throw undo.putBack(failure);
