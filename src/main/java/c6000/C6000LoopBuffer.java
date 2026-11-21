@@ -310,9 +310,8 @@ public final class C6000LoopBuffer {
 			for (Instruction insn : packet) {
 				String mnemonic = insn.getMnemonicString();
 				if (mnemonic.contains("SPMASK")) mask |= scalar(insn) & 0xff;
-				boolean protectedLoad = isProtectedLoad(program, insn);
-				if (protectedLoad) protectedLoads.add(insn.getMinAddress());
-				duration = Math.max(duration, instructionCycles(program, insn, protectedLoad));
+				if (C6000ExecutionPackets.protectedLoad(program, insn)) protectedLoads.add(insn.getMinAddress());
+				duration = Math.max(duration, instructionCycles(program, insn));
 			}
 			List<Instruction> programOps = new ArrayList<>();
 			List<Instruction> bufferedOps = new ArrayList<>();
@@ -320,7 +319,8 @@ public final class C6000LoopBuffer {
 				String mnemonic = insn.getMnemonicString();
 				if (mnemonic.contains("SPMASK") || mnemonic.contains("SPKERNEL")) continue;
 				programOps.add(insn);
-				if ((unitBit(mnemonic) & mask) == 0 && !mnemonic.startsWith("BNOP")) {
+				// A BNOP is never buffered, predicated or not (SPRUFE8B 3.12 BNOP).
+				if ((unitBit(mnemonic) & mask) == 0 && !C6000CallAnalyzer.baseName(insn).startsWith("BNOP")) {
 					bufferedOps.add(insn);
 				}
 			}
@@ -706,37 +706,13 @@ public final class C6000LoopBuffer {
 		return ops;
 	}
 
-	private static int instructionCycles(Program program, Instruction insn, boolean protectedLoad) throws MemoryAccessException {
-		if (protectedLoad) return 5;
-		String name = insn.getMnemonicString();
-		int operand;
-		if (name.equals("NOP")) operand = 0;
-		else if (name.contains("BNOP")) return 1 + C6000ExecutionPackets.bnopCount(program, insn);
-		else if (name.contains("ADDKPC")) operand = 2;
-		else return 1;
-		Scalar count = insn.getScalar(operand);
-		if (count != null) return name.equals("NOP") ? Math.max(1, (int) count.getUnsignedValue()) : (int) count.getUnsignedValue() + 1;
-		// Accept remaining SLEIGH literal idle operands conservatively.
-		String rendered = insn.getDefaultOperandRepresentation(operand);
-		if (rendered != null && rendered.matches("[0-7]")) {
-			return Integer.parseInt(rendered) + 1;
-		}
-		throw new IllegalArgumentException("missing idle count at " +
-			insn.getMinAddress());
-	}
-
-	private static boolean isProtectedLoad(Program program, Instruction insn)
-			throws MemoryAccessException {
-		String name = insn.getMnemonicString();
-		int predicateEnd = name.indexOf(']');
-		if (predicateEnd >= 0) name = name.substring(predicateEnd + 1);
-		if (!name.startsWith("LD")) return false;
-		Address address = insn.getMinAddress();
-		Address headerAddress = address.getNewAddress(
-			(address.getOffset() & ~31L) + 28);
-		if (!program.getMemory().contains(headerAddress)) return false;
-		int header = program.getMemory().getInt(headerAddress);
-		return (header >>> 28) == 0xe && (header & (1 << 20)) != 0;
+	/** Cycles an instruction holds its packet (C6000ExecutionPackets.cycles); loop control issues in one. */
+	private static int instructionCycles(Program program, Instruction insn) throws MemoryAccessException {
+		String name = C6000CallAnalyzer.baseName(insn);
+		if (name.startsWith("SPLOOP") || name.startsWith("SPKERNEL") || name.startsWith("SPMASK")) return 1;
+		Integer cycles = C6000ExecutionPackets.cycles(program, insn);
+		if (cycles == null) throw new IllegalArgumentException("untimed instruction in a loop body at " + insn.getMinAddress());
+		return cycles;
 	}
 
 	private static int scalar(Instruction insn) {

@@ -257,7 +257,7 @@ public final class C6000PipelineCompiler {
         var proof=plan.entryEvidence();long pc=proof.finalIssuedPacketPc();if(!C6000ExecutionPackets.issuePrefix(program,entry.getNewAddress(pc)).isEmpty())throw fail("caller-entry evidence starts inside an execute packet");
         var packet=new ArrayList<Instruction>();int idle=0;Instruction generator=null;
         while(true){var instruction=entryEvidenceInstruction(pc,proof.setup());packet.add(instruction);if(packet.size()>8)throw fail("caller-entry oversized execute packet");String name=base(instruction);int inserted=0;
-            if(name.equals("CALLP"))inserted=5;else if(name.equals("NOP"))inserted=Math.max(0,(int)instruction.getScalar(0).getValue()-1);else if(name.equals("BNOP"))inserted=C6000ExecutionPackets.bnopCount(program,instruction);else if(name.equals("ADDKPC"))inserted=(int)instruction.getScalar(2).getValue();else if(C6000ExecutionPackets.protectedLoad(program,instruction))inserted=4;
+            Integer held=C6000ExecutionPackets.cycles(program,instruction);if(held==null)throw fail("caller-entry untimed instruction "+instruction);inserted=held-1;
             boolean generates=inserted>0||Set.of("CALLP","BNOP","ADDKPC").contains(name);
             if(generates){if(generator!=null&&!C6000ExecutionPackets.sameMulticycleNop(generator,instruction))throw fail("caller-entry conflicting NOP generators");generator=instruction;}idle=Math.max(idle,inserted);
             boolean parallel=C6000ExecutionPackets.parallelWithNext(program,instruction);pc=instruction.getMaxAddress().getOffset()+1;
