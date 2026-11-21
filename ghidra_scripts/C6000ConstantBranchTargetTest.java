@@ -34,8 +34,9 @@ public class C6000ConstantBranchTargetTest extends GhidraScript {
   if(!args[0].equals("check"))throw new IllegalArgumentException("bad mode");
   int checked=0;
   for(String row:rows){String[] f=row.split("\t");long start=Long.parseUnsignedLong(f[0],16);
-   var branch=currentProgram.getListing().getInstructionAt(toAddr(start+8));
-   if(branch==null)throw new AssertionError("Missing branch at "+Long.toHexString(start+8));
+   long site=start+Long.parseLong(f[5]);
+   var branch=currentProgram.getListing().getInstructionAt(toAddr(site));
+   if(branch==null)throw new AssertionError("Missing branch at "+Long.toHexString(site));
    Set<String> targets=new TreeSet<>();for(var a:branch.getFlows())targets.add(a.toString());
    if(f[3].equals("exact")){
     if(!targets.equals(Set.of(f[1])))throw new AssertionError(branch.getAddress()+" expected "+f[1]+" got "+targets);

@@ -18,6 +18,12 @@
 
 ### Fixed
 
+* A register branch's target is checked against what its register holds at E1 wherever the
+  call analyzer's look-back proves that value, not only for an `MVK`/`MVKH` pair directly
+  before the branch. A write in the branch's own execute packet, or one that only runs when
+  the branch's predicate is false, no longer adds a second, wrong target.
+* The loop-buffer analysis and the exact-schedule compiler's caller-entry check use the
+  shared cycle count, and a predicated `BNOP` is no longer treated as buffered.
 * The call analyzer's look-back no longer carries a register constant or a fall-through
   fact across code that a jump from elsewhere enters, unless every entering jump arrives
   with the same value or has not written the register since the label (a loop's back

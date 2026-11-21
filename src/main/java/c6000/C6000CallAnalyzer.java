@@ -721,11 +721,17 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 			for (Reference ref : program.getReferenceManager().getReferencesTo(label.getMinAddress())) {
 				if (!ref.getReferenceType().isFlow() || ref.getReferenceType().isFallthrough()) continue;
 				Instruction jump = listing.getInstructionAt(ref.getFromAddress());
-				if (jump == null || ref.getReferenceType().isCall() || entryDepth == 0 || jumps.size() == ENTRY_PATHS) {
+				if (jump == null || ref.getReferenceType().isCall() || entryDepth == 0 || jumps.size() == ENTRY_PATHS ||
+					externalEntry(label)) {
 					trace.forget();
 					return;
 				}
 				jumps.add(jump);
+			}
+			if (jumps.isEmpty()) {
+				// A function or program entry: its callers are not known.
+				trace.forget();
+				return;
 			}
 			Instruction savedVia = viaInsn;
 			Address savedReturn = backwardReturn;
@@ -733,7 +739,10 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 			try {
 				for (Instruction jump : jumps) {
 					// Only the registers at the landing matter here, whatever else is in flight with the jump.
+					boolean saved = targetOnly;
+					targetOnly = false;
 					Arrival other = arrive(jump, true);
+					targetOnly = saved;
 					if (other == null) {
 						trace.forget();
 						return;
@@ -827,6 +836,26 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 			return arrive(branch, false);
 		}
 
+		/**
+		 * The address a register branch reads from its register at E1, before any write in its own
+		 * execute packet commits (SPRUFE8B 3.5, Table 4-11), when the look-back proves it; else null.
+		 */
+		Long issueTarget(Instruction branch) {
+			if (branch.getRegister(0) == null || !transfer(branch)) return null;
+			Instruction savedVia = viaInsn;
+			targetOnly = true;
+			try {
+				Arrival arrival = arrive(branch, false);
+				return arrival == null || arrival.target() == null ? null : arrival.target() & 0xffffffffL;
+			}
+			finally {
+				targetOnly = false;
+				viaInsn = savedVia;
+			}
+		}
+
+		private boolean targetOnly;
+
 		/** {@code valuesOnly}: other transfers may issue in the window; only the registers at the landing are wanted. */
 		private Arrival arrive(Instruction branch, boolean valuesOnly) {
 			Map<Register, long[]> regs = new HashMap<>();
@@ -891,6 +920,7 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 				if (value != null && value[1] == FULL) target = value[0];
 			}
 
+			if (targetOnly) return new Arrival(null, target, facts, branchIndex, trace);
 			// What the hardware has issued when the branch lands: B3 then is where the callee returns to.
 			Landed landed = land(branch, execution, issue, branchIndex, regs, trace, facts, partner, valuesOnly);
 			if (landed == null) return null;
@@ -913,8 +943,15 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 			return null;
 		}
 
-		/** A jump, branch or call from another address targets {@code insn}. */
+		/** A function's entry or a program entry point: reached from callers this cannot see. */
+		private boolean externalEntry(Instruction insn) {
+			return program.getSymbolTable().isExternalEntryPoint(insn.getMinAddress()) ||
+				program.getFunctionManager().getFunctionAt(insn.getMinAddress()) != null;
+		}
+
+		/** A jump, branch or call from another address targets {@code insn}, or it is an entry. */
 		private boolean enteredFromElsewhere(Instruction insn) {
+			if (externalEntry(insn)) return true;
 			for (Reference ref : program.getReferenceManager().getReferencesTo(insn.getMinAddress())) {
 				if (ref.getReferenceType().isFlow() && !ref.getReferenceType().isFallthrough()) return true;
 			}

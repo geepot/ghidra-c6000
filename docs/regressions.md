@@ -80,7 +80,9 @@ test checks that repairs do not change instructions, flow or function bodies.
 `C6000ConstantBranchTargetTest.java` check adjacent `MVK` /`MVKH` branch-target
 references. Run the script before auto-analysis with `prepare CASES.tsv`, then after
 analysis with `check CASES.tsv`. Four cases require exactly the constructed address;
-four ensure that predicated high-half writes, same-execute-packet writes, alternate
+a ninth puts a later `MVK` of the same register in the branch's own execute packet, where
+the branch still reads the address built before it (the adjacent-pair check let the later
+value in as a second target); four ensure that predicated high-half writes, same-execute-packet writes, alternate
 entries and non-word-aligned target values do not get over-filtered. Run with both
 `C6000:LE:32:default` and `C6000:BE:32:default`. Expected values come from SPRUFE8B's
 MVK/MVKL and MVKH descriptions (pp. 381, 383-385) and branch pipeline Table 4-11, not
