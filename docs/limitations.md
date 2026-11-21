@@ -119,12 +119,14 @@ models that.
 
 Native lifting latches branches issued in each other's delay windows where that is what
 the hardware runs on every path (`C6000 Nested Branch Lifting`): each such branch records
-its predicate and target as it issues, and the instruction it lands behind transfers. That
-covers nests where at most one branch is taken on any path. It does not cover two branches
-that are both taken (the second lands in the first one's target code), a loop that comes
-round with a branch still in flight (software-pipelined loops), `CALLP`, `BDEC` or `BPOS`;
-those keep the `C6000 Nested Delay Windows` warning, which says why latching does not fix
-them.
+its predicate and target as it issues, and the instruction it lands behind transfers. Two
+branches that are both taken are covered: the second lands in the first one's target code.
+It does not cover a loop that comes round with a branch still in flight (software-pipelined
+loops), a landing behind an instruction in another branch's native delay slot, a call that
+lands with another branch still in flight, `CALLP`, `BDEC` or `BPOS`; those keep the
+`C6000 Nested Delay Windows` warning, which says why latching does not fix them. A landing
+at a latched register target in another branch's target code is left as an unresolved
+indirect jump.
 
 Native delay recovery remains conservative for nested transfers and BDEC/BPOS.
 Native lifting cannot place a

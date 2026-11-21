@@ -84,7 +84,7 @@ bytes long. Little-endian languages keep the `insn16` token (issue #31). Java re
 Since language version 3 in both byte orders, `contextreg` is 128 bits and each field has
 the same position in both. Bits 0-23 hold the decode and recovery fields and big-endian
 bits 32-47 hold `c_h16`; bits 24-31 and 48-62 hold the packet staging fields and bits
-63-122 the latched-branch fields. Bits 123-127 are unused: big-endian Ghidra fails to load
+63-122 the latched-branch fields (landing displacements are 20 bits). Bits 123-127 are unused: big-endian Ghidra fails to load
 a language with a context field that reaches into them. New fields are `noflow` with a
 `c_` prefix, unless they really must flow.
 
@@ -176,7 +176,16 @@ and compact (`tools/gen_compact.py`); the ordinary ones require `c_inert_wrap=0`
 SLEIGH does not prefer the more specific of two matching patterns. Eight latches are
 reused as branches land; `c_land1`/`c_land2`
 with a kind, a latch and a displacement on the landing instruction append a conditional
-jump, call or return. The listing is then checked again and put back if it does not match.
+jump, call or return. A landing clears its latch, the latches are zero at every function
+entry (`c6000.pspec`) and unaffected by calls (`c6000.cspec`), so an instruction can carry
+a landing that only some paths use: `liftPlan` runs the hardware model for every outcome
+and adds a landing wherever a branch lands outside its own stretch, in the code an earlier
+taken branch went to. A transfer that lands with a constant written to `B3` since the last
+call is a call returning there, in the hardware model and so in the plan. `c_landN_sure`
+makes a landing unconditional where the plan's own runs always reach it with the latch
+set and nothing outside the plan enters the code they run; only landings inside the
+stretch qualify, because a run stops outside it once nothing is in flight. The listing is
+then checked again and put back if it does not match.
 A latched branch reports no flow to Ghidra, and its landing instruction does, so every
 analysis that models the hardware asks `C6000PacketStagingAnalyzer.hardware`, `flow` and
 `inert` instead of the listing. The constant-reference analyzer accepts a register

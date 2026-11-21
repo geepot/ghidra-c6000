@@ -18,6 +18,7 @@ package c6000;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -395,8 +396,11 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 			return compare(first, outer, proposal, null);
 		}
 
-		/** One latched branch: where it lands, as what (1 jump, 2 call, 3 return), and its target unless that is in a register. */
-		record Latch(Instruction branch, int slot, Instruction land, int kind, Address target) {}
+		/**
+		 * One latched branch: where it lands, as what (1 jump, 2 call, 3 return), its target unless that is
+		 * in a register, and whether its latch is set on every path that reaches the landing.
+		 */
+		record Latch(Instruction branch, int slot, Instruction land, int kind, Address target, boolean sure) {}
 
 		/** A lifting of a stretch by latched branches, planned or read back from the listing. */
 		record Lifting(Instruction first, Address last, List<Latch> latches) {}
@@ -439,6 +443,23 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 			List<Instruction> timed = new ArrayList<>(stretch);
 			timed.add(current);
 			int[] issue = issueCycles(timed);
+			// Where an earlier branch is taken too, a later one lands in the code that one went to: the
+			// hardware's own run of every outcome says behind which instruction.
+			Map<Address, Map<Address, Instruction>> sites;
+			String why;
+			Map<Address, Set<Boolean>> calls;
+			landedBehind = new HashMap<>();
+			landedAsCall = new HashMap<>();
+			try {
+				why = compare(first, outer, null, null);
+			}
+			finally {
+				sites = landedBehind;
+				calls = landedAsCall;
+				landedBehind = null;
+				landedAsCall = null;
+			}
+			if (why != null) return refuse(why);
 			List<Latch> latches = new ArrayList<>();
 			Map<Address, Integer> landings = new HashMap<>();
 			int[] busy = new int[8];
@@ -458,41 +479,127 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 				boolean register = branch.getRegister(0) != null;
 				Address target = register || C6000PacketStagingAnalyzer.hardware(branch).getDefaultFlows().length != 1 ? null : C6000PacketStagingAnalyzer.hardware(branch).getDefaultFlows()[0];
 				if (!register && target == null) return refuse("a branch has no single target");
-				int kind = flow.isCall() ? 2 : register && flow.isTerminal() ? 3 : 1;
+				Set<Boolean> called = calls.getOrDefault(branch.getMinAddress(), Set.of());
+				if (called.size() > 1) return refuse(branch + " at " + branch.getMinAddress() + " lands as a call on some paths only");
+				int kind = flow.isCall() || called.contains(true) ? 2 : register && flow.isTerminal() ? 3 : 1;
 				// A latch is free again once the branch that used it has landed behind an earlier instruction.
 				int slot = -1;
 				for (int k = 0; k < busy.length && slot < 0; k++) if (busy[k] < i) slot = k;
 				if (slot < 0) return refuse("more than eight branches are in flight at once");
 				busy[slot] = land;
-				latches.add(new Latch(branch, slot, behind, kind, target));
+				latches.add(new Latch(branch, slot, behind, kind, target, false));
 			}
-			return latches.isEmpty() ? refuse("no branch to latch") : new Lifting(first, stretch.get(stretch.size() - 1).getMaxAddress(), latches);
+			if (latches.isEmpty()) return refuse("no branch to latch");
+			Address last = stretch.get(stretch.size() - 1).getMaxAddress();
+			for (Latch latch : List.copyOf(latches)) {
+				for (Instruction site : sites.getOrDefault(latch.branch().getMinAddress(), Map.of()).values()) {
+					Address at = site.getMinAddress();
+					if (at.equals(latch.land().getMinAddress())) continue;
+					if (landings.merge(at, 1, Integer::sum) > 2) return refuse("more than two branches land behind one instruction");
+					if (at.compareTo(first.getMinAddress()) < 0 || at.compareTo(last) > 0) {
+						// ponytail: one stretch's landings per instruction outside it; merge them when two stretches' targets meet
+						Instruction listed = listing.getInstructionAt(at);
+						// A native delay slot holds no flow of its own.
+						if (listed == null || listed.isInDelaySlot() || !landingsAt(at).isEmpty()) return refuse("a branch lands behind " + at + ", which cannot carry it");
+						for (Instruction prior : before(listed))
+							if (C6000PacketStagingAnalyzer.inert(prior)) return refuse("a branch lands behind " + at + ", inside another latched stretch");
+					}
+					latches.add(new Latch(latch.branch(), latch.slot(), site, latch.kind(), latch.target(), false));
+				}
+			}
+			// A landing whose latch is set whenever its instruction is reached needs no test, and then
+			// has no fall-through: the plan's own run of every outcome says which, unless something
+			// outside it also reaches the code it runs.
+			Lifting plan = new Lifting(first, last, latches);
+			Map<String, boolean[]> uses;
+			Set<Address> walked;
+			landingUse = new HashMap<>();
+			landingWalk = new HashSet<>();
+			try {
+				why = compare(first, outer, null, plan);
+			}
+			finally {
+				uses = landingUse;
+				walked = landingWalk;
+				landingUse = null;
+				landingWalk = null;
+			}
+			if (why != null || entered(walked, first, latches)) return plan;
+			List<Latch> sure = new ArrayList<>();
+			for (Latch latch : latches) {
+				boolean[] use = uses.get(latch.land().getMinAddress() + "/" + latch.slot());
+				// Outside the stretch a run ends once nothing is in flight, so a landing there is not seen passed.
+				Address at = latch.land().getMinAddress();
+				boolean inside = at.compareTo(first.getMinAddress()) >= 0 && at.compareTo(last) <= 0;
+				sure.add(new Latch(latch.branch(), latch.slot(), latch.land(), latch.kind(), latch.target(), inside && use != null && use[0] && !use[1]));
+			}
+			return new Lifting(first, last, sure);
 		}
+
+		/** Set while planning: per landing, whether it ever fired and whether it was ever passed with its latch clear; and every instruction run. */
+		private Map<String, boolean[]> landingUse;
+		private Set<Address> landingWalk;
+
+		/** True when code a plan runs, past its first instruction, is also reached from outside the plan. */
+		private boolean entered(Set<Address> walked, Instruction first, List<Latch> latches) {
+			Set<Address> own = new HashSet<>();
+			for (Latch latch : latches) {
+				own.add(latch.branch().getMinAddress());
+				own.add(latch.land().getMinAddress());
+			}
+			for (Address at : walked) {
+				if (at.equals(first.getMinAddress())) continue;
+				Instruction insn = listing.getInstructionAt(at);
+				if (insn == null || externalEntry(insn)) return true;
+				for (Reference ref : program.getReferenceManager().getReferencesTo(at))
+					if (ref.getReferenceType().isFlow() && !ref.getReferenceType().isFallthrough() && !own.contains(ref.getFromAddress())) return true;
+				// Falling in from an instruction the plan does not run.
+				Instruction prior = listing.getInstructionBefore(at);
+				if (prior == null || walked.contains(prior.getMinAddress()) || !adjacent(prior, insn) && !headerBetween(prior, insn)) continue;
+				Instruction owner = C6000DelaySlots.unitOwner(program, prior);
+				if (walked.contains(owner.getMinAddress())) continue;
+				if (!transfer(owner) || C6000PacketStagingAnalyzer.flow(owner).hasFallthrough()) return true;
+			}
+			return false;
+		}
+
+		/** Set while planning: each transfer the hardware lands, and the instructions it lands behind. */
+		private Map<Address, Map<Address, Instruction>> landedBehind;
+		/** Set while planning: whether each transfer the hardware lands is a call there. */
+		private Map<Address, Set<Boolean>> landedAsCall;
 
 		/** Null when {@code plan} runs what the hardware runs on every consistent outcome; else the first difference. */
 		String liftMismatch(Lifting plan, Instruction outer) {
 			return compare(plan.first(), outer, null, plan);
 		}
 
-		/** The latched branches the listing already has from {@code first} to before {@code stop}; null if none. */
-		private Lifting listed(Instruction first, Address stop) {
-			List<Latch> latches = new ArrayList<>();
-			Map<Integer, Instruction> open = new HashMap<>();
-			Address last = first.getMaxAddress();
+		/** The lifting the listing's own context fields give. */
+		private static final Lifting LISTED = new Lifting(null, null, List.of());
+
+		/** True when the listing has a latched branch from {@code first} to before {@code stop}. */
+		private boolean listed(Instruction first, Address stop) {
 			for (Instruction insn = listing.getInstructionAt(first.getMinAddress());
-					insn != null && insn.getMinAddress().compareTo(stop) < 0; insn = listing.getInstructionAfter(insn.getMaxAddress())) {
-				last = insn.getMaxAddress();
-				if (C6000PacketStagingAnalyzer.inert(insn)) open.put(field(insn, "c_latch_t"), insn);
-				for (String land : new String[] { "c_land1", "c_land2" }) {
-					int kind = field(insn, land);
-					Instruction branch = kind == 0 ? null : open.get(field(insn, land + "_t"));
-					if (branch == null) continue;
-					Address target = field(insn, land + "_ind") != 0 ? null :
-						insn.getMinAddress().getNewAddress((insn.getMinAddress().getOffset() & ~31L) + 2L * signed(insn, land + "_disp"));
-					latches.add(new Latch(branch, field(insn, land + "_t"), insn, kind, target));
-				}
+					insn != null && insn.getMinAddress().compareTo(stop) < 0; insn = listing.getInstructionAfter(insn.getMaxAddress()))
+				if (C6000PacketStagingAnalyzer.inert(insn)) return true;
+			return false;
+		}
+
+		/** One landing an instruction carries: the latch it reads, as what it lands, and where unless at the latched register target. */
+		record Landing(int slot, int kind, Address target, boolean sure) {}
+
+		/** The landings the listing's instruction at {@code at} carries. */
+		List<Landing> landingsAt(Address at) {
+			Instruction insn = listing.getInstructionAt(at);
+			List<Landing> lands = new ArrayList<>();
+			if (insn == null) return lands;
+			for (String land : new String[] { "c_land1", "c_land2" }) {
+				int kind = field(insn, land);
+				if (kind == 0) continue;
+				Address target = field(insn, land + "_ind") != 0 ? null :
+					at.getNewAddress((at.getOffset() & ~31L) + 2L * signed(insn, land + "_disp"));
+				lands.add(new Landing(field(insn, land + "_t"), kind, target, field(insn, land + "_sure") != 0));
 			}
-			return latches.isEmpty() ? null : new Lifting(first, last, latches);
+			return lands;
 		}
 
 		/**
@@ -505,10 +612,22 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 				if (field(land, name) == 0 || field(land, name + "_ind") == 0) continue;
 				int slot = field(land, name + "_t");
 				Instruction branch = null, at = land;
+				List<Instruction> path = new ArrayList<>();
 				// The branch issued at most five cycles before; one with no delay cycles left lands behind itself.
 				for (int n = 0; n <= MAX_WINDOW && at != null && branch == null; n++) {
+					path.add(0, at);
 					if (C6000PacketStagingAnalyzer.inert(at) && field(at, "c_latch_t") == slot) branch = at;
 					at = listing.getInstructionBefore(at.getMinAddress());
+				}
+				// A landing in the code another branch went to has its branch elsewhere: this is that
+				// branch's only if it lands here in address order. ponytail: such a landing's register
+				// target stays unproven; follow the taken branch back when one needs resolving.
+				if (branch != null) {
+					Instruction after = next(land);
+					if (after != null) path.add(after);
+					int[] issue = issueCycles(path);
+					int landed = issue[0] + 1 + DELAY_CYCLES, here = after != null ? path.size() - 2 : path.size() - 1;
+					if (issue[here] >= landed || (after != null && issue[here + 1] < landed)) branch = null;
 				}
 				Long target = branch == null ? null : issueTarget(branch);
 				if (target == null) return null;
@@ -517,7 +636,7 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 			return targets;
 		}
 
-		private int field(Instruction insn, String name) {
+		int field(Instruction insn, String name) {
 			Register register = program.getRegister(name);
 			var value = register == null ? null : insn.getValue(register, false);
 			return value == null ? 0 : value.intValue();
@@ -530,42 +649,59 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 		}
 
 		/**
-		 * The lifting by latched branches: instructions in address order; a latched branch only records
-		 * whether it is taken, and the instruction it lands behind then calls its target and goes on,
-		 * or leaves for it.
+		 * The lifting by latched branches, planned or the listing's: instructions in address order; a
+		 * latched branch only writes whether it is taken into its latch, and an instruction carrying a
+		 * landing for a set latch clears it and calls the target and goes on, or leaves for it. Like the
+		 * hardware's, the run goes on outside the stretch while a latch is set.
 		 */
 		private Run latched(Instruction first, Stretch region, Map<Address, Boolean> taken, List<PredicateFact> facts, Lifting lifting) {
-			Map<Address, Latch> latchAt = new HashMap<>();
-			Map<Address, List<Latch>> landAt = new HashMap<>();
+			Map<Address, Integer> slotAt = new HashMap<>();
+			Map<Address, List<Landing>> landAt = new HashMap<>();
 			for (Latch latch : lifting.latches()) {
-				latchAt.put(latch.branch().getMinAddress(), latch);
-				landAt.computeIfAbsent(latch.land().getMinAddress(), k -> new ArrayList<>()).add(latch);
+				slotAt.put(latch.branch().getMinAddress(), latch.slot());
+				landAt.computeIfAbsent(latch.land().getMinAddress(), k -> new ArrayList<>()).add(new Landing(latch.slot(), latch.kind(), latch.target(), latch.sure()));
 			}
 			List<String> trace = new ArrayList<>();
-			Set<Address> seen = new HashSet<>(), going = new HashSet<>();
+			Set<Address> seen = new HashSet<>();
+			Instruction[] set = new Instruction[8];
 			Instruction insn = first;
 			while (true) {
 				if (insn == null) return Run.unproven("the latched lifting runs into code that does not decode");
 				Address at = insn.getMinAddress();
-				if (!inside(at, region)) return new Run(trace, "continues at " + at, null);
+				boolean flying = java.util.Arrays.stream(set).anyMatch(java.util.Objects::nonNull);
+				if (!flying && !inside(at, region)) return new Run(trace, "continues at " + at, null);
 				if (!seen.add(at)) {
-					if (!going.isEmpty()) return Run.unproven("the latched lifting loops back to " + at + " with a branch still to land");
+					if (flying) return Run.unproven("the latched lifting loops back to " + at + " with a branch still to land");
 					return new Run(trace, "issues " + at + " again", null);
 				}
+				if (seen.size() > MAX_ISSUED) return Run.unproven("the latched lifting runs too far to compare");
+				if (landingWalk != null) landingWalk.add(at);
 				Instruction next = next(insn);
 				if (transfer(insn)) {
-					if (!latchAt.containsKey(at)) return Run.unproven(insn + " at " + at + " is not latched with the others");
+					Instruction listed = lifting == LISTED ? listing.getInstructionAt(at) : null;
+					Integer slot = lifting != LISTED ? slotAt.get(at) :
+						listed != null && C6000PacketStagingAnalyzer.inert(listed) ? Integer.valueOf(field(listed, "c_latch_t")) : null;
+					if (slot == null) return Run.unproven(insn + " at " + at + " is not latched with the others");
 					Boolean go = predicate(insn) == null ? Boolean.TRUE : taken.get(at);
 					if (go == null) return Run.unproven(insn + " at " + at + " is latched on a predicate this check cannot follow");
-					if (go) going.add(at);
+					set[slot] = go ? insn : null;
 				}
 				else if (!idle(insn) && runs(insn, region, facts)) trace.add(at.toString());
-				for (Latch latch : landAt.getOrDefault(at, List.of())) {
-					if (!going.remove(latch.branch().getMinAddress())) continue;
-					String where = destination(latch.branch(), latch.target());
-					if (latch.kind() == 2) { trace.add("calls " + where); continue; }
-					if (latch.target() == null || !inside(latch.target(), region)) return new Run(trace, "continues at " + where, null);
-					next = decode(latch.target());
+				for (Landing land : lifting == LISTED ? landingsAt(at) : landAt.getOrDefault(at, List.of())) {
+					Instruction branch = set[land.slot()];
+					if (landingUse != null) landingUse.computeIfAbsent(at + "/" + land.slot(), k -> new boolean[2])[branch != null ? 0 : 1] = true;
+					if (branch == null && land.sure()) return Run.unproven("the landing at " + at + " takes its latch as set, and it is not on this path");
+					if (branch == null) continue;
+					set[land.slot()] = null;
+					boolean others = java.util.Arrays.stream(set).anyMatch(java.util.Objects::nonNull);
+					if (land.target() == null && branch.getRegister(0) == null)
+						return Run.unproven("a landing at " + at + " reads a register target " + branch + " never latched");
+					String where = destination(branch, land.target());
+					if (others && (land.kind() == 2 || land.target() == null))
+						return Run.unproven("the latched lifting leaves for " + where + " with a branch still to land");
+					if (land.kind() == 2) { trace.add("calls " + where); continue; }
+					if (land.target() == null || (!others && !inside(land.target(), region))) return new Run(trace, "continues at " + where, null);
+					next = decode(land.target());
 					break;
 				}
 				insn = next;
@@ -605,7 +741,7 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 			if (predicated.size() > MAX_PATH_TRANSFERS) return "it has too many predicated transfers to compare";
 			Stretch region = new Stretch(first.getMinAddress(), current.getMinAddress(), path, index, predicated, returns);
 			// The listing may already lift this stretch by latched branches.
-			if (proposal == null && lifting == null) lifting = listed(first, current.getMinAddress());
+			if (proposal == null && lifting == null && listed(first, current.getMinAddress())) lifting = LISTED;
 
 			for (int mask = 0; mask < 1 << predicated.size(); mask++) {
 				// One outcome per predicated transfer, kept only when its predicates can agree.
@@ -623,6 +759,7 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 				if (!consistent) continue;
 				Run hardware = hardware(first, region, taken, facts);
 				if (hardware.unproven() != null) return hardware.unproven();
+				if (landedBehind != null) continue; // planning: only where the hardware lands each branch
 				Run lifted = proposal != null ? proposed(first, region, taken, facts, proposal) :
 					lifting != null ? latched(first, region, taken, facts, lifting) : lifted(first, region, taken, facts);
 				if (lifted.unproven() != null) return lifted.unproven();
@@ -715,6 +852,9 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 			Set<Address> issued = new HashSet<>();
 			Instruction at = first;
 			long cycle = 0;
+			// B3 as the instructions run here leave it: a constant written since the last call is a return link.
+			Register b3 = program.getRegister("B3");
+			Map<Register, long[]> link = new HashMap<>();
 			try {
 				while (true) {
 					// One execute packet, issued in this cycle.
@@ -734,7 +874,18 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 							if (go == null) return Run.unproven(insn + " at " + insn.getMinAddress() + " issues with transfers in flight, on a predicate this check cannot follow");
 							if (go) flights.add(new Flight(cycle + 1 + DELAY_CYCLES, insn));
 						}
-						else if (!idle(insn) && runs(insn, region, facts)) trace.add(insn.getMinAddress().toString());
+						else if (!idle(insn) && runs(insn, region, facts)) {
+							trace.add(insn.getMinAddress().toString());
+							Register load = loadDestination(insn);
+							if (load != null ? overlaps(load, b3) : issueWrites(insn).stream().anyMatch(r -> overlaps(r, b3))) {
+								// Only a write that surely runs, with a value its p-code gives, is known.
+								Integer i = region.index().get(insn.getMinAddress());
+								boolean sure = predicate(insn) == null || (i != null && holds(region, i, facts) == Boolean.TRUE);
+								Long value = load != null || !sure ? null : constantWrite(insn, b3, link);
+								if (value == null) link.remove(b3);
+								else link.put(b3, new long[] { value, FULL });
+							}
+						}
 						if (!parallelWithNext(insn)) break;
 						insn = next(insn);
 						if (insn == null) return Run.unproven("an execute packet does not decode");
@@ -746,15 +897,28 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 						// The landing cuts idle cycles short and redirects fetch.
 						flights.remove(landing);
 						Instruction transfer = landing.transfer();
+						if (landedBehind != null)
+							landedBehind.computeIfAbsent(transfer.getMinAddress(), k -> new LinkedHashMap<>()).put(insn.getMinAddress(), insn);
 						Address target = transfer.getRegister(0) != null || C6000PacketStagingAnalyzer.hardware(transfer).getDefaultFlows().length != 1 ? null :
 							C6000PacketStagingAnalyzer.hardware(transfer).getDefaultFlows()[0];
 						Instruction listed = listing.getInstructionAt(transfer.getMinAddress());
-						if (listed != null && C6000PacketStagingAnalyzer.flow(listed).isCall()) {
+						boolean call = listed != null && C6000PacketStagingAnalyzer.flow(listed).isCall();
+						// A transfer that lands with a fresh link in B3 is a call that returns there, whatever
+						// the listing makes of it; one through B3 itself goes where B3 pointed before.
+						Address linked = null;
+						long[] held = link.get(b3);
+						if (!call && held != null && !b3.equals(transfer.getRegister(0))) {
+							Address to = transfer.getMinAddress().getNewAddress(held[0] & 0xffffffffL);
+							if (!to.equals(target) && listing.getInstructionAt(to) != null) linked = to;
+						}
+						if (landedAsCall != null) landedAsCall.computeIfAbsent(transfer.getMinAddress(), k -> new HashSet<>()).add(call || linked != null);
+						if (call || linked != null) {
 							// The callee runs to its return, which needs nothing else in flight.
 							if (!flights.isEmpty()) return new Run(trace, "calls " + destination(transfer, target) + " with transfers in flight", null);
 							trace.add("calls " + destination(transfer, target));
+							link.clear();
 							// It returns where B3 points; a latched call's listed fall-through is only its next instruction.
-							Address back = C6000PacketStagingAnalyzer.inert(listed) ? returnPoint(listed) : listed.getFallThrough();
+							Address back = linked != null ? linked : C6000PacketStagingAnalyzer.inert(listed) ? returnPoint(listed) : listed.getFallThrough();
 							if (back == null) return new Run(trace, "does not return", null);
 							at = decode(back);
 							cycle = landing.lands();

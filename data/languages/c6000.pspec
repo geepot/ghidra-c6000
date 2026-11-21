@@ -21,7 +21,60 @@
     <register name="C6000_PIPE_RET" hidden="true"/>
     <register name="C6000_PIPE_ILC" hidden="true"/>
     <register name="C6000_PIPE_RILC" hidden="true"/>
+    <register name="c_staged" hidden="true"/>
+    <register name="c_defer" hidden="true"/>
+    <register name="c_defer_pair" hidden="true"/>
+    <register name="c_defer_reg" hidden="true"/>
+    <register name="c_cm1" hidden="true"/>
+    <register name="c_cm1_reg" hidden="true"/>
+    <register name="c_cm2" hidden="true"/>
+    <register name="c_cm2_reg" hidden="true"/>
+    <register name="c_inert" hidden="true"/>
+    <register name="c_inert_wrap" hidden="true"/>
+    <register name="c_latch_t" hidden="true"/>
+    <register name="c_land1" hidden="true"/>
+    <register name="c_land1_ind" hidden="true"/>
+    <register name="c_land1_t" hidden="true"/>
+    <register name="c_land1_disp" hidden="true"/>
+    <register name="c_land1_sure" hidden="true"/>
+    <register name="c_land2_sure" hidden="true"/>
+    <register name="c_land2" hidden="true"/>
+    <register name="c_land2_ind" hidden="true"/>
+    <register name="c_land2_t" hidden="true"/>
+    <register name="c_land2_disp" hidden="true"/>
+    <register name="C6000_STAGE_OLD" hidden="true"/>
+    <register name="C6000_STAGE_OLD2" hidden="true"/>
+    <register name="C6000_LATCH_T0" hidden="true"/>
+    <register name="C6000_LATCH_T1" hidden="true"/>
+    <register name="C6000_LATCH_T2" hidden="true"/>
+    <register name="C6000_LATCH_T3" hidden="true"/>
+    <register name="C6000_LATCH_T4" hidden="true"/>
+    <register name="C6000_LATCH_T5" hidden="true"/>
+    <register name="C6000_LATCH_T6" hidden="true"/>
+    <register name="C6000_LATCH_T7" hidden="true"/>
+    <register name="C6000_LATCH_PC0" hidden="true"/>
+    <register name="C6000_LATCH_PC1" hidden="true"/>
+    <register name="C6000_LATCH_PC2" hidden="true"/>
+    <register name="C6000_LATCH_PC3" hidden="true"/>
+    <register name="C6000_LATCH_PC4" hidden="true"/>
+    <register name="C6000_LATCH_PC5" hidden="true"/>
+    <register name="C6000_LATCH_PC6" hidden="true"/>
+    <register name="C6000_LATCH_PC7" hidden="true"/>
   </register_data>
+  <!-- No branch is in flight across a function entry: a latched branch has landed, and cleared
+       its latch, before control leaves its function (C6000NestedLiftAnalyzer). -->
+  <context_data>
+    <tracked_set space="ram">
+      <set name="C6000_LATCH_T0" val="0"/>
+      <set name="C6000_LATCH_T1" val="0"/>
+      <set name="C6000_LATCH_T2" val="0"/>
+      <set name="C6000_LATCH_T3" val="0"/>
+      <set name="C6000_LATCH_T4" val="0"/>
+      <set name="C6000_LATCH_T5" val="0"/>
+      <set name="C6000_LATCH_T6" val="0"/>
+      <set name="C6000_LATCH_T7" val="0"/>
+    </tracked_set>
+  </context_data>
   <properties>
     <property key="pcodeInjectLibraryClass" value="c6000.C6000PipelineInjectLibrary"/>
     <property key="c6000.packetSize" value="32"/>

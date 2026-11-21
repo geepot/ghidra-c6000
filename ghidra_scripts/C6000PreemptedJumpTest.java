@@ -62,8 +62,9 @@ public class C6000PreemptedJumpTest extends GhidraScript {
 			throw new AssertionError("user override at " + user.getAddress() + " removed");
 		}
 		checks++;
-		// padleak's return keeps its straight-line window: cut at the landing it would drop ADDK 0x22.
-		window(0x120cL, 3, FlowOverride.RETURN);
+		// padleak's return is not cut at the jump's landing, which would drop ADDK 0x22: both are latched,
+		// and the return lands behind the jump's target when the jump is taken.
+		returns(0x1200L, "0x122", "0x100");
 		// A call does not continue the jump: one fall-through cannot hold its return past the landing and its not-taken path.
 		Instruction call2 = getInstructionAt(toAddr(0x1230L));
 		if (call2 == null || call2.getFlowType().isCall()) throw new AssertionError("predicated preempting call: " + call2);
@@ -183,6 +184,13 @@ public class C6000PreemptedJumpTest extends GhidraScript {
 		Instruction jump = getInstructionAt(toAddr(at));
 		for (Reference r : jump.getReferencesFrom()) {
 			if (r.getReferenceType().isOverride()) throw new AssertionError("known-bad jump at " + toAddr(at) + " overridden");
+		}
+		// A jump latched with the transfers nested in its window (C6000 Nested Branch Lifting) transfers where it lands.
+		var latched = currentProgram.getRegister("c_inert");
+		var inert = latched == null ? null : jump.getValue(latched, false);
+		if (inert != null && inert.intValue() == 1) {
+			checks++;
+			return;
 		}
 		if (jump.getFlows().length != 1 || !jump.getFlows()[0].equals(jump.getDefaultFlows()[0])) {
 			throw new AssertionError("known-bad jump at " + toAddr(at) + " lost its target");

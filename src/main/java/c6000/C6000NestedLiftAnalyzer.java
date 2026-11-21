@@ -16,6 +16,8 @@
 package c6000;
 
 import java.math.BigInteger;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -31,6 +33,7 @@ import ghidra.program.model.address.AddressSetView;
 import ghidra.program.model.lang.Register;
 import ghidra.program.model.listing.Function;
 import ghidra.program.model.listing.Instruction;
+import ghidra.program.model.pcode.PcodeOp;
 import ghidra.program.model.listing.Program;
 import ghidra.program.model.symbol.Reference;
 import ghidra.util.Msg;
@@ -120,37 +123,83 @@ public final class C6000NestedLiftAnalyzer extends AbstractAnalyzer {
 			put(program, land, slot + "_t", latch.slot());
 			put(program, land, slot + "_ind", latch.target() == null ? 1 : 0);
 			long disp = latch.target() == null ? 0 : (latch.target().getOffset() - (at.getOffset() & ~31L)) / 2;
-			if (disp < -(1 << 20) || disp >= 1 << 20 || (latch.target() != null && (latch.target().getOffset() & 1) != 0))
+			put(program, land, slot + "_sure", latch.sure() ? 1 : 0);
+			if (disp < -(1 << 19) || disp >= 1 << 19 || (latch.target() != null && (latch.target().getOffset() & 1) != 0))
 				return false;
 			put(program, land, slot + "_disp", (int) disp);
 		}
+		// A user's own override of a branch stands.
+		for (var latch : plan.latches())
+			for (Reference ref : latch.branch().getReferencesFrom())
+				if (ref.getReferenceType().isOverride() && ref.getSource() == ghidra.program.model.symbol.SourceType.USER_DEFINED) return false;
 		Address start = plan.first().getMinAddress();
-		var undo = C6000DelaySlots.relift(program, start, plan.last(), fields);
-		// A latched branch falls through to its next instruction and holds no flow of its own any more.
+		// A landing some other stretch put here would be lost.
+		for (Instruction insn : program.getListing().getInstructions(new ghidra.program.model.address.AddressSet(start, plan.last()), true))
+			for (var held : walker.landingsAt(insn.getMinAddress()))
+				if (plan.latches().stream().noneMatch(l -> l.land().getMinAddress().equals(insn.getMinAddress()) && l.slot() == held.slot() &&
+						l.kind() == held.kind() && java.util.Objects.equals(l.target(), held.target()))) return false;
+		Set<Address> before = new HashSet<>();
+		for (Address at : fields.keySet()) {
+			Instruction now = program.getListing().getInstructionAt(at);
+			if (now != null && (C6000PacketStagingAnalyzer.inert(now) || !walker.landingsAt(at).isEmpty())) before.add(at);
+		}
+		// The stretch, then each instruction outside it that carries a landing.
+		List<C6000DelaySlots.Relifted> undo = new ArrayList<>();
+		try {
+			Map<Address, Map<Register, BigInteger>> inside = new TreeMap<>(fields);
+			inside.keySet().removeIf(at -> at.compareTo(start) < 0 || at.compareTo(plan.last()) > 0);
+			undo.add(C6000DelaySlots.relift(program, start, plan.last(), inside));
+			for (var entry : fields.entrySet()) {
+				Address at = entry.getKey();
+				if (at.compareTo(start) >= 0 && at.compareTo(plan.last()) <= 0) continue;
+				Instruction site = program.getListing().getInstructionAt(at);
+				if (site == null) throw new IllegalStateException("no instruction at " + at);
+				undo.add(C6000DelaySlots.relift(program, at, site.getMaxAddress(), Map.of(at, entry.getValue())));
+			}
+			if (kept(program, walker, plan, outer)) return true;
+		}
+		catch (Exception e) {
+			for (int i = undo.size() - 1; i >= 0; i--) undo.get(i).putBack();
+			throw e;
+		}
+		for (int i = undo.size() - 1; i >= 0; i--) undo.get(i).putBack();
+		// Nothing of a lifting taken back may stay in the listing's context.
+		for (Address at : fields.keySet()) {
+			Instruction now = program.getListing().getInstructionAt(at);
+			if (now != null && (C6000PacketStagingAnalyzer.inert(now) || !walker.landingsAt(at).isEmpty()) && !before.contains(at))
+				throw new IllegalStateException("the lifting at " + at + " could not be taken back");
+		}
+		return false;
+	}
+
+	/** Moves the latched branches' flows to where they land; false when the listing does not then run what the hardware runs. */
+	private static boolean kept(Program program, C6000CallAnalyzer.Walker walker, C6000CallAnalyzer.Walker.Lifting plan, Instruction outer) {
+		Set<Address> done = new HashSet<>();
 		for (var latch : plan.latches()) {
 			Instruction branch = program.getListing().getInstructionAt(latch.branch().getMinAddress());
-			if (branch == null || !branch.getFlowType().isFallthrough()) {
-				// This encoding has no latched form.
-				undo.putBack();
-				return false;
-			}
-			Instruction land = program.getListing().getInstructionAt(latch.land().getMinAddress());
+			// An encoding with no latched form decodes as it was.
+			if (branch == null || !latches(program, branch, latch.slot())) return false;
+			if (!done.add(branch.getMinAddress())) continue;
 			if (branch.isFallThroughOverridden()) branch.clearFallThroughOverride();
 			for (Reference ref : branch.getReferencesFrom()) {
 				if (!ref.getReferenceType().isFlow() || ref.getReferenceType().isFallthrough()) continue;
 				// Its register target's references go where the transfer now is.
-				if (latch.target() == null && land != null)
-					program.getReferenceManager().addMemoryReference(land.getMinAddress(), ref.getToAddress(), ref.getReferenceType(), ref.getSource(), 0);
+				if (latch.target() == null) for (var site : plan.latches())
+					if (site.branch().getMinAddress().equals(branch.getMinAddress()))
+						program.getReferenceManager().addMemoryReference(site.land().getMinAddress(), ref.getToAddress(), ref.getReferenceType(), ref.getSource(), 0);
 				program.getReferenceManager().delete(ref);
 			}
 		}
-		// Keep it only if the listing now runs what the hardware runs.
 		Instruction now = program.getListing().getInstructionAt(outer.getMinAddress());
-		if (now == null || walker.nativeMismatch(now) != null) {
-			undo.putBack();
-			return false;
-		}
-		return true;
+		return now != null && walker.nativeMismatch(now) == null;
+	}
+
+	/** The instruction's p-code records its predicate in its latch: it is the latched form. */
+	private static boolean latches(Program program, Instruction branch, int slot) {
+		Register latch = program.getRegister("C6000_LATCH_T" + slot);
+		for (PcodeOp op : branch.getPcode())
+			if (latch != null && op.getOutput() != null && op.getOutput().isRegister() && op.getOutput().getAddress().equals(latch.getAddress())) return true;
+		return false;
 	}
 
 	private static void put(Program program, Map<Register, BigInteger> fields, String name, int value) {

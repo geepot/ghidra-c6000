@@ -297,13 +297,17 @@ CASES = [
         NOP             2
 """),
 ]
-# Known-bads that native lifting now gets right by latching their branches (issue #73): in each,
-# at most one of the nested branches is taken on any path. What their C must contain:
-#   callret  a ? h(b + 1) : b + 1, with h(x) = 2x
+# Known-bads that native lifting now gets right by latching their branches (issue #73). What
+# their C must contain:
+#   callret  a ? h(b + 1) : b + 1; the jump lands with a fresh link in B3, so it is lifted as a call
 #   tri      a ? 3 : b ? 0x13 : 0x43b
 #   bnop4    x ? x + 1 : 1
+#   indep    a ? (b ? 0x21 : 0x1011) : (b ? 0x201 : 0x1101): with both jumps taken, the second
+#            lands in the first's target
 LIFTED = {
-    "callret": ["param_2 + 1", "(param_2 + 1) * 2"],
+    "callret": ["callret_h(param_2 + 1)"],
+    # both taken: the second jump lands behind the fourth instruction of the first's target
+    "indep": ["0x11", "0x21", "0x101", "0x201", "+ 0x1000"],
     "tri": ["return 3;", "0x13", "0x43b"],
     "bnop4": ["param_1 + 1"],
 }

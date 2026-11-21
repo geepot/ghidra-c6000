@@ -748,8 +748,9 @@ public final class C6000DelaySlots {
                 for (var entry : context.entrySet()) {
                     Address cursor = entry.getKey();
                     if (Objects.equals(programContext.getNonDefaultValue(base, cursor), entry.getValue())) continue;
-                    if (entry.getValue() == null) programContext.remove(cursor, cursor, base);
-                    else programContext.setRegisterValue(cursor, cursor, entry.getValue());
+                    // Setting a value writes only the bits it holds: clear the ones set since first.
+                    programContext.remove(cursor, cursor, base);
+                    if (entry.getValue() != null) programContext.setRegisterValue(cursor, cursor, entry.getValue());
                 }
                 for (var unit : units) {
                     var decode = new ProcessorContextImpl(p.getLanguage());

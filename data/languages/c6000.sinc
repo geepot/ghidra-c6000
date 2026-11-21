@@ -138,18 +138,20 @@ define context contextreg
   c_defer_pair = (62,62) noflow # hold the other half of c_defer_reg's register pair too
   # Latched branches, set by the nested-branch lifting analyzer.
   # Big-endian Ghidra rejects the language when a field reaches past bit 122 of this register, so
-  # these stop there: 21-bit displacements, and c_inert in the bit left below.
+  # these stop there: 20-bit displacements, and c_inert in the bit left below.
   c_inert       = (63,63) noflow # this branch does not transfer where it issues
   c_inert_wrap  = (64,65) noflow # 1: latch this branch's predicate; 2: and its register target
   c_latch_t     = (66,68) noflow # the latch it records into
   c_land1       = (69,70) noflow # a latched branch lands after this instruction: 1 jump, 2 call, 3 return
   c_land1_ind   = (71,71) noflow # to the latched register target, else to c_land1_disp
   c_land1_t     = (72,74) noflow
-  c_land1_disp  = (75,95) signed noflow # halfwords from this instruction's fetch packet
+  c_land1_sure  = (75,75) noflow # its latch is set on every path here: the landing is unconditional
+  c_land1_disp  = (76,95) signed noflow # halfwords from this instruction's fetch packet
   c_land2       = (96,97) noflow
   c_land2_ind   = (98,98) noflow
   c_land2_t     = (99,101) noflow
-  c_land2_disp  = (102,122) signed noflow
+  c_land2_sure  = (102,102) noflow
+  c_land2_disp  = (103,122) signed noflow
 @if ENDIAN == "big"
 @include "c6000_compact_context.sinc"
 @endif
@@ -616,18 +618,34 @@ StageCommit2: is c_cm2=1 & Cm2Reg & Cm2New { Cm2Reg = Cm2New; }
 # Where a latched branch lands: after this instruction, if it was taken.
 LandTgt1: reloc is c_land1_disp [ reloc = (inst_start & 0xffffffe0) + (c_land1_disp << 1); ] { export *[ram]:4 reloc; }
 LandTgt2: reloc is c_land2_disp [ reloc = (inst_start & 0xffffffe0) + (c_land2_disp << 1); ] { export *[ram]:4 reloc; }
+# A landing fires once: it clears the latch, so the same instruction reached on another path,
+# or again, does nothing. The latches are zero at every function entry (c6000.pspec).
+# The decompiler rejects a relative branch over an indirect jump to the end of an instruction
+# ("Bad relative branch"), so that form ends in an operation: the clear again.
 Land1: is c_land1=0 { }
-Land1: is c_land1=1 & c_land1_ind=0 & Land1T & LandTgt1 { if (Land1T != 0) goto LandTgt1; }
-Land1: is c_land1=1 & c_land1_ind=1 & Land1T & Land1Pc { if (Land1T == 0) goto <stay>; goto [Land1Pc]; <stay> }
-Land1: is c_land1=2 & c_land1_ind=0 & Land1T & LandTgt1 { if (Land1T == 0) goto <stay>; call LandTgt1; <stay> }
-Land1: is c_land1=2 & c_land1_ind=1 & Land1T & Land1Pc { if (Land1T == 0) goto <stay>; call [Land1Pc]; <stay> }
-Land1: is c_land1=3 & Land1T & Land1Pc { if (Land1T == 0) goto <stay>; return [Land1Pc]; <stay> }
+Land1: is c_land1=1 & c_land1_ind=0 & c_land1_sure=0 & Land1T & LandTgt1 { local t:4 = Land1T; Land1T = 0; if (t != 0) goto LandTgt1; }
+Land1: is c_land1=1 & c_land1_ind=1 & c_land1_sure=0 & Land1T & Land1Pc { local t:4 = Land1T; Land1T = 0; if (t == 0) goto <stay>; goto [Land1Pc]; <stay> Land1T = 0; }
+Land1: is c_land1=2 & c_land1_ind=0 & c_land1_sure=0 & Land1T & LandTgt1 { local t:4 = Land1T; Land1T = 0; if (t == 0) goto <stay>; call LandTgt1; <stay> }
+Land1: is c_land1=2 & c_land1_ind=1 & c_land1_sure=0 & Land1T & Land1Pc { local t:4 = Land1T; Land1T = 0; if (t == 0) goto <stay>; call [Land1Pc]; <stay> }
+Land1: is c_land1=3 & c_land1_sure=0 & Land1T & Land1Pc { local t:4 = Land1T; Land1T = 0; if (t == 0) goto <stay>; return [Land1Pc]; <stay> }
+Land1: is c_land1=1 & c_land1_ind=0 & c_land1_sure=1 & Land1T & LandTgt1 { Land1T = 0; goto LandTgt1; }
+Land1: is c_land1=1 & c_land1_ind=1 & c_land1_sure=1 & Land1T & Land1Pc { Land1T = 0; goto [Land1Pc]; }
+Land1: is c_land1=2 & c_land1_ind=0 & c_land1_sure=1 & Land1T & LandTgt1 { Land1T = 0; call LandTgt1; }
+Land1: is c_land1=2 & c_land1_ind=1 & c_land1_sure=1 & Land1T & Land1Pc { Land1T = 0; call [Land1Pc]; }
+Land1: is c_land1=3 & c_land1_sure=1 & Land1T & Land1Pc { Land1T = 0; return [Land1Pc]; }
 Land2: is c_land2=0 { }
-Land2: is c_land2=1 & c_land2_ind=0 & Land2T & LandTgt2 { if (Land2T != 0) goto LandTgt2; }
-Land2: is c_land2=1 & c_land2_ind=1 & Land2T & Land2Pc { if (Land2T == 0) goto <stay>; goto [Land2Pc]; <stay> }
-Land2: is c_land2=2 & c_land2_ind=0 & Land2T & LandTgt2 { if (Land2T == 0) goto <stay>; call LandTgt2; <stay> }
-Land2: is c_land2=2 & c_land2_ind=1 & Land2T & Land2Pc { if (Land2T == 0) goto <stay>; call [Land2Pc]; <stay> }
-Land2: is c_land2=3 & Land2T & Land2Pc { if (Land2T == 0) goto <stay>; return [Land2Pc]; <stay> }
+Land2: is c_land2=1 & c_land2_ind=0 & c_land2_sure=0 & Land2T & LandTgt2 { local t:4 = Land2T; Land2T = 0; if (t != 0) goto LandTgt2; }
+Land2: is c_land2=1 & c_land2_ind=1 & c_land2_sure=0 & Land2T & Land2Pc { local t:4 = Land2T; Land2T = 0; if (t == 0) goto <stay>; goto [Land2Pc]; <stay> Land2T = 0; }
+Land2: is c_land2=2 & c_land2_ind=0 & c_land2_sure=0 & Land2T & LandTgt2 { local t:4 = Land2T; Land2T = 0; if (t == 0) goto <stay>; call LandTgt2; <stay> }
+Land2: is c_land2=2 & c_land2_ind=1 & c_land2_sure=0 & Land2T & Land2Pc { local t:4 = Land2T; Land2T = 0; if (t == 0) goto <stay>; call [Land2Pc]; <stay> }
+Land2: is c_land2=3 & c_land2_sure=0 & Land2T & Land2Pc { local t:4 = Land2T; Land2T = 0; if (t == 0) goto <stay>; return [Land2Pc]; <stay> }
+Land2: is c_land2=1 & c_land2_ind=0 & c_land2_sure=1 & Land2T & LandTgt2 { Land2T = 0; goto LandTgt2; }
+Land2: is c_land2=1 & c_land2_ind=1 & c_land2_sure=1 & Land2T & Land2Pc { Land2T = 0; goto [Land2Pc]; }
+Land2: is c_land2=2 & c_land2_ind=0 & c_land2_sure=1 & Land2T & LandTgt2 { Land2T = 0; call LandTgt2; }
+Land2: is c_land2=2 & c_land2_ind=1 & c_land2_sure=1 & Land2T & Land2Pc { Land2T = 0; call [Land2Pc]; }
+Land2: is c_land2=3 & c_land2_sure=1 & Land2T & Land2Pc { Land2T = 0; return [Land2Pc]; }
+# c_landN_sure: the latch is set on every path that reaches the instruction, so the landing has no
+# fall-through and flow analysis stops where the hardware leaves.
 
 @include "c6000_flow_delay.sinc"
 @include "c6000_semantics.sinc"

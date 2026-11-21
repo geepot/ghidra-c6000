@@ -70,6 +70,15 @@
         <register name="A13"/><register name="A14"/><register name="A15"/>
         <register name="B10"/><register name="B11"/><register name="B12"/>
         <register name="B13"/><register name="B14"/><register name="B15"/>
+        <!-- No branch is in flight across a call: every latch is clear (C6000NestedLiftAnalyzer). -->
+        <register name="C6000_LATCH_T0"/>
+        <register name="C6000_LATCH_T1"/>
+        <register name="C6000_LATCH_T2"/>
+        <register name="C6000_LATCH_T3"/>
+        <register name="C6000_LATCH_T4"/>
+        <register name="C6000_LATCH_T5"/>
+        <register name="C6000_LATCH_T6"/>
+        <register name="C6000_LATCH_T7"/>
       </unaffected>
     </prototype>
   </default_proto>

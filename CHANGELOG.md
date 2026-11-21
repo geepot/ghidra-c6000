@@ -20,11 +20,15 @@
   predicate, and its register target, as it issues and does not transfer, and the
   instruction it lands behind carries its jump, call or return. A lifting is kept only when
   it runs what the hardware runs on every consistent outcome of the predicates, by the same
-  comparison that decides the nested-window warning, so it covers stretches where at most
-  one of the branches is taken on any path, such as a call and a return on opposite
-  predicates, with 32-bit and compact branches and up to eight branches in flight. Two
-  branches that are both taken, a loop that comes round with a branch still in flight,
-  `CALLP`, `BDEC` and `BPOS` keep the warning, which now says why latching does not fix it.
+  comparison that decides the nested-window warning. It covers 32-bit and compact branches,
+  up to eight in flight, including two that are both taken: the second then lands in the
+  code the first went to, behind the instruction the hardware lands it behind. A branch
+  that lands with a return link freshly written to `B3` is lifted as a call that returns
+  there. A landing whose branch is taken on every path that reaches it is unconditional,
+  so flow stops where the hardware leaves. A loop that comes round with a branch still in
+  flight, a landing in a native delay slot, `CALLP`, `BDEC` and `BPOS` keep the warning,
+  which now says why latching does not fix it. A branch with a user's flow override is
+  left alone.
 * Staged execute-packet writes. Every member of an execute packet reads its operands before
   any member writes (SPRUFE8B 3.5), but p-code runs the members in order. Where a member
   reads a register that an earlier member of its packet writes, the new `C6000 Packet

@@ -52,8 +52,8 @@ public final class C6000PacketStagingAnalyzer extends AbstractAnalyzer {
 	private static final String[] FIELDS = { "c_staged", "c_defer", "c_defer_pair", "c_defer_reg", "c_cm1", "c_cm1_reg", "c_cm2", "c_cm2_reg" };
 	/** Every field that changes native lifting only: staging, and latched branches with their landings. */
 	static final String[] LIFTING = { "c_staged", "c_defer", "c_defer_pair", "c_defer_reg", "c_cm1", "c_cm1_reg", "c_cm2", "c_cm2_reg",
-		"c_inert_wrap", "c_inert", "c_latch_t", "c_land1", "c_land1_ind", "c_land1_t", "c_land1_disp",
-		"c_land2", "c_land2_ind", "c_land2_t", "c_land2_disp" };
+		"c_inert_wrap", "c_inert", "c_latch_t", "c_land1", "c_land1_ind", "c_land1_t", "c_land1_sure", "c_land1_disp",
+		"c_land2", "c_land2_ind", "c_land2_t", "c_land2_sure", "c_land2_disp" };
 
 	public C6000PacketStagingAnalyzer() {
 		super("C6000 Packet Staging",
