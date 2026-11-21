@@ -75,11 +75,12 @@ public final class C6000DelaySlots {
         var it = program.getListing().getInstructions(true);
         while (it.hasNext()) {
             var ins = it.next();
-            String full = ins.getMnemonicString(), name = C6000CallAnalyzer.baseName(ins);
-            // A latched branch has no window: the instruction it lands behind transfers.
-            if (full.startsWith("_") || C6000PacketStagingAnalyzer.inert(ins)) continue;
+            String full = C6000CallAnalyzer.mnemonic(ins), name = C6000CallAnalyzer.baseName(ins);
+            if (full.startsWith("_")) continue;
             if (!(name.equals("B.S1") || name.equals("B.S2") || name.equals("BNOP.S1") ||
                     name.equals("BNOP.S2") || name.equals("CALLP.S1") || name.equals("CALLP.S2"))) continue;
+            // A latched branch has no window: the instruction it lands behind transfers.
+            if (C6000PacketStagingAnalyzer.inert(ins)) continue;
             var override = ins.getFlowOverride();
             // Issue #34: the SLEIGH captures a predicate and target before the
             // slots, so predicated and delayed-call displacement branches are
