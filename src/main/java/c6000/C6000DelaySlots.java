@@ -38,12 +38,23 @@ public final class C6000DelaySlots {
             List<SavedRef> references, boolean fallThroughOverridden, Address fallThrough) { }
     private record Window(Instruction branch, Address end, Function owner) { }
 
+    /**
+     * The modification number at which a recovery last changed nothing. Recovery reads only the
+     * program, so on the same program it would change nothing again: Late Branch Flow and Register
+     * Branch Flow often run it back to back, over the whole program.
+     */
+    private static final Map<Program, Long> SETTLED = Collections.synchronizedMap(new WeakHashMap<>());
+
     /** B/BNOP or CALLP; nested transfers and ownership conflicts are refused. */
     public static List<Repair> recover(Program program, TaskMonitor monitor, MessageLog log)
             throws Exception {
         int transaction = program.startTransaction("Recover C6000 delay windows");
         try {
+            long before = program.getModificationNumber();
+            if (Long.valueOf(before).equals(SETTLED.get(program))) return new ArrayList<>();
             List<Repair> result = recoverWindows(program, monitor, log);
+            if (result.isEmpty() && program.getModificationNumber() == before) SETTLED.put(program, before);
+            else SETTLED.remove(program);
             // A disassembler poll stops quietly: report its cancel.
             monitor.checkCancelled();
             return result;
