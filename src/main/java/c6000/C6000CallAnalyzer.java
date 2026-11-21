@@ -1862,7 +1862,7 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 			for (int i = Math.min(query, anchor); i < Math.max(query, anchor); i++) {
 				Instruction instruction = path.get(i);
 				// A packet reads predicates before any of its writes commit.
-				if (samePacket(path, i, Math.max(query, anchor))) continue;
+				if (cycles[i] == last) continue;
 				String p = predicate(instruction);
 				if (query >= anchor && p != null && p.replace("!", "").equals(register.getName()) &&
 					(p.startsWith("!") ? !nonzero : nonzero) == false) continue;
@@ -1897,12 +1897,6 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 			Long value = C6000LoopCounterProof.constantOutput(program.getLanguage(), C6000PacketStagingAnalyzer.hardwarePcode(insn),
 				register.getAddress().getOffset(), register.getMinimumByteSize(), seeds);
 			return value == null ? null : value & 0xffffffffL;
-		}
-
-		/** One execute packet issues in one cycle, and no other does. */
-		private boolean samePacket(List<Instruction> path, int first, int last) {
-			int[] cycles = issueCycles(path);
-			return cycles[first] == cycles[last];
 		}
 
 		/** True when {@code later} is in {@code jump}'s execute packet or five delay cycles. */
@@ -2027,8 +2021,8 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 	}
 
 	private static boolean isFlow(Instruction insn) {
-		return C6000PacketStagingAnalyzer.flow(insn).isJump() || C6000PacketStagingAnalyzer.flow(insn).isCall() ||
-			C6000PacketStagingAnalyzer.flow(insn).isTerminal();
+		var flow = C6000PacketStagingAnalyzer.flow(insn);
+		return flow.isJump() || flow.isCall() || flow.isTerminal();
 	}
 
 	/**

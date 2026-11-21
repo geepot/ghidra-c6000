@@ -108,17 +108,20 @@ public final class C6000PacketStagingAnalyzer extends AbstractAnalyzer {
 	 */
 	static Instruction hardware(Instruction ins) {
 		Program program = ins.getProgram();
-		if (program.getRegister("c_staged") == null) return ins;
+		Register[] fields = HARDWARE_FIELDS.computeIfAbsent(program.getLanguage(), C6000PacketStagingAnalyzer::hardwareFields);
+		if (fields.length == 0) return ins;
+		// One context read per instruction: reading each field on its own goes to the database again.
+		var value = ins.getRegisterValue(program.getLanguage().getContextBaseRegister());
+		if (value == null) return ins;
 		boolean any = false;
-		for (String name : new String[] { "c_staged", "c_cm1", "c_cm2", "c_inert_wrap", "c_inert", "c_land1", "c_land2" }) {
-			BigInteger value = ins.getValue(program.getRegister(name), false);
-			any |= value != null && value.signum() != 0;
+		for (Register field : fields) {
+			BigInteger set = value.getRegisterValue(field).getUnsignedValue();
+			any |= set != null && set.signum() != 0;
 		}
 		if (!any) return ins;
 		try {
 			var context = new ghidra.program.model.lang.ProcessorContextImpl(program.getLanguage());
-			var value = ins.getRegisterValue(program.getLanguage().getContextBaseRegister());
-			if (value != null) context.setRegisterValue(value);
+			context.setRegisterValue(value);
 			unstage(program, context);
 			var buffer = new ghidra.program.model.mem.DumbMemBufferImpl(program.getMemory(), ins.getAddress());
 			var prototype = program.getLanguage().parse(buffer, context, ins.isInDelaySlot());
@@ -127,6 +130,18 @@ public final class C6000PacketStagingAnalyzer extends AbstractAnalyzer {
 		catch (Exception e) {
 			return ins;
 		}
+	}
+
+	private static final Map<ghidra.program.model.lang.Language, Register[]> HARDWARE_FIELDS =
+		new java.util.concurrent.ConcurrentHashMap<>();
+
+	/** The context fields that make the listing's instruction differ from the hardware's; none without staging. */
+	private static Register[] hardwareFields(ghidra.program.model.lang.Language language) {
+		if (language.getRegister("c_staged") == null) return new Register[0];
+		List<Register> fields = new ArrayList<>();
+		for (String name : new String[] { "c_staged", "c_cm1", "c_cm2", "c_inert_wrap", "c_inert", "c_land1", "c_land2" })
+			fields.add(language.getRegister(name));
+		return fields.toArray(Register[]::new);
 	}
 
 	/** The hardware instruction's flow, with the listing's override: a latched branch is still a branch, and the instruction it lands behind is not. */
