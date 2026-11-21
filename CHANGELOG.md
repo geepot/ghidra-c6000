@@ -12,6 +12,9 @@
   entering jumps once it holds no register value to merge, and it checks whether the label
   is an entry only once. With the change above, analysis takes about 57% of the time it
   did, with the same results.
+* Delay-window recovery, which runs over the whole program, returns at once when the
+  program is unchanged since a recovery that changed nothing. With the two changes above,
+  analysis takes under half the time it did, with the same results.
 * All eight languages are now version 3.0: the context register is 128 bits, which makes
   room for the latched-branch fields (bits 64-122). Programs saved with version 2, or with
   version 1, upgrade on open with every context field carried over by name. As with
