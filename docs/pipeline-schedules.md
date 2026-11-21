@@ -105,7 +105,10 @@ lane and any intervening MVC remain visible. MVD uses E4, as specified in its pi
 table, not the E2 timing of integer multiplies.
 
 **Repeated DP port reads currently require stability.** MPYDP and MPYSPDP may read a
-word more than once. Any possible write between its first and last read is refused. The
+word more than once. Any write that can run alongside the reads, between the first and
+the last, is refused. A writer whose predicate is known false at issue, or one on the
+opposite sense of the reader's own predicate value, cannot, and is let through
+(SPRUFE8B 3.6). The
 compiler does not replace changing repeated reads with one arbitrary sample or
 approximate a partial-product datapath. This is a restricted, checked timing contract,
 not support for every legal DP schedule.
