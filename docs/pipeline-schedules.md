@@ -225,7 +225,10 @@ re-decoded as ordinary instructions, which the schedule issues itself, and disab
 re-decodes the native window from the unchanged decode context, restoring flow and
 fall-through overrides, references and equates. Enabling refuses a window that is not
 the branch's own straight-line slots, that another function owns or starts in, or that
-any reference from outside the entry and its slots targets (SPRUFE8B 3.5, 4.2.6).
+any reference from outside the entry and its slots targets (SPRUFE8B 3.5, 4.2.6). The
+window is walked by its delay bytes, not by Ghidra's delay-slot depth, which miscounts
+compact slots and fetch-packet headers (SPRUFE8B 3.10; see Ghidra #10242 in
+[internals](internals.md)).
 `pipeline-entry-delay.py` / `C6000PipelineEntryDelayTest.java` check a TI-assembled
 entry jump through review, record and activation, its executed p-code, a listing
 identical after disable, and refusals for a body reference and an outside jump into
