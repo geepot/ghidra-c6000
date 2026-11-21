@@ -26,6 +26,11 @@
 
 ### Fixed
 
+* The call analyzer's look-back treats every register the ABI lets a callee change as
+  unknown once an earlier call has returned (all but A10-A15 and B10-B15), and at code that
+  nothing falls into, after a jump or return that always goes, it takes the registers from
+  the jumps that enter it instead of from the code physically before. A register call
+  after another call kept a target loaded into a scratch register before that call.
 * A register branch's target is checked against what its register holds at E1 wherever the
   call analyzer's look-back proves that value, not only for an `MVK`/`MVKH` pair directly
   before the branch. A write in the branch's own execute packet, or one that only runs when

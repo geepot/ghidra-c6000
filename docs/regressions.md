@@ -571,6 +571,12 @@ has not written the register since it last passed that label (a loop's back edge
 0x1ae0 by a jump: it is a call with no known target, where the look-back alone gave it
 0x1100. 1b10 is entered with 0x1100 both ways and keeps its target.
 
+Across an earlier call the look-back keeps only the registers a callee must preserve
+(A10-A15 and B10-B15, C6000 EABI): `delayed-call.py` 1b90 calls through B5, loaded before a
+call, and has no known target; 1bd0 does the same through B10 and keeps 0x1100. Code after
+a jump or return that always goes is reached only by the jumps that enter it, so the
+registers there come from those jumps.
+
 ## Delayed-call predicate facts
 
 `delayed-call.py IMAGE [be]` and `C6000DelayedCallTest.java` (with

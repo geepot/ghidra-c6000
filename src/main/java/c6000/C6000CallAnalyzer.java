@@ -714,9 +714,10 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 		 * Code a jump from elsewhere enters is also reached without what the look-back saw before it.
 		 * Keep a register constant across {@code label} only when every entering jump arrives with the
 		 * same value, or has not written the register since it last passed the label (a loop's back
-		 * edge). A call, or a path this cannot follow, leaves nothing known.
+		 * edge). A call, or a path this cannot follow, leaves nothing known. With {@code only}, nothing
+		 * falls into the label: what the entering jumps agree on replaces what the look-back held.
 		 */
-		private void meetEntries(Instruction label, Map<Register, long[]> regs, Constants trace) {
+		private void meetEntries(Instruction label, Map<Register, long[]> regs, Constants trace, boolean only) {
 			List<Instruction> jumps = new ArrayList<>();
 			for (Reference ref : program.getReferenceManager().getReferencesTo(label.getMinAddress())) {
 				if (!ref.getReferenceType().isFlow() || ref.getReferenceType().isFallthrough()) continue;
@@ -750,6 +751,12 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 					List<Instruction> issued = other.landed().issued();
 					int since = -1;
 					for (int i = 0; i < issued.size(); i++) if (issued.get(i).getMinAddress().equals(label.getMinAddress())) since = i;
+					if (only) {
+						trace.forget();
+						for (var entry : other.landed().values().entrySet()) if (entry.getValue()[1] == FULL) regs.put(entry.getKey(), entry.getValue().clone());
+						only = false;
+						continue;
+					}
 					// A back edge whose look-back does not reach the label: every instruction from the label
 					// to the end of what the jump issues is a superset of the loop body's writes.
 					List<Register> body = since < 0 ? writesBetween(label, issued.get(issued.size() - 1)) : null;
@@ -893,6 +900,8 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 			if (via != null) addFact(facts, slotIndex(path, viaInsn), viaInsn, true);
 			addFact(facts, branchIndex, branch, true);
 			java.util.Collections.reverse(facts);
+			List<Integer> returns = new ArrayList<>();
+			int dead = Integer.MAX_VALUE;
 			for (int i = 0; i < path.size(); i++) {
 				Instruction insn = path.get(i);
 				Boolean runs = executes(execution, i, facts);
@@ -904,15 +913,29 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 					continue;
 				}
 				trace.before(issue[i]);
-				if (entered[i]) meetEntries(insn, regs, trace);
-				if (insn != viaInsn && isFlow(insn)) trace.write(issue[i], program.getRegister("B3"), null, i);
+				// A callee may change every register the ABI does not make it preserve. That is done
+				// when it returns, before the return point's own writes.
+				for (var back = returns.iterator(); back.hasNext();) {
+					if (back.next() <= issue[i]) { back.remove(); trace.forget(callClobbered()); }
+				}
+				if (entered[i]) {
+					meetEntries(insn, regs, trace, dead <= issue[i]);
+					dead = Integer.MAX_VALUE;
+				}
+				if (insn != viaInsn && isFlow(insn)) {
+					trace.write(issue[i], program.getRegister("B3"), null, i);
+					if (insn.getFlowType().isCall()) returns.add(issue[i] + 1 + DELAY_CYCLES);
+					// Past the window of a jump or return that always goes, nothing falls through.
+					if (!insn.getFlowType().isCall() && predicate(insn) == null) dead = issue[i] + 1 + DELAY_CYCLES;
+				}
 				trace.instruction(insn, runs, issue[i], i);
 			}
 
 			// SPRUFE8B 3.5 / Tables 4-6 and 4-11: all members of a
 			// packet read the same E1 snapshot, before any E1 writer commits.
 			trace.before(issue[branchIndex]);
-			if (entered[branchIndex]) meetEntries(branch, regs, trace);
+			for (int back : returns) if (back <= issue[branchIndex]) trace.forget(callClobbered());
+			if (entered[branchIndex]) meetEntries(branch, regs, trace, dead <= issue[branchIndex]);
 			Register source = branch.getRegister(0);
 			Long target = null;
 			if (source != null) {
@@ -941,6 +964,22 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 				insn = next(insn);
 			}
 			return null;
+		}
+
+		private List<Register> clobbered;
+
+		/** The registers a callee need not preserve: all but A10-A15 and B10-B15 (C6000 EABI, SPRAB89 3.2). */
+		private List<Register> callClobbered() {
+			if (clobbered == null) {
+				clobbered = new ArrayList<>();
+				for (char side : new char[] { 'A', 'B' }) {
+					for (int n = 0; n < 32; n++) {
+						Register r = n >= 10 && n <= 15 ? null : program.getRegister(side + Integer.toString(n));
+						if (r != null) clobbered.add(r);
+					}
+				}
+			}
+			return clobbered;
 		}
 
 		/** A function's entry or a program entry point: reached from callers this cannot see. */
@@ -1233,6 +1272,13 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 				if (forgotten >= since) return true;
 				for (var entry : lastWriter.entrySet()) if (entry.getValue() >= since && overlaps(entry.getKey(), register)) return true;
 				return false;
+			}
+			/** The values of {@code registers}, held or still to land, become unknown. */
+			void forget(List<Register> registers) {
+				values.keySet().removeIf(r -> registers.stream().anyMatch(c -> overlaps(c, r)));
+				for (List<Write> writes : pending.values())
+					writes.replaceAll(w -> registers.stream().anyMatch(c -> overlaps(c, w.register())) ? new Write(w.register(), null, w.owner()) : w);
+				for (Register r : registers) lastWriter.merge(r, at, Math::max);
 			}
 			/** Every value, held or still to land, becomes unknown; the writes still land. */
 			void forget() {

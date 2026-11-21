@@ -98,6 +98,11 @@ either way:
   1a80  MVK/MVKH 0x1100,B5       1a90  B.S2 B5 (call)          1ac0  MVK/MVKH 0x1ae0,B5
   1a88  [A1]B.S1 0x1ac0          1a94  ADDKPC 0x1a98,B3,4      1ac8  B.S1 0x1a90
 
+A register constant across a call: B5 is the callee's to change, B10 is preserved (EABI):
+
+  1b80  MVK/MVKH 0x1100,B5       1b88  B.S1 0x1100 ; ADDKPC    1b90  B.S2 B5  (call, target unknown)
+  1bc0  MVK/MVKH 0x1100,B10      1bc8  B.S1 0x1100 ; ADDKPC    1bd0  B.S2 B10 (call to 0x1100)
+
 A predicated reaching jump; the write under the opposite predicate does not count:
 
   1480  B.S1    0x14c0 (jump)    14c0  [A1]B.S1  0x1488 (jump)
@@ -342,8 +347,21 @@ def entered(base, other):
 # entered with B5 = 0x1100 or 0x1ae0, so its target is not known; 1b10 with 0x1100 either way.
 ENTERED = {**entered(0x1A80, 0x1AE0), 0x1AE0: B_B3, 0x1AE4: nop(5), **entered(0x1B00, CALLEE)}
 
+def across_call(base, reg):
+    """reg = CALLEE, a call, then a register call through reg at base+0x10."""
+    return {
+        base: mvk(CALLEE, reg), base + 0x4: mvkh(0, reg), base + 0x8: b_s1(base + 0x8, CALLEE),
+        base + 0xC: addkpc(base + 0xC, base + 0x10, 4), base + 0x10: 0x362 | (reg << 18),
+        base + 0x14: addkpc(base + 0x14, base + 0x18, 4), base + 0x18: B_B3, base + 0x1C: nop(5),
+    }
+
+
+# A callee may change B5 but must preserve B10 (C6000 EABI): after the call at 1b88 the
+# register call at 1b90 has no known target, and the one at 1bd0 still has 0x1100.
+ACROSS_CALL = {**across_call(0x1B80, 5), **across_call(0x1BC0, 10)}
+
 CASES = {
-    **PARTNER_FAR, **NEAR_HELPER, **ADDK_RETURN, **INSIDE_WINDOW, **ENTERED,
+    **PARTNER_FAR, **NEAR_HELPER, **ADDK_RETURN, **INSIDE_WINDOW, **ENTERED, **ACROSS_CALL,
     0x1300: b_s1(0x1300, 0x1340), 0x1304: nop(5),
     0x1308: b_s1(0x1308, CALLEE), 0x130C: nop(5), 0x1310: B_B3, 0x1314: nop(5),
     0x1340: mvk(0x1310, 3), 0x1344: mvkh(0, 3),
