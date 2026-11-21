@@ -144,6 +144,7 @@ TI = [
     case("nested-window", "NestedWindow", "C6000_NESTED_WINDOW_OK", "json", analysis=True),
     case("bnop-call", "BnopCall", "C6000_BNOP_CALL_OK", "json", analysis=True),
     case("predicated-register-jump", "PredicatedRegisterJump", "C6000_PREDICATED_REGISTER_JUMP_OK", "json", analysis=True),
+    case("same-packet-hazard", "SamePacketHazard", "C6000_SAME_PACKET_HAZARD_OK", "json", analysis=True),
 ]
 
 
@@ -332,6 +333,8 @@ def main():
                     command += ["-preScript", "C6000BnopCallTest.java", "prepare", directory / "cases.json"]
                 elif fixture == "predicated-register-jump":
                     command += ["-preScript", "C6000PredicatedRegisterJumpTest.java", "prepare", directory / "cases.json"]
+                elif fixture == "same-packet-hazard":
+                    command += ["-preScript", "C6000SamePacketHazardTest.java", "prepare", directory / "cases.json"]
                 elif fixture not in ELF:
                     command += ["-preScript", "C6000SetEntry.java", "1000"]
                 for script, script_args, _ in scripts:
