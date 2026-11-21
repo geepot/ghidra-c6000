@@ -172,7 +172,10 @@ drainage and previous-E1 hazards still require their own evidence. This is a
 quiescent observation of the function, not a model of an arbitrary firmware caller.
 
 Only pending E3 stores at ages one/two are allowed. A short idle budget, pending
-loads, arithmetic writeback, live loop control or another transfer refuses. Store
+loads, arithmetic writeback, live loop control or another transfer refuses, except a
+return taken while a loop drains: the taken branch idles a buffer that isn't reloading
+(SPRUFE8B 7.14), so nothing more issues from it, and the stores it already issued join
+the contract like any others. Store
 addresses, values, predicates and base updates retain their E1 snapshots; individual
 nonaligned byte writes and aligned pair writes commit at E3. A store-tail boundary
 exports every pending instruction and its raw memory effects, including each
