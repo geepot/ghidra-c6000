@@ -1133,8 +1133,13 @@ public final class C6000PipelineCompiler {
             for(var i:pack)if(i.name().equals("CALLP")){long link=callLinkRegister(i).getAddress().getOffset();if(writesThisCycle.stream().filter(d->d.offset()<link+4&&link<d.offset()+d.size()).count()>1)throw fail("CALLP link has a potential simultaneous E1 writer");}
             validateMemoryWriteCollisions(s,pack);
             validateMpyliWritePorts(s,pack);
-            for(var i:pack)checkStable(i,1,writesThisCycle);
-            for(var f:s.flights())checkStable(decode(f.pc()),f.age()+1,writesThisCycle);
+            // predicated readers and writers: one whose predicate was false at issue does nothing,
+            // and two on complementary senses of one predicate value never both run (SPRUFE8B 3.6)
+            List<Guarded> guardedWrites=new ArrayList<>();
+            for(var i:pack){int truth=predicateTruth(i,s.facts());if(truth!=0)for(var d:i.outputs())if(d.phase()==1)guardedWrites.add(new Guarded(d,predicateToken(i,s.facts()),i.inverted()));}
+            for(var f:s.flights()){var i=decode(f.pc());if(f.predicateTruth()!=0)for(var d:i.outputs())if(d.phase()==f.age()+1)guardedWrites.add(new Guarded(d,f.predicateToken(),i.inverted()));}
+            for(var i:pack)if(predicateTruth(i,s.facts())!=0)checkStable(i,1,predicateToken(i,s.facts()),guardedWrites);
+            for(var f:s.flights())if(f.predicateTruth()!=0)checkStable(decode(f.pc()),f.age()+1,f.predicateToken(),guardedWrites);
             Map<Flight,Eval> mature=new LinkedHashMap<>();
             for(var f:s.flights()){
                 var i=decode(f.pc());if(i.load()&&f.age()==2||!i.load()&&!i.store()&&i.ready()>1&&f.age()==i.ready()-1)
@@ -1693,10 +1698,14 @@ public final class C6000PipelineCompiler {
         return result;
     }
 
-    private void checkStable(Insn instruction,int phase,List<Dest> writes){
-        for(var read:instruction.reads())if(phase>=read.first()&&phase<read.last())for(var write:writes)
+    private record Guarded(Dest write,int token,boolean inverted){}
+    private void checkStable(Insn instruction,int phase,int token,List<Guarded> writes){
+        for(var read:instruction.reads())if(phase>=read.first()&&phase<read.last())for(var guarded:writes){
+            var write=guarded.write();
+            if(token>=0&&token==guarded.token()&&instruction.inverted()!=guarded.inverted())continue;
             if(write.offset()<read.offset()+4&&write.offset()+write.size()>read.offset())
                 throw fail("writer violates repeated DP source-read stability at "+instruction.instruction().getAddress());
+        }
     }
 
     private void copy(List<Runnable> moves,Varnode to,Varnode from){

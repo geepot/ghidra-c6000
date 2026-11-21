@@ -59,6 +59,11 @@
 
 ### Fixed
 
+* Exact schedules accept a predicated write inside a double-precision instruction's
+  repeated source-read window when the two can't both run: the writer's predicate is
+  known false, or the writer and the reader test opposite senses of one predicate value.
+  Every write in the window was refused before. Two writers on the same sense still are.
+
 * The call analyzer's look-back treats every register the ABI lets a callee change as
   unknown once an earlier call has returned (all but A10-A15 and B10-B15), and at code that
   nothing falls into, after a jump or return that always goes, it takes the registers from
