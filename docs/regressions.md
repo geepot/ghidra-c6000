@@ -67,7 +67,13 @@ lands before the dispatch issues, 1400 by the dispatch's own `[!B0]` predicate; 
 exactly its three cases although its table continues with valid code addresses. 1200
 adds a later `CMPLTU 5,B6,B1` of another register: taking the last compare as the bound
 gave the dispatch two extra cases. 1600's compare result guards nothing, so no table is
-read. Each guarded switch must decompile as a `switch`.
+read. 1800 compares a biased copy (`ADD -3,B4,B6`) and folds the bias into an address
+built by `SHL`/`ADD`, 1a00 builds the address by `SHL`/`ADD` from the compared index, and
+1e00 folds one entry less than it compares, so its cases start at the table's second
+entry. 1c00 compares a biased copy of another register, so no table is read. 2000 takes
+the biased copy in the packet that shifts the index in place (the copy reads the old
+value) and folds the bias with `ADDK`; 2200 holds the bias in a register. Each guarded
+switch must decompile as a `switch`.
 
 `C6000SwitchOwnershipTest.java` runs after `C6000JumpTableTest.java` on the existing
 `tests/fixtures/jump-table.py` image. Run both with little- and big-endian languages.
