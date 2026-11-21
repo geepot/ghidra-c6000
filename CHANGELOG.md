@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+### Changed
+
+* All eight languages are now version 3.0: the context register is 128 bits, which makes
+  room for the latched-branch fields (bits 64-122). Programs saved with version 2, or with
+  version 1, upgrade on open with every context field carried over by name. As with
+  version 2.0, review the exact schedules of an upgraded program again, and note that
+  Ghidra's re-disassembly during the upgrade can drop an instruction after a delay window
+  that mixes 32-bit and compact instructions (Ghidra #10242).
+
 ### Added
 
 * Staged execute-packet writes. Every member of an execute packet reads its operands before

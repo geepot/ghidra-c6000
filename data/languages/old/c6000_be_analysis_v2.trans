@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Version 2 to 3: contextreg grew from 64 to 128 bits for latched branches; context fields carry over by name. -->
+<language_translation>
+    <from_language version="2">C6000:BE:32:analysis</from_language>
+    <to_language version="3">C6000:BE:32:analysis</to_language>
+    <map_compiler_spec from="default" to="default" />
+</language_translation>

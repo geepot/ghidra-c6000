@@ -81,9 +81,10 @@ primer sets to each compact slot's halfword. `tools/gen_compact_context.py` mirr
 bytes long. Little-endian languages keep the `insn16` token (issue #31). Java readers use
 `C6000PacketContext.halfword`.
 
-Since language version 2 in both byte orders, `contextreg` is 64 bits and each field has
+Since language version 3 in both byte orders, `contextreg` is 128 bits and each field has
 the same position in both. Bits 0-23 hold the decode and recovery fields and big-endian
-bits 32-47 hold `c_h16`; bits 24-31 and 48-63 are free. New fields are `noflow` with a
+bits 32-47 hold `c_h16`; bits 24-31 and 48-61 hold the packet staging fields and bits
+64-122 the latched-branch fields. Bits 62-63 and 123-127 are free. New fields are `noflow` with a
 `c_` prefix, unless they really must flow.
 
 Only the eighth word of a compact fetch packet decodes as a 4-byte `CPKT` instruction.
@@ -401,7 +402,13 @@ references, overrides and comments. Re-run auto-analysis afterwards so delay win
 calls are recovered from the corrected order. The big-endian C67x variants were never
 released at version 1.
 
-Little-endian languages are version 2.0 too: `contextreg` grew from 32 to 64 bits. The
+All eight languages are version 3.0: `contextreg` grew from 64 to 128 bits for latched
+branches. `data/languages/old/` describes each version 2 language with a `.trans` file,
+and Ghidra's default translator carries each field over by name, after the version 1 to
+2 step where one applies. The notes below on re-analysis and reviewed schedules apply to
+this step too.
+
+Little-endian languages became version 2.0 in v1.3.0: `contextreg` grew from 32 to 64 bits. The
 old field positions are unchanged, but SLEIGH numbers context bits from the most
 significant end, so every stored value moves. `data/languages/old/` describes all four
 version 1 little-endian languages (1.0 to 1.2 differ only by added fields), and Ghidra's

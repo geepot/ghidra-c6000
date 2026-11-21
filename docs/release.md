@@ -28,7 +28,7 @@ interrupt and exceptional-loop limitations are detailed in [limitations](limitat
 |---|---|
 | Repository release | `v1.3.0` |
 | Ghidra compatibility matrix | 12.1.4 / JDK 21; 12.2 / JDK 25 |
-| Language version | 2.0 for all eight definitions (big-endian since issue #31; little-endian since v1.3.0, 64-bit context register) |
+| Language version | 3.0 for all eight definitions (128-bit context register; 2.0 was big-endian issue #31 and the little-endian 64-bit context register of v1.3.0) |
 | Archive naming | `ghidra_<Ghidra version>_PUBLIC_<build date>_C6000.zip` |
 | Extension-property version | Ghidra compatibility version, substituted from `@extversion@` during build |
 

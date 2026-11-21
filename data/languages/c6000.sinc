@@ -85,7 +85,7 @@ define register offset=0x2000 size=4
 # slot's halfword (issue #31).  Both byte orders use 8 bytes, so fields at the
 # same positions mean the same thing in both; little-endian was 4 bytes before
 # language version 2 (bits 0-23 then filled 24 of its 32 bits).
-define register offset=0x3000 size=8 [ contextreg ];
+define register offset=0x3000 size=16 [ contextreg ];
 
 # Synthetic execution address for Ghidra's p-code emulator.  C6000 exposes
 # PCE1 to instructions, while the emulator needs a distinct current PC.
@@ -97,6 +97,14 @@ define register offset=0x3200 size=4 [ C6000_PIPE_RET C6000_PIPE_ILC C6000_PIPE_
 # member of its packet still has to read as it was keeps the register unchanged
 # and holds the result here until the last such reader has run.
 define register offset=0x3300 size=4 [ C6000_STAGE_OLD ];
+
+# Latched branches (SPRUFE8B 3.5, 4.2.6: a branch reads its predicate and target
+# when it issues and redirects fetch six cycles later).  A branch whose delay
+# window native lifting cannot hold, because another branch issues in it, only
+# records what it read; the instruction after which it lands carries the transfer.
+define register offset=0x3400 size=4
+  [ C6000_LATCH_T0 C6000_LATCH_T1 C6000_LATCH_T2 C6000_LATCH_T3
+    C6000_LATCH_PC0 C6000_LATCH_PC1 C6000_LATCH_PC2 C6000_LATCH_PC3 ];
 define register offset=0x4000 size=4
   [ C6000_NEW_A0 C6000_NEW_A1 C6000_NEW_A2 C6000_NEW_A3 C6000_NEW_A4 C6000_NEW_A5 C6000_NEW_A6 C6000_NEW_A7 C6000_NEW_A8 C6000_NEW_A9 C6000_NEW_A10 C6000_NEW_A11 C6000_NEW_A12 C6000_NEW_A13 C6000_NEW_A14 C6000_NEW_A15 C6000_NEW_A16 C6000_NEW_A17 C6000_NEW_A18 C6000_NEW_A19 C6000_NEW_A20 C6000_NEW_A21 C6000_NEW_A22 C6000_NEW_A23 C6000_NEW_A24 C6000_NEW_A25 C6000_NEW_A26 C6000_NEW_A27 C6000_NEW_A28 C6000_NEW_A29 C6000_NEW_A30 C6000_NEW_A31
     C6000_NEW_B0 C6000_NEW_B1 C6000_NEW_B2 C6000_NEW_B3 C6000_NEW_B4 C6000_NEW_B5 C6000_NEW_B6 C6000_NEW_B7 C6000_NEW_B8 C6000_NEW_B9 C6000_NEW_B10 C6000_NEW_B11 C6000_NEW_B12 C6000_NEW_B13 C6000_NEW_B14 C6000_NEW_B15 C6000_NEW_B16 C6000_NEW_B17 C6000_NEW_B18 C6000_NEW_B19 C6000_NEW_B20 C6000_NEW_B21 C6000_NEW_B22 C6000_NEW_B23 C6000_NEW_B24 C6000_NEW_B25 C6000_NEW_B26 C6000_NEW_B27 C6000_NEW_B28 C6000_NEW_B29 C6000_NEW_B30 C6000_NEW_B31 ];
@@ -130,6 +138,21 @@ define context contextreg
   c_cm2       = (55,55) noflow
   c_cm2_reg   = (56,61) noflow
   c_cm2_new   = (56,61) noflow
+  # Latched branches, set by the nested-branch lifting analyzer.
+  c_inert_wrap  = (64,65) noflow # 1: latch this branch's predicate; 2: and its register target
+  c_inert       = (66,66) noflow # this branch does not transfer where it issues
+  c_latch_t     = (67,68) noflow # the latch it records into
+  c_latch_pc    = (67,68) noflow
+  c_land1       = (69,70) noflow # a latched branch lands after this instruction: 1 jump, 2 call, 3 return
+  c_land1_ind   = (71,71) noflow # to the latched register target, else to c_land1_disp
+  c_land1_t     = (72,73) noflow
+  c_land1_pc    = (72,73) noflow
+  c_land1_disp  = (74,95) signed noflow # halfwords from this instruction's fetch packet
+  c_land2       = (96,97) noflow
+  c_land2_ind   = (98,98) noflow
+  c_land2_t     = (99,100) noflow
+  c_land2_pc    = (99,100) noflow
+  c_land2_disp  = (101,122) signed noflow
 @if ENDIAN == "big"
 @include "c6000_compact_context.sinc"
 @endif
@@ -594,6 +617,25 @@ StageCommit1: is c_cm1=1 & c_cm1_reg & c_cm1_new { c_cm1_reg = c_cm1_new; }
 StageCommit2: is c_cm2=0 { }
 StageCommit2: is c_cm2=1 & c_cm2_reg & c_cm2_new { c_cm2_reg = c_cm2_new; }
 
+attach variables [ c_latch_t c_land1_t c_land2_t ] [ C6000_LATCH_T0 C6000_LATCH_T1 C6000_LATCH_T2 C6000_LATCH_T3 ];
+attach variables [ c_latch_pc c_land1_pc c_land2_pc ] [ C6000_LATCH_PC0 C6000_LATCH_PC1 C6000_LATCH_PC2 C6000_LATCH_PC3 ];
+
+# Where a latched branch lands: after this instruction, if it was taken.
+LandTgt1: reloc is c_land1_disp [ reloc = (inst_start & 0xffffffe0) + (c_land1_disp << 1); ] { export *[ram]:4 reloc; }
+LandTgt2: reloc is c_land2_disp [ reloc = (inst_start & 0xffffffe0) + (c_land2_disp << 1); ] { export *[ram]:4 reloc; }
+Land1: is c_land1=0 { }
+Land1: is c_land1=1 & c_land1_ind=0 & c_land1_t & LandTgt1 { if (c_land1_t != 0) goto LandTgt1; }
+Land1: is c_land1=1 & c_land1_ind=1 & c_land1_t & c_land1_pc { if (c_land1_t == 0) goto <stay>; goto [c_land1_pc]; <stay> }
+Land1: is c_land1=2 & c_land1_ind=0 & c_land1_t & LandTgt1 { if (c_land1_t == 0) goto <stay>; call LandTgt1; <stay> }
+Land1: is c_land1=2 & c_land1_ind=1 & c_land1_t & c_land1_pc { if (c_land1_t == 0) goto <stay>; call [c_land1_pc]; <stay> }
+Land1: is c_land1=3 & c_land1_t & c_land1_pc { if (c_land1_t == 0) goto <stay>; return [c_land1_pc]; <stay> }
+Land2: is c_land2=0 { }
+Land2: is c_land2=1 & c_land2_ind=0 & c_land2_t & LandTgt2 { if (c_land2_t != 0) goto LandTgt2; }
+Land2: is c_land2=1 & c_land2_ind=1 & c_land2_t & c_land2_pc { if (c_land2_t == 0) goto <stay>; goto [c_land2_pc]; <stay> }
+Land2: is c_land2=2 & c_land2_ind=0 & c_land2_t & LandTgt2 { if (c_land2_t == 0) goto <stay>; call LandTgt2; <stay> }
+Land2: is c_land2=2 & c_land2_ind=1 & c_land2_t & c_land2_pc { if (c_land2_t == 0) goto <stay>; call [c_land2_pc]; <stay> }
+Land2: is c_land2=3 & c_land2_t & c_land2_pc { if (c_land2_t == 0) goto <stay>; return [c_land2_pc]; <stay> }
+
 @include "c6000_flow_delay.sinc"
 @include "c6000_semantics.sinc"
 define pcodeop c6000_pipeline;
@@ -601,9 +643,15 @@ define pcodeop c6000_pipeline;
 # operand BEFORE the userop. The native return hides the physical CFG; dynamic
 # injection supplies the exact scheduled CFG and its captured return target.
 :^instruction is c_schedule_entry=1 & instruction [ c_schedule_entry=0; c_flow_delay=0; ] { c6000_pipeline(); return [C6000_PIPE_RET]; build instruction; }
-:^instruction is c_schedule_entry=0 & c_staged=1 & StagePre & StagePost & StageCommit1 & StageCommit2 & instruction [ c_staged=0; ]
-{ build StagePre; build instruction; build StagePost; build StageCommit1; build StageCommit2; }
-with : c_schedule_entry=0 & c_staged=0 {
+# A latched branch records its predicate, and its register target, as it issues;
+# inside, its CFlowDelay ends the instruction instead of transferring.
+:^instruction is c_schedule_entry=0 & c_inert_wrap=1 & c_latch_t & Cond & instruction [ c_inert_wrap=0; ]
+{ c_latch_t = zext(Cond); build instruction; }
+:^instruction is c_schedule_entry=0 & c_inert_wrap=2 & c_latch_t & c_latch_pc & Cond & Src2 & instruction [ c_inert_wrap=0; ]
+{ c_latch_t = zext(Cond); c_latch_pc = Src2; build instruction; }
+:^instruction is c_schedule_entry=0 & c_inert_wrap=0 & c_staged=1 & StagePre & StagePost & StageCommit1 & StageCommit2 & Land1 & Land2 & instruction [ c_staged=0; ]
+{ build StagePre; build instruction; build StagePost; build StageCommit1; build StageCommit2; build Land1; build Land2; }
+with : c_schedule_entry=0 & c_staged=0 & c_inert_wrap=0 {
 # Figure F-8 pointer branches use op=110 (IRP) or 111 (NRP).
 # The op field overlaps the five-bit register field of Figure F-7; match
 # these fully encoded forms before the general B-register constructors.

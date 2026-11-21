@@ -50,6 +50,10 @@ import ghidra.util.task.TaskMonitor;
  */
 public final class C6000PacketStagingAnalyzer extends AbstractAnalyzer {
 	private static final String[] FIELDS = { "c_staged", "c_defer", "c_defer_reg", "c_cm1", "c_cm1_reg", "c_cm2", "c_cm2_reg" };
+	/** Every field that changes native lifting only: staging, and latched branches with their landings. */
+	static final String[] LIFTING = { "c_staged", "c_defer", "c_defer_reg", "c_cm1", "c_cm1_reg", "c_cm2", "c_cm2_reg",
+		"c_inert_wrap", "c_inert", "c_latch_t", "c_land1", "c_land1_ind", "c_land1_t", "c_land1_disp",
+		"c_land2", "c_land2_ind", "c_land2_t", "c_land2_disp" };
 
 	public C6000PacketStagingAnalyzer() {
 		super("C6000 Packet Staging",
@@ -94,7 +98,7 @@ public final class C6000PacketStagingAnalyzer extends AbstractAnalyzer {
 	/** Clear the staging fields of a decode context: what the instruction is without staging. */
 	static void unstage(Program program, ghidra.program.model.lang.ProcessorContextImpl context) {
 		if (program.getRegister("c_staged") == null) return;
-		for (String name : FIELDS)
+		for (String name : LIFTING)
 			context.setRegisterValue(new ghidra.program.model.lang.RegisterValue(program.getRegister(name), BigInteger.ZERO));
 	}
 
@@ -106,7 +110,7 @@ public final class C6000PacketStagingAnalyzer extends AbstractAnalyzer {
 		Program program = ins.getProgram();
 		if (program.getRegister("c_staged") == null) return ins;
 		boolean any = false;
-		for (String name : new String[] { "c_staged", "c_cm1", "c_cm2" }) {
+		for (String name : new String[] { "c_staged", "c_cm1", "c_cm2", "c_inert_wrap", "c_inert", "c_land1", "c_land2" }) {
 			BigInteger value = ins.getValue(program.getRegister(name), false);
 			any |= value != null && value.signum() != 0;
 		}

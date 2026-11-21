@@ -17,7 +17,7 @@
             endian="little"
             size="32"
             variant="default"
-            version="2.0"
+            version="3.0"
             slafile="c6000_le.sla"
             processorspec="c6000.pspec"
             id="C6000:LE:32:default">
@@ -30,7 +30,7 @@
             endian="little"
             size="32"
             variant="analysis"
-            version="2.0"
+            version="3.0"
             slafile="c6000_le_analysis.sla"
             processorspec="c6000.pspec"
             id="C6000:LE:32:analysis">
@@ -41,7 +41,7 @@
             endian="big"
             size="32"
             variant="default"
-            version="2.0"
+            version="3.0"
             slafile="c6000_be.sla"
             processorspec="c6000.pspec"
             id="C6000:BE:32:default">
@@ -54,7 +54,7 @@
             endian="big"
             size="32"
             variant="analysis"
-            version="2.0"
+            version="3.0"
             slafile="c6000_be_analysis.sla"
             processorspec="c6000.pspec"
             id="C6000:BE:32:analysis">
@@ -65,7 +65,7 @@
             endian="little"
             size="32"
             variant="c67x"
-            version="2.0"
+            version="3.0"
             slafile="c6000_le.sla"
             processorspec="c6000.pspec"
             id="C6000:LE:32:c67x">
@@ -76,7 +76,7 @@
             endian="little"
             size="32"
             variant="c67x-analysis"
-            version="2.0"
+            version="3.0"
             slafile="c6000_le_analysis.sla"
             processorspec="c6000.pspec"
             id="C6000:LE:32:c67x-analysis">
@@ -87,7 +87,7 @@
             endian="big"
             size="32"
             variant="c67x"
-            version="2.0"
+            version="3.0"
             slafile="c6000_be.sla"
             processorspec="c6000.pspec"
             id="C6000:BE:32:c67x">
@@ -98,7 +98,7 @@
             endian="big"
             size="32"
             variant="c67x-analysis"
-            version="2.0"
+            version="3.0"
             slafile="c6000_be_analysis.sla"
             processorspec="c6000.pspec"
             id="C6000:BE:32:c67x-analysis">

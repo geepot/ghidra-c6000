@@ -55,7 +55,9 @@ of an upgraded program again, because a review hashes the context register's val
 Ghidra's re-disassembly during the upgrade can drop an instruction after a delay window
 that mixes 32-bit and compact instructions (Ghidra
 [#10242](https://github.com/NationalSecurityAgency/ghidra/issues/10242)); re-import
-when the listing must match a fresh analysis exactly. In v1.2.0 the big-endian languages
+when the listing must match a fresh analysis exactly. After v1.3.0 all languages become version 3.0 (a 128-bit context register for staged
+packet writes and latched branches), with the same migration and the same caution.
+In v1.2.0 the big-endian languages
 became version 2.0 (issue #31). See the
 [migration notes](docs/internals.md#language-prototype-migration), including annotation
 and existing error-bookmark handling.
