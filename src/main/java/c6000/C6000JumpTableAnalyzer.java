@@ -288,6 +288,39 @@ public class C6000JumpTableAnalyzer extends AbstractAnalyzer {
 	 */
 	static List<Address> targets(Program program, C6000CallAnalyzer.Walker walker,
 			Instruction branch) {
+		List<Instruction> straight = walker.lookBack(branch);
+		List<Address> found = targets(program, walker, branch, straight, -1);
+		if (!found.isEmpty()) return found;
+		// A switch may set its index and table up and then jump into a dispatch tail. Each jump into
+		// the straight-line code gives another path: what precedes the jump, the jump and its delay
+		// slots, then the code from its target (SPRUFE8B 4.2.6).
+		Listing listing = program.getListing();
+		for (int k = straight.size() - 1; k >= 0; k--) {
+			Instruction landing = straight.get(k);
+			if (landing.getFlowType().isJump() || landing.getFlowType().isTerminal()) break;
+			for (Reference ref : program.getReferenceManager().getReferencesTo(landing.getMinAddress())) {
+				if (!ref.getReferenceType().isJump()) continue;
+				Instruction jump = listing.getInstructionAt(ref.getFromAddress());
+				List<Instruction> slots = jump == null ? null : walker.window(jump);
+				if (slots == null) continue;
+				List<Instruction> path = new ArrayList<>(walker.lookBack(jump));
+				int via = path.size();
+				path.add(jump);
+				path.addAll(slots);
+				path.addAll(straight.subList(k, straight.size()));
+				found = targets(program, walker, branch, path, via);
+				if (!found.isEmpty()) return found;
+			}
+		}
+		return found;
+	}
+
+	/**
+	 * The table entries {@code branch} dispatches to along {@code lookBack}, the code that issues before
+	 * it. With {@code via} at or above zero, the path follows the jump at that index to its target.
+	 */
+	private static List<Address> targets(Program program, C6000CallAnalyzer.Walker walker,
+			Instruction branch, List<Instruction> lookBack, int via) {
 		Map<Register, long[]> regs = new HashMap<>();
 		Map<Register, Indexed> tableBase = new HashMap<>();	// holds table + a byte offset
 		Map<Register, Indexed> loaded = new HashMap<>();	// holds an entry of table
@@ -298,11 +331,35 @@ public class C6000JumpTableAnalyzer extends AbstractAnalyzer {
 		Map<Register, Linear> packet = new HashMap<>();
 		java.util.Set<Register> twice = new java.util.HashSet<>();
 		List<Guard> guards = new ArrayList<>();
-		List<Instruction> path = new ArrayList<>(walker.entryPath(branch, walker.lookBack(branch)));
+		List<Instruction> path = new ArrayList<>(lookBack);
+		if (via < 0) {
+			// The straight line, unless a label in it is reached only by one jump (Walker.entryPath).
+			path = new ArrayList<>(walker.entryPath(branch, lookBack));
+			via = walker.enteredBy;
+			// The path follows that jump like any other: its own predicate is checked below.
+			walker.enteredBy = -1;
+		}
+		List<Instruction> entered = path;
+		path = new ArrayList<>(entered);
+		path.add(branch);
+		int start = walker.reachable(path, via, path.size() - 1);
+		if (via >= 0 && start > via) return new ArrayList<>();
+		path = new ArrayList<>(entered.subList(start, entered.size()));
+		if (via >= 0) via -= start;
+		String taken = via < 0 ? null : C6000CallAnalyzer.predicate(path.get(via));
+		Register takenFlag = taken == null ? null : program.getRegister(taken.replace("!", ""));
 		for (int at = 0; at < path.size(); at++) {
 			// The hardware's instruction: one that stages a write or carries a landing is wrapped in
 			// the listing, and the wrapper does not have its operands.
 			Instruction insn = C6000PacketStagingAnalyzer.hardware(path.get(at));
+			// Past the jump the path follows, what is predicated the other way does not run while the
+			// flag is unchanged (SPRUFE8B 3.6).
+			String own = takenFlag == null || at <= via ? null : C6000CallAnalyzer.predicate(insn);
+			if (own != null && own.replace("!", "").equals(takenFlag.getName()) && !own.equals(taken) &&
+				walker.unchanged(path, via, at, takenFlag)) {
+				endPacket(program, insn, packet, twice, linear);
+				continue;
+			}
 			String op = C6000CallAnalyzer.baseName(insn);
 			String name = op.contains(".") ? op.substring(0, op.indexOf('.')) : op;
 			int n = insn.getNumOperands();
@@ -395,20 +452,19 @@ public class C6000JumpTableAnalyzer extends AbstractAnalyzer {
 				}
 			}
 			walker.track(insn, regs);
+			// The path takes the jump, so its predicate held when it issued: under [!R] the flag is
+			// zero from here while unchanged, under [R] only nonzero (SPRUFE8B 3.6). Whatever an earlier
+			// predicated write left in regs for it no longer stands.
+			if (at == via && takenFlag != null) {
+				regs.keySet().removeIf(known -> known.getAddress().getAddressSpace().equals(takenFlag.getAddress().getAddressSpace()) &&
+					known.getOffset() < takenFlag.getOffset() + takenFlag.getMinimumByteSize() &&
+					takenFlag.getOffset() < known.getOffset() + known.getMinimumByteSize());
+				if (taken.startsWith("!")) regs.put(takenFlag, new long[] { 0, C6000CallAnalyzer.FULL });
+			}
 			if (dst != null && base != null) tableBase.put(dst, base);
 			if (dst != null && entryOf != null) loaded.put(dst, entryOf);
 			if (dst != null && derived != null) packet.put(dst, derived);
-			boolean ends = true;
-			try { ends = !C6000ExecutionPackets.parallelWithNext(program, insn); }
-			catch (MemoryAccessException e) { /* the packet ends here */ }
-			if (ends) {
-				for (var e : packet.entrySet()) {
-					if (e.getValue() == null || twice.contains(e.getKey())) linear.remove(e.getKey());
-					else linear.put(e.getKey(), e.getValue());
-				}
-				packet.clear();
-				twice.clear();
-			}
+			endPacket(program, insn, packet, twice, linear);
 		}
 		path.add(branch);
 		Indexed read = loaded.get(branch.getRegister(0));
@@ -425,7 +481,9 @@ public class C6000JumpTableAnalyzer extends AbstractAnalyzer {
 				Linear compared = guard.compared();
 				if (compared.src().equals(word.src()) && compared.scale() == 1 &&
 					walker.unchanged(path, Math.min(compared.at(), word.at()), Math.max(compared.at(), word.at()), word.src()) &&
-					walker.guards(path, guard.at(), guard.flag(), path.size() - 1)) {
+					(walker.guards(path, guard.at(), guard.flag(), path.size() - 1) ||
+						// The path takes the jump: its own predicate is a guard too.
+						via > guard.at() && walker.guards(path, guard.at(), guard.flag(), via))) {
 					bound = guard.limit();
 					first = word.offset() - compared.offset();
 				}
@@ -472,6 +530,21 @@ public class C6000JumpTableAnalyzer extends AbstractAnalyzer {
 	private static Long constant(Map<Register, long[]> regs, Register r) {
 		long[] value = r == null ? null : regs.get(r);
 		return value != null && value[1] == C6000CallAnalyzer.FULL ? (long) (int) value[0] : null;
+	}
+
+	/** At the end of {@code insn}'s execute packet, its linear results land (SPRUFE8B 3.5, 3.8.8). */
+	private static void endPacket(Program program, Instruction insn, Map<Register, Linear> packet,
+			java.util.Set<Register> twice, Map<Register, Linear> linear) {
+		boolean ends = true;
+		try { ends = !C6000ExecutionPackets.parallelWithNext(program, insn); }
+		catch (MemoryAccessException e) { /* the packet ends here */ }
+		if (!ends) return;
+		for (var e : packet.entrySet()) {
+			if (e.getValue() == null || twice.contains(e.getKey())) linear.remove(e.getKey());
+			else linear.put(e.getKey(), e.getValue());
+		}
+		packet.clear();
+		twice.clear();
 	}
 
 	private static Long operandValue(Instruction insn, int index, Map<Register, long[]> regs) {

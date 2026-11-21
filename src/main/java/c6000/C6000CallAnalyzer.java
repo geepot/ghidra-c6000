@@ -280,23 +280,58 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 		 * True when {@code flag}, written at path index {@code compare} and nonzero for an index out of
 		 * range, keeps the transfer at {@code dispatch} from issuing taken out of range: the dispatch is
 		 * predicated on the flag being zero, or a branch taken on the flag lands before the dispatch can
-		 * issue, and the flag is unchanged meanwhile (SPRUFE8B 3.5, 3.6, 4.2.6).
+		 * issue, and meanwhile the flag is unchanged or only set to a nonzero constant, which sends any
+		 * index to the default (SPRUFE8B 3.5, 3.6, 4.2.6, 3.12 MVK).
 		 */
 		boolean guards(List<Instruction> path, int compare, Register flag, int dispatch) {
 			int[] cycles = issueCycles(path);
 			String own = predicate(path.get(dispatch));
 			if (own != null && own.equals("!" + flag.getName()) && cycles[compare] < cycles[dispatch] &&
-				unchanged(path, cycles, compare, dispatch, flag)) return true;
+				onlyRaised(path, cycles, compare, dispatch, flag)) return true;
 			// The path came in through a jump taken on the flag being zero.
 			if (enteredBy > compare && enteredBy < dispatch && ("!" + flag.getName()).equals(predicate(path.get(enteredBy))) &&
-				cycles[compare] < cycles[enteredBy] && unchanged(path, cycles, compare, enteredBy, flag)) return true;
+				cycles[compare] < cycles[enteredBy] && onlyRaised(path, cycles, compare, enteredBy, flag)) return true;
 			for (int j = compare + 1; j < dispatch; j++) {
 				Instruction t = path.get(j);
 				if (!transfer(t) || !flag.getName().equals(predicate(t))) continue;
 				if (cycles[compare] < cycles[j] && cycles[j] + 1 + DELAY_CYCLES <= cycles[dispatch] &&
-					unchanged(path, cycles, compare, j, flag)) return true;
+					onlyRaised(path, cycles, compare, j, flag)) return true;
 			}
 			return false;
+		}
+
+		/**
+		 * Where {@code path} can start for {@code dispatch} to be reached through it: past the window of
+		 * every unpredicated jump or return, other than the one at {@code except}, that lands before the
+		 * dispatch issues, since nothing falls through there (SPRUFE8B 4.2.6). Code after such a window
+		 * is reached only by a jump from elsewhere or as an entry.
+		 */
+		int reachable(List<Instruction> path, int except, int dispatch) {
+			int[] cycles = issueCycles(path);
+			int start = 0;
+			for (int k = 0; k < dispatch; k++) {
+				Instruction t = path.get(k);
+				if (k == except || !transfer(t) || predicate(t) != null || C6000PacketStagingAnalyzer.flow(t).isCall()) continue;
+				int lands = cycles[k] + 1 + DELAY_CYCLES;
+				if (lands > cycles[dispatch]) continue;
+				while (start < dispatch && cycles[start] < lands) start++;
+			}
+			return start;
+		}
+
+		/** As {@link #unchanged}, except that a write of a nonzero constant to {@code flag} may land. */
+		private boolean onlyRaised(List<Instruction> path, int[] cycles, int from, int to, Register flag) {
+			for (int k = 0; k < path.size(); k++) {
+				if (k == from) continue;
+				Instruction insn = path.get(k);
+				Register load = loadDestination(insn);
+				boolean writes = load != null ? overlaps(load, flag) : issueWrites(insn).stream().anyMatch(r -> overlaps(r, flag));
+				long lands = cycles[k] + resultDelay(insn);
+				if (!writes || lands < cycles[from] || lands >= cycles[to]) continue;
+				Long value = load == null && resultDelay(insn) == 0 ? constantWrite(insn, flag) : null;
+				if (value == null || value == 0) return false;
+			}
+			return true;
 		}
 
 		/** No write to {@code register} lands from the write at {@code from} up to the read at {@code to}. */
@@ -2506,7 +2541,7 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 		}
 
 		/** The rest of {@code jump}'s execute packet and its delay cycles (delayCycles); null on an incomplete window. */
-		private List<Instruction> window(Instruction jump) {
+		List<Instruction> window(Instruction jump) {
 			return window(jump, delayCycles(jump));
 		}
 
@@ -2675,7 +2710,7 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 			p.startsWith("!") != q.startsWith("!");
 	}
 
-	private static String predicate(Instruction insn) {
+	static String predicate(Instruction insn) {
 		return predicate(insn.getMnemonicString());
 	}
 

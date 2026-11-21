@@ -43,6 +43,27 @@ ADD -3,B4,B6: the copy reads the old B4) and folds the bias with ADDK -12,B4; 22
 the bias in a register (MVK 3,B8; SUB B4,B8,B6). Both have cases at their table's first
 three entries. The ADD, ADDK, SUB, SHL, MVK and LDW words were assembled with cl6x 8.5.0
 and checked with GNU objdump.
+
+Compilers also set a switch up and then jump into a dispatch tail, with the table base,
+the shifted index and the folded bias written in the jump's delay slots on the jump's
+predicate, and the guard's flag set again under another predicate on the way (SPRUFE8B
+4.2.6, 3.6):
+
+  2400  through a jump              2600  known-bad
+  ADD.L2 -3,B4,B6                   as 2400, but [B1] MVK 0,B0 may
+  CMPLTU.L2 2,B6,B0                 clear the flag, letting an index
+  [B1] MVK.S2 1,B0  (only raises)   out of range reach the tail
+  [!B0] B.S1 2480  (into the tail)  (no table)
+  [B0] B.S1 2460  (default)
+  [!B0] SHL.S2 B4,2,B7
+  [!B0] MVK/MVKH 0x2500,B5
+  [!B0] ADDK.S2 -12,B7 || [B0] MVK.S2 0x2540,B5  (default path: another table)
+  2470  B.S2 B3 ; NOP 5  (nothing falls into the tail)
+  2480  ADD.L2 B7,B5,B7 ; LDW *+B7(0),B4 ; NOP 4 ; B.S2 B4 (248c)
+  cases 24a0/24c0/24e0
+
+Its cases are the first three entries at 0x2500; the default path's table at 0x2540 holds
+other code addresses.
 """
 
 from pathlib import Path
@@ -188,11 +209,34 @@ for case in (0x1A40, 0x1A60, 0x1A80, 0x1AA0, 0x1AC0):
 table(0x1B00, (0x1A40, 0x1A60, 0x1A80, 0x1AC0))
 
 
+SHL_B4_2_B7_NOT_B0 = NOT_B0 | SHL_B4_2_B7
+ADDK_M12_B7 = 0x03FFFA52                                # ADDK.S2 -12,B7
+B1 = 0x40000000
+
+
+def through(at, flag):
+    """A dispatch set up in the delay slots of a jump into its tail; [B1] MVK flag,B0 between."""
+    WORDS.update({
+        at: ADD_M3_B4_B6, at + 4: cmpltu(2, 6, 0), at + 8: B1 | mvk(flag, 0),
+        at + 0xC: NOT_B0 | b_s1(at + 0xC, at + 0x80), at + 0x10: B0 | b_s1(at + 0x10, at + 0x60),
+        at + 0x14: SHL_B4_2_B7_NOT_B0, at + 0x18: NOT_B0 | mvk(at + 0x100, 5), at + 0x1C: NOT_B0 | mvkh(0, 5),
+        at + 0x20: NOT_B0 | ADDK_M12_B7 | 1, at + 0x24: B0 | mvk(at + 0x140, 5),
+        at + 0x80: ADD_B7_B5_B7, at + 0x84: LDW_B7, at + 0x88: nop(4), at + 0x8C: B_B4, at + 0x90: nop(5),
+    })
+    for case in (0x28, 0x60, 0x70, 0xA0, 0xC0, 0xE0):
+        routine(at + case)
+    table(at + 0x100, [at + e for e in (0xA0, 0xC0, 0xE0, 0x60)])
+    table(at + 0x140, [at + e for e in (0x60, 0x70, 0x28, 0xA0)])
+
+
+through(0x2400, 1)
+through(0x2600, 0)
+
 def main():
     if len(sys.argv) not in (2, 3) or (len(sys.argv) == 3 and sys.argv[2] != "be"):
         raise SystemExit(__doc__)
     endian = ">" if len(sys.argv) == 3 else "<"
-    image = bytearray(0x1320)
+    image = bytearray(0x1760)
     for address, word in WORDS.items():
         struct.pack_into(endian + "I", image, address - 0x1000, word)
     Path(sys.argv[1]).write_bytes(image)

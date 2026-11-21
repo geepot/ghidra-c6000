@@ -264,6 +264,15 @@ value. It reads at most the guard's `K + 1` entries, from the entry the compared
 selects, stops at invalid targets, and creates computed-jump references and a jump-table
 override. Without a proved guard it recovers no table.
 
+When the straight-line code before the dispatch finds no table, each jump into it gives
+another path: what precedes the jump, the jump and its delay slots, then the dispatch tail.
+Past the jump, an instruction predicated against the jump's predicate does not run while
+the flag is unchanged, and the jump's own predicate can be the guard. A path starts after
+the window of any unpredicated jump or return that lands before the dispatch, since nothing
+falls through there. Between the compare and the guard, the flag may also be set to a
+nonzero constant (`[B1] MVK 1,B0`): that sends any index to the default, never past the
+bound.
+
 New functions are considered as analysis discovers them. Unchanged overrides and bodies
 are not rewritten, avoiding repeated analysis. Override ownership is checked separately
 as described [below](#switch-override-ownership).
@@ -293,7 +302,7 @@ The synthetic fixtures exercise these behaviors in both endian modes:
 | `call-packet-slots.py` | Delay slots and return point of a call with a parallel companion. |
 | `tail-call-slots.py` | Tail-call delay slots in the caller, and B3-setting `B` and `BNOP` calls kept out of tail-call recovery. |
 | `packet-window-fallthrough.py` | Fall-through and function body of conditional jumps whose windows mix 32-bit and compact instructions. |
-| `jump-table.py` | Guarded three-case tables (also through a biased index and an `SHL`-built address), an adjacent valid address outside the bound, and native switch output. |
+| `jump-table.py` | Guarded three-case tables (also through a biased index, an `SHL`-built address, and a jump into the dispatch tail), an adjacent valid address outside the bound, and native switch output. |
 | `return-delay.py` / `packet-call.py` | Captured targets, tail effects, packet links and mixed-width windows. |
 
 See [verification](verification.md) and the [fixture catalog](regressions.md) for
