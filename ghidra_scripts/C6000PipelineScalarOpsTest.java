@@ -121,7 +121,7 @@ public class C6000PipelineScalarOpsTest extends GhidraScript {
         }
         Files.writeString(Paths.get(getScriptArgs()[0] + ".results.json"),
             new GsonBuilder().setPrettyPrinting().create().toJson(records));
-        if (count != 333 || rawCount != 330) throw new AssertionError("Incomplete scalar-op matrix");
+        if (count != 501 || rawCount != 498) throw new AssertionError("Incomplete scalar-op matrix");
         println("C6000_PIPELINE_SCALAR_OPS_OK cases=" + count + " raw=" + rawCount);
     }
 }

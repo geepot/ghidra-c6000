@@ -13,6 +13,12 @@
 
 ### Added
 
+* Exact schedules accept `SSHL`, `SHR2`, `CMPEQ2` and `PACKHL2` (single-cycle) and the
+  `MPY32`, `MPY32U`, `MPY32US`, `MPY32SU`, `DOTP2` and `DOTPU4` forms (result in E4, 32-
+  or 64-bit). They were refused as an unimplemented phase contract. `pipeline-scalar-ops`
+  checks each form's writeback cycle, source capture and E1 predicate sampling against an
+  independent oracle and the instruction's own p-code.
+
 * Latched branches (issue #73). A branch issued in another branch's delay window lands
   after it, and native lifting gives each branch one window that holds no other branch.
   Where the hardware and the listing then run different instructions, the new `C6000
