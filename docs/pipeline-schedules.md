@@ -376,7 +376,10 @@ widen at backward transfers and loop-time wraps. A backward branch keeps the tru
 register whose every write from the target through the branching packet is predicated
 on itself with a condition false under that truth (`[R]` while zero, `[!R]` while
 nonzero), with no write to it in flight; a predicated instruction whose condition is
-false does not write its destination (SPRUFE8B 3.5). Counter branches retain their actual
+false does not write its destination (SPRUFE8B 3.5). A multi-cycle instruction whose
+predicate value was unknown at issue takes that value's truth once a later branch forks
+the facts on it, so a complementary writer is still proved exclusive (SPRUFE8B 3.6).
+Counter branches retain their actual
 raw taken condition and do not infer predicate truth from a failed sign test. This
 pruning never permits a resource collision or flushes a pending effect early.
 

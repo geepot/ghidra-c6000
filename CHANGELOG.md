@@ -59,6 +59,11 @@
 
 ### Fixed
 
+* An instruction in flight whose predicate sampled a value that a later branch decides
+  (`[!A0] LDW`, then `[!A0] B` on the same A0) is known to run or not on each path.
+  Exact schedules refused a complementary writer landing in the same cycle
+  (`[A0] MVK … ,B0` with the load's `B0`) as a potential simultaneous write.
+
 * The call analyzer's look-back treats every register the ABI lets a callee change as
   unknown once an earlier call has returned (all but A10-A15 and B10-B15), and at code that
   nothing falls into, after a jump or return that always goes, it takes the registers from

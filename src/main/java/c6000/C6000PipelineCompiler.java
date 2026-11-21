@@ -1398,9 +1398,18 @@ public final class C6000PipelineCompiler {
         var names=facts.names();
         List<Flight> captured=new ArrayList<>();for(var flight:flights){var instruction=instructions.get(flight.pc());boolean fresh=flight.age()==1&&pack.contains(instruction);
             int truth=fresh?predicateTruth(instruction,before):flight.predicateTruth(),token=fresh?predicateToken(instruction,before):flight.predicateToken();
+            // a branch since issue may have decided the value the predicate sampled: the flight is
+            // then known to run or not (SPRUFE8B 3.6), and one that doesn't run writes nothing
+            if(truth<0&&token>=0)truth=sampledTruth(instruction,before,token);
             captured.add(new Flight(flight.pc(),flight.age(),truth,truth<0&&token>=0&&!widen?names.getOrDefault(token,-1):-1));} // the sampled value, while a predicate GPR still holds it
         State target=new State(pc,idle,List.copyOf(captured),List.copyOf(branches),List.copyOf(hazards),loop,facts.canonical(),returnFlow);
         b.jump(PcodeOp.BRANCH,"node"+state(target),null);
+    }
+
+    /** Whether an instruction whose predicate sampled the value token runs, as far as facts know (-1 unknown). */
+    private static int sampledTruth(Insn instruction,PredicateFacts facts,int token){
+        for(var value:facts.values())if(value.token()==token&&value.truth()>=0)return instruction.inverted()?1-value.truth():value.truth();
+        return -1;
     }
 
     /** Widened facts keeping only a truth no loop write can change: one predicated on that register, false under it (SPRUFE8B 3.5). */

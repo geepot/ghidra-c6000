@@ -2,7 +2,8 @@
 # SPDX-License-Identifier: Apache-2.0
 """Sequential leaf calls, CALLP and saved return links; IMAGE JSON [be].
 Independent synthetic fields: SPRUFE8B 3.5, 3.7, 3.8.10, 4.2.6, CALLP p.172,
-B/register and BNOP/register, compact Scs10 Figure F-19. No firmware bytes.
+B/register and BNOP/register, compact Scs10 Figure F-19, and complementary writers
+across a branch that decides their predicate. No firmware bytes.
 """
 from pathlib import Path
 import json,struct,sys
@@ -84,5 +85,20 @@ def main():
   for variant,error in [('collision','simultaneous'),('nop_conflict','multicycle NOP'),('pending_branch','CALLP requires'),('clobber_saved','unresolved register branch'),('late_link','unresolved register branch'),('nonlocal_return','unresolved register branch')]:add(f'callp_s{side}_{variant}',side=side,variant=variant,error=error)
  for variant,error in [('',None),('copy_chain',None),('delay_overwrite',None),('disabled_clobber',None),('delay_late_overwrite',None),('unknown','unresolved register branch'),('overwrite','unresolved register branch'),('conditional','unresolved register branch'),('same_packet','unresolved register branch'),('late','unresolved register branch')]:add('saved_link_'+(variant or 'plain'),'ordinary',variant=variant,error=error)
  for variant,error in [('',None),('distinct',None),('clobber_target','target lacks exact'),('late_target','target lacks exact'),('clobber_alias','unresolved register branch')]:add('multi_'+(variant or 'reuse'),'multi',variant=variant,error=error)
+ def plain(name,words,expected,inputs=None,memory=None):
+  c=0x1000+len(rows)*0x800
+  for k,w in enumerate(words):struct.pack_into(endian+'I',image,c-0x1000+4*k,w)
+  row=dict(name=name,mode='plain',caller=c,caller_end=c+len(words)*4,sites=[],expected=expected,input=inputs or {})
+  if memory:row['memory']={str(k):v for k,v in memory.items()}
+  rows.append(row)
+ # [!A0] LDW *B10,B0 in cycle 0 and [A0] MVK 0,B0 in cycle 4 write B0 in the same cycle, on
+ # complementary senses of A0, with [!A0] B skip in cycle 1 forking the facts on A0 while the
+ # load is in flight: on each path one of the two is known not to run.
+ for a0 in (1,0):
+  c=0x1000+len(rows)*0x800;skip=c+0x40
+  ldw=6<<29|1<<28|10<<18|0x64|1<<7|1<<1  # [!A0] LDW.D2T2 *B10,B0
+  words=[ldw,6<<29|1<<28|branch(c+4,skip),0,0,6<<29|mvk(0,0,2),0,mvk(1,9),bnop(3)];words+=[0]*(16-len(words))+[bnop(3)]
+  plain(f'fork_collision_a{a0}',words,{'B0':0 if a0 else 0x77,'A9':1,'PC':0x9000},{'A0':a0,'B10':0x8200},memory={0x8200:0x77})
+ assert len(rows)*0x800<=len(image)
  Path(sys.argv[1]).write_bytes(image);Path(sys.argv[2]).write_text(json.dumps(rows,indent=2)+'\n')
 if __name__=='__main__':main()
