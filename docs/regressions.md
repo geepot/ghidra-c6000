@@ -72,8 +72,12 @@ built by `SHL`/`ADD`, 1a00 builds the address by `SHL`/`ADD` from the compared i
 1e00 folds one entry less than it compares, so its cases start at the table's second
 entry. 1c00 compares a biased copy of another register, so no table is read. 2000 takes
 the biased copy in the packet that shifts the index in place (the copy reads the old
-value) and folds the bias with `ADDK`; 2200 holds the bias in a register. Each guarded
-switch must decompile as a `switch`.
+value) and folds the bias with `ADDK`; 2200 holds the bias in a register. 2400 sets the
+table base, the shifted index and the folded bias in the delay slots of a `[!B0]` jump into
+a dispatch tail that nothing falls into, with `[B1] MVK 1,B0` between the compare and the
+jump and a `[B0]` write of another table beside the last slot; known-bad 2600 writes
+`[B1] MVK 0,B0` instead, which could let an index out of range through, so no table is
+read. Each guarded switch must decompile as a `switch`.
 
 `C6000SwitchOwnershipTest.java` runs after `C6000JumpTableTest.java` on the existing
 `tests/fixtures/jump-table.py` image. Run both with little- and big-endian languages.

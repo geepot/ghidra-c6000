@@ -16,7 +16,7 @@ import ghidra.program.model.symbol.Reference;
 public class C6000JumpTableTest extends GhidraScript {
 	@Override
 	protected void run() throws Exception {
-		for (long entry : new long[] { 0x1200L, 0x1400L, 0x1600L, 0x1800L, 0x1a00L, 0x1c00L, 0x1e00L, 0x2000L, 0x2200L }) {
+		for (long entry : new long[] { 0x1200L, 0x1400L, 0x1600L, 0x1800L, 0x1a00L, 0x1c00L, 0x1e00L, 0x2000L, 0x2200L, 0x2400L, 0x2600L }) {
 			disassemble(toAddr(entry));
 			createFunction(toAddr(entry), null);
 		}
@@ -37,6 +37,9 @@ public class C6000JumpTableTest extends GhidraScript {
 		// the bias held in a register.
 		check(0x2000L, 0x2028L, 0x2040L, 0x2060L, 0x2080L);
 		check(0x2200L, 0x222cL, 0x2240L, 0x2260L, 0x2280L);
+		// Set up in the delay slots of a jump into the dispatch tail; known-bad 2600 lowers the flag.
+		check(0x2400L, 0x248cL, 0x24a0L, 0x24c0L, 0x24e0L);
+		check(0x2600L, 0x268cL);
 		println("C6000_JUMP_TABLE_OK");
 	}
 

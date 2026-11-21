@@ -139,6 +139,9 @@
 * A call reached through a jump whose window holds a predicated branch that may go is a call
   again when its link is set in its own window; only a branch that certainly goes makes the
   look-back fall back to the code before the call.
+* Switch tables are found when the switch is set up before a jump into a shared dispatch
+  tail, with the table base and index written in the jump's delay slots, and when the
+  guard's flag is set to a nonzero constant between the compare and the branch it guards.
 
 * A predicate's known value carries to another register that holds the same value: both are
   copies of one write, as `MV A4,A1` and `MV A4,A2` at a function's entry are. With it, a
