@@ -64,6 +64,9 @@
 
 ### Fixed
 
+* Latched returns (issue #73). `C6000 Returns` now skips latched branches. Its return
+  override on a `B B3` that also carries an earlier jump's landing turned that jump into a
+  return, and the code after it was removed as unreachable.
 * The call analyzer's look-back treats every register the ABI lets a callee change as
   unknown once an earlier call has returned (all but A10-A15 and B10-B15), and at code that
   nothing falls into, after a jump or return that always goes, it takes the registers from
