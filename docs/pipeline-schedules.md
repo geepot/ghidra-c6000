@@ -32,6 +32,7 @@ The phase contracts currently implemented are:
 | MPYSPDP | SP source E1/E2, DP low E1/high E2 | Low word and FMCR E6; high word E7 |
 | MPYDP | src1 low E1/E2, high E3/E4; src2 low E1/E3, high E2/E4 | Low word and FMCR E9; high word E10 |
 | MVC ILC/RILC | E1 | Named register E1; loop-counter interface E4 |
+| MVC TSCL / TSCH reads, MVC to TSCL | E1 | E1 register write of the opaque counter value, or the counter start (SPRUFE8B 2.9.14) |
 | DINT / RINT | E1 | E1 GIE/SGIE fields, preserving unrelated CSR/TSR bits |
 | Loads | E1 address and base inputs | Base update E1; memory read E3; result E5 |
 | Stores | E1 address, data and base inputs | Base update E1; memory write E3 |

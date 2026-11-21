@@ -501,6 +501,11 @@ public final class C6000PipelineCompiler {
         entryWrites=List.copyOf(writes);
     }
 
+    private static final Set<String> COUNTER_OPS=Set.of("c6000_tscl_read","c6000_tsch_read","c6000_tsc_start");
+    private boolean counterOp(PcodeOp op){
+        return COUNTER_OPS.contains(program.getLanguage().getUserDefinedOpName((int)op.getInput(0).getOffset()));
+    }
+
     private Varnode temp(int size){
         long at=nextUnique;
         nextUnique+=(size+15)&~15;
@@ -622,7 +627,8 @@ public final class C6000PipelineCompiler {
         Set<Integer> loadWrites=load?C6000MemoryWritePhases.loadWrites(raw):Set.of();
         for(int rawIndex=0;rawIndex<raw.length;rawIndex++){
             var op=raw[rawIndex];
-            if(op.getOpcode()==PcodeOp.UNIMPLEMENTED||op.getOpcode()==PcodeOp.CALLOTHER)throw fail("opaque semantics at "+at);
+            // the time-stamp counter's reads and start are E1 effects like any other MVC (SPRUFE8B 2.9.14)
+            if(op.getOpcode()==PcodeOp.UNIMPLEMENTED||op.getOpcode()==PcodeOp.CALLOTHER&&!counterOp(op))throw fail("opaque semantics at "+at);
             List<Varnode> nodes=new ArrayList<>(Arrays.asList(op.getInputs()));
             if(op.getOutput()!=null)nodes.add(op.getOutput());
             for(var v:nodes)if(v.isRegister()){

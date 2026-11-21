@@ -59,6 +59,11 @@
 
 ### Fixed
 
+* Exact schedules accept the time-stamp counter's reads (`MVC TSCL`/`TSCH`) and start
+  (`MVC … ,TSCL`). They lift to the `c6000_tscl_read`, `c6000_tsch_read` and
+  `c6000_tsc_start` userops, which the compiler refused as opaque semantics, so any
+  function that reads the clock had no exact schedule.
+
 * The call analyzer's look-back treats every register the ABI lets a callee change as
   unknown once an earlier call has returned (all but A10-A15 and B10-B15), and at code that
   nothing falls into, after a jump or return that always goes, it takes the registers from
