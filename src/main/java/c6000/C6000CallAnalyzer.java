@@ -280,6 +280,9 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 			String own = predicate(path.get(dispatch));
 			if (own != null && own.equals("!" + flag.getName()) && cycles[compare] < cycles[dispatch] &&
 				unchanged(path, cycles, compare, dispatch, flag)) return true;
+			// The path came in through a jump taken on the flag being zero.
+			if (enteredBy > compare && enteredBy < dispatch && ("!" + flag.getName()).equals(predicate(path.get(enteredBy))) &&
+				cycles[compare] < cycles[enteredBy] && unchanged(path, cycles, compare, enteredBy, flag)) return true;
 			for (int j = compare + 1; j < dispatch; j++) {
 				Instruction t = path.get(j);
 				if (!transfer(t) || !flag.getName().equals(predicate(t))) continue;
@@ -608,6 +611,36 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 		}
 
 		/**
+		 * The latched branch that lands behind {@code land} through latch {@code slot} in address order;
+		 * null when none does. A landing in the code another branch went to has its branch elsewhere.
+		 * ponytail: such a landing's branch stays unknown; follow the taken branch back when one needs it.
+		 */
+		private Instruction latchedBranch(Instruction land, int slot) {
+			Instruction branch = null, at = land;
+			List<Instruction> path = new ArrayList<>();
+			// The branch issued at most five cycles before; one with no delay cycles left lands behind itself.
+			for (int n = 0; n <= MAX_WINDOW && at != null && branch == null; n++) {
+				path.add(0, at);
+				if (C6000PacketStagingAnalyzer.inert(at) && field(at, "c_latch_t") == slot) branch = at;
+				at = listing.getInstructionBefore(at.getMinAddress());
+			}
+			if (branch == null) return null;
+			Instruction after = next(land);
+			if (after != null) path.add(after);
+			int[] issue = issueCycles(path);
+			int landed = issue[0] + 1 + DELAY_CYCLES, here = after != null ? path.size() - 2 : path.size() - 1;
+			return issue[here] >= landed || (after != null && issue[here + 1] < landed) ? null : branch;
+		}
+
+		/** The transfer behind a flow reference from {@code from} to {@code label}: {@code from}, or the latched branch it lands. */
+		private Instruction entering(Instruction from, Address label) {
+			if (from == null || transfer(from)) return from;
+			for (Landing land : landingsAt(from.getMinAddress()))
+				if (label.equals(land.target())) return latchedBranch(from, land.slot());
+			return from;
+		}
+
+		/**
 		 * The register targets the latched branches landing behind {@code land} read as they issued,
 		 * where the look-back proves them; null when one of them is not proven.
 		 */
@@ -615,25 +648,7 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 			List<Long> targets = new ArrayList<>();
 			for (String name : new String[] { "c_land1", "c_land2" }) {
 				if (field(land, name) == 0 || field(land, name + "_ind") == 0) continue;
-				int slot = field(land, name + "_t");
-				Instruction branch = null, at = land;
-				List<Instruction> path = new ArrayList<>();
-				// The branch issued at most five cycles before; one with no delay cycles left lands behind itself.
-				for (int n = 0; n <= MAX_WINDOW && at != null && branch == null; n++) {
-					path.add(0, at);
-					if (C6000PacketStagingAnalyzer.inert(at) && field(at, "c_latch_t") == slot) branch = at;
-					at = listing.getInstructionBefore(at.getMinAddress());
-				}
-				// A landing in the code another branch went to has its branch elsewhere: this is that
-				// branch's only if it lands here in address order. ponytail: such a landing's register
-				// target stays unproven; follow the taken branch back when one needs resolving.
-				if (branch != null) {
-					Instruction after = next(land);
-					if (after != null) path.add(after);
-					int[] issue = issueCycles(path);
-					int landed = issue[0] + 1 + DELAY_CYCLES, here = after != null ? path.size() - 2 : path.size() - 1;
-					if (issue[here] >= landed || (after != null && issue[here + 1] < landed)) branch = null;
-				}
+				Instruction branch = latchedBranch(land, field(land, name + "_t"));
 				Long target = branch == null ? null : issueTarget(branch);
 				if (target == null) return null;
 				targets.add(target);
@@ -1082,7 +1097,8 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 			Boolean external = null;
 			for (Reference ref : program.getReferenceManager().getReferencesTo(label.getMinAddress())) {
 				if (!ref.getReferenceType().isFlow() || ref.getReferenceType().isFallthrough()) continue;
-				Instruction jump = listing.getInstructionAt(ref.getFromAddress());
+				// A latched branch enters where it lands: the look-back follows the branch itself.
+				Instruction jump = entering(listing.getInstructionAt(ref.getFromAddress()), label.getMinAddress());
 				if (jump == null || ref.getReferenceType().isCall() || entryDepth == 0 || jumps.size() == ENTRY_PATHS ||
 					(external == null ? (external = externalEntry(label)) : external)) {
 					trace.forget();
@@ -1632,7 +1648,8 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 			List<Register> writes = new ArrayList<>();
 			// Native delay carriers include their followers' results; those have
 			// their own physical instruction and issue time in this walk.
-			if (insn.getDelaySlotDepth() != 0) return writes;
+			// By the prototype: the slot depth is 0 for some windows that hold compact slots or a header.
+			if (insn.getPrototype().hasDelaySlots()) return writes;
 			Register load = loadDestination(insn);
 			for (Object result : C6000PacketStagingAnalyzer.hardware(insn).getResultObjects()) if (result instanceof Register r && (load == null || !overlaps(r, load))) writes.add(r);
 			if (load != null) { Register base = updatingBase(insn);if (base != null && !writes.contains(base)) writes.add(base); }
@@ -1762,7 +1779,7 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 		Register track(Instruction insn, Map<Register, long[]> regs) {
 			// A compact branch folds its parallel followers into its own p-code
 			// as delay slots; they are tracked separately, so skip its writes.
-			if (insn.getDelaySlotDepth() != 0 || transfer(insn)) return null;
+			if (insn.getPrototype().hasDelaySlots() || transfer(insn)) return null;
 			List<Register> written = new ArrayList<>();
 			for (Object result : C6000PacketStagingAnalyzer.hardware(insn).getResultObjects()) if (result instanceof Register r) written.add(r);
 			Long value = written.size() == 1 ? constantWrite(insn, written.get(0), regs) : null;
@@ -1772,6 +1789,57 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 			return written.get(0);
 		}
 
+
+		/** The index, in the last {@link #entryPath}, of the jump it came in through; -1 for a straight line. */
+		int enteredBy = -1;
+
+		/**
+		 * The code that runs before {@code branch}, oldest first: {@code linear}, its straight-line
+		 * look-back, unless the nearest label before it is reached only by one jump, with nothing
+		 * falling into it. Then it is what runs before that jump, the jump, what issues until it lands,
+		 * and the code from the label on. A jump latched with others enters where it lands. Any other
+		 * transfer on the way must land before {@code branch} issues, so that reaching it means none was
+		 * taken.
+		 */
+		List<Instruction> entryPath(Instruction branch, List<Instruction> linear) {
+			enteredBy = -1;
+			for (int k = linear.size() - 1; k > 0; k--) {
+				Instruction label = listing.getInstructionAt(linear.get(k).getMinAddress());
+				if (label == null) return linear;
+				List<Instruction> jumps = new ArrayList<>();
+				for (Reference ref : program.getReferenceManager().getReferencesTo(label.getMinAddress())) {
+					if (ref.getReferenceType().isData()) return linear;
+					if (!ref.getReferenceType().isFlow() || ref.getReferenceType().isFallthrough()) continue;
+					Instruction jump = entering(listing.getInstructionAt(ref.getFromAddress()), label.getMinAddress());
+					if (jump == null || ref.getReferenceType().isCall() || !transfer(jump)) return linear;
+					jumps.add(jump);
+				}
+				if (externalEntry(label)) return linear;
+				if (jumps.isEmpty()) continue;
+				// Something falls into the label too: the straight line is one of two ways in.
+				Instruction prior = listing.getInstructionBefore(label.getMinAddress());
+				Instruction owner = prior == null ? null : C6000DelaySlots.unitOwner(program, prior);
+				boolean falls = owner == null || !transfer(owner) || predicate(owner) != null ||
+					C6000PacketStagingAnalyzer.flow(owner).isCall();
+				if (jumps.size() != 1 || falls) return linear;
+				Instruction jump = jumps.get(0);
+				List<Instruction> taken = window(jump);
+				if (taken == null || branch.getRegister(0) == null) return linear;
+				List<Instruction> path = new ArrayList<>(lookBack(jump));
+				int at = path.size();
+				path.add(jump);
+				path.addAll(taken);
+				path.addAll(linear.subList(k, linear.size()));
+				path.add(branch);
+				int[] issue = issueCycles(path);
+				for (int i = at + 1; i < path.size() - 1; i++)
+					if (transfer(path.get(i)) && issue[i] + 1 + DELAY_CYCLES > issue[path.size() - 1]) return linear;
+				path.remove(path.size() - 1);
+				enteredBy = at;
+				return path;
+			}
+			return linear;
+		}
 
 		/** The jump the last {@link #viaJump} path went through. */
 		private Instruction viaInsn;

@@ -298,9 +298,11 @@ public class C6000JumpTableAnalyzer extends AbstractAnalyzer {
 		Map<Register, Linear> packet = new HashMap<>();
 		java.util.Set<Register> twice = new java.util.HashSet<>();
 		List<Guard> guards = new ArrayList<>();
-		List<Instruction> path = new ArrayList<>(walker.lookBack(branch));
+		List<Instruction> path = new ArrayList<>(walker.entryPath(branch, walker.lookBack(branch)));
 		for (int at = 0; at < path.size(); at++) {
-			Instruction insn = path.get(at);
+			// The hardware's instruction: one that stages a write or carries a landing is wrapped in
+			// the listing, and the wrapper does not have its operands.
+			Instruction insn = C6000PacketStagingAnalyzer.hardware(path.get(at));
 			String op = C6000CallAnalyzer.baseName(insn);
 			String name = op.contains(".") ? op.substring(0, op.indexOf('.')) : op;
 			int n = insn.getNumOperands();
@@ -347,16 +349,21 @@ public class C6000JumpTableAnalyzer extends AbstractAnalyzer {
 				// ADDK adds a 16-bit constant in place (SPRUFE8B 3.12 ADDK).
 				derived = linearOf(linear, insn.getRegister(1), at).plus((short) insn.getScalar(0).getUnsignedValue());
 			}
-			else if (name.equals("LDW") && n == 2) {
+			else if (name.equals("LDW") && n >= 2) {
 				// *+table[idx] scales a word index; *table holds table + a byte offset itself. Only the
 				// positive-offset form without modification reads at base + offset (SPRUFE8B 3.9.3):
-				// *-R subtracts it, and *++R/*--R/*R++/*R-- change R or read at R itself.
-				String mode = insn.getDefaultOperandRepresentation(0).replace(" ", "");
-				boolean plain = mode.startsWith("*+") && !mode.startsWith("*++") || mode.matches("\\*[AB][0-9]+");
+				// *-R subtracts it, and *++R/*--R/*R++/*R-- change R or read at R itself. The 32-bit
+				// forms hold the address in one operand; the compact ones list the base and the offset
+				// apart and print a zero offset without the plus (*A4[0x0]), so read the mode as printed.
+				String text = insn.toString();
+				String mode = text.substring(text.indexOf(' ') + 1, text.lastIndexOf(',')).replace(" ", "");
+				boolean plain = mode.matches("\\*\\+?[AB][0-9]+(\\[.*\\])?");
+				List<Object> address = new ArrayList<>();
+				for (int i = 0; i < n - 1; i++) address.addAll(java.util.Arrays.asList(insn.getOpObjects(i)));
 				Linear bytes = null;
 				Long table = null;
 				boolean offset = !plain;
-				for (Object o : insn.getOpObjects(0)) {
+				for (Object o : address) {
 					if (o instanceof Scalar s && s.getValue() != 0) offset = true;
 					if (!(o instanceof Register r)) continue;
 					Long found = table(program, regs, tableBase, r);
@@ -379,7 +386,7 @@ public class C6000JumpTableAnalyzer extends AbstractAnalyzer {
 			}
 			// A native delay carrier's results include its followers', which come later in this
 			// walk as instructions of their own (as Walker.issueWrites counts them).
-			if (insn.getDelaySlotDepth() == 0) for (Object written : C6000PacketStagingAnalyzer.hardware(insn).getResultObjects()) {
+			if (!insn.getPrototype().hasDelaySlots()) for (Object written : C6000PacketStagingAnalyzer.hardware(insn).getResultObjects()) {
 				if (written instanceof Register r) {
 					tableBase.remove(r);
 					loaded.remove(r);
