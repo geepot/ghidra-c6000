@@ -705,8 +705,11 @@ public final class C6000DelaySlots {
             for (var entry : fields.entrySet())
                 for (var field : entry.getValue().entrySet())
                     p.getProgramContext().setValue(field.getKey(), entry.getKey(), entry.getKey(), field.getValue());
-            Disassembler.getDisassembler(p, TaskMonitor.DUMMY, null).disassemble(start, new AddressSet(start, end), false);
+            var disassembler = Disassembler.getDisassembler(p, TaskMonitor.DUMMY, null);
+            disassembler.disassemble(start, new AddressSet(start, end), false);
             for (var unit : undo.units()) {
+                // A landing with no fall-through ends the flow from start: decode what follows it too.
+                if (listing.getInstructionAt(unit.at()) == null) disassembler.disassemble(unit.at(), new AddressSet(unit.at(), end), false);
                 Instruction now = listing.getInstructionAt(unit.at());
                 if (now == null || now.getLength() != unit.prototype().getLength() || now.isInDelaySlot() ||
                     now.getPrototype().hasDelaySlots())
