@@ -199,6 +199,25 @@ CASES = [
         NOP             4
 """),
     # Known-goods: an ordinary call; a forward predicated call; a loop branch to its own head with B3 there
+    # A callback is only named by its address: the code that takes it makes it a function. The return
+    # link beside it is an address too, and is not one.
+    ("cbptr", False, """{n}:
+        MVKL    .S1     {n}_cb,A4
+        MVKH    .S1     {n}_cb,A4
+        B       .S2     B3
+        MVKL    .S2     {n}_notcb,B3
+        MVKH    .S2     {n}_notcb,B3
+        NOP             3
+        NOP
+        NOP
+{n}_notcb:
+        B       .S2     B3
+        NOP             5
+{n}_cb:
+        B       .S2     B3
+        ADD     .L1     A4,1,A4
+        NOP             4
+"""),
     ("plain", False, """{n}:
         STW     .D2T2   B3,*B15--[2]
         B       .S1     {n}_h
@@ -469,7 +488,9 @@ def main():
         # A lifted case is not warned: its branches are latched and its C is the hardware's.
         manifest.append(dict(name=name, entry=addresses[name], h=addresses[name + "_h"],
                              end=0x1000 + index * SIZE + SIZE - 1, warn=[] if name in LIFTED else warn,
-                             c=LIFTED.get(name, [])))
+                             c=LIFTED.get(name, []),
+                             functions=[a for label, a in addresses.items() if label == name + "_cb"],
+                             labels=[a for label, a in addresses.items() if label == name + "_notcb"]))
     if len(sys.argv) == 4:
         image = b"".join(image[index:index + 4][::-1] for index in range(0, len(image), 4))
     image_path.write_bytes(image)

@@ -40,6 +40,13 @@
 
 ### Added
 
+* `C6000 Code Pointers` analyzer. A function passed as a callback or stored in a pointer is
+  only named by its address. Where an instruction of a function takes an address as a value
+  and that address starts code that no function owns, this makes it a function. It leaves
+  alone an address written to `B3` (a return link), one inside an execute packet, one that
+  other code reads or writes as data, and one that a function's own code jumps or falls
+  into; an address with no code yet must decode as a subroutine.
+
 * Exact schedules accept `SSHL`, `SHR2`, `CMPEQ2` and `PACKHL2` (single-cycle) and the
   `MPY32`, `MPY32U`, `MPY32US`, `MPY32SU`, `DOTP2` and `DOTPU4` forms (result in E4, 32-
   or 64-bit). They were refused as an unimplemented phase contract. `pipeline-scalar-ops`
@@ -96,6 +103,16 @@
   are skipped (issue #71).
 
 ### Fixed
+
+* A latched branch no longer keeps a flow override. One that also carries another branch's
+  landing had that landing changed by its own `CALL` or `RETURN` override, so a jump could
+  lift as a call and its target become a function. What a latched branch is now comes from
+  the landing that reads its latch, and the call analyzer leaves latched branches alone.
+* A jump that lands with a fresh link in `B3` is not a call when it goes to its own
+  function's code and a branch on the opposite predicate shares the link: it is the
+  else-branch, and the link is the other arm's.
+* The instructions a lifting puts landings on are reported to auto-analysis, so a call that
+  lands there gets a function at its target.
 
 * Code that the call, delay-window and switch-table analyzers decode themselves is now
   reported to auto-analysis. It was not, so no analyzer saw it and a call in it never got

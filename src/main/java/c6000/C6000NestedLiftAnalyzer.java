@@ -156,7 +156,27 @@ public final class C6000NestedLiftAnalyzer extends AbstractAnalyzer {
 				if (site == null) throw new IllegalStateException("no instruction at " + at);
 				undo.add(C6000DelaySlots.relift(program, at, site.getMaxAddress(), Map.of(at, entry.getValue())));
 			}
-			if (kept(program, walker, plan, outer)) return true;
+			if (kept(program, walker, plan, outer)) {
+				// Ghidra types every flow of an instruction that also lands a call as a call: give each
+				// landed jump's target its own type, or it becomes a function.
+				var references = program.getReferenceManager();
+				for (var latch : plan.latches()) {
+					if (latch.kind() != 1 || latch.target() == null) continue;
+					for (Reference ref : references.getReferencesFrom(latch.land().getMinAddress())) {
+						if (!ref.getToAddress().equals(latch.target()) || !ref.getReferenceType().isCall()) continue;
+						references.delete(ref);
+						references.addMemoryReference(ref.getFromAddress(), ref.getToAddress(),
+							latch.sure() ? ghidra.program.model.symbol.RefType.UNCONDITIONAL_JUMP : ghidra.program.model.symbol.RefType.CONDITIONAL_JUMP,
+							ghidra.program.model.symbol.SourceType.ANALYSIS, ref.getOperandIndex());
+					}
+				}
+				// The landings are new flows: a call among them needs a function at its target.
+				for (Address at : fields.keySet()) {
+					Instruction site = program.getListing().getInstructionAt(at);
+					if (site != null) C6000DelaySlots.announce(program, new ghidra.program.model.address.AddressSet(at, site.getMaxAddress()));
+				}
+				return true;
+			}
 		}
 		catch (Exception e) {
 			for (int i = undo.size() - 1; i >= 0; i--) undo.get(i).putBack();
@@ -181,6 +201,8 @@ public final class C6000NestedLiftAnalyzer extends AbstractAnalyzer {
 			if (branch == null || !latches(program, branch, latch.slot())) return false;
 			if (!done.add(branch.getMinAddress())) continue;
 			if (branch.isFallThroughOverridden()) branch.clearFallThroughOverride();
+			// Its landing says what it is; an override here would change a landing it carries for another branch.
+			branch.setFlowOverride(ghidra.program.model.listing.FlowOverride.NONE);
 			for (Reference ref : branch.getReferencesFrom()) {
 				if (!ref.getReferenceType().isFlow() || ref.getReferenceType().isFallthrough()) continue;
 				// Its register target's references go where the transfer now is.

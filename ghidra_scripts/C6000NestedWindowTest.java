@@ -20,6 +20,7 @@ public class C6000NestedWindowTest extends GhidraScript {
 		long entry, h, end;
 		long[] warn;
 		String[] c;
+		long[] functions, labels;
 	}
 
 	@Override
@@ -63,6 +64,11 @@ public class C6000NestedWindowTest extends GhidraScript {
 				if (!found.contains(at) && !comments.toString().contains(" at " + toAddr(at) + " "))
 					throw new AssertionError(item.name + ": no warning names the transfer at " + toAddr(at) + ": " + comments);
 			}
+			// A callback taken by address is a function (C6000 Code Pointers); a plain label is not.
+			if (item.functions != null) for (long at : item.functions)
+				if (getFunctionAt(toAddr(at)) == null) throw new AssertionError(item.name + ": no function at " + toAddr(at));
+			if (item.labels != null) for (long at : item.labels)
+				if (getFunctionAt(toAddr(at)) != null) throw new AssertionError(item.name + ": a function at the label " + toAddr(at));
 			if (item.c != null && item.c.length > 0) {
 				// Lifted: its nested branches are latched, and the C is the hardware's.
 				boolean latched = false;

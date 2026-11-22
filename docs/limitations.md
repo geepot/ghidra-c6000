@@ -117,6 +117,10 @@ same-packet read it cannot stage, such as one of a control register, keeps its
 floating point) are still written at once by native lifting; only an exact schedule
 models that.
 
+`C6000 Code Pointers` finds a callback only where both halves of its address are loaded
+together; an `MVK` whose `MVKH` is hoisted elsewhere gives no reference to follow, and a
+function reached only through a table in compressed initialisation data is not found.
+
 Native lifting latches branches issued in each other's delay windows where that is what
 the hardware runs on every path (`C6000 Nested Branch Lifting`): each such branch records
 its predicate and target as it issues, and the instruction it lands behind transfers. Two

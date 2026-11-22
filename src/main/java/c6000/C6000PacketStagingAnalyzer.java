@@ -144,11 +144,49 @@ public final class C6000PacketStagingAnalyzer extends AbstractAnalyzer {
 		return fields.toArray(Register[]::new);
 	}
 
-	/** The hardware instruction's flow, with the listing's override: a latched branch is still a branch, and the instruction it lands behind is not. */
+	/**
+	 * The hardware instruction's flow, with the listing's override: a latched branch is still a
+	 * branch, and the instruction it lands behind is not. A latched branch has no override of its own,
+	 * which would change the landing it may carry for another branch: it is a call or a return as
+	 * the landing that reads its latch says.
+	 */
 	static ghidra.program.model.symbol.FlowType flow(Instruction ins) {
 		Instruction hardware = hardware(ins);
 		if (hardware == ins) return ins.getFlowType();
-		return ghidra.program.model.listing.FlowOverride.getModifiedFlowType(hardware.getFlowType(), ins.getFlowOverride());
+		var override = ins.getFlowOverride();
+		if (inert(ins)) {
+			Instruction site = landingSite(ins);
+			int kind = site == null ? 0 : landingKind(site, field(ins, "c_latch_t"));
+			override = kind == 2 ? ghidra.program.model.listing.FlowOverride.CALL :
+				kind == 3 ? ghidra.program.model.listing.FlowOverride.RETURN : ghidra.program.model.listing.FlowOverride.NONE;
+		}
+		return ghidra.program.model.listing.FlowOverride.getModifiedFlowType(hardware.getFlowType(), override);
+	}
+
+	/**
+	 * The instruction the latched branch {@code branch} lands behind in address order: the first one
+	 * from it on that carries a landing for its latch, which is not used again until then. Null if none.
+	 */
+	static Instruction landingSite(Instruction branch) {
+		int slot = field(branch, "c_latch_t");
+		Instruction at = branch;
+		// ponytail: sixteen instructions cover five delay cycles of three-member packets
+		for (int n = 0; n < 16 && at != null; n++, at = at.getNext())
+			if (landingKind(at, slot) != 0) return at;
+		return null;
+	}
+
+	/** The kind of the landing {@code ins} carries for latch {@code slot}: 1 jump, 2 call, 3 return; 0 if none. */
+	private static int landingKind(Instruction ins, int slot) {
+		for (String name : new String[] { "c_land1", "c_land2" })
+			if (field(ins, name) != 0 && field(ins, name + "_t") == slot) return field(ins, name);
+		return 0;
+	}
+
+	private static int field(Instruction ins, String name) {
+		Register field = ins.getProgram().getRegister(name);
+		BigInteger value = field == null ? null : ins.getValue(field, false);
+		return value == null ? 0 : value.intValue();
 	}
 
 	/** True when {@code ins} is a latched branch: it records its predicate and target and transfers elsewhere. */

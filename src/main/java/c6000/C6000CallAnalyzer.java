@@ -120,7 +120,8 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 		for (Address at : branches) {
 			monitor.checkCancelled();
 			Instruction branch = listing.getInstructionAt(at);
-			if (branch == null) continue;
+			// A latched branch transfers where it lands, and an override on it would change a landing it carries.
+			if (branch == null || C6000PacketStagingAnalyzer.inert(branch)) continue;
 			Call call = walker.recognize(branch);
 			if (call == null) continue;
 			boolean known = branch.getFlowOverride() == FlowOverride.CALL;
@@ -756,7 +757,11 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 				if (!transfer(insn)) continue;
 				if (predicate(insn) != null) predicated.add(i);
 				Instruction listed = listing.getInstructionAt(insn.getMinAddress());
-				if (listed != null && C6000PacketStagingAnalyzer.flow(listed).isCall() && listed.getFallThrough() != null) returns.add(listed.getFallThrough());
+				if (listed == null || !C6000PacketStagingAnalyzer.flow(listed).isCall()) continue;
+				// A latched call returns behind the instruction it lands behind.
+				Instruction site = C6000PacketStagingAnalyzer.inert(listed) ? C6000PacketStagingAnalyzer.landingSite(listed) : null;
+				Address back = site != null ? site.getMaxAddress().next() : listed.getFallThrough();
+				if (back != null) returns.add(back);
 			}
 			if (predicated.size() > MAX_PATH_TRANSFERS) return "it has too many predicated transfers to compare";
 			Stretch region = new Stretch(first.getMinAddress(), current.getMinAddress(), path, index, predicated, returns);
@@ -927,9 +932,19 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 						// the listing makes of it; one through B3 itself goes where B3 pointed before.
 						Address linked = null;
 						long[] held = link.get(b3);
-						if (!call && held != null && !b3.equals(transfer.getRegister(0))) {
+						boolean latched = listed != null && C6000PacketStagingAnalyzer.inert(listed);
+						if ((!call || latched) && held != null && !b3.equals(transfer.getRegister(0))) {
 							Address to = transfer.getMinAddress().getNewAddress(held[0] & 0xffffffffL);
 							if (!to.equals(target) && listing.getInstructionAt(to) != null) linked = to;
+						}
+						// Of two arms on opposite predicates that share one link, an arm into its own
+						// function's code is the else-branch and the link is the other arm's. An arm
+						// through B3 is the return and leaves the link to this one. Where the listing
+						// already says call, that was decided with both arms in view.
+						if (linked != null && !call && Boolean.TRUE.equals(localTarget(transfer))) for (int i : region.predicated()) {
+							Instruction arm = region.path().get(i);
+							if (!arm.getMinAddress().equals(transfer.getMinAddress()) && complementary(transfer, arm) &&
+								!b3.equals(arm.getRegister(0))) linked = null;
 						}
 						if (landedAsCall != null) landedAsCall.computeIfAbsent(transfer.getMinAddress(), k -> new HashSet<>()).add(call || linked != null);
 						if (call || linked != null) {
