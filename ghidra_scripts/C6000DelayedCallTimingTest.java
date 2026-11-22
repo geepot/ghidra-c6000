@@ -61,7 +61,10 @@ public class C6000DelayedCallTimingTest extends GhidraScript {
                     if(!instruction.getFlowType().isCall()||!calls.equals(unknown?Set.of():Set.of(row.get("target").getAsLong()))||references!=(unknown?0:1))
                         throw new AssertionError(name+" native call refs="+calls+" count="+references);
                     if(!unknown&&getFunctionAt(toAddr(row.get("target").getAsLong()))==null)throw new AssertionError("Missing callee: "+name);
-                    if(getFunctionAt(toAddr(row.get("other").getAsLong()))!=null)throw new AssertionError("Spurious target function: "+name);
+                    // The other value the register held is still an address of code taken as a value, which
+                    // C6000 Code Pointers may make a function; what must not exist is a call to it.
+                    for(var ref:getReferencesTo(toAddr(row.get("other").getAsLong())))
+                        if(ref.getReferenceType().isCall())throw new AssertionError("Spurious call to the other target: "+name+" from "+ref.getFromAddress());
                 } else {
                     if(instruction.getFlowOverride()==FlowOverride.CALL)throw new AssertionError("False native call: "+name);
                     var at=toAddr(row.get("ret").getAsLong());
