@@ -9,8 +9,8 @@ symbols would. A transfer issued in a delay cycle of another lands after it
 (SPRUFE8B 3.5, 4.2.6), and a predicated call whose B3 is at or before it has two
 successors; native lifting places neither, so each known-bad must carry a
 "C6000 Nested Delay Window" warning at its labelled transfers (issues #64-#66),
-and each known-good none. MVKL/MVKH operands are assembled once with labels and
-again with the label addresses, so the object needs no relocation. Full32 only,
+and each known-good none. MVKL/MVKH and .word operands are assembled once with labels
+and again with the label addresses, so the object needs no relocation. Full32 only,
 so BE swaps each word's bytes.
 """
 from pathlib import Path
@@ -350,6 +350,48 @@ CASES = [
         STW     .D1T1   A5,*+A4[1]
         NOP             5
 """),
+    # A switch whose dispatch is entered through a jump taken when the index is in range, with the
+    # table's address built in that jump's delay slots and the default's jump nested among them, on
+    # a copy of the flag, so that both count as possibly taken and the second gets a landing in the
+    # dispatch code. The table is found by following the latched jump to where it lands: a ? (a == 1 ? 0x222 : a == 2 ?
+    # 0x333 : 0x999) : 0x111.
+    ("swjump", True, """{n}:
+        CMPLTU  .L2X    2,A4,B1
+        MV      .L2     B1,B0
+  [!B1] B       .S1     {n}_disp
+        MVKL    .S1     {n}_tab,A1
+        MVKH    .S1     {n}_tab,A1
+        SHL     .S2X    A4,2,B5
+{n}_in:
+  [ B0] B       .S1     {n}_dflt
+        NOP             5
+{n}_dflt:
+        B       .S2     B3
+        MVK     .S1     0x999,A4
+        NOP             4
+{n}_disp:
+        ADD     .L1X    A1,B5,A5
+        LDW     .D1T2   *A5,B5
+        NOP             4
+        B       .S2     B5
+        NOP             5
+{n}_c0:
+        B       .S2     B3
+        MVK     .S1     0x111,A4
+        NOP             4
+{n}_c1:
+        B       .S2     B3
+        MVK     .S1     0x222,A4
+        NOP             4
+{n}_c2:
+        B       .S2     B3
+        MVK     .S1     0x333,A4
+        NOP             4
+{n}_tab:
+        .word   {n}_c0
+        .word   {n}_c1
+        .word   {n}_c2
+"""),
 ]
 # Known-bads that native lifting now gets right by latching their branches (issue #73). What
 # their C must contain:
@@ -364,11 +406,12 @@ LIFTED = {
     "indep": ["0x11", "0x21", "0x101", "0x201", "+ 0x1000"],
     "tri": ["return 3;", "0x13", "0x43b"],
     "bnop4": ["param_1 + 1"],
+    "swjump": ["0x111", "0x222", "0x333", "0x999"],
     "landret": ["param_1 + 0xc", "param_3 != 0", "param_1 + 4"],
     # Ghidra 12.1.4 prints the test as param_3 == 0 with the arms the other way round
     "landlink": ["param_1 + 0xc", "if (param_3 ", "param_1 + 4"],
 }
-LINK = re.compile(r"(MVK[LH]\s+\.S[12]\s+)(\w+)")
+LINK = re.compile(r"(MVK[LH]\s+\.S[12]\s+|\.word\s+)(\w+)")
 
 
 def assemble(compiler, source, object_file, log):

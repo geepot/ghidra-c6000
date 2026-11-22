@@ -97,6 +97,17 @@
 
 ### Fixed
 
+* Code that the call, delay-window and switch-table analyzers decode themselves is now
+  reported to auto-analysis. It was not, so no analyzer saw it and a call in it never got
+  a function at its target: on a cl6x-compiled test image 39 called addresses with decoded
+  code had no function. That image goes from 116 functions to 167.
+* A switch table whose dispatch sits behind a label that only one jump reaches is found by
+  following that jump: the table's address is often built in its delay slots. Ghidra's own
+  switch analysis found these until the jump was latched with others (issue #73). The
+  analyzer also reads compact `LDW` loads, which list base and offset as separate operands,
+  and tells a delay carrier by its prototype: `getDelaySlotDepth()` is 0 for some windows,
+  and a carrier's followers' writes were then counted as its own.
+
 * Latched returns (issue #73). A `B B3` latched in another branch's delay window is a
   return wherever it issues, so the instruction it lands behind now returns instead of
   making a computed jump; a caller that jumps in with B3 set to a link no longer fails to
