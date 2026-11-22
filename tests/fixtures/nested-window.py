@@ -365,7 +365,8 @@ LIFTED = {
     "tri": ["return 3;", "0x13", "0x43b"],
     "bnop4": ["param_1 + 1"],
     "landret": ["param_1 + 0xc", "param_3 != 0", "param_1 + 4"],
-    "landlink": ["param_1 + 0xc", "param_3 != 0", "param_1 + 4"],
+    # Ghidra 12.1.4 prints the test as param_3 == 0 with the arms the other way round
+    "landlink": ["param_1 + 0xc", "if (param_3 ", "param_1 + 4"],
 }
 LINK = re.compile(r"(MVK[LH]\s+\.S[12]\s+)(\w+)")
 
