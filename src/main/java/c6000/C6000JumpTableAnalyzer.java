@@ -140,7 +140,7 @@ public class C6000JumpTableAnalyzer extends AbstractAnalyzer {
 					changed = true;
 				}
 				if (listing.getInstructionAt(target) == null) {
-					disassembler.disassemble(target, null, true);
+					C6000DelaySlots.announce(program, disassembler.disassemble(target, null, true));
 					changed = true;
 				}
 			}

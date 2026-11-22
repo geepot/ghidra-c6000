@@ -130,10 +130,10 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 			Address next = branch.getMaxAddress().next();
 			if (call.returnTo() != null) branch.setFallThrough(call.returnTo());
 			else if (branch.getFallThrough() == null) branch.setFallThrough(next);
-			if (listing.getInstructionAt(next) == null) disassembler.disassemble(next, null, true);
+			if (listing.getInstructionAt(next) == null) C6000DelaySlots.announce(program, disassembler.disassemble(next, null, true));
 			// Delay slots start after the branch's whole execute packet (SPRUFE8B 3.5, 4.2.6).
 			Address slots = packetEnd(program, listing.getInstructionAt(at));
-			if (slots != null && listing.getInstructionAt(slots) == null) disassembler.disassemble(slots, null, true);
+			if (slots != null && listing.getInstructionAt(slots) == null) C6000DelaySlots.announce(program, disassembler.disassemble(slots, null, true));
 			Function caller = listing.getFunctionContaining(at);
 			if (caller != null) callers.add(caller);
 			if (call.target() != null) {

@@ -45,6 +45,17 @@ public final class C6000DelaySlots {
      */
     private static final Map<Program, Long> SETTLED = Collections.synchronizedMap(new WeakHashMap<>());
 
+    /**
+     * Tell auto-analysis about code this plugin decoded itself. Ghidra's own disassembly command
+     * does; a bare Disassembler does not, and then no analyzer sees the new instructions: a call
+     * in them never gets a function at its target.
+     */
+    static void announce(Program program, ghidra.program.model.address.AddressSetView decoded) {
+        if (decoded == null || decoded.isEmpty()) return;
+        var analysis = ghidra.app.plugin.core.analysis.AutoAnalysisManager.getAnalysisManager(program);
+        if (analysis != null) analysis.codeDefined(decoded);
+    }
+
     /** B/BNOP or CALLP; nested transfers and ownership conflicts are refused. */
     public static List<Repair> recover(Program program, TaskMonitor monitor, MessageLog log)
             throws Exception {
@@ -469,7 +480,7 @@ public final class C6000DelaySlots {
             boolean changed = false;
             if (proven && listing.getInstructionAt(next) == null) {
                 if (disassembler == null) disassembler = Disassembler.getDisassembler(program, monitor, null);
-                disassembler.disassemble(next, null, true);
+                announce(program, disassembler.disassemble(next, null, true));
                 changed = true;
             }
             // Proven is not laid: lay the return's cut window before the jump continues.
