@@ -149,12 +149,18 @@ public final class C6000NestedLiftAnalyzer extends AbstractAnalyzer {
 			Map<Address, Map<Register, BigInteger>> inside = new TreeMap<>(fields);
 			inside.keySet().removeIf(at -> at.compareTo(start) < 0 || at.compareTo(plan.last()) > 0);
 			undo.add(C6000DelaySlots.relift(program, start, plan.last(), inside));
+			Set<Address> relifted = new HashSet<>();
 			for (var entry : fields.entrySet()) {
 				Address at = entry.getKey();
-				if (at.compareTo(start) >= 0 && at.compareTo(plan.last()) <= 0) continue;
+				if (at.compareTo(start) >= 0 && at.compareTo(plan.last()) <= 0 || relifted.contains(at)) continue;
 				Instruction site = program.getListing().getInstructionAt(at);
 				if (site == null) throw new IllegalStateException("no instruction at " + at);
-				undo.add(C6000DelaySlots.relift(program, at, site.getMaxAddress(), Map.of(at, entry.getValue())));
+				// A branch latched outside the stretch takes its native window with it, so those slots become plain code (SPRUFE8B 3.5, 4.2.6).
+				Address end = site.getPrototype().hasDelaySlots() ? site.getMaxAddress().add(site.getPrototype().getDelaySlotByteCount()) : site.getMaxAddress();
+				Map<Address, Map<Register, BigInteger>> part = new TreeMap<>(fields);
+				part.keySet().removeIf(a -> a.compareTo(at) < 0 || a.compareTo(end) > 0);
+				relifted.addAll(part.keySet());
+				undo.add(C6000DelaySlots.relift(program, at, end, part));
 			}
 			if (kept(program, walker, plan, outer)) return true;
 		}

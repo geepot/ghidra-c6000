@@ -64,6 +64,14 @@
 
 ### Fixed
 
+* A landing in another branch's delay slot (issue #109). A nest whose branch lands behind
+  an instruction outside it that is a native delay slot of another branch is now latched
+  with that branch too, which lands where its window ends as it does natively, so the slot
+  becomes plain code and carries the landing. The nest was refused with "a branch lands
+  behind X, which cannot carry it". The other branch is not latched when it is already
+  latched elsewhere, untimed, a `CALLP`, `BDEC` or `BPOS`, has a transfer in its window,
+  or has no single direct or register target, or when no latch is free or the landing
+  instruction would carry more than two landings.
 * The call analyzer's look-back treats every register the ABI lets a callee change as
   unknown once an earlier call has returned (all but A10-A15 and B10-B15), and at code that
   nothing falls into, after a jump or return that always goes, it takes the registers from

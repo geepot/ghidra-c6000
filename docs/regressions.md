@@ -927,6 +927,13 @@ branch in each and the hardware's result in the C: `a ? h(b + 1) : b + 1` for `c
 `a ? 3 : b ? 0x13 : 0x43b` for `tri` and `x ? x + 1 : 1` for `bnop4`. `busytgt`, `indep`,
 `pjcall` and `pjreg`, where two branches are both taken, keep their warning.
 
+Issue #109 adds `owntail`, whose inner branch lands behind the last native delay slot of a
+branch outside the nest: it must be latched, the slot's owner with it, with the C of
+`b ? (a ? a + 0x1f0 : 0x5d8) : (a ? a + 0x187 : 0x56f)`. Its control `owntail0`, with the
+owner replaced by a `NOP`, must have no warning. Without the fix `owntail` is refused; with
+only the planner's half it still keeps its warning, since the owner's window must be
+relifted as plain code too.
+
 ## BNOP calls (issue #69)
 
 `tests/fixtures/bnop-call.py` assembles six functions with `cl6x` 8.3.15, each with its
