@@ -448,16 +448,20 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 			Map<Address, Map<Address, Instruction>> sites;
 			String why;
 			Map<Address, Set<Boolean>> calls;
+			Set<Address> crowded;
 			landedBehind = new HashMap<>();
 			landedAsCall = new HashMap<>();
+			issuedInFlight = new HashSet<>();
 			try {
 				why = compare(first, outer, null, null);
 			}
 			finally {
 				sites = landedBehind;
 				calls = landedAsCall;
+				crowded = issuedInFlight;
 				landedBehind = null;
 				landedAsCall = null;
+				issuedInFlight = null;
 			}
 			if (why != null) return refuse(why);
 			List<Latch> latches = new ArrayList<>();
@@ -469,6 +473,10 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 				if (!transfer(branch)) continue;
 				String op = baseName(branch);
 				for (String form : UNLIFTABLE) if (op.startsWith(form)) return refuse(branch + " at " + branch.getMinAddress() + " has no latched form");
+				// A latch takes a listed call's CALL flow: only one issued in the window of transfers it excludes is latched (issue #110).
+				Instruction listedBranch = listing.getInstructionAt(branch.getMinAddress());
+				if (listedBranch != null && C6000PacketStagingAnalyzer.flow(listedBranch).isCall() && (i == 0 || crowded.contains(branch.getMinAddress())))
+					return refuse(branch + " at " + branch.getMinAddress() + " is a listed call issued " + (i == 0 ? "with nothing in flight" : "with a taken transfer in flight") + ", which keeps its CALL flow");
 				if (untimed(program, branch)) return refuse("its timing is outside the cycle model");
 				int land = -1;
 				for (int j = i; j < stretch.size() && issue[j] < issue[i] + 1 + DELAY_CYCLES; j++) land = j;
@@ -567,6 +575,8 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 		private Map<Address, Map<Address, Instruction>> landedBehind;
 		/** Set while planning: whether each transfer the hardware lands is a call there. */
 		private Map<Address, Set<Boolean>> landedAsCall;
+		/** Set while planning: each transfer the hardware issues with another taken transfer in flight. */
+		private Set<Address> issuedInFlight;
 
 		/** Null when {@code plan} runs what the hardware runs on every consistent outcome; else the first difference. */
 		String liftMismatch(Lifting plan, Instruction outer) {
@@ -736,16 +746,18 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 				if (!transfer(insn)) continue;
 				if (predicate(insn) != null) predicated.add(i);
 				Instruction listed = listing.getInstructionAt(insn.getMinAddress());
-				if (listed != null && C6000PacketStagingAnalyzer.flow(listed).isCall() && listed.getFallThrough() != null) returns.add(listed.getFallThrough());
+				if (listed != null && C6000PacketStagingAnalyzer.flow(listed).isCall()) returns.add(insn.getMinAddress());
 			}
 			if (predicated.size() > MAX_PATH_TRANSFERS) return "it has too many predicated transfers to compare";
 			Stretch region = new Stretch(first.getMinAddress(), current.getMinAddress(), path, index, predicated, returns);
 			// The listing may already lift this stretch by latched branches.
 			if (proposal == null && lifting == null && listed(first, current.getMinAddress())) lifting = LISTED;
 
+			segCycles = issueCycles(path);
 			for (int mask = 0; mask < 1 << predicated.size(); mask++) {
 				// One outcome per predicated transfer, kept only when its predicates can agree.
 				Map<Address, Boolean> taken = new HashMap<>();
+				segTaken = taken;
 				List<PredicateFact> facts = new ArrayList<>();
 				boolean consistent = true;
 				for (int v = 0; v < predicated.size() && consistent; v++) {
@@ -769,8 +781,12 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 			return null;
 		}
 
+		/** The outcome being compared and its issue cycles, for {@link #segment}. */
+		private int[] segCycles;
+		private Map<Address, Boolean> segTaken;
+
 		/** The facts that still hold at {@code i}: a callee may change any predicate register, so none crosses a call's return. */
-		private static List<PredicateFact> factsFor(Stretch region, int i, List<PredicateFact> facts) {
+		private List<PredicateFact> factsFor(Stretch region, int i, List<PredicateFact> facts) {
 			if (region.returns().isEmpty()) return facts;
 			int segment = segment(region, i);
 			List<PredicateFact> kept = new ArrayList<>();
@@ -778,10 +794,15 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 			return kept;
 		}
 
-		private static int segment(Stretch region, int i) {
-			Address at = region.path().get(i).getMinAddress();
+		/** The calls taken on this path that have landed by the cycle {@code i} issues (SPRUFE8B 3.5, 4.2.6): the callee may change any predicate register. */
+		private int segment(Stretch region, int i) {
 			int count = 0;
-			for (Address back : region.returns()) if (back.compareTo(at) <= 0) count++;
+			for (Address call : region.returns()) {
+				int c = region.index().get(call);
+				Instruction insn = region.path().get(c);
+				boolean go = predicate(insn) == null || Boolean.TRUE.equals(segTaken == null ? null : segTaken.get(call));
+				if (go && segCycles != null && segCycles[i] >= segCycles[c] + 1 + DELAY_CYCLES) count++;
+			}
 			return count;
 		}
 
@@ -855,6 +876,26 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 			// B3 as the instructions run here leave it: a constant written since the last call is a return link.
 			Register b3 = program.getRegister("B3");
 			Map<Register, long[]> link = new HashMap<>();
+			Map<Register, long[]> ret3 = new HashMap<>();
+			int start = region.index().getOrDefault(first.getMinAddress(), 0);
+			int[] preCycles = issueCycles(region.path());
+			int from = 0;
+			for (int i = 0; i < start; i++) if (transfer(region.path().get(i)) && (predicate(region.path().get(i)) == null || executes(region.path(), i, facts) != Boolean.FALSE)) {
+				from = start;
+				for (int j = i + 1; j < start; j++) if (preCycles[j] >= preCycles[i] + 1 + DELAY_CYCLES) { from = j; break; }
+			}
+			for (int i = from; i < start; i++) {
+				Instruction insn = region.path().get(i);
+				if (entered(insn)) ret3.remove(b3);
+				if (transfer(insn) || idle(insn)) continue;
+				Register load = loadDestination(insn);
+				if (!(load != null ? overlaps(load, b3) : issueWrites(insn).stream().anyMatch(r -> overlaps(r, b3)))) continue;
+				Boolean runs = predicate(insn) == null ? Boolean.TRUE : executes(region.path(), i, facts);
+				if (runs == Boolean.FALSE) continue;
+				Long value = load != null || runs == null ? null : constantWrite(insn, b3, ret3);
+				if (value == null) ret3.remove(b3);
+				else ret3.put(b3, new long[] { value, FULL });
+			}
 			try {
 				while (true) {
 					// One execute packet, issued in this cycle.
@@ -872,6 +913,7 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 						if (transfer(insn)) {
 							Boolean go = predicate(insn) == null ? Boolean.TRUE : taken.get(insn.getMinAddress());
 							if (go == null) return Run.unproven(insn + " at " + insn.getMinAddress() + " issues with transfers in flight, on a predicate this check cannot follow");
+							if (go && issuedInFlight != null && !flights.isEmpty()) issuedInFlight.add(insn.getMinAddress());
 							if (go) flights.add(new Flight(cycle + 1 + DELAY_CYCLES, insn));
 						}
 						else if (!idle(insn) && runs(insn, region, facts)) {
@@ -884,6 +926,9 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 								Long value = load != null || !sure ? null : constantWrite(insn, b3, link);
 								if (value == null) link.remove(b3);
 								else link.put(b3, new long[] { value, FULL });
+								Long r3 = load != null || !sure ? null : constantWrite(insn, b3, ret3);
+								if (r3 == null) ret3.remove(b3);
+								else ret3.put(b3, new long[] { r3, FULL });
 							}
 						}
 						if (!parallelWithNext(insn)) break;
@@ -917,8 +962,12 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 							if (!flights.isEmpty()) return new Run(trace, "calls " + destination(transfer, target) + " with transfers in flight", null);
 							trace.add("calls " + destination(transfer, target));
 							link.clear();
-							// It returns where B3 points; a latched call's listed fall-through is only its next instruction.
-							Address back = linked != null ? linked : C6000PacketStagingAnalyzer.inert(listed) ? returnPoint(listed) : listed.getFallThrough();
+							// It returns where B3 points on this path when known (SPRUFE8B 3.5, 4.2.6); a latched call's listed fall-through is only its next instruction.
+							long[] r3 = ret3.get(b3);
+							Address b3to = r3 != null ? transfer.getMinAddress().getNewAddress(r3[0] & 0xffffffffL) : null;
+							ret3.clear();
+							Address back = linked != null ? linked : b3to != null && listing.getInstructionAt(b3to) != null ? b3to :
+								C6000PacketStagingAnalyzer.inert(listed) ? returnPoint(listed) : listed.getFallThrough();
 							if (back == null) return new Run(trace, "does not return", null);
 							at = decode(back);
 							cycle = landing.lands();
@@ -947,6 +996,15 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 			catch (MemoryAccessException e) {
 				return Run.unproven("a packet's parallel bits cannot be read");
 			}
+		}
+
+		/** Reached other than by falling in: a flow reference from elsewhere, or a function or external entry. */
+		private boolean entered(Instruction insn) {
+			Address at = insn.getMinAddress();
+			if (program.getSymbolTable().isExternalEntryPoint(at) || program.getFunctionManager().getFunctionAt(at) != null) return true;
+			for (Reference ref : program.getReferenceManager().getReferencesTo(at))
+				if (ref.getReferenceType().isFlow() && !ref.getReferenceType().isFallthrough()) return true;
+			return false;
 		}
 
 		private Run lifted(Instruction first, Stretch region, Map<Address, Boolean> taken, List<PredicateFact> facts) {

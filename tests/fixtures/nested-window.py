@@ -296,6 +296,94 @@ CASES = [
 {n}_pad:
         NOP             2
 """),
+    # issue #110: a jump, a call on the other predicate in its window with the link set before both, and a
+    # second jump on the jump's predicate in the call's window. The call returns where B3 points. a ? 2b + 16 : b + 103.
+    ("callarm", True, """{n}:
+        STW     .D2T2   B3,*B15--[2]
+||      MV      .L1     A4,A1
+        MV      .L1X    B4,A4
+        MVKL    .S2     {n}_ret,B3
+        MVKH    .S2     {n}_ret,B3
+  [!A1] B       .S1     {n}_x
+{n}_in:
+  [ A1] B       .S1     {n}_h
+  [!A1] B       .S1     {n}_y
+        NOP             4
+{n}_ret:
+        ADDK    .S1     16,A4
+""" + RET + """{n}_x:
+        ADD     .L1     A4,1,A4
+        ADD     .L1     A4,2,A4
+        ADD     .L1     A4,4,A4
+""" + RET + """{n}_y:
+        ADDK    .S1     100,A4
+""" + RET),
+    # Known-good (issue #110): callarm without the second jump, so the call keeps its whole window. a ? 2b + 16 : b + 7.
+    ("callarm0", False, """{n}:
+        STW     .D2T2   B3,*B15--[2]
+||      MV      .L1     A4,A1
+        MV      .L1X    B4,A4
+        MVKL    .S2     {n}_ret,B3
+        MVKH    .S2     {n}_ret,B3
+  [!A1] B       .S1     {n}_x
+  [ A1] B       .S1     {n}_h
+        NOP             5
+{n}_ret:
+        ADDK    .S1     16,A4
+""" + RET + """{n}_x:
+        ADD     .L1     A4,1,A4
+        ADD     .L1     A4,2,A4
+        ADD     .L1     A4,4,A4
+""" + RET),
+    # issue #110: callarm with the link's low half written before an earlier jump, which the B3 scan starts
+    # after, so B3 is unknown and the call returns to its listed fall-through: still warned.
+    ("callarml", True, """{n}:
+        STW     .D2T2   B3,*B15--[2]
+||      MV      .L1     A4,A1
+        MV      .L1X    B4,A4
+        MVKL    .S2     {n}_ret,B3
+        B       .S1     {n}_go
+        NOP             5
+{n}_go:
+        MVKH    .S2     {n}_ret,B3
+  [!A1] B       .S1     {n}_x
+{n}_in:
+  [ A1] B       .S1     {n}_h
+  [!A1] B       .S1     {n}_y
+        NOP             4
+{n}_ret:
+        ADDK    .S1     16,A4
+""" + RET + """{n}_x:
+        ADD     .L1     A4,1,A4
+        ADD     .L1     A4,2,A4
+        ADD     .L1     A4,4,A4
+""" + RET + """{n}_y:
+        ADDK    .S1     100,A4
+""" + RET),
+    # issue #110: callarml with both halves of the link after the earlier jump. a ? 2b + 16 : b + 103.
+    ("callarml0", True, """{n}:
+        STW     .D2T2   B3,*B15--[2]
+||      MV      .L1     A4,A1
+        MV      .L1X    B4,A4
+        B       .S1     {n}_go
+        NOP             5
+{n}_go:
+        MVKL    .S2     {n}_ret,B3
+        MVKH    .S2     {n}_ret,B3
+  [!A1] B       .S1     {n}_x
+{n}_in:
+  [ A1] B       .S1     {n}_h
+  [!A1] B       .S1     {n}_y
+        NOP             4
+{n}_ret:
+        ADDK    .S1     16,A4
+""" + RET + """{n}_x:
+        ADD     .L1     A4,1,A4
+        ADD     .L1     A4,2,A4
+        ADD     .L1     A4,4,A4
+""" + RET + """{n}_y:
+        ADDK    .S1     100,A4
+""" + RET),
 ]
 # Known-bads that native lifting now gets right by latching their branches (issue #73). What
 # their C must contain:
@@ -310,6 +398,9 @@ LIFTED = {
     "indep": ["0x11", "0x21", "0x101", "0x201", "+ 0x1000"],
     "tri": ["return 3;", "0x13", "0x43b"],
     "bnop4": ["param_1 + 1"],
+    # a ? 2b + 16 : b + 103: the call returns where B3 points, not to its listed fall-through
+    "callarm": ["param_2 + 3;", "return param_2 + 100;"],
+    "callarml0": ["param_2 + 3;", "return param_2 + 100;"],
 }
 LINK = re.compile(r"(MVK[LH]\s+\.S[12]\s+)(\w+)")
 

@@ -927,6 +927,13 @@ branch in each and the hardware's result in the C: `a ? h(b + 1) : b + 1` for `c
 `a ? 3 : b ? 0x13 : 0x43b` for `tri` and `x ? x + 1 : 1` for `bnop4`. `busytgt`, `indep`,
 `pjcall` and `pjreg`, where two branches are both taken, keep their warning.
 
+Issue #110 adds `callarm`: a jump, a call on the other predicate in its window with its
+link set before both, and a second jump on the jump's predicate in the call's window. It
+must be latched, with the C of `a ? 2b + 16 : b + 103`; so must `callarml0`, the same after
+an earlier jump. `callarm0`, without the second jump, must have no warning. `callarml`
+writes the link's low half before the earlier jump, where the B3 scan does not reach, and
+must keep its warning. Without the fix `callarm` and `callarml0` are warned.
+
 ## BNOP calls (issue #69)
 
 `tests/fixtures/bnop-call.py` assembles six functions with `cl6x` 8.3.15, each with its
