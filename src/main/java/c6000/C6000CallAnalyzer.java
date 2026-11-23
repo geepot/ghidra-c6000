@@ -935,7 +935,8 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 						Address linked = null;
 						long[] held = link.get(b3);
 						boolean latched = listed != null && C6000PacketStagingAnalyzer.inert(listed);
-						if ((!call || latched) && held != null && !b3.equals(transfer.getRegister(0))) {
+						// (A latched call is a call whatever it goes through: only its link is asked here.)
+						if ((!call || latched) && held != null && (call || !b3.equals(transfer.getRegister(0)))) {
 							Address to = transfer.getMinAddress().getNewAddress(held[0] & 0xffffffffL);
 							if (!to.equals(target) && listing.getInstructionAt(to) != null) linked = to;
 						}
