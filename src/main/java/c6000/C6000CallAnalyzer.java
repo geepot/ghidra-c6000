@@ -511,7 +511,8 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 						// ponytail: one stretch's landings per instruction outside it; merge them when two stretches' targets meet
 						Instruction listed = listing.getInstructionAt(at);
 						// A native delay slot holds no flow of its own.
-						if (listed == null || listed.isInDelaySlot() || !landingsAt(at).isEmpty()) return refuse("a branch lands behind " + at + ", which cannot carry it");
+						if (listed == null || !landingsAt(at).isEmpty() || listed.isInDelaySlot() && !latchOwner(listed, latches, landings))
+							return refuse("a branch lands behind " + at + ", which cannot carry it");
 						for (Instruction prior : before(listed))
 							if (C6000PacketStagingAnalyzer.inert(prior)) return refuse("a branch lands behind " + at + ", inside another latched stretch");
 					}
@@ -545,6 +546,30 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 				sure.add(new Latch(latch.branch(), latch.slot(), latch.land(), latch.kind(), latch.target(), inside && use != null && use[0] && !use[1]));
 			}
 			return new Lifting(first, last, sure);
+		}
+
+		/** A landing in another branch's native delay slot: latch that branch too, landing where its window ends (SPRUFE8B 3.5, 4.2.6), so the slot can carry it. */
+		private boolean latchOwner(Instruction slot, List<Latch> latches, Map<Address, Integer> landings) {
+			Instruction owner = C6000DelaySlots.unitOwner(program, slot);
+			for (Latch latch : latches) if (latch.branch().equals(owner)) return true;
+			if (owner == slot || !transfer(owner) || C6000PacketStagingAnalyzer.inert(owner) || untimed(program, owner)) return false;
+			for (String form : UNLIFTABLE) if (baseName(owner).startsWith(form)) return false;
+			List<Instruction> window = window(owner);
+			if (window == null || window.isEmpty() || !window.contains(slot)) return false;
+			for (Instruction insn : window) if (transfer(insn)) return false;
+			boolean register = owner.getRegister(0) != null;
+			Address[] flows = C6000PacketStagingAnalyzer.hardware(owner).getDefaultFlows();
+			if (!register && flows.length != 1) return false;
+			var flow = C6000PacketStagingAnalyzer.flow(owner);
+			int kind = flow.isCall() ? 2 : register && flow.isTerminal() ? 3 : 1;
+			Set<Integer> used = new HashSet<>();
+			for (Latch latch : latches) used.add(latch.slot());
+			int free = 0;
+			while (used.contains(free)) free++;
+			Instruction land = window.get(window.size() - 1);
+			if (free >= 8 || landings.merge(land.getMinAddress(), 1, Integer::sum) > 2) return false;
+			latches.add(new Latch(owner, free, land, kind, register ? null : flows[0], false));
+			return true;
 		}
 
 		/** Set while planning: per landing, whether it ever fired and whether it was ever passed with its latch clear; and every instruction run. */

@@ -502,6 +502,65 @@ CASES = [
         ADDK    .S1     1000,A4
         NOP             4
 """),
+    # issue #109: the inner [!A2] B far lands behind tail's ADDK 256, outside the stretch, which is the last
+    # native delay slot of twin's [!A2] B far; latching twin's branch too makes it plain code.
+    # b ? (a ? a + 0x1f0 : 0x5d8) : (a ? a + 0x187 : 0x56f).
+    ("owntail", True, """{n}:
+        MV      .L1     A4,A2
+||      MV      .L2     B4,B0
+  [ B0] B       .S1     {n}_twin
+        NOP             5
+{n}_in:
+        B       .S1     {n}_tail
+        NOP
+  [!A2] B       .S1     {n}_far
+        ADD     .L1     A4,1,A4
+        ADD     .L1     A4,2,A4
+        ADD     .L1     A4,4,A4
+        NOP             5
+{n}_twin:
+  [!A2] B       .S1     {n}_far
+        ADDK    .S1     16,A4
+        ADDK    .S1     32,A4
+        ADDK    .S1     64,A4
+{n}_tail:
+        ADDK    .S1     128,A4
+        ADDK    .S1     256,A4
+        B       .S2     B3
+        NOP             5
+{n}_far:
+        B       .S2     B3
+        ADDK    .S1     1000,A4
+        NOP             4
+"""),
+    # Known-good (issue #109): owntail with twin's branch replaced by a NOP, so the inner lands behind plain code.
+    ("owntail0", False, """{n}:
+        MV      .L1     A4,A2
+||      MV      .L2     B4,B0
+  [ B0] B       .S1     {n}_twin
+        NOP             5
+        B       .S1     {n}_tail
+        NOP
+  [!A2] B       .S1     {n}_far
+        ADD     .L1     A4,1,A4
+        ADD     .L1     A4,2,A4
+        ADD     .L1     A4,4,A4
+        NOP             5
+{n}_twin:
+        NOP
+        ADDK    .S1     16,A4
+        ADDK    .S1     32,A4
+        ADDK    .S1     64,A4
+{n}_tail:
+        ADDK    .S1     128,A4
+        ADDK    .S1     256,A4
+        B       .S2     B3
+        NOP             5
+{n}_far:
+        B       .S2     B3
+        ADDK    .S1     1000,A4
+        NOP             4
+"""),
 ]
 # Known-bads that native lifting now gets right by latching their branches (issue #73). What
 # their C must contain:
@@ -526,6 +585,8 @@ LIFTED = {
     "localsub": ["return param_2 + 1;"],
     # known-good, latched before the fix: the B B3 stays a call to h, which returns to ret
     "localptr": ["localptr_h(", "iVar1 + 0x10"],
+    # b ? (a ? a + 0x1f0 : 0x5d8) : (a ? a + 0x187 : 0x56f): the landing in twin's delay slot is carried
+    "owntail": ["param_1 + 7;", "+ 0x568;"],
 }
 LINK = re.compile(r"(MVK[LH]\s+\.S[12]\s+|\.word\s+)(\w+)")
 

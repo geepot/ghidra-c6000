@@ -942,6 +942,12 @@ Issue #116 adds `localsub`, `callret` with the call made to a label in the funct
 no function is declared: the `B B3` must be a return, so the C has `a ? 2(b + 1) + 16 :
 b + 1`. Its guard `localptr` sets B3 to `h` before the pair, so the `B B3` must stay a call
 to `h`. Without the fix `localsub` calls through the caller's return address.
+Issue #109 adds `owntail`, whose inner branch lands behind the last native delay slot of a
+branch outside the nest: it must be latched, the slot's owner with it, with the C of
+`b ? (a ? a + 0x1f0 : 0x5d8) : (a ? a + 0x187 : 0x56f)`. Its control `owntail0`, with the
+owner replaced by a `NOP`, must have no warning. Without the fix `owntail` is refused; with
+only the planner's half it still keeps its warning, since the owner's window must be
+relifted as plain code too.
 
 ## BNOP calls (issue #69)
 
