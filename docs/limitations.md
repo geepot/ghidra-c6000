@@ -178,7 +178,9 @@ decompiler. Actual hardware behavior outside the documented alignment requiremen
 established by this model.
 
 **AMR effects are modeled at instruction level.** Eligible A4–A7/B4–B7 bases wrap
-through BK0/BK1, including bytewise wrapping of nonaligned transfers. Stores capture
+through BK0/BK1, including bytewise wrapping of nonaligned transfers. The analysis languages
+lift a nonaligned transfer as one access at its first byte's address instead, so it can
+differ from the hardware only when it crosses the end of a circular buffer. Stores capture
 their source before a base update. Packet timing involving AMR writes is not generally
 modeled. The exact compiler refuses unsupported control-register effects and buffered
 missed-stall conditions.

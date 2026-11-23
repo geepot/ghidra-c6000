@@ -43,11 +43,35 @@ def emit(name, count, store, big):
     lines.extend(("}", ""))
 
 
+def emit_single(name, count, store):
+    """One access for the analysis languages, at the first byte's address."""
+    params = "s, a, index, side" if store else "a, d, index, side"
+    lines.append(f"macro c6000_sem_{name}({params}) {{")
+    # The caller passes the first byte's address, already wrapped; index and side are unused.
+    if store:
+        lines.append(f"  *[ram]:{count} a = s;")
+    else:
+        lines.append(f"  d = *[ram]:{count} a;")
+    lines.extend(("}", ""))
+
+
+OPS = (("ldnw", 4, False), ("ldndw", 8, False), ("stnw", 4, True), ("stndw", 8, True))
+lines.extend((
+    '@if FP_MODEL == "analysis"',
+    "# Reading aid: one access per transfer, so the decompiler sees one load or store of the",
+    "# whole value (SPRUFE8B LDNW/LDNDW/STNW/STNDW: any byte boundary; the even register holds",
+    "# the 32 least-significant bits of a pair). It differs from the byte model only when the",
+    "# transfer crosses the end of a circular buffer (3.9.2.3), which compiled C, keeping AMR",
+    "# at 0, never does.",
+))
+for name, count, store in OPS:
+    emit_single(name, count, store)
+lines.append("@else")
 for big in (True, False):
     lines.append('@if ENDIAN == "big"' if big else "@else")
-    for name, count, store in (("ldnw", 4, False), ("ldndw", 8, False),
-                               ("stnw", 4, True), ("stndw", 8, True)):
+    for name, count, store in OPS:
         emit(name, count, store, big)
+lines.append("@endif")
 lines.append("@endif")
 OUT.write_text("\n".join(lines) + "\n")
 print(f"wrote {OUT}: {len(lines)} lines")

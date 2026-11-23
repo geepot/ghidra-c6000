@@ -129,6 +129,7 @@ CORE = [
     case("circular-addressing", "CircularAddress", "C6000_CIRCULAR_ADDRESS_OK"),
     case("nonalign-circular", "NonalignedCircular", "C6000_NONALIGNED_CIRCULAR_OK"),
     case("analysis-float", "AnalysisFloat", "C6000_ANALYSIS_FLOAT_OK", "json"),
+    case("analysis-nonaligned", "AnalysisNonaligned", "C6000_ANALYSIS_NONALIGNED_OK"),
     case("elf-local-label", "ElfLocalLabel", "C6000_ELF_LOCAL_LABEL_OK", None, analysis=True),
     case("elf-asm-label", "ElfAsmLabel", "C6000_ELF_ASM_LABEL_OK", None, analysis=True),
     case("elf-compact", "ElfCompact", "C6000_ELF_COMPACT_OK", None, analysis=True),
@@ -279,7 +280,7 @@ def main():
         runs = [(item, variant) for item in cases for variant in
                 (("default", "analysis", "c67x", "c67x-analysis")
                  if item[0] in {"pipeline-c67x", "pipeline-resources", "delayed-call-timing",
-                                "analysis-float"} else ("default",))]
+                                "analysis-float", "analysis-nonaligned"} else ("default",))]
         for index, ((fixture, manifests, scripts, analysis), variant) in enumerate(runs):
             directory = work / endian / f"{index:02d}-{fixture}-{variant}"
             directory.mkdir()

@@ -2,6 +2,29 @@
 # SPRUFE8B section 3.9.2.3: each byte of a nonaligned transfer wraps
 # independently inside the selected AMR circular buffer.
 
+@if FP_MODEL == "analysis"
+# Reading aid: one access per transfer, so the decompiler sees one load or store of the
+# whole value (SPRUFE8B LDNW/LDNDW/STNW/STNDW: any byte boundary; the even register holds
+# the 32 least-significant bits of a pair). It differs from the byte model only when the
+# transfer crosses the end of a circular buffer (3.9.2.3), which compiled C, keeping AMR
+# at 0, never does.
+macro c6000_sem_ldnw(a, d, index, side) {
+  d = *[ram]:4 a;
+}
+
+macro c6000_sem_ldndw(a, d, index, side) {
+  d = *[ram]:8 a;
+}
+
+macro c6000_sem_stnw(s, a, index, side) {
+  *[ram]:4 a = s;
+}
+
+macro c6000_sem_stndw(s, a, index, side) {
+  *[ram]:8 a = s;
+}
+
+@else
 @if ENDIAN == "big"
 macro c6000_sem_ldnw(a, d, index, side) {
   local address:4 = a;
@@ -264,4 +287,5 @@ macro c6000_sem_stndw(s, a, index, side) {
   *[ram]:1 addr7 = byte7;
 }
 
+@endif
 @endif

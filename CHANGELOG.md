@@ -4,6 +4,12 @@
 
 ### Changed
 
+* The analysis languages lift `LDNW`, `LDNDW`, `STNW` and `STNDW` as one 4- or 8-byte
+  access instead of one access per byte. The decompiler merged the byte loads step by
+  step and could keep some of them, so a device word read through `LDNDW` was read twice
+  in the C. The default and c67x languages keep the bytewise model, which wraps each byte
+  in a circular buffer (SPRUFE8B 3.9.2.3).
+
 * An unpredicated instruction is lifted with no predicate guard. Every ordinary instruction
   had one constructor whose semantics sat behind `if (Cond == 0) goto <skip>`, a constant
   test when there is no predicate. The decompiler works out a call's arguments before it
