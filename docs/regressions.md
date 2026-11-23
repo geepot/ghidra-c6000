@@ -948,6 +948,12 @@ branch outside the nest: it must be latched, the slot's owner with it, with the 
 owner replaced by a `NOP`, must have no warning. Without the fix `owntail` is refused; with
 only the planner's half it still keeps its warning, since the owner's window must be
 relifted as plain code too.
+Issue #110 adds `callarm`: a jump, a call on the other predicate in its window with its
+link set before both, and a second jump on the jump's predicate in the call's window. It
+must be latched, with the C of `a ? 2b + 16 : b + 103`; so must `callarml0`, the same after
+an earlier jump. `callarm0`, without the second jump, must have no warning. `callarml`
+writes the link's low half before the earlier jump, where the B3 scan does not reach, and
+must keep its warning. Without the fix `callarm` and `callarml0` are warned.
 
 ## BNOP calls (issue #69)
 

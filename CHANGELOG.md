@@ -197,6 +197,17 @@
   latched elsewhere, untimed, a `CALLP`, `BDEC` or `BPOS`, has a transfer in its window,
   or has no single direct or register target, or when no latch is free or the landing
   instruction would carry more than two landings.
+* A call issued in another branch's delay window (issue #110). Comparing a nest, a call
+  that lands now returns where B3 points on that path when the straight-line code before
+  the stretch, or the stretch itself, sets it, instead of to its listed fall-through, which
+  is only the next instruction of the stretch. Predicate facts are dropped only on paths
+  where the call is taken, from the cycle it lands. The model returned into the middle of
+  the stretch and ran paths the predicates exclude, so the nest was refused with a warning.
+  A link half written before an earlier transfer that lands before the stretch is still not
+  seen, and such a nest keeps its warning. A latch moves a call off its own instruction, so
+  only a listed call issued in the window of transfers it excludes is latched; one issued
+  with nothing in flight, or with a taken transfer in flight, keeps its CALL flow and its
+  warning (the if/else pairs at 1908 and 1c4c in `delayed-call`).
 * The call analyzer's look-back treats every register the ABI lets a callee change as
   unknown once an earlier call has returned (all but A10-A15 and B10-B15), and at code that
   nothing falls into, after a jump or return that always goes, it takes the registers from
