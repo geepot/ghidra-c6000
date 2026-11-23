@@ -933,6 +933,12 @@ branch in each and the hardware's result in the C: `a ? h(b + 1) : b + 1` for `c
 `a ? 3 : b ? 0x13 : 0x43b` for `tri` and `x ? x + 1 : 1` for `bnop4`. `busytgt`, `indep`,
 `pjcall` and `pjreg`, where two branches are both taken, keep their warning.
 
+Issue #111 adds `sureland`, where a sure landing has no fall-through and the code after it
+is reached only by the other predicate's landing: it must be latched with the C of
+`a ? a + 7 : 107`. Its control `sureland0`, without the jump whose landing is sure, must
+have no warning. Without the fix the relift cannot decode past the sure landing and
+`sureland` keeps its warning.
+
 ## BNOP calls (issue #69)
 
 `tests/fixtures/bnop-call.py` assembles six functions with `cl6x` 8.3.15, each with its
