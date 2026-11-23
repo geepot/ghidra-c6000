@@ -227,6 +227,65 @@ CASES = [
         B       .S2     B3
         NOP             5
 """),
+    # issue #99: four native windows are entered already, the decompiler's limit. Latching the nest
+    # would land a jump inside a fifth, and the function would not decompile at all, so the lifting
+    # is taken back and the nest stays warned.
+    ("entmany", True, """{n}:
+        MV      .L1     A4,A2
+  [ A2] B       .S1     {n}_e1
+        NOP             5
+  [ A2] B       .S1     {n}_e2
+        NOP             5
+  [ A2] B       .S1     {n}_e3
+        NOP             5
+  [ A2] B       .S1     {n}_e4
+        NOP             5
+{n}_in:
+        B       .S1     {n}_x
+||      MV      .L1     A6,A1
+        NOP
+        NOP
+        NOP
+        NOP
+  [ A1] B       .S1     {n}_e5
+{n}_x:
+  [!A1] B       .S1     {n}_w1
+        NOP             4
+        ADDK    .S1     0x100,A4
+{n}_w1:
+        B       .S1     {n}_w2
+        ADDK    .S1     1,A4
+{n}_e1:
+        ADDK    .S1     16,A4
+        NOP             3
+{n}_w2:
+        B       .S1     {n}_w3
+        ADDK    .S1     2,A4
+{n}_e2:
+        ADDK    .S1     32,A4
+        NOP             3
+{n}_w3:
+        B       .S1     {n}_w4
+        ADDK    .S1     3,A4
+{n}_e3:
+        ADDK    .S1     48,A4
+        NOP             3
+{n}_w4:
+        B       .S1     {n}_w5
+        ADDK    .S1     4,A4
+{n}_e4:
+        ADDK    .S1     64,A4
+        NOP             3
+{n}_w5:
+        B       .S1     {n}_end
+        ADDK    .S1     5,A4
+{n}_e5:
+        ADDK    .S1     80,A4
+        NOP             3
+{n}_end:
+        B       .S2     B3
+        NOP             5
+"""),
     # Known-goods: an ordinary call; a forward predicated call; a loop branch to its own head with B3 there
     # A callback is only named by its address: the code that takes it makes it a function. The return
     # link beside it is an address too, and is not one.

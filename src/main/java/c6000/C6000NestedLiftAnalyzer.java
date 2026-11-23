@@ -162,7 +162,11 @@ public final class C6000NestedLiftAnalyzer extends AbstractAnalyzer {
 				relifted.addAll(part.keySet());
 				undo.add(C6000DelaySlots.relift(program, at, end, part));
 			}
-			if (kept(program, walker, plan, outer)) {
+			// A landing into another window's slots is one more entry into it: past the decompiler's
+			// limit the function would not decompile at all, so the nest keeps its warning (issue #99).
+			Function owner = program.getFunctionManager().getFunctionContaining(outer.getMinAddress());
+			if (kept(program, walker, plan, outer) &&
+					(owner == null || !C6000DelaySlots.pastOverlapLimit(program, owner, ghidra.util.task.TaskMonitor.DUMMY))) {
 				// Ghidra types every flow of an instruction that also lands a call as a call: give each
 				// landed jump's target its own type, or it becomes a function.
 				var references = program.getReferenceManager();

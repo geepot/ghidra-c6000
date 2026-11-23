@@ -200,6 +200,32 @@ public final class C6000DelaySlots {
      * and retry. Only those windows lose their delay-slot lifting.
      * @return the number of windows released
      */
+    /**
+     * True when {@code function} holds an entered native window and the decompiler abandons it
+     * over its overlapping-instruction limit: what {@link #relieveOverlaps} would release a window
+     * for. A change that adds an entry into a window's slots asks this before it stays.
+     */
+    static boolean pastOverlapLimit(Program program, Function function, TaskMonitor monitor) {
+        boolean any = false;
+        for (Instruction branch : program.getListing().getInstructions(function.getBody(), true)) {
+            int laid = branch.getPrototype().getDelaySlotByteCount();
+            Address at = branch.getAddress();
+            if (laid > parallelBytes(program, at) && entered(program, at, branch.getMaxAddress().add(laid))) { any = true; break; }
+        }
+        if (!any) return false;
+        var decompiler = new ghidra.app.decompiler.DecompInterface();
+        try {
+            decompiler.setOptions(new ghidra.app.decompiler.DecompileOptions());
+            if (!decompiler.openProgram(program)) return false;
+            var result = decompiler.decompileFunction(function, 60, monitor);
+            String error = result == null || result.decompileCompleted() ? null : result.getErrorMessage();
+            return error != null && error.contains("Bad instruction count exceeded");
+        }
+        finally {
+            decompiler.dispose();
+        }
+    }
+
     public static int relieveOverlaps(Program program, AddressSetView set, TaskMonitor monitor)
             throws Exception {
         var functions = program.getFunctionManager();

@@ -104,6 +104,10 @@
 
 ### Fixed
 
+* A lifting whose landing enters another branch's native delay window is taken back when it
+  pushes the function past the decompiler's overlapping-instruction limit: the function
+  then failed to decompile at all (issue #99). The nest keeps its warning.
+
 * A predicated write was evaluated as if its predicate register held 1, when all that is
   known is that it is not zero. `[B0] SUB B0,1,B0` came out as the constant 0, so a second
   branch on `B0` counted as never taken, paths with two taken branches were left out of
