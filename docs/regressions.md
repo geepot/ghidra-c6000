@@ -938,6 +938,10 @@ is reached only by the other predicate's landing: it must be latched with the C 
 `a ? a + 7 : 107`. Its control `sureland0`, without the jump whose landing is sure, must
 have no warning. Without the fix the relift cannot decode past the sure landing and
 `sureland` keeps its warning.
+Issue #116 adds `localsub`, `callret` with the call made to a label in the function, where
+no function is declared: the `B B3` must be a return, so the C has `a ? 2(b + 1) + 16 :
+b + 1`. Its guard `localptr` sets B3 to `h` before the pair, so the `B B3` must stay a call
+to `h`. Without the fix `localsub` calls through the caller's return address.
 
 ## BNOP calls (issue #69)
 

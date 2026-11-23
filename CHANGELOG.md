@@ -184,6 +184,11 @@
   landing, and that only another branch's landing reaches. It decoded by flow from the
   stretch's start only, so the relift failed, the lifting was taken back, and the nest kept
   a warning that gave no reason.
+* A return beside a call to a local label (issue #116). A `B B3` in the delay window of a
+  call on the other predicate is now a return when nothing from the function's entry to it
+  writes B3, so it still holds the caller's link. Where the call went to a label in the
+  same function, `C6000 Delayed Calls` made the return a call, and the latched nest called
+  through the caller's return address.
 * The call analyzer's look-back treats every register the ABI lets a callee change as
   unknown once an earlier call has returned (all but A10-A15 and B10-B15), and at code that
   nothing falls into, after a jump or return that always goes, it takes the registers from
