@@ -296,6 +296,44 @@ CASES = [
 {n}_pad:
         NOP             2
 """),
+    # issue #111: the [!A1] landing is sure, so it has no fall-through, and the code after it is reached
+    # only by the [A1] jump's landing, which relifting must decode too. a ? a + 7 : 107.
+    ("sureland", True, """{n}:
+        MV      .L1     A4,A1
+  [ A1] B       .S1     {n}_x
+{n}_in:
+  [!A1] B       .S1     {n}_far
+  [ A1] B       .S2     B3
+        ADD     .L1     A4,1,A4
+        ADD     .L1     A4,2,A4
+        ADD     .L1     A4,4,A4
+        NOP
+{n}_x:
+        NOP             2
+        NOP             5
+{n}_far:
+        B       .S2     B3
+        ADDK    .S1     100,A4
+        NOP             4
+"""),
+    # Known-good (issue #111): sureland without the [!A1] jump, so no landing is sure and !a falls into far.
+    ("sureland0", False, """{n}:
+        MV      .L1     A4,A1
+  [ A1] B       .S1     {n}_x
+        NOP
+  [ A1] B       .S2     B3
+        ADD     .L1     A4,1,A4
+        ADD     .L1     A4,2,A4
+        ADD     .L1     A4,4,A4
+        NOP
+{n}_x:
+        NOP             2
+        NOP             5
+{n}_far:
+        B       .S2     B3
+        ADDK    .S1     100,A4
+        NOP             4
+"""),
 ]
 # Known-bads that native lifting now gets right by latching their branches (issue #73). What
 # their C must contain:
@@ -310,6 +348,8 @@ LIFTED = {
     "indep": ["0x11", "0x21", "0x101", "0x201", "+ 0x1000"],
     "tri": ["return 3;", "0x13", "0x43b"],
     "bnop4": ["param_1 + 1"],
+    # a ? a + 7 : 107: the relifted stretch decodes past its sure landing
+    "sureland": ["return 0x6b;", "return param_1 + 7;"],
 }
 LINK = re.compile(r"(MVK[LH]\s+\.S[12]\s+)(\w+)")
 
