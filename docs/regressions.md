@@ -927,6 +927,11 @@ branch in each and the hardware's result in the C: `a ? h(b + 1) : b + 1` for `c
 `a ? 3 : b ? 0x13 : 0x43b` for `tri` and `x ? x + 1 : 1` for `bnop4`. `busytgt`, `indep`,
 `pjcall` and `pjreg`, where two branches are both taken, keep their warning.
 
+Issue #116 adds `localsub`, `callret` with the call made to a label in the function, where
+no function is declared: the `B B3` must be a return, so the C has `a ? 2(b + 1) + 16 :
+b + 1`. Its guard `localptr` sets B3 to `h` before the pair, so the `B B3` must stay a call
+to `h`. Without the fix `localsub` calls through the caller's return address.
+
 ## BNOP calls (issue #69)
 
 `tests/fixtures/bnop-call.py` assembles six functions with `cl6x` 8.3.15, each with its

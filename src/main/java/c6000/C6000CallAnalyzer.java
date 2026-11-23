@@ -1145,6 +1145,8 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 			Register b3 = program.getRegister("B3");
 			Instruction partner = landed.partner();
 			if (partner != null && jumpArm(branch, partner)) return null;
+			// A B B3 that still holds the caller's link as it issues returns: the link set in its window is the other arm's (SPRUFE8B 3.5, 4.2.6).
+			if (partner != null && b3.equals(C6000PacketStagingAnalyzer.hardware(branch).getRegister(0)) && incomingLink(branch, partner)) return null;
 			long[] ret = landed.values().get(b3);
 			// B3 may also be set on the look-back path.
 			if (ret == null || ret[1] != FULL) return null;
@@ -1184,6 +1186,23 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 				if (other == null || !joins(branch, other.landed().end(), ret[0])) return null;
 			}
 			return new Call(callee, null, branch.getMinAddress().getNewAddress(ret[0] & 0xffffffffL));
+		}
+
+		/** Nothing from {@code branch}'s function entry to it, in address order, writes B3 or is entered from elsewhere, and only {@code partner} transfers. */
+		private boolean incomingLink(Instruction branch, Instruction partner) {
+			Function function = program.getFunctionManager().getFunctionContaining(branch.getMinAddress());
+			if (function == null) return false;
+			Register b3 = program.getRegister("B3");
+			Instruction insn = listing.getInstructionAt(function.getEntryPoint());
+			for (int n = 0; insn != null && n < LOOK_BACK; n++) {
+				if (insn.getMinAddress().equals(branch.getMinAddress())) return true;
+				if (n > 0 && enteredFromElsewhere(insn)) return false;
+				if (transfer(insn) && !insn.getMinAddress().equals(partner.getMinAddress())) return false;
+				Register load = loadDestination(insn);
+				if (load != null ? overlaps(load, b3) : issueWrites(insn).stream().anyMatch(r -> overlaps(r, b3))) return false;
+				insn = next(insn);
+			}
+			return false;
 		}
 
 		/** Where the callee of a recognised call returns to: the address B3 holds when the call lands; else null. */

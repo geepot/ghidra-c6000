@@ -296,6 +296,59 @@ CASES = [
 {n}_pad:
         NOP             2
 """),
+    # issue #116: callret with the call made to a local label, so no function is declared at it. The return
+    # reads the caller's link, which the call's link replaces only in its window. a ? 2(b + 1) + 16 : b + 1.
+    ("localsub", True, """{n}:
+        STW     .D2T2   B3,*B15--[2]
+||      MV      .L1     A4,A1
+        MV      .L1X    B4,A4
+  [ A1] B       .S1     {n}_s
+{n}_in:
+  [!A1] B       .S2     B3
+        MVKL    .S2     {n}_ret,B3
+        MVKH    .S2     {n}_ret,B3
+        ADD     .L1     A4,1,A4
+||      ADDK    .S2     8,B15
+        NOP             1
+        NOP             1
+{n}_ret:
+        ADDK    .S1     16,A4
+        LDW     .D2T2   *B15,B3
+        NOP             4
+        B       .S2     B3
+        NOP             5
+{n}_s:
+        B       .S2     B3
+        ADD     .L1     A4,A4,A4
+        NOP             4
+"""),
+    # Known-good (issue #116): localsub with B3 set to h before the pair, so the B B3 is a call to h that returns
+    # to ret. a ? b + 1017 : 2(b + 1) + 16.
+    ("localptr", False, """{n}:
+        STW     .D2T2   B3,*B15--[2]
+||      MV      .L1     A4,A1
+        MV      .L1X    B4,A4
+        MVKL    .S2     {n}_h,B3
+        MVKH    .S2     {n}_h,B3
+  [ A1] B       .S1     {n}_s
+  [!A1] B       .S2     B3
+        MVKL    .S2     {n}_ret,B3
+        MVKH    .S2     {n}_ret,B3
+        ADD     .L1     A4,1,A4
+||      ADDK    .S2     8,B15
+        NOP             1
+        NOP             1
+{n}_ret:
+        ADDK    .S1     16,A4
+        LDW     .D2T2   *B15,B3
+        NOP             4
+        B       .S2     B3
+        NOP             5
+{n}_s:
+        B       .S2     B3
+        ADDK    .S1     1000,A4
+        NOP             4
+"""),
 ]
 # Known-bads that native lifting now gets right by latching their branches (issue #73). What
 # their C must contain:
@@ -310,6 +363,10 @@ LIFTED = {
     "indep": ["0x11", "0x21", "0x101", "0x201", "+ 0x1000"],
     "tri": ["return 3;", "0x13", "0x43b"],
     "bnop4": ["param_1 + 1"],
+    # the !a arm returns b + 1 instead of calling through the caller's link
+    "localsub": ["return param_2 + 1;"],
+    # known-good, latched before the fix: the B B3 stays a call to h, which returns to ret
+    "localptr": ["localptr_h(", "iVar1 + 0x10"],
 }
 LINK = re.compile(r"(MVK[LH]\s+\.S[12]\s+)(\w+)")
 
