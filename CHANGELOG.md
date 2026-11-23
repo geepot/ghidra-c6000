@@ -104,6 +104,13 @@
 
 ### Fixed
 
+* A predicated write was evaluated as if its predicate register held 1, when all that is
+  known is that it is not zero. `[B0] SUB B0,1,B0` came out as the constant 0, so a second
+  branch on `B0` counted as never taken, paths with two taken branches were left out of
+  the nested-window comparison, and a software-pipelined loop was latched as if it ran
+  once (issue #103). The value is now a constant only if it does not depend on which
+  nonzero value the register holds.
+
 * A latched branch no longer keeps a flow override. One that also carries another branch's
   landing had that landing changed by its own `CALL` or `RETURN` override, so a jump could
   lift as a call and its target become a function. What a latched branch is now comes from

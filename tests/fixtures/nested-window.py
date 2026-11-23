@@ -198,6 +198,35 @@ CASES = [
         MVK     .S1     1,A4
         NOP             4
 """),
+    # issue #103: a software-pipelined loop. The one-packet kernel issues its branch again on every
+    # pass, before the last issue has landed, so one latch per branch cannot hold them: it runs n + 1
+    # times and must stay warned. [B0] SUB B0,1,B0 leaves B0 unknown, not zero, for the next branch.
+    ("plloopn", True, """{n}:
+        MV      .L2X    A4,B0
+        ZERO    .L1     A4
+  [ B0] B       .S1     {n}_k
+||[ B0] SUB     .L2     B0,1,B0
+{n}_in:
+  [ B0] B       .S1     {n}_k
+||[ B0] SUB     .L2     B0,1,B0
+  [ B0] B       .S1     {n}_k
+||[ B0] SUB     .L2     B0,1,B0
+  [ B0] B       .S1     {n}_k
+||[ B0] SUB     .L2     B0,1,B0
+  [ B0] B       .S1     {n}_k
+||[ B0] SUB     .L2     B0,1,B0
+{n}_k:
+        ADD     .L1     A4,1,A4
+||[ B0] B       .S1     {n}_k
+||[ B0] SUB     .L2     B0,1,B0
+        NOP
+        NOP
+        NOP
+        NOP
+        NOP
+        B       .S2     B3
+        NOP             5
+"""),
     # Known-goods: an ordinary call; a forward predicated call; a loop branch to its own head with B3 there
     # A callback is only named by its address: the code that takes it makes it a function. The return
     # link beside it is an address too, and is not one.

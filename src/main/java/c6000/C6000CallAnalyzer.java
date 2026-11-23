@@ -2089,12 +2089,25 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 				Register r = entry.getKey();
 				seeds.add(new long[] { r.getAddress().getOffset(), r.getMinimumByteSize(), entry.getValue()[0] });
 			}
-			// Running means its predicate held.
+			// Running means its predicate held: the register is zero under [!R], and under [R] only not
+			// zero. A result that then depends on which nonzero value it holds ([B0] SUB B0,1,B0) is no
+			// constant, so evaluate with two of them and keep what both give.
+			// ponytail: two samples, not a proof; make the evaluator symbolic in the guard if one ever agrees by accident
 			String p = predicate(insn);
 			Register guard = p == null ? null : program.getRegister(p.replace("!", ""));
-			if (guard != null) seeds.add(new long[] { guard.getAddress().getOffset(), guard.getMinimumByteSize(), p.startsWith("!") ? 0 : 1 });
-			Long value = C6000LoopCounterProof.constantOutput(program.getLanguage(), C6000PacketStagingAnalyzer.hardwarePcode(insn),
-				register.getAddress().getOffset(), register.getMinimumByteSize(), seeds);
+			// A guard whose whole value is already known needs no sample.
+			long[] held = guard == null ? null : known.get(guard);
+			if (held != null && held[1] == FULL) guard = null;
+			long[] samples = guard == null ? new long[] { 0 } : p.startsWith("!") ? new long[] { 0 } : new long[] { 1, 0x5a5aa5a7L };
+			Long value = null;
+			for (int k = 0; k < samples.length; k++) {
+				List<long[]> seeded = new ArrayList<>(seeds);
+				if (guard != null) seeded.add(new long[] { guard.getAddress().getOffset(), guard.getMinimumByteSize(), samples[k] });
+				Long one = C6000LoopCounterProof.constantOutput(program.getLanguage(), C6000PacketStagingAnalyzer.hardwarePcode(insn),
+					register.getAddress().getOffset(), register.getMinimumByteSize(), seeded);
+				if (one == null || (k > 0 && !one.equals(value))) return null;
+				value = one;
+			}
 			return value == null ? null : value & 0xffffffffL;
 		}
 
