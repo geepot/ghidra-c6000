@@ -249,7 +249,10 @@ opcode map specifies. `tests/fixtures/nonalign-circular.py <image.bin> <cases.ts
 and `C6000NonalignedCircularTest.java <cases.tsv>` execute six cases per endian mode.
 They verify that `LDNW` /`LDNDW` and `STNW` /`STNDW` wrap every transferred byte across
 a circular-buffer edge and remain linear when AMR is disabled or the base register
-cannot use circular addressing.
+cannot use circular addressing. `tests/fixtures/analysis-nonaligned.py <image.bin> <cases.tsv> [be]`
+and `C6000AnalysisNonalignedTest.java <cases.tsv>` run in all four language variants: the
+analysis languages must lift each transfer as one access of its whole width, the exact ones
+byte by byte, and with AMR zero all four must move the same bytes from an odd address.
 
 `tests/fixtures/float-dp-arithmetic.py <image.bin> <add.tsv> <mul.tsv> [be]` generates
 exact-rational `ADDDP` /`SUBDP`/`MPYDP` results and FADCR/FMCR flags.
