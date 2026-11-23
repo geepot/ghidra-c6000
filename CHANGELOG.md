@@ -175,6 +175,10 @@
   conditional jump. A known function entry or external entry point is never an
   else-block.
 
+* Lost return points (issue #107). `C6000 Delayed Calls` now decodes a call's return
+  point when it is still undefined. Where the call's delay window had been laid while its
+  `B` was still read as a jump, the code from the return point on was never decoded: the
+  function ended at the window, and its own `B B3` became an unrecovered jump table.
 * The call analyzer's look-back treats every register the ABI lets a callee change as
   unknown once an earlier call has returned (all but A10-A15 and B10-B15), and at code that
   nothing falls into, after a jump or return that always goes, it takes the registers from

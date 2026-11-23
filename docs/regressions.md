@@ -944,3 +944,15 @@ return point in the caller, and their C must call `f`. `late` (`BNOP f,5`, then 
 that never runs), `elsewhere` (B3 set in the window to another address) and `tail` (B3
 untouched) must not be calls. Counting five delay cycles after a `BNOP`'s NOPs makes `late`
 a call; admitting only `BNOP.S1` leaves `register` a jump. Both endians.
+
+## Return points of calls past the call analyzer's rescan (issue #107)
+
+`tests/fixtures/lost-fallthrough.py` assembles two functions
+`f(a) = h(h(h(a) + 18) + N + 1) + 0x30` with `cl6x` 8.3.15, each with its own `h(x) = 2x`,
+one per 0x200 bytes from 0x1000; `C6000LostFallthroughTest.java` (`prepare` declares `f`
+and `h`) checks that every return point is decoded in `f`'s body and that the C returns
+`iVar1 + 0x30` with no unrecovered jump. Calls 0 and 1 set B3 in their windows, call 2
+before its `B`. In `far` (N = 36), call 2's `B` is 43 words after call 1's, past the 40
+words `C6000 Delayed Calls` rescans after its own decodes, so its window is laid as a
+jump's before the call is recognised; `near` (N = 18, 25 words) is the control. Without
+the fix `far` fails. Both endians.

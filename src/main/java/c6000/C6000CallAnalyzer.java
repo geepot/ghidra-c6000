@@ -135,6 +135,8 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 			// Delay slots start after the branch's whole execute packet (SPRUFE8B 3.5, 4.2.6).
 			Address slots = packetEnd(program, listing.getInstructionAt(at));
 			if (slots != null && listing.getInstructionAt(slots) == null) C6000DelaySlots.announce(program, disassembler.disassemble(slots, null, true));
+			// A window laid while the B was still a jump decoded the slots but not the return point: decode it (SPRUFE8B 3.5, 4.2.6).
+			if (call.link() != null && listing.getInstructionContaining(call.link()) == null) C6000DelaySlots.announce(program, disassembler.disassemble(call.link(), null, true));
 			Function caller = listing.getFunctionContaining(at);
 			if (caller != null) callers.add(caller);
 			if (call.target() != null) {
