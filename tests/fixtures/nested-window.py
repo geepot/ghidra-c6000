@@ -227,9 +227,10 @@ CASES = [
         B       .S2     B3
         NOP             5
 """),
-    # issue #99: four native windows are entered already, the decompiler's limit. Latching the nest
-    # would land a jump inside a fifth, and the function would not decompile at all, so the lifting
-    # is taken back and the nest stays warned.
+    # issue #99: four native windows are entered already, the limit of Ghidra 12.2's decompiler.
+    # Latching the nest lands a jump inside a fifth, and there the function would not decompile at
+    # all, so the lifting is taken back and the nest stays warned. Ghidra 12.1.4 has no such limit
+    # and keeps the lifting: a ? a + 0xfe : c ? 0x50 : 0x1ff, printed as (a ? a + 0x10 : 0x111) + 0xee (EITHER).
     ("entmany", True, """{n}:
         MV      .L1     A4,A2
   [ A2] B       .S1     {n}_e1
@@ -767,6 +768,8 @@ LIFTED = {
     "callarm": ["param_2 + 3;", "return param_2 + 100;"],
     "callarml0": ["param_2 + 3;", "return param_2 + 100;"],
 }
+# Cases that are warned or lifted depending on the decompiler, and what their C holds when lifted.
+EITHER = {"entmany": ["return 0x50;", "0x111", "+ 0xee"]}
 LINK = re.compile(r"(MVK[LH]\s+\.S[12]\s+|\.word\s+)(\w+)")
 
 
@@ -825,7 +828,7 @@ def main():
         # A lifted case is not warned: its branches are latched and its C is the hardware's.
         manifest.append(dict(name=name, entry=addresses[name], h=addresses[name + "_h"],
                              end=0x1000 + index * SIZE + SIZE - 1, warn=[] if name in LIFTED else warn,
-                             c=LIFTED.get(name, []),
+                             c=LIFTED.get(name, []), either=EITHER.get(name),
                              functions=[a for label, a in addresses.items() if label == name + "_cb"],
                              labels=[a for label, a in addresses.items() if label == name + "_notcb"]))
     if len(sys.argv) == 4:

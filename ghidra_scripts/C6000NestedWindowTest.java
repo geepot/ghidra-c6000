@@ -21,6 +21,7 @@ public class C6000NestedWindowTest extends GhidraScript {
 		long[] warn;
 		String[] c;
 		long[] functions, labels;
+		String[] either;
 	}
 
 	@Override
@@ -53,6 +54,11 @@ public class C6000NestedWindowTest extends GhidraScript {
 					comments.append(bookmark.getComment()).append('\n');
 					println(item.name + ": " + bookmark.getComment());
 				}
+			}
+			// Warned where the decompiler would not take the lifting (Ghidra 12.2's overlap limit), lifted where it does.
+			if (item.either != null && found.isEmpty()) {
+				item.warn = new long[0];
+				item.c = item.either;
 			}
 			// One warning per chain of nested transfers, at its first; it names the rest.
 			Set<Long> expected = new TreeSet<>();
