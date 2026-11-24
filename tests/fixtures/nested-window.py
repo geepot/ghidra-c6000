@@ -230,7 +230,7 @@ CASES = [
     # issue #99: four native windows are entered already, the limit of Ghidra 12.2's decompiler.
     # Latching the nest lands a jump inside a fifth, and there the function would not decompile at
     # all, so the lifting is taken back and the nest stays warned. Ghidra 12.1.4 has no such limit
-    # and keeps the lifting: a ? a + 0xfe : c ? 0x50 : 0x1ff, printed as (a ? a + 0x10 : 0x111) + 0xee (EITHER).
+    # and keeps the lifting: a ? a + 0xfe : c ? 0x50 : 0x1ff, printed as (a ? a : c ? 0 : 0x101, + 0xae unless a == 0 && c) + 0x50 (EITHER).
     ("entmany", True, """{n}:
         MV      .L1     A4,A2
   [ A2] B       .S1     {n}_e1
@@ -957,7 +957,7 @@ ABSENT = {"cpyretp": ["return param_1 + 1;"]}
 DECLARE = {"c2split": ["test", "exit"], "twocall": ["callee"]}
 PLAIN_AT = {"c2split": ("test", ["c2split_h(param_1 + 7"])}
 # Cases that are warned or lifted depending on the decompiler, and what their C holds when lifted.
-EITHER = {"entmany": ["return 0x50;", "0x111", "+ 0xee"]}
+EITHER = {"entmany": ["0x101", "+ 0xae", "+ 0x50"]}
 LINK = re.compile(r"(MVK[LH]\s+\.S[12]\s+|\.word\s+)(\w+)")
 
 
