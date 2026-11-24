@@ -4,6 +4,15 @@
 
 ### Changed
 
+* Loads and stores through A4-A7 and B4-B7 no longer hide switches and clutter the C with
+  the AMR circular-addressing mask. `c6000_circular_mask` computed the mask with four
+  conditional branches, inlined at every such access, so the decompiler's jump-table
+  recovery stopped at "Too many branches" on a dispatch that loads its index and its table
+  through those registers. The mask is now computed without branches, with the same value.
+  The cspec states what the EABI guarantees (SPRAB89 3.2): AMR is zero at each function's
+  entry and is unchanged by a call, so the mask folds away in compiled code. Circular
+  addressing is still modelled exactly where code sets AMR.
+
 * An unpredicated instruction is lifted with no predicate guard. Every ordinary instruction
   had one constructor whose semantics sat behind `if (Cond == 0) goto <skip>`, a constant
   test when there is no predicate. The decompiler works out a call's arguments before it

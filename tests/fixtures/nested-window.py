@@ -1165,7 +1165,8 @@ LIFTED = {
     "lnkjmp": ["lnkjmp_h(", "param_2 + -1", "*param_3 = "],
     # issue #66: a predicated call whose link is the loop head: while (b) { b--; a = h(a); }
     "loopcall": ["loopcall_h(", "param_2 + -1"],
-    "landret": ["param_1 + 0xc", "param_3 != 0", "param_1 + 4"],
+    # the test may be printed either way round (param_3 != 0 or param_3 == 0 with the arms swapped)
+    "landret": ["param_1 + 0xc", "if (param_3 ", "param_1 + 4"],
     # Ghidra 12.1.4 prints the test as param_3 == 0 with the arms the other way round
     "landlink": ["param_1 + 0xc", "if (param_3 ", "param_1 + 4"],
     # a ? a + 7 : 107: the relifted stretch decodes past its sure landing

@@ -56,6 +56,7 @@ CORE = [
     case("packet-window-fallthrough", "PacketWindowFallthrough", "C6000_PACKET_WINDOW_FALLTHROUGH_OK", None, analysis=True),
     case("delayed-call-safety", "DelayedCallSafety", "C6000_DELAYED_CALL_SAFETY_OK", "json"),
     case("abi-pairs", "AbiPairs", "C6000_ABI_PAIRS_OK", None, analysis=True),
+    case("circular-mask-switch", "CircularMaskSwitch", "C6000_CIRCULAR_MASK_SWITCH_OK", None, []),
     case("saved-pairs", "SavedPairs", "C6000_SAVED_PAIRS_OK", None, analysis=True),
     ("jump-table", [], [("JumpTable", [], "C6000_JUMP_TABLE_OK"),
                         ("SwitchOwnership", [], "C6000_SWITCH_OWNERSHIP_OK")], True),
@@ -279,7 +280,7 @@ def main():
         runs = [(item, variant) for item in cases for variant in
                 (("default", "analysis", "c67x", "c67x-analysis")
                  if item[0] in {"pipeline-c67x", "pipeline-resources", "delayed-call-timing",
-                                "analysis-float"} else ("default",))]
+                                "analysis-float", "circular-mask-switch"} else ("default",))]
         for index, ((fixture, manifests, scripts, analysis), variant) in enumerate(runs):
             directory = work / endian / f"{index:02d}-{fixture}-{variant}"
             directory.mkdir()

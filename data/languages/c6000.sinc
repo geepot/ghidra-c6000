@@ -551,20 +551,18 @@ OffReg: rb_off is rb_off & i7=1 { export rb_off; }
 # for A4-A7/B4-B7. BK0/BK1 encode the log2 block size minus one. The
 # high bits of the original base remain fixed across the calculation.
 macro c6000_circular_mask(index, side, mask) {
+  # Branch-free, so that a masked access adds no control flow: the decompiler's
+  # jump-table recovery and its early passes see straight-line code.
   local selected:4 = index;
   local file:4 = side;
-  mask = 0xffffffff;
-  if (selected < 4 || selected > 7) goto <done>;
+  local eligible:4 = zext(selected >= 4) & zext(selected <= 7);
   local modeShift:4 = ((selected - 4) << 1) + (file << 3);
   local addressMode:4 = (AMR >> modeShift) & 3;
-  if (addressMode == 0 || addressMode == 3) goto <done>;
-  local blockBits:4 = ((AMR >> 16) & 31) + 1;
-  if (addressMode == 2) goto <bk1>;
-  goto <haveBits>;
-  <bk1> blockBits = ((AMR >> 21) & 31) + 1;
-  <haveBits>
-  mask = (1 << blockBits) - 1;
-  <done>
+  local circular:4 = eligible & (zext(addressMode == 1) | zext(addressMode == 2));
+  local fieldShift:4 = 16 + 5 * zext(addressMode == 2);
+  local blockBits:4 = ((AMR >> fieldShift) & 31) + 1;
+  local blockMask:4 = (1 << blockBits) - 1;
+  mask = 0xffffffff ^ ((0xffffffff ^ blockMask) * circular);
 }
 
 macro c6000_wrap_address(base, delta, index, side, result) {
