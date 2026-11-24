@@ -150,7 +150,7 @@ public final class C6000PacketStagingAnalyzer extends AbstractAnalyzer {
 	 * which would change the landing it may carry for another branch: it is a call or a return as
 	 * the landing that reads its latch says.
 	 */
-	static ghidra.program.model.symbol.FlowType flow(Instruction ins) {
+	public static ghidra.program.model.symbol.FlowType flow(Instruction ins) {
 		Instruction hardware = hardware(ins);
 		if (hardware == ins) return ins.getFlowType();
 		var override = ins.getFlowOverride();
@@ -167,7 +167,7 @@ public final class C6000PacketStagingAnalyzer extends AbstractAnalyzer {
 	 * The instruction the latched branch {@code branch} lands behind in address order: the first one
 	 * from it on that carries a landing for its latch, which is not used again until then. Null if none.
 	 */
-	static Instruction landingSite(Instruction branch) {
+	public static Instruction landingSite(Instruction branch) {
 		int slot = field(branch, "c_latch_t");
 		Instruction at = branch;
 		// ponytail: sixteen instructions cover five delay cycles of three-member packets
@@ -190,7 +190,7 @@ public final class C6000PacketStagingAnalyzer extends AbstractAnalyzer {
 	}
 
 	/** True when {@code ins} is a latched branch: it records its predicate and target and transfers elsewhere. */
-	static boolean inert(Instruction ins) {
+	public static boolean inert(Instruction ins) {
 		Register field = ins.getProgram().getRegister("c_inert");
 		BigInteger value = field == null ? null : ins.getValue(field, false);
 		return value != null && value.signum() != 0;

@@ -259,7 +259,11 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 			return backwardReturn;
 		}
 
-		/** The first transfer issued in a delay cycle of {@code branch}, which lands after it (SPRUFE8B 3.5, 4.2.6); else null. */
+		/**
+		 * The first transfer issued beside {@code branch} in its execute packet, which lands with it,
+		 * or in one of its delay cycles, which lands after it (SPRUFE8B 3.5, 4.2.6); else null.
+		 * Native lifting gives neither its own window (issue #98).
+		 */
 		Instruction nestedTransfer(Instruction branch) {
 			List<Instruction> slots = window(branch, delayCycles(branch));
 			if (slots == null) return null;
@@ -267,7 +271,7 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 			execution.add(0, branch);
 			int[] issue = issueCycles(execution);
 			for (int i = 1; i < execution.size(); i++) {
-				if (issue[i] > 0 && transfer(execution.get(i))) return execution.get(i);
+				if (transfer(execution.get(i))) return execution.get(i);
 			}
 			return null;
 		}
@@ -456,20 +460,16 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 			Map<Address, Map<Address, Instruction>> sites;
 			String why;
 			Map<Address, Set<Boolean>> calls;
-			Set<Address> crowded;
 			landedBehind = new HashMap<>();
 			landedAsCall = new HashMap<>();
-			issuedInFlight = new HashSet<>();
 			try {
 				why = compare(first, outer, null, null);
 			}
 			finally {
 				sites = landedBehind;
 				calls = landedAsCall;
-				crowded = issuedInFlight;
 				landedBehind = null;
 				landedAsCall = null;
-				issuedInFlight = null;
 			}
 			if (why != null) return refuse(why);
 			List<Latch> latches = new ArrayList<>();
@@ -481,10 +481,6 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 				if (!transfer(branch)) continue;
 				String op = baseName(branch);
 				for (String form : UNLIFTABLE) if (op.startsWith(form)) return refuse(branch + " at " + branch.getMinAddress() + " has no latched form");
-				// A latch takes a listed call's CALL flow: only one issued in the window of transfers it excludes is latched (issue #110).
-				Instruction listedBranch = listing.getInstructionAt(branch.getMinAddress());
-				if (listedBranch != null && C6000PacketStagingAnalyzer.flow(listedBranch).isCall() && (i == 0 || crowded.contains(branch.getMinAddress())))
-					return refuse(branch + " at " + branch.getMinAddress() + " is a listed call issued " + (i == 0 ? "with nothing in flight" : "with a taken transfer in flight") + ", which keeps its CALL flow");
 				if (untimed(program, branch)) return refuse("its timing is outside the cycle model");
 				int land = -1;
 				for (int j = i; j < stretch.size() && issue[j] < issue[i] + 1 + DELAY_CYCLES; j++) land = j;
@@ -611,8 +607,6 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 		private Map<Address, Map<Address, Instruction>> landedBehind;
 		/** Set while planning: whether each transfer the hardware lands is a call there. */
 		private Map<Address, Set<Boolean>> landedAsCall;
-		/** Set while planning: each transfer the hardware issues with another taken transfer in flight. */
-		private Set<Address> issuedInFlight;
 
 		/** Null when {@code plan} runs what the hardware runs on every consistent outcome; else the first difference. */
 		String liftMismatch(Lifting plan, Instruction outer) {
@@ -961,7 +955,6 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 						if (transfer(insn)) {
 							Boolean go = predicate(insn) == null ? Boolean.TRUE : taken.get(insn.getMinAddress());
 							if (go == null) return Run.unproven(insn + " at " + insn.getMinAddress() + " issues with transfers in flight, on a predicate this check cannot follow");
-							if (go && issuedInFlight != null && !flights.isEmpty()) issuedInFlight.add(insn.getMinAddress());
 							if (go) flights.add(new Flight(cycle + 1 + DELAY_CYCLES, insn));
 						}
 						else if (!idle(insn) && runs(insn, region, facts)) {

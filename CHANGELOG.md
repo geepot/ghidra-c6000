@@ -104,6 +104,19 @@
 
 ### Fixed
 
+* A second transfer in a branch's own execute packet counts as nested with it, like one in
+  its delay cycles: both land after the packet's delay cycles, and native lifting gave
+  neither its window, with no warning (issue #98). A call the listing already recognises is
+  latched with the others where that is what the hardware runs; `C6000 Delayed Calls`'s
+  `CALL` flow then sits on the instruction the call lands behind.
+* A branch through a register that holds the link its function was entered with is a return
+  (`C6000 Link Copy Returns`, issue #104).
+* After a callee returns, B3 holds the address it returned through until something writes
+  it. A branch to another function's entry while B3 still holds such an address returns
+  there: a nest with its link set before its branches is latched with the call as a call
+  (issue #106), and a predicated one that returns to earlier code is warned (issues #105,
+  #66).
+
 * A lifting whose landing enters another branch's native delay window is taken back when it
   pushes the function past the decompiler's overlapping-instruction limit: the function
   then failed to decompile at all (issue #99). The nest keeps its warning.

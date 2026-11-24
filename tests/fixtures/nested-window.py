@@ -347,6 +347,27 @@ CASES = [
         B       .S2     B3
         NOP             5
 """),
+    # issue #98: a call and a jump on opposite predicates in one execute packet. Both land after
+    # the packet's five delay cycles, so the slots run on both paths first: *b = c ? h(a + 0x11) : a + 0x11.
+    ("pktcall", True, """{n}:
+        STW     .D2T2   B3,*B15--[2]
+        MV      .L1     A6,A1
+        MVKL    .S2     {n}_h,B5
+        MVKH    .S2     {n}_h,B5
+{n}_in:
+  [ A1] B       .S2     B5
+||[!A1] B       .S1     {n}_join
+        MVKL    .S2     {n}_join,B3
+        MVKH    .S2     {n}_join,B3
+        ADDK    .S1     0x11,A4
+        NOP             2
+{n}_join:
+        STW     .D2T1   A4,*B4
+        LDW     .D2T2   *++B15[2],B3
+        NOP             4
+        B       .S2     B3
+        NOP             5
+"""),
     # Known-goods: an ordinary call; a forward predicated call; a loop branch to its own head with B3 there
     # A callback is only named by its address: the code that takes it makes it a function. The return
     # link beside it is an address too, and is not one.
@@ -814,6 +835,7 @@ LIFTED = {
     "bnop4": ["param_1 + 1"],
     "swjump": ["0x111", "0x222", "0x333", "0x999"],
     "jcallpre": ["jcallpre_h(param_2)", "param_2 + 3"],
+    "pktcall": ["param_1 + 0x11", "pktcall_h("],
     "landret": ["param_1 + 0xc", "param_3 != 0", "param_1 + 4"],
     # Ghidra 12.1.4 prints the test as param_3 == 0 with the arms the other way round
     "landlink": ["param_1 + 0xc", "if (param_3 ", "param_1 + 4"],

@@ -33,8 +33,14 @@ public class C6000DelayedCallTest extends GhidraScript {
 		// and the arm whose target is another function is the call however near it is.
 		for (long[] pair : new long[][] { { 0x1908L, 0x1100L, 0x1924L, 0x1940L }, { 0x19a8L, 0x19c0L, 0x19acL, 0x1984L } }) {
 			Instruction call = getInstructionAt(toAddr(pair[0])), other = getInstructionAt(toAddr(pair[2]));
-			if (call == null || !call.getFlowType().isCall() || !calls(call, pair[1]) || other == null ||
-				other.getFlowType().isCall() || !other.getFlowType().isConditional() || getFunctionAt(toAddr(pair[3])) != null) {
+			// A pair one arm of which issues in the other's window is latched: each arm's flow is then
+			// the hardware's, and the instruction it lands behind holds the call's reference.
+			var callFlow = call == null ? null : c6000.C6000PacketStagingAnalyzer.flow(call);
+			var otherFlow = other == null ? null : c6000.C6000PacketStagingAnalyzer.flow(other);
+			Instruction carrier = call != null && c6000.C6000PacketStagingAnalyzer.inert(call) ?
+				c6000.C6000PacketStagingAnalyzer.landingSite(call) : call;
+			if (call == null || !callFlow.isCall() || carrier == null || !calls(carrier, pair[1]) || other == null ||
+				otherFlow.isCall() || !otherFlow.isConditional() || getFunctionAt(toAddr(pair[3])) != null) {
 				throw new AssertionError("if/else pair at " + toAddr(pair[0]) + ": " + call +
 					(call == null ? "" : " flow=" + call.getFlowType()) + "; " + other +
 					(other == null ? "" : " flow=" + other.getFlowType()) + " function at " + toAddr(pair[3]) + "=" +
@@ -177,8 +183,13 @@ public class C6000DelayedCallTest extends GhidraScript {
 		// Both arms of an if/else call pair return at the later arm's window end.
 		for (long site : new long[] { 0x1c00L, 0x1c08L, 0x1c4cL, 0x1c58L }) {
 			Instruction arm = getInstructionAt(toAddr(site));
-			if (arm == null || !arm.getFlowType().isCall() || !returnPoint(arm).equals(arm.getFallThrough()) ||
-				!calls(arm, 0x1100L)) {
+			// Latched (one arm issues in the other's window), the call is behind the instruction the
+			// arm lands behind; the nested-window comparison has checked that what runs from there to
+			// the link is what the hardware runs.
+			Instruction carrier = arm != null && c6000.C6000PacketStagingAnalyzer.inert(arm) ?
+				c6000.C6000PacketStagingAnalyzer.landingSite(arm) : arm;
+			if (arm == null || carrier == null || !c6000.C6000PacketStagingAnalyzer.flow(arm).isCall() ||
+				carrier == arm && !returnPoint(arm).equals(arm.getFallThrough()) || !calls(carrier, 0x1100L)) {
 				throw new AssertionError("pair arm at " + toAddr(site) + ": " + arm +
 					(arm == null ? "" : " flow=" + arm.getFlowType() + " fallthrough=" + arm.getFallThrough()));
 			}
