@@ -38,6 +38,8 @@ import ghidra.util.task.TaskMonitor;
 /** Issues #64-#66: warn where native lifting cannot place a transfer, so a function's C may be wrong. */
 public final class C6000NestedWindowAnalyzer extends AbstractAnalyzer {
 	public static final String CATEGORY = "C6000 Nested Delay Window";
+	/** On a jump into another function's code that carries a {@link #CATEGORY} warning (issue #108). */
+	public static final String ENTERED = "C6000 Nested Delay Window (entered)";
 
 	public C6000NestedWindowAnalyzer() {
 		super("C6000 Nested Delay Windows",
@@ -109,6 +111,44 @@ public final class C6000NestedWindowAnalyzer extends AbstractAnalyzer {
 					": " + reasons.get(branch.getMinAddress()) + ", so " + function.getName() +
 					" may decompile wrongly (issue #64)");
 				warned++;
+			}
+		}
+		// The decompiler follows a jump into another function's code, so that code's warning is the
+		// jumping function's too. Both ways round: these functions' own jumps out, and jumps in from others.
+		java.util.Set<Function> jumpers = new java.util.LinkedHashSet<>();
+		for (Function function : program.getFunctionManager().getFunctions(set, true)) {
+			jumpers.add(function);
+			var targets = program.getReferenceManager().getReferenceDestinationIterator(function.getBody(), true);
+			while (targets.hasNext()) {
+				monitor.checkCancelled();
+				for (var ref : program.getReferenceManager().getReferencesTo(targets.next())) {
+					Function from = program.getFunctionManager().getFunctionContaining(ref.getFromAddress());
+					if (from != null && !from.equals(function) && ref.getReferenceType().isJump()) jumpers.add(from);
+				}
+			}
+		}
+		for (Function function : jumpers) {
+			bookmarks.removeBookmarks(function.getBody(), BookmarkType.WARNING, ENTERED, monitor);
+			for (Instruction jump : program.getListing().getInstructions(function.getBody(), true)) {
+				for (var ref : jump.getReferencesFrom()) {
+					if (!ref.getReferenceType().isJump()) continue;
+					Function owner = program.getFunctionManager().getFunctionContaining(ref.getToAddress());
+					if (owner == null || owner.equals(function)) continue;
+					Address first = null;
+					for (var it = bookmarks.getBookmarksIterator(owner.getEntryPoint(), true); it.hasNext();) {
+						var mark = it.next();
+						if (!owner.getBody().contains(mark.getAddress())) {
+							if (mark.getAddress().compareTo(owner.getBody().getMaxAddress()) > 0) break;
+							continue;
+						}
+						if (mark.getCategory().equals(CATEGORY)) { first = mark.getAddress(); break; }
+					}
+					if (first == null) continue;
+					bookmarks.setBookmark(jump.getMinAddress(), BookmarkType.WARNING, ENTERED, jump + " jumps into " + owner.getName() +
+						" at " + ref.getToAddress() + ", whose code has a nested delay window warning at " + first + ": " +
+						function.getName() + " runs that code and may decompile wrongly too (issue #108)");
+					warned++;
+				}
 			}
 		}
 		if (warned > 0) Msg.info(this, getName() + "> " + warned + " warning(s)");

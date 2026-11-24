@@ -394,6 +394,52 @@ CASES = [
         B       .S2     B3
         NOP             5
 """),
+    # issue #108: g jumps into tail, which f's body holds and which has a warned nest (#65's pjreg).
+    # The decompiler follows g's jump into that code, so g's jump is warned too (ENTERED).
+    ("shlatpl", True, """{n}:
+        STW     .D2T2   B3,*B15--[2]
+        B       .S1     {n}_f
+        MVKL    .S2     {n}_g_r,B3
+        MVKH    .S2     {n}_g_r,B3
+        NOP             3
+{n}_g_r:
+        LDW     .D2T2   *++B15[2],B3
+        NOP             4
+{n}_enter:
+        B       .S1     {n}_tail
+        NOP             5
+{n}_f:
+        MV      .L1     A4,A1
+||      MV      .S1X    B4,A2
+        NOP             1
+  [ A1] B       .S1     {n}_tail
+        NOP             5
+        B       .S2     B3
+        NOP             5
+{n}_tail:
+        STW     .D2T2   B3,*B15--[2]
+||      ADD     .L1     A4,2,A4
+  [!A2] B       .S1     {n}_t_nop
+        MVKL    .S2     {n}_t_ret,B3
+        MVKH    .S2     {n}_t_ret,B3
+        MVKL    .S1     {n}_h,A3
+        MVKH    .S1     {n}_h,A3
+{n}_in:
+  [!A2] B       .S2X    A3
+        ADD     .L1     A4,7,A4
+        LDW     .D2T2   *++B15[2],B3
+        NOP             4
+        B       .S2     B3
+        NOP             5
+{n}_t_nop:
+        NOP             5
+{n}_t_ret:
+        ADD     .L1     A4,1,A4
+        LDW     .D2T2   *++B15[2],B3
+        NOP             4
+        B       .S2     B3
+        NOP             5
+"""),
     # Known-goods: an ordinary call; a forward predicated call; a loop branch to its own head with B3 there
     # A callback is only named by its address: the code that takes it makes it a function. The return
     # link beside it is an address too, and is not one.
@@ -946,6 +992,7 @@ def main():
                              end=0x1000 + index * SIZE + SIZE - 1, warn=[] if name in LIFTED else warn,
                              c=LIFTED.get(name, []), either=EITHER.get(name), plain=PLAIN.get(name) or (PLAIN_AT[name][1] if name in PLAIN_AT else None), absent=ABSENT.get(name),
                              plain_at=addresses[name + "_" + PLAIN_AT[name][0]] if name in PLAIN_AT else 0,
+                             entered=[a for label, a in addresses.items() if label == name + "_enter"],
                              declare=[addresses[name + "_" + label] for label in DECLARE.get(name, [])],
                              functions=[a for label, a in addresses.items() if label == name + "_cb"],
                              labels=[a for label, a in addresses.items() if label == name + "_notcb"]))

@@ -104,6 +104,12 @@
 
 ### Fixed
 
+* A branch that is not first in its execute packet gets its delay window in code no
+  function owns too (issue #115).
+* A function that jumps into another function's code carries a `C6000 Nested Delay Window
+  (entered)` warning on that jump when the code has a nested-window warning: the decompiler
+  follows the jump, so its C has the same fault (issue #108).
+
 * A second transfer in a branch's own execute packet counts as nested with it, like one in
   its delay cycles: both land after the packet's delay cycles, and native lifting gave
   neither its window, with no warning (issue #98). A call the listing already recognises is

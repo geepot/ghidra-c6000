@@ -20,7 +20,7 @@ public class C6000NestedWindowTest extends GhidraScript {
 		long entry, h, end;
 		long[] warn;
 		String[] c;
-		long[] functions, labels, declare;
+		long[] functions, labels, declare, entered;
 		@com.google.gson.annotations.SerializedName("plain_at") long plainAt;
 		String[] either, plain, absent;
 	}
@@ -75,6 +75,13 @@ public class C6000NestedWindowTest extends GhidraScript {
 			for (long at : item.warn) {
 				if (!found.contains(at) && !comments.toString().contains(" at " + toAddr(at) + " "))
 					throw new AssertionError(item.name + ": no warning names the transfer at " + toAddr(at) + ": " + comments);
+			}
+			// A jump into another function's warned code carries its own warning (issue #108).
+			if (item.entered != null) for (long at : item.entered) {
+				boolean marked = false;
+				for (Bookmark mark : currentProgram.getBookmarkManager().getBookmarks(toAddr(at)))
+					marked |= mark.getCategory().equals("C6000 Nested Delay Window (entered)");
+				if (!marked) throw new AssertionError(item.name + ": the jump at " + toAddr(at) + " into warned code is not warned");
 			}
 			// A callback taken by address is a function (C6000 Code Pointers); a plain label is not.
 			if (item.functions != null) for (long at : item.functions)
