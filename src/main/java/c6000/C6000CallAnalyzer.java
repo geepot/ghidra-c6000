@@ -1644,6 +1644,10 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 				Boolean runs = executes(execution, i, facts);
 				// Whether a transfer goes decides what is in flight: look harder for that.
 				if (runs == null && isFlow(insn)) runs = decided(execution, i, facts, 0);
+				// A transfer in the window of the jump this came in through, unless it is known not to
+				// go, is still in flight when the jump lands: the branch does not arrive alone.
+				if (via != null && insn != viaInsn && isFlow(insn) && !Boolean.FALSE.equals(runs) && i > slotIndex(path, viaInsn) &&
+					!targetOnly && !valuesOnly) return null;
 				if (Boolean.FALSE.equals(runs)) {
 					if (via == null && isFlow(insn) && complementary(insn, branch) &&
 						stable(execution, i, branchIndex, predicate(branch), true) &&
