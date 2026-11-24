@@ -45,7 +45,15 @@ public class C6000ReturnAnalyzer extends AbstractAnalyzer {
 	@Override
 	public boolean added(Program program, AddressSetView set, TaskMonitor monitor,
 			MessageLog log) throws CancelledException {
+		int recovered = recover(program, set, monitor);
+		if (recovered > 0) Msg.info(this, getName() + "> recovered " + recovered + " return(s)");
+		return true;
+	}
+
+	/** Mark the returns among the register branches in {@code set}; returns how many. */
+	static int recover(Program program, AddressSetView set, TaskMonitor monitor) throws CancelledException {
 		int recovered = 0;
+		C6000CallAnalyzer.Walker walker = null;
 		InstructionIterator instructions = program.getListing().getInstructions(set, true);
 		while (instructions.hasNext()) {
 			monitor.checkCancelled();
@@ -56,12 +64,15 @@ public class C6000ReturnAnalyzer extends AbstractAnalyzer {
 			// A latched branch transfers nothing; the instruction it lands behind carries the return (issue #73).
 			if (C6000PacketStagingAnalyzer.inert(instruction)) continue;
 			if (instruction.getFlowOverride() != FlowOverride.NONE ||
-				!C6000PacketStagingAnalyzer.flow(instruction).isComputed() || instruction.getNumOperands() == 0 ||
-				!"B3".equals(instruction.getDefaultOperandRepresentation(0))) continue;
+				!C6000PacketStagingAnalyzer.flow(instruction).isComputed() || instruction.getNumOperands() == 0) continue;
+			if (!"B3".equals(instruction.getDefaultOperandRepresentation(0))) {
+				// Through a register that still holds the link the function was entered with (issue #104).
+				if (walker == null) walker = new C6000CallAnalyzer.Walker(program);
+				if (!walker.holdsEntryLink(instruction)) continue;
+			}
 			instruction.setFlowOverride(FlowOverride.RETURN);
 			recovered++;
 		}
-		if (recovered > 0) Msg.info(this, getName() + "> recovered " + recovered + " return(s)");
-		return true;
+		return recovered;
 	}
 }

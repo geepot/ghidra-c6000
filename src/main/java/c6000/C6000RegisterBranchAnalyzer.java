@@ -88,8 +88,7 @@ public class C6000RegisterBranchAnalyzer extends AbstractAnalyzer {
 				instruction.getNumOperands() == 0 ||
 				!instruction.getDefaultOperandRepresentation(0).matches("[AB]([0-9]|[12][0-9]|3[01])") ||
 				!((override == FlowOverride.NONE && C6000PacketStagingAnalyzer.flow(instruction).isComputed()) ||
-					(override == FlowOverride.RETURN &&
-						"B3".equals(instruction.getDefaultOperandRepresentation(0)))) ||
+					override == FlowOverride.RETURN) ||
 				BigInteger.ONE.equals(program.getProgramContext().getValue(mode,
 					instruction.getAddress(), false))) continue;
 			candidates.add(instruction.getAddress());

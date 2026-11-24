@@ -21,7 +21,7 @@ public class C6000NestedWindowTest extends GhidraScript {
 		long[] warn;
 		String[] c;
 		long[] functions, labels;
-		String[] either;
+		String[] either, plain, absent;
 	}
 
 	@Override
@@ -75,6 +75,17 @@ public class C6000NestedWindowTest extends GhidraScript {
 				if (getFunctionAt(toAddr(at)) == null) throw new AssertionError(item.name + ": no function at " + toAddr(at));
 			if (item.labels != null) for (long at : item.labels)
 				if (getFunctionAt(toAddr(at)) != null) throw new AssertionError(item.name + ": a function at the label " + toAddr(at));
+			if (item.plain != null || item.absent != null) {
+				var decompiler = new ghidra.app.decompiler.DecompInterface();
+				decompiler.openProgram(currentProgram);
+				var result = decompiler.decompileFunction(getFunctionAt(toAddr(item.entry)), 60, monitor);
+				String c = result.decompileCompleted() ? result.getDecompiledFunction().getC() : String.valueOf(result.getErrorMessage());
+				decompiler.dispose();
+				if (item.plain != null) for (String text : item.plain)
+					if (!c.contains(text)) throw new AssertionError(item.name + ": C lacks \"" + text + "\":\n" + c);
+				if (item.absent != null) for (String text : item.absent)
+					if (c.contains(text)) throw new AssertionError(item.name + ": C must not hold \"" + text + "\":\n" + c);
+			}
 			if (item.c != null && item.c.length > 0) {
 				// Lifted: its nested branches are latched, and the C is the hardware's.
 				boolean latched = false;

@@ -1906,6 +1906,44 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 		}
 
 
+		/**
+		 * True when the register {@code branch} goes through holds the link its function was entered
+		 * with: an unpredicated instruction on the entry's straight-line code, before any transfer,
+		 * leaves B3's entry value in it, nothing else in the function writes it, and it survives the
+		 * function's calls (SPRAB89 3.3: A10-A15 and B10-B15 are preserved). Such a branch returns.
+		 */
+		boolean holdsEntryLink(Instruction branch) {
+			Register through = C6000PacketStagingAnalyzer.hardware(branch).getRegister(0);
+			Register b3 = program.getRegister("B3");
+			Function function = program.getFunctionManager().getFunctionContaining(branch.getMinAddress());
+			if (through == null || through.equals(b3) || function == null) return false;
+			// B3's entry value, as a constant no code computes.
+			final long link = 0x5ac3e971L;
+			Map<Register, long[]> regs = new HashMap<>();
+			regs.put(b3, new long[] { link, FULL });
+			Address copy = null;
+			Instruction insn = listing.getInstructionAt(function.getEntryPoint());
+			for (int n = 0; insn != null && n < LOOK_BACK && !transfer(insn); n++, insn = next(insn)) {
+				if (n > 0 && externalEntry(insn)) return false;
+				boolean writes = issueWrites(insn).stream().anyMatch(r -> overlaps(r, through)) ||
+					(loadDestination(insn) != null && overlaps(loadDestination(insn), through));
+				track(insn, regs);
+				if (!writes) continue;
+				long[] value = regs.get(through);
+				if (copy != null || predicate(insn) != null || value == null || value[1] != FULL || value[0] != link) return false;
+				copy = insn.getMinAddress();
+			}
+			if (copy == null) return false;
+			boolean preserved = through.getName().matches("[AB]1[0-5]");
+			for (Instruction other : listing.getInstructions(function.getBody(), true)) {
+				if (!preserved && C6000PacketStagingAnalyzer.flow(other).isCall()) return false;
+				if (other.getMinAddress().equals(copy) || other.getPrototype().hasDelaySlots()) continue;
+				for (Object written : C6000PacketStagingAnalyzer.hardware(other).getResultObjects())
+					if (written instanceof Register r && overlaps(r, through)) return false;
+			}
+			return true;
+		}
+
 		/** The index, in the last {@link #entryPath}, of the jump it came in through; -1 for a straight line. */
 		int enteredBy = -1;
 

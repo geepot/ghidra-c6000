@@ -287,6 +287,22 @@ CASES = [
         B       .S2     B3
         NOP             5
 """),
+    # issue #104: the link is copied at entry and the function returns through the copy: a + 1.
+    ("cpyret", False, """{n}:
+        ADD     .D2     B3,0,B9
+        ADD     .L1     A4,1,A4
+        B       .S2     B9
+        NOP             5
+"""),
+    # Known-bad for the rule: the copy is predicated, so B9 need not hold the link, and the branch
+    # stays a computed jump.
+    ("cpyretp", False, """{n}:
+        MV      .L1     A4,A1
+  [ A1] ADD     .D2     B3,0,B9
+        ADD     .L1     A4,1,A4
+        B       .S2     B9
+        NOP             5
+"""),
     # Known-goods: an ordinary call; a forward predicated call; a loop branch to its own head with B3 there
     # A callback is only named by its address: the code that takes it makes it a function. The return
     # link beside it is an address too, and is not one.
@@ -768,6 +784,9 @@ LIFTED = {
     "callarm": ["param_2 + 3;", "return param_2 + 100;"],
     "callarml0": ["param_2 + 3;", "return param_2 + 100;"],
 }
+# What the C of a case that latches nothing must hold, and must not.
+PLAIN = {"cpyret": ["return param_1 + 1;"]}
+ABSENT = {"cpyretp": ["return param_1 + 1;"]}
 # Cases that are warned or lifted depending on the decompiler, and what their C holds when lifted.
 EITHER = {"entmany": ["return 0x50;", "0x111", "+ 0xee"]}
 LINK = re.compile(r"(MVK[LH]\s+\.S[12]\s+|\.word\s+)(\w+)")
@@ -828,7 +847,7 @@ def main():
         # A lifted case is not warned: its branches are latched and its C is the hardware's.
         manifest.append(dict(name=name, entry=addresses[name], h=addresses[name + "_h"],
                              end=0x1000 + index * SIZE + SIZE - 1, warn=[] if name in LIFTED else warn,
-                             c=LIFTED.get(name, []), either=EITHER.get(name),
+                             c=LIFTED.get(name, []), either=EITHER.get(name), plain=PLAIN.get(name), absent=ABSENT.get(name),
                              functions=[a for label, a in addresses.items() if label == name + "_cb"],
                              labels=[a for label, a in addresses.items() if label == name + "_notcb"]))
     if len(sys.argv) == 4:
