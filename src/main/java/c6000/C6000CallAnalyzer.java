@@ -971,6 +971,10 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 		 * neither decides it. Nothing is carried across a call's return.
 		 */
 		private Boolean holds(Stretch region, int i, List<PredicateFact> facts) {
+			return holds(region, i, facts, 0);
+		}
+
+		private Boolean holds(Stretch region, int i, List<PredicateFact> facts, int depth) {
 			List<Instruction> path = region.path();
 			List<PredicateFact> known = factsFor(region, i, facts);
 			Boolean value = executes(path, i, known);
@@ -978,29 +982,141 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 			String p = predicate(path.get(i));
 			Register register = program.getRegister(p.replace("!", ""));
 			int[] cycles = issueCycles(path);
+			// Another transfer's outcome on a register that holds the same value: both are copies of
+			// one write (MV A4,A1 and MV A4,A2 at entry; issue #114).
+			long[] mine = origin(path, cycles, register, i);
+			for (PredicateFact fact : known) {
+				Register theirs = program.getRegister(fact.predicate().replace("!", ""));
+				if (java.util.Arrays.equals(mine, origin(path, cycles, theirs, fact.index())))
+					return (fact.taken() != fact.predicate().startsWith("!")) != p.startsWith("!");
+			}
 			Set<Integer> skipped = new HashSet<>();
 			while (true) {
-				int last = -1;
-				long lands = Long.MIN_VALUE;
-				boolean tie = false;
-				for (int w = 0; w < i; w++) {
-					if (skipped.contains(w)) continue;
-					Instruction writer = path.get(w);
-					Register load = loadDestination(writer);
-					boolean writes = load != null ? overlaps(load, register) :
-						issueWrites(writer).stream().anyMatch(r -> overlaps(r, register));
-					long at = cycles[w] + resultDelay(writer);
-					if (!writes || at >= cycles[i]) continue;
-					if (at > lands) { lands = at; last = w; tie = false; }
-					else if (at == lands) tie = true;
-				}
-				if (last < 0 || tie || segment(region, last) != segment(region, i)) return null;
+				int last = lastWrite(path, cycles, register, i, skipped);
+				if (last < 0 || segment(region, last) != segment(region, i)) return null;
+				// Whether a predicated write runs is the same question one step back.
 				Boolean runs = predicate(path.get(last)) == null ? Boolean.TRUE : executes(path, last, known);
+				if (runs == null && depth < 3) runs = holds(region, last, facts, depth + 1);
 				if (runs == null) return null;
 				if (!runs) { skipped.add(last); continue; }
 				Long written = constantWrite(path.get(last), register);
 				return written == null ? null : (written != 0) != p.startsWith("!");
 			}
+		}
+
+		/**
+		 * Whether the predicate of path instruction {@code i} holds, like {@link #holds} but on a bare
+		 * path: from a fact on a register with the same origin, or from the constant its last write
+		 * leaves. Null when undecided, and across a call, which may change any predicate register.
+		 */
+		private Boolean decided(List<Instruction> path, int i, List<PredicateFact> facts, int depth) {
+			Boolean value = executes(path, i, facts);
+			if (value != null) return value;
+			for (int k = 0; k < i; k++) if (isFlow(path.get(k)) && C6000PacketStagingAnalyzer.flow(path.get(k)).isCall()) return null;
+			String p = predicate(path.get(i));
+			Register register = program.getRegister(p.replace("!", ""));
+			int[] cycles = issueCycles(path);
+			long[] mine = origin(path, cycles, register, i);
+			for (PredicateFact fact : facts) {
+				if (fact.index() < 0 || fact.index() >= path.size()) continue;
+				Register theirs = program.getRegister(fact.predicate().replace("!", ""));
+				if (java.util.Arrays.equals(mine, origin(path, cycles, theirs, fact.index())))
+					return (fact.taken() != fact.predicate().startsWith("!")) != p.startsWith("!");
+			}
+			Set<Integer> skipped = new HashSet<>();
+			while (true) {
+				int last = lastWrite(path, cycles, register, i, skipped);
+				if (last < 0) return null;
+				Boolean runs = predicate(path.get(last)) == null ? Boolean.TRUE : depth < 3 ? decided(path, last, facts, depth + 1) : null;
+				if (runs == null) return null;
+				if (!runs) { skipped.add(last); continue; }
+				Long written = constantWrite(path.get(last), register);
+				return written == null ? null : (written != 0) != p.startsWith("!");
+			}
+		}
+
+		/** The last write to {@code register} that lands before path instruction {@code i} reads it; -1 if none or two land together. */
+		private int lastWrite(List<Instruction> path, int[] cycles, Register register, int i, Set<Integer> skipped) {
+			int last = -1;
+			long lands = Long.MIN_VALUE;
+			boolean tie = false;
+			for (int w = 0; w < i; w++) {
+				if (skipped.contains(w)) continue;
+				Instruction writer = path.get(w);
+				Register load = loadDestination(writer);
+				boolean writes = load != null ? overlaps(load, register) :
+					issueWrites(writer).stream().anyMatch(r -> overlaps(r, register));
+				long at = cycles[w] + resultDelay(writer);
+				if (!writes || at >= cycles[i]) continue;
+				if (at > lands) { lands = at; last = w; tie = false; }
+				else if (at == lands) tie = true;
+			}
+			return tie ? -1 : last;
+		}
+
+		/**
+		 * The write that produced the value {@code register} holds when path instruction {@code i}
+		 * reads it, followed back through unpredicated copies: {register offset, path index}, with
+		 * index -1 for a value from before the path. Two registers with one origin hold one value.
+		 */
+		private long[] origin(List<Instruction> path, int[] cycles, Register from, int i) {
+			// Asked for every outcome of every comparison over the same path: keep the answers.
+			if (originPath != path) {
+				originPath = path;
+				origins.clear();
+			}
+			long key = from.getAddress().getOffset() << 16 | (i & 0xffff);
+			long[] known = origins.get(key);
+			if (known == null) origins.put(key, known = originOf(path, cycles, from, i));
+			return known;
+		}
+
+		private List<Instruction> originPath;
+		private final Map<Long, long[]> origins = new HashMap<>();
+		private final Map<String, java.util.Optional<Register>> copies = new HashMap<>();
+
+		private long[] originOf(List<Instruction> path, int[] cycles, Register from, int i) {
+			Register held = from;
+			for (int depth = 0; depth < 8; depth++) {
+				final Register register = held;
+				int last = lastWrite(path, cycles, register, i, Set.of());
+				if (last < 0) {
+					// No write on the path, or two at once: only "no write at all" is an origin.
+					for (int w = 0; w < i; w++) {
+						Instruction writer = path.get(w);
+						Register load = loadDestination(writer);
+						if (load != null ? overlaps(load, register) : issueWrites(writer).stream().anyMatch(r -> overlaps(r, register)))
+							return new long[] { register.getAddress().getOffset(), w, 1 };
+					}
+					return new long[] { register.getAddress().getOffset(), -1, 0 };
+				}
+				Instruction writer = path.get(last);
+				Register source = predicate(writer) != null || loadDestination(writer) != null ? null : copied(writer, register);
+				if (source == null) return new long[] { register.getAddress().getOffset(), last, 0 };
+				held = source;
+				i = last;
+			}
+			return new long[] { held.getAddress().getOffset(), i, 2 };
+		}
+
+		/** The register whose whole value {@code insn} leaves in {@code register}, from its p-code; null if it is no copy. */
+		private Register copied(Instruction insn, Register register) {
+			return copies.computeIfAbsent(insn.getMinAddress() + "/" + register.getName(), k -> java.util.Optional.ofNullable(copiedFrom(insn, register))).orElse(null);
+		}
+
+		private Register copiedFrom(Instruction insn, Register register) {
+			for (Object input : C6000PacketStagingAnalyzer.hardware(insn).getInputObjects()) {
+				if (!(input instanceof Register source) || source.getMinimumByteSize() != 4 || overlaps(source, register)) continue;
+				boolean copy = true;
+				for (long sample : new long[] { 0x1234567L, 0x7654321fL }) {
+					Map<Register, long[]> known = new HashMap<>();
+					known.put(source, new long[] { sample, FULL });
+					Long out = constantWrite(insn, register, known);
+					copy &= out != null && out == sample;
+				}
+				if (copy) return source;
+			}
+			return null;
 		}
 
 		private static boolean idle(Instruction insn) {
@@ -1526,6 +1642,8 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 			for (int i = 0; i < path.size(); i++) {
 				Instruction insn = path.get(i);
 				Boolean runs = executes(execution, i, facts);
+				// Whether a transfer goes decides what is in flight: look harder for that.
+				if (runs == null && isFlow(insn)) runs = decided(execution, i, facts, 0);
 				if (Boolean.FALSE.equals(runs)) {
 					if (via == null && isFlow(insn) && complementary(insn, branch) &&
 						stable(execution, i, branchIndex, predicate(branch), true) &&
@@ -2149,13 +2267,15 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 				if (ref.getReferenceType().isData()) return null;
 				if (!ref.getReferenceType().isFlow() || ref.getReferenceType().isFallthrough()) continue;
 				if (jump != null || !ref.getReferenceType().isJump()) return null;
-				jump = listing.getInstructionAt(ref.getFromAddress());
+				// A latched jump enters where it lands.
+				jump = entering(listing.getInstructionAt(ref.getFromAddress()), branch.getMinAddress());
 				if (jump == null) return null;
 			}
 			if (jump == null || !baseName(jump).startsWith("B.S")) return null;
 			List<Instruction> taken = window(jump);
 			if (taken == null) return null;
-			for (Instruction slot : taken) if (isFlow(slot)) return null;
+			// A transfer in the jump's window is for the arrival to judge: one whose predicate is false
+			// on this path does nothing (issue #114), and any other leaves B3 unknown there.
 			List<Instruction> path = new ArrayList<>(lookBack(jump));
 			path.add(jump);
 			path.addAll(taken);

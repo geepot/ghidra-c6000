@@ -164,9 +164,16 @@ public final class C6000NestedLiftAnalyzer extends AbstractAnalyzer {
 			}
 			// A landing into another window's slots is one more entry into it: past the decompiler's
 			// limit the function would not decompile at all, so the nest keeps its warning (issue #99).
+			// Only a landing whose target is a native delay slot adds such an entry; asking the
+			// decompiler about a large function for every lifting would cost minutes.
 			Function owner = program.getFunctionManager().getFunctionContaining(outer.getMinAddress());
+			boolean enters = false;
+			for (var latch : plan.latches()) {
+				Instruction target = latch.target() == null ? null : program.getListing().getInstructionContaining(latch.target());
+				enters |= target != null && (target.isInDelaySlot() || !target.getMinAddress().equals(latch.target()));
+			}
 			if (kept(program, walker, plan, outer) &&
-					(owner == null || !C6000DelaySlots.pastOverlapLimit(program, owner, ghidra.util.task.TaskMonitor.DUMMY))) {
+					(!enters || owner == null || !C6000DelaySlots.pastOverlapLimit(program, owner, ghidra.util.task.TaskMonitor.DUMMY))) {
 				// Ghidra types every flow of an instruction that also lands a call as a call: give each
 				// landed jump's target its own type, or it becomes a function.
 				var references = program.getReferenceManager();
@@ -180,10 +187,16 @@ public final class C6000NestedLiftAnalyzer extends AbstractAnalyzer {
 							ghidra.program.model.symbol.SourceType.ANALYSIS, ref.getOperandIndex());
 					}
 				}
-				// The landings are new flows: a call among them needs a function at its target.
+				// The landings are new flows: a call among them needs a function at its target, and the
+				// code a landed call returns to may never have been decoded (a call lifted as a tail
+				// call before, issue #114).
+				var analysis = ghidra.app.plugin.core.analysis.AutoAnalysisManager.getAnalysisManager(program);
 				for (Address at : fields.keySet()) {
 					Instruction site = program.getListing().getInstructionAt(at);
-					if (site != null) C6000DelaySlots.announce(program, new ghidra.program.model.address.AddressSet(at, site.getMaxAddress()));
+					if (site == null) continue;
+					C6000DelaySlots.announce(program, new ghidra.program.model.address.AddressSet(at, site.getMaxAddress()));
+					Address after = site.getFallThrough();
+					if (after != null && program.getListing().getInstructionContaining(after) == null && analysis != null) analysis.disassemble(after);
 				}
 				return true;
 			}

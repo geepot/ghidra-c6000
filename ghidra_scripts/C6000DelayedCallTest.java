@@ -197,10 +197,15 @@ public class C6000DelayedCallTest extends GhidraScript {
 		// A write that keeps the call's predicate true leaves its slots straight-line.
 		for (long site : new long[] { 0x1d08L, 0x1d88L, 0x1e08L, 0x1f08L, 0x2008L }) {
 			Instruction call = getInstructionAt(toAddr(site));
-			// Falls through to its parallel follower or to the next execute packet.
-			if (call == null || !call.getFlowType().isCall() || call.getFlowType().isTerminal() ||
-				!(returnPoint(call).equals(call.getFallThrough()) || toAddr(site + 8).equals(call.getFallThrough())) ||
-				!calls(call, 0x1100L)) {
+			// Falls through to its parallel follower or to the next execute packet. Where the nullified
+			// jump after it is proved not to go, the two are a latched nest: the call is then behind
+			// the instruction it lands behind.
+			Instruction carrier = call != null && c6000.C6000PacketStagingAnalyzer.inert(call) ?
+				c6000.C6000PacketStagingAnalyzer.landingSite(call) : call;
+			var flow = call == null ? null : c6000.C6000PacketStagingAnalyzer.flow(call);
+			if (call == null || carrier == null || !flow.isCall() || flow.isTerminal() ||
+				carrier == call && !(returnPoint(call).equals(call.getFallThrough()) || toAddr(site + 8).equals(call.getFallThrough())) ||
+				!calls(carrier, 0x1100L)) {
 				throw new AssertionError("nullify call at " + toAddr(site) + ": " + call +
 					(call == null ? "" : " flow=" + call.getFlowType() + " fallthrough=" + call.getFallThrough()));
 			}

@@ -647,6 +647,41 @@ CASES = [
         B       .S2     B3
         NOP             5
 """),
+    # issue #114: the call is reached only by the jump, whose window issues a branch on A1 after
+    # [!A2] ZERO A1 has cleared it; A1 and A2 were both copies of a, so on the jump's path that
+    # branch does not go and the call arrives with its link: a ? (b ? b + 101 : 111) : h(b) + 3.
+    ("viacallp", True, """{n}:
+        STW     .D2T2   B3,*B15--[2]
+||      MV      .L1     A4,A1
+        MV      .L1     A4,A2
+        MV      .L1X    B4,A4
+        MVKL    .S2     {n}_ret,B3
+        MVKH    .S2     {n}_ret,B3
+  [!A1] B       .S1     {n}_call
+        MV      .L1X    B4,A1
+  [!A2] ZERO    .L1     A1
+{n}_in:
+  [ A1] B       .S1     {n}_other
+        NOP             2
+        ADD     .L1     A4,1,A4
+        NOP             2
+        ADDK    .S1     10,A4
+{n}_other:
+        ADDK    .S1     100,A4
+        LDW     .D2T2   *++B15[2],B3
+        NOP             4
+        B       .S2     B3
+        NOP             5
+{n}_call:
+        B       .S1     {n}_h
+        NOP             5
+{n}_ret:
+        ADDK    .S1     3,A4
+        LDW     .D2T2   *++B15[2],B3
+        NOP             4
+        B       .S2     B3
+        NOP             5
+"""),
     # Known-goods: an ordinary call; a forward predicated call; a loop branch to its own head with B3 there
     # A callback is only named by its address: the code that takes it makes it a function. The return
     # link beside it is an address too, and is not one.
@@ -1124,6 +1159,7 @@ LIFTED = {
     "tgtpred": ["0x3e0", "0x7e0"],
     "linktgt": ["linktgt_h(", "param_2 + 8", "+ 100"],
     "linkfly": ["linkfly_h(", "+ 0x10", "param_2 + 0x37"],
+    "viacallp": ["viacallp_h(", "iVar1 + 3", "+ 100"],
     "landret": ["param_1 + 0xc", "param_3 != 0", "param_1 + 4"],
     # Ghidra 12.1.4 prints the test as param_3 == 0 with the arms the other way round
     "landlink": ["param_1 + 0xc", "if (param_3 ", "param_1 + 4"],

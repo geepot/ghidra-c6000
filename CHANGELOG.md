@@ -117,6 +117,16 @@
 
 ### Fixed
 
+* A predicate's known value carries to another register that holds the same value: both are
+  copies of one write, as `MV A4,A1` and `MV A4,A2` at a function's entry are. With it, a
+  branch in a jump's window whose predicate that path has cleared is known not to go, the
+  look-back through the jump reaches a call that nothing falls into with its link intact, and
+  the call is a call instead of a tail call (issue #114). The code a landed call returns to
+  is decoded if it never was.
+* Asking the decompiler whether a lifting pushed its function past the overlap limit (issue
+  #99) is done only when a landing's target is a native delay slot. It was done for every
+  lifting, which cost minutes on a large function.
+
 * A branch the hardware issues in the code a jump went to, while a branch of the nest is
   still in flight, is nested with it too: the comparison runs both outcomes of its
   predicate and the lifting latches it, outside the stretch (issue #123).
