@@ -40,6 +40,10 @@ public class C6000ConstantBranchTargetTest extends GhidraScript {
    Set<String> targets=new TreeSet<>();for(var a:branch.getFlows())targets.add(a.toString());
    if(f[3].equals("exact")){
     if(!targets.equals(Set.of(f[1])))throw new AssertionError(branch.getAddress()+" expected "+f[1]+" got "+targets);
+   }else if(f[3].equals("entered")){
+    // The unpredicated MVKH always runs (it is lifted with no guard, issue #101), so the low half
+    // alone is no target; the path through the other entry has no known one.
+    if(!targets.contains(f[1]))throw new AssertionError(branch.getAddress()+" expected "+f[1]+" among "+targets);
    }else if(!targets.contains(f[2])){
     throw new AssertionError(branch.getAddress()+" uncertain intermediate target discarded: "+targets);
    }

@@ -4,6 +4,19 @@
 
 ### Changed
 
+* An unpredicated instruction is lifted with no predicate guard. Every ordinary instruction
+  had one constructor whose semantics sat behind `if (Cond == 0) goto <skip>`, a constant
+  test when there is no predicate. The decompiler works out a call's arguments before it
+  folds that test away, so a register loaded just before a second call looked conditional
+  and the argument was dropped (issue #101). `tools/gen_decode.py` now emits an unguarded
+  constructor for `creg=0, z=0` beside the predicated one, and 14 hand-written forms are
+  split the same way. The listing text is unchanged; the p-code of every unpredicated
+  instruction is, so a reviewed exact schedule may need recording again. Side effects seen
+  in the fixtures: constant propagation no longer offers the low half of an `MVK`/`MVKH`
+  pair as a branch target when the `MVKH` is unpredicated, and the decompiler recovers an
+  undeclared 64-bit result as a pair where it sees both halves written (and, for one leaf
+  that rewrites `A5` after a 40-bit `SUBU`, as no result).
+
 * The call walker reads each instruction's context once to tell whether staging or a latch
   changed it, takes its flow type once, and decides whether two instructions share an
   execute packet from the issue cycles it already has. Analysis is about a third faster on

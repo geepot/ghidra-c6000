@@ -440,6 +440,32 @@ CASES = [
         B       .S2     B3
         NOP             5
 """),
+    # issue #101: two calls in a row, each with its own second argument in B4. An unpredicated
+    # instruction is lifted with no predicate guard, so the decompiler sees the second LDHU as the
+    # one value of B4 at the second call: callee(0, p[0]); callee(0, p[1]).
+    ("twocall", False, """{n}:
+        STW     .D2T2   B3,*B15--[2]
+        STW     .D2T1   A10,*B15--[2]
+        MV      .L1     A4,A10
+        LDHU    .D1T2   *+A10[0],B4
+        NOP             4
+        CALLP   .S2     {n}_callee,B3
+||      MVK     .S1     0,A4
+        LDHU    .D1T2   *+A10[1],B4
+        NOP             4
+        CALLP   .S2     {n}_callee,B3
+||      MVK     .S1     0,A4
+        LDW     .D2T1   *++B15[2],A10
+        LDW     .D2T2   *++B15[2],B3
+        NOP             4
+        BNOP    .S2     B3,5
+{n}_callee:
+        MVK     .S1     0x1000,A6
+        MVK     .S2     1,B5
+        SHL     .S2     B5,B4,B5
+        STW     .D1T2   B5,*+A6[A4]
+        BNOP    .S2     B3,5
+"""),
     # Known-goods: an ordinary call; a forward predicated call; a loop branch to its own head with B3 there
     # A callback is only named by its address: the code that takes it makes it a function. The return
     # link beside it is an address too, and is not one.
@@ -924,11 +950,11 @@ LIFTED = {
     "callarml0": ["param_2 + 3;", "return param_2 + 100;"],
 }
 # What the C of a case that latches nothing must hold, and must not.
-PLAIN = {"cpyret": ["return param_1 + 1;"]}
+PLAIN = {"cpyret": ["return param_1 + 1;"], "twocall": ["(0,*param_1)", "(0,param_1[1])"]}
 ABSENT = {"cpyretp": ["return param_1 + 1;"]}
 # Labels declared as functions too, as a symbol table or a seed list would, and what the C of the
 # function at a label must hold.
-DECLARE = {"c2split": ["test", "exit"]}
+DECLARE = {"c2split": ["test", "exit"], "twocall": ["callee"]}
 PLAIN_AT = {"c2split": ("test", ["c2split_h(param_1 + 7"])}
 # Cases that are warned or lifted depending on the decompiler, and what their C holds when lifted.
 EITHER = {"entmany": ["return 0x50;", "0x111", "+ 0xee"]}

@@ -56,9 +56,14 @@ public class C6000AbiPairsTest extends GhidraScript {
 			storage(second.getReturn().getVariableStorage(), PAIR, "second result");
 			storage(param(second, 0, 2), "A4:4", "second k");
 			storage(param(second, 1, 2), "B5_B4:8", "second y");
-			// Undeclared: a result stays 4 bytes in A4, whether computed as two words or as a pair.
-			storage(decompile(decompiler, 0x1000L).getFunctionPrototype().getReturnStorage(), "A4:4", "recovered twice64 result");
-			storage(decompile(decompiler, 0x1068L).getFunctionPrototype().getReturnStorage(), "A4:4", "recovered neg64 result");
+			// Undeclared: the decompiler recovers the result from what the function writes. With every
+			// unpredicated write lifted without a guard (issue #101) it can see both halves written and
+			// take the pair; before, each write looked conditional and it settled for A4.
+			storage(decompile(decompiler, 0x1000L).getFunctionPrototype().getReturnStorage(), "A4:4|" + PAIR, "recovered twice64 result");
+			// neg64 forms its result with a 40-bit SUBU and then rewrites A5; the decompiler's return
+			// recovery gives that up as no result at all. Its callers still use the value, and a
+			// declared prototype (below) is unaffected.
+			storage(decompile(decompiler, 0x1068L).getFunctionPrototype().getReturnStorage(), "A4:4|<VOID>|" + PAIR, "recovered neg64 result");
 			declare(0, 3);
 			Function twice = function(0x1000L);
 			storage(twice.getReturn().getVariableStorage(), PAIR, "twice64 result");

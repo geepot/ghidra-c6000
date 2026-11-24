@@ -7,12 +7,20 @@
 # SUB .S reverse-operand form, SPRUFE8B section 3.12 SUB,
 # "src2 - src1" encoding (separate from the .S opcode-map table).
 # The x bit selects local or cross-path src2 (SPRUFE8B p. 529).
-:^Cond^"SUB.S1" Src2, Src1, Dst is c_is16=0 & Cond & creg!=7 & Src2 & Src1 & Dst
+:"SUB.S1" Src2, Src1, Dst is c_is16=0 & creg=0 & z=0 & Src2 & Src1 & Dst
+  & i1=0 & i11=1 & i10=1 & i9=0 & i8=1 & i7=0 & i6=1
+  & i5=1 & i4=1 & i3=0 & i2=0
+{ c6000_sem_sub(Src2, Src1, Dst); }
+:^Cond^"SUB.S1" Src2, Src1, Dst is c_is16=0 & Cond & creg!=7 & creg!=0 & Src2 & Src1 & Dst
   & i1=0 & i11=1 & i10=1 & i9=0 & i8=1 & i7=0 & i6=1
   & i5=1 & i4=1 & i3=0 & i2=0
 { if (Cond == 0) goto <skip>; c6000_sem_sub(Src2, Src1, Dst); <skip> }
 
-:^Cond^"SUB.S2" Src2, Src1, Dst is c_is16=0 & Cond & creg!=7 & Src2 & Src1 & Dst
+:"SUB.S2" Src2, Src1, Dst is c_is16=0 & creg=0 & z=0 & Src2 & Src1 & Dst
+  & i1=1 & i11=1 & i10=1 & i9=0 & i8=1 & i7=0 & i6=1
+  & i5=1 & i4=1 & i3=0 & i2=0
+{ c6000_sem_sub(Src2, Src1, Dst); }
+:^Cond^"SUB.S2" Src2, Src1, Dst is c_is16=0 & Cond & creg!=7 & creg!=0 & Src2 & Src1 & Dst
   & i1=1 & i11=1 & i10=1 & i9=0 & i8=1 & i7=0 & i6=1
   & i5=1 & i4=1 & i3=0 & i2=0
 { if (Cond == 0) goto <skip>; c6000_sem_sub(Src2, Src1, Dst); <skip> }
@@ -20,45 +28,75 @@
 # MVC control-register transfers, SPRUFE8B Figure F-1 and Table 3-27.
 # Bit 6 selects the direction: zero writes the control register named by dst,
 # one reads the control register named by src2.  Both forms are .S2 only.
-:^Cond^"MVC.S2" Src2, CtlDst is c_is16=0 & Cond & creg!=7 & Src2 & CtlDst
+:"MVC.S2" Src2, CtlDst is c_is16=0 & creg=0 & z=0 & Src2 & CtlDst
+  & i1=1 & i2=0 & i3=0 & i4=0 & i5=1 & i6=0 & i7=1 & i8=1 & i9=1 & i10=0 & i11=0
+{ CtlDst = Src2; }
+:^Cond^"MVC.S2" Src2, CtlDst is c_is16=0 & Cond & creg!=7 & creg!=0 & Src2 & CtlDst
   & i1=1 & i2=0 & i3=0 & i4=0 & i5=1 & i6=0 & i7=1 & i8=1 & i9=1 & i10=0 & i11=0
 { if (Cond == 0) goto <skip>; CtlDst = Src2; <skip> }
 
 # Writes with side effects (SPRU733A 2.7.5, 2.7.9, Table 2-7; SPRUFE8B 2.9.2).
 # ICR/ISR clear/set IFR15-4 and are never read back; ECR clears EFR NXF/EXF/IXF/SXF.
 # CSR keeps CPU ID, REVISION ID and EN; MVC can only clear SAT.
-:^Cond^"MVC.S2" Src2, CtlDst is c_is16=0 & Cond & creg!=7 & Src2 & CtlDst & crf_dst=1 & i17=0
+:"MVC.S2" Src2, CtlDst is c_is16=0 & creg=0 & z=0 & Src2 & CtlDst & crf_dst=1 & i17=0
+  & i1=1 & i2=0 & i3=0 & i4=0 & i5=1 & i6=0 & i7=1 & i8=1 & i9=1 & i10=0 & i11=0
+{ CSR = (CSR & (Src2 | 0xfffffdff) & 0xffff0300) | (Src2 & 0xfcff); }
+:^Cond^"MVC.S2" Src2, CtlDst is c_is16=0 & Cond & creg!=7 & creg!=0 & Src2 & CtlDst & crf_dst=1 & i17=0
   & i1=1 & i2=0 & i3=0 & i4=0 & i5=1 & i6=0 & i7=1 & i8=1 & i9=1 & i10=0 & i11=0
 { if (Cond == 0) goto <skip>; CSR = (CSR & (Src2 | 0xfffffdff) & 0xffff0300) | (Src2 & 0xfcff); <skip> }
 
-:^Cond^"MVC.S2" Src2, CtlDst is c_is16=0 & Cond & creg!=7 & Src2 & CtlDst & crf_dst=2 & i17=0
+:"MVC.S2" Src2, CtlDst is c_is16=0 & creg=0 & z=0 & Src2 & CtlDst & crf_dst=2 & i17=0
+  & i1=1 & i2=0 & i3=0 & i4=0 & i5=1 & i6=0 & i7=1 & i8=1 & i9=1 & i10=0 & i11=0
+{ IFR = IFR | (Src2 & 0xfff0); }
+:^Cond^"MVC.S2" Src2, CtlDst is c_is16=0 & Cond & creg!=7 & creg!=0 & Src2 & CtlDst & crf_dst=2 & i17=0
   & i1=1 & i2=0 & i3=0 & i4=0 & i5=1 & i6=0 & i7=1 & i8=1 & i9=1 & i10=0 & i11=0
 { if (Cond == 0) goto <skip>; IFR = IFR | (Src2 & 0xfff0); <skip> }
 
-:^Cond^"MVC.S2" Src2, CtlDst is c_is16=0 & Cond & creg!=7 & Src2 & CtlDst & crf_dst=3 & i17=0
+:"MVC.S2" Src2, CtlDst is c_is16=0 & creg=0 & z=0 & Src2 & CtlDst & crf_dst=3 & i17=0
+  & i1=1 & i2=0 & i3=0 & i4=0 & i5=1 & i6=0 & i7=1 & i8=1 & i9=1 & i10=0 & i11=0
+{ IFR = IFR & ~(Src2 & 0xfff0); }
+:^Cond^"MVC.S2" Src2, CtlDst is c_is16=0 & Cond & creg!=7 & creg!=0 & Src2 & CtlDst & crf_dst=3 & i17=0
   & i1=1 & i2=0 & i3=0 & i4=0 & i5=1 & i6=0 & i7=1 & i8=1 & i9=1 & i10=0 & i11=0
 { if (Cond == 0) goto <skip>; IFR = IFR & ~(Src2 & 0xfff0); <skip> }
 
-:^Cond^"MVC.S2" Src2, CtlDst is c_is16=0 & Cond & creg!=7 & Src2 & CtlDst & crf_dst=29 & crhi=0
+:"MVC.S2" Src2, CtlDst is c_is16=0 & creg=0 & z=0 & Src2 & CtlDst & crf_dst=29 & crhi=0
+  & i1=1 & i2=0 & i3=0 & i4=0 & i5=1 & i6=0 & i7=1 & i8=1 & i9=1 & i10=0 & i11=0
+{ EFR = EFR & ~(Src2 & 0xc0000003); }
+:^Cond^"MVC.S2" Src2, CtlDst is c_is16=0 & Cond & creg!=7 & creg!=0 & Src2 & CtlDst & crf_dst=29 & crhi=0
   & i1=1 & i2=0 & i3=0 & i4=0 & i5=1 & i6=0 & i7=1 & i8=1 & i9=1 & i10=0 & i11=0
 { if (Cond == 0) goto <skip>; EFR = EFR & ~(Src2 & 0xc0000003); <skip> }
 
-:^Cond^"MVC.S2" CtlReg, Dst is c_is16=0 & Cond & creg!=7 & CtlReg & Dst
+:"MVC.S2" CtlReg, Dst is c_is16=0 & creg=0 & z=0 & CtlReg & Dst
+  & i1=1 & i2=0 & i3=0 & i4=0 & i5=1 & i6=1 & i7=1 & i8=1 & i9=1 & i10=0 & i11=0
+  & i12=0
+{ Dst = CtlReg; }
+:^Cond^"MVC.S2" CtlReg, Dst is c_is16=0 & Cond & creg!=7 & creg!=0 & CtlReg & Dst
   & i1=1 & i2=0 & i3=0 & i4=0 & i5=1 & i6=1 & i7=1 & i8=1 & i9=1 & i10=0 & i11=0
   & i12=0
 { if (Cond == 0) goto <skip>; Dst = CtlReg; <skip> }
 
 # Time-stamp counter (SPRUFE8B 2.9.14): a TSCL write ignores src2 and reads are live, so all are userops.
-:^Cond^"MVC.S2" Src2, CtlDst is c_is16=0 & Cond & creg!=7 & Src2 & CtlDst & crf_dst=10 & crhi=0
+:"MVC.S2" Src2, CtlDst is c_is16=0 & creg=0 & z=0 & Src2 & CtlDst & crf_dst=10 & crhi=0
+  & i1=1 & i2=0 & i3=0 & i4=0 & i5=1 & i6=0 & i7=1 & i8=1 & i9=1 & i10=0 & i11=0
+{ c6000_tsc_start(); }
+:^Cond^"MVC.S2" Src2, CtlDst is c_is16=0 & Cond & creg!=7 & creg!=0 & Src2 & CtlDst & crf_dst=10 & crhi=0
   & i1=1 & i2=0 & i3=0 & i4=0 & i5=1 & i6=0 & i7=1 & i8=1 & i9=1 & i10=0 & i11=0
 { if (Cond == 0) goto <skip>; c6000_tsc_start(); <skip> }
 
-:^Cond^"MVC.S2" CtlReg, Dst is c_is16=0 & Cond & creg!=7 & CtlReg & crf=10 & crhi=0 & Dst
+:"MVC.S2" CtlReg, Dst is c_is16=0 & creg=0 & z=0 & CtlReg & crf=10 & crhi=0 & Dst
+  & i1=1 & i2=0 & i3=0 & i4=0 & i5=1 & i6=1 & i7=1 & i8=1 & i9=1 & i10=0 & i11=0
+  & i12=0
+{ Dst = c6000_tscl_read(); }
+:^Cond^"MVC.S2" CtlReg, Dst is c_is16=0 & Cond & creg!=7 & creg!=0 & CtlReg & crf=10 & crhi=0 & Dst
   & i1=1 & i2=0 & i3=0 & i4=0 & i5=1 & i6=1 & i7=1 & i8=1 & i9=1 & i10=0 & i11=0
   & i12=0
 { if (Cond == 0) goto <skip>; Dst = c6000_tscl_read(); <skip> }
 
-:^Cond^"MVC.S2" CtlReg, Dst is c_is16=0 & Cond & creg!=7 & CtlReg & crf=11 & crhi=0 & Dst
+:"MVC.S2" CtlReg, Dst is c_is16=0 & creg=0 & z=0 & CtlReg & crf=11 & crhi=0 & Dst
+  & i1=1 & i2=0 & i3=0 & i4=0 & i5=1 & i6=1 & i7=1 & i8=1 & i9=1 & i10=0 & i11=0
+  & i12=0
+{ Dst = c6000_tsch_read(); }
+:^Cond^"MVC.S2" CtlReg, Dst is c_is16=0 & Cond & creg!=7 & creg!=0 & CtlReg & crf=11 & crhi=0 & Dst
   & i1=1 & i2=0 & i3=0 & i4=0 & i5=1 & i6=1 & i7=1 & i8=1 & i9=1 & i10=0 & i11=0
   & i12=0
 { if (Cond == 0) goto <skip>; Dst = c6000_tsch_read(); <skip> }
@@ -67,17 +105,29 @@
 # descriptions. These execute only on .D2 with the T2 data path. The named
 # userops carry the linked-memory event to a system-aware emulator; CMTL's
 # output is the monitor's success flag.
-:^Cond^"LL.D2T2" "*"^rb_base, rb_dst is c_is16=0 & Cond & creg!=7 & rb_base & rb_dst
+:"LL.D2T2" "*"^rb_base, rb_dst is c_is16=0 & creg=0 & z=0 & rb_base & rb_dst
+  & i1=1 & i2=0 & i3=0 & i4=0 & op7=0x32
+  & i12=0 & i13=0 & i14=0 & i15=0 & i16=0 & i17=0
+{ rb_dst = *[ram]:4 rb_base; c6000_link_load(rb_base); }
+:^Cond^"LL.D2T2" "*"^rb_base, rb_dst is c_is16=0 & Cond & creg!=7 & creg!=0 & rb_base & rb_dst
   & i1=1 & i2=0 & i3=0 & i4=0 & op7=0x32
   & i12=0 & i13=0 & i14=0 & i15=0 & i16=0 & i17=0
 { if (Cond == 0) goto <skip>; rb_dst = *[ram]:4 rb_base; c6000_link_load(rb_base); <skip> }
 
-:^Cond^"SL.D2T2" rb_dst, "*"^rb_base is c_is16=0 & Cond & creg!=7 & rb_base & rb_dst
+:"SL.D2T2" rb_dst, "*"^rb_base is c_is16=0 & creg=0 & z=0 & rb_base & rb_dst
+  & i1=1 & i2=0 & i3=0 & i4=0 & op7=0x36
+  & i12=0 & i13=0 & i14=0 & i15=0 & i16=0 & i17=0
+{ c6000_link_store(rb_base, rb_dst); *[ram]:4 rb_base = rb_dst; }
+:^Cond^"SL.D2T2" rb_dst, "*"^rb_base is c_is16=0 & Cond & creg!=7 & creg!=0 & rb_base & rb_dst
   & i1=1 & i2=0 & i3=0 & i4=0 & op7=0x36
   & i12=0 & i13=0 & i14=0 & i15=0 & i16=0 & i17=0
 { if (Cond == 0) goto <skip>; c6000_link_store(rb_base, rb_dst); *[ram]:4 rb_base = rb_dst; <skip> }
 
-:^Cond^"CMTL.D2T2" "*"^rb_base, rb_dst is c_is16=0 & Cond & creg!=7 & rb_base & rb_dst
+:"CMTL.D2T2" "*"^rb_base, rb_dst is c_is16=0 & creg=0 & z=0 & rb_base & rb_dst
+  & i1=1 & i2=0 & i3=0 & i4=0 & op7=0x3a
+  & i12=0 & i13=0 & i14=0 & i15=0 & i16=0 & i17=0
+{ rb_dst = c6000_link_commit(rb_base); }
+:^Cond^"CMTL.D2T2" "*"^rb_base, rb_dst is c_is16=0 & Cond & creg!=7 & creg!=0 & rb_base & rb_dst
   & i1=1 & i2=0 & i3=0 & i4=0 & op7=0x3a
   & i12=0 & i13=0 & i14=0 & i15=0 & i16=0 & i17=0
 { if (Cond == 0) goto <skip>; rb_dst = c6000_link_commit(rb_base); <skip> }

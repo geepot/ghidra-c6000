@@ -41,7 +41,10 @@ def main():
             out.write(struct.pack(endian + '8I', *words))
             exact = (high << 16) | low
             intermediate = low if low < 0x8000 else low | 0xffff0000
-            mode = 'conservative' if predicate or parallel or entry or (exact & 3) else 'exact'
+            # An entry at the MVKH leaves the low half unknown on that path, which no target can
+            # stand for: the address built from the top is the one known target. An address that
+            # is not word-aligned is still the one the unpredicated pair builds.
+            mode = 'entered' if entry or (exact & 3) else 'conservative' if predicate or parallel else 'exact'
             rows.write(f'{0x1000+32*i:x}\t{exact:08x}\t{intermediate:08x}\t{mode}\t{int(entry)}\t{12 if stale else 8}\n')
 
 if __name__ == '__main__':

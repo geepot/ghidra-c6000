@@ -145,6 +145,29 @@ def operands_for(syntax, fields, mnem):
     return out
 
 
+GUARD = "if (Cond == 0) goto <skip>; "
+PREDICATE_TERMS = {"Cond", "creg!=7", "(creg!=0 | z=0)"}
+
+
+def emit(w, disp, pat, sem):
+    """Write one constructor, or two for an instruction that only its predicate guards.
+
+    An unpredicated instruction (creg=0, z=0; SPRUFE8B 3.6) gets its semantics with no guard.
+    Under one constructor it had the guard with a constant condition, and the decompiler works
+    out a call's arguments before it folds that away: a register written just before a second
+    call then looked conditional, mixed with the value the first call may have changed, and the
+    argument was dropped (issue #101). The two patterns are disjoint, as SLEIGH needs.
+    """
+    body = sem[len(GUARD):-len(" <skip>")] if sem.startswith(GUARD) and sem.endswith(" <skip>") else None
+    if body is None or "Cond" in body or "<skip>" in body or not disp.startswith('^Cond^"') or "Cond" not in pat:
+        w(":%s is %s { %s }" % (disp, " & ".join(pat), sem))
+        return 1
+    plain = [t for t in pat if t not in PREDICATE_TERMS] + ["creg=0", "z=0"]
+    w(":%s is %s { %s }" % (disp[len("^Cond^"):], " & ".join(plain), body))
+    w(":%s is %s { %s }" % (disp, " & ".join(pat + ["creg!=0"]), sem))
+    return 2
+
+
 def main():
     data, aliases = load()
     lines = []
@@ -844,14 +867,12 @@ def main():
                     seen_patterns[key] = mnem
                     if "c6000_unimpl_" in sem:
                         placeholder_mnemonics.add(mnem)
-                    w(":%s is %s { %s }" % (disp, " & ".join(pat), sem))
-                    n += 1
+                    n += emit(w, disp, pat, sem)
                     if mnem in {"ABSDP", "RCPDP", "RSQRDP"}:  # SPRUFE8B 3.12 ABSDP/RCPDP/RSQRDP: also the assemblers' odd-src2 form
                         odd = [t.replace("Src2Pair", "Src2PairDpsp") for t in pat
                                if not any(t.startswith(f"i{i}=") for i in range(12, 18))]
-                        w(":%s is %s { %s }" % (disp.replace("Src2Pair", "Src2PairDpsp"), " & ".join(odd),
-                                                 sem.replace("Src2Pair", "Src2PairDpsp")))
-                        n += 1
+                        n += emit(w, disp.replace("Src2Pair", "Src2PairDpsp"), odd,
+                                  sem.replace("Src2Pair", "Src2PairDpsp"))
         w("")
     open(OUT, "w").write("\n".join(lines))
 
