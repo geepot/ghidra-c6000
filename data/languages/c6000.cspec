@@ -27,6 +27,12 @@
     <register name="B3"/>
   </returnaddress>
   <callotherfixup targetop="c6000_pipeline"><pcode dynamic="true"/></callotherfixup>
+  <!-- EABI: AMR is zero at every call boundary (SPRAB89 3.2), so at each function's entry. -->
+  <context_data>
+    <tracked_set space="ram">
+      <set name="AMR" val="0"/>
+    </tracked_set>
+  </context_data>
   <default_proto>
     <prototype name="__c6000" extrapop="0" stackshift="0" strategy="standard">
       <input>
@@ -73,6 +79,8 @@
         <register name="A13"/><register name="A14"/><register name="A15"/>
         <register name="B10"/><register name="B11"/><register name="B12"/>
         <register name="B13"/><register name="B14"/><register name="B15"/>
+        <!-- EABI: AMR is zero at call boundaries, so a call leaves it as it was (SPRAB89 3.2). -->
+        <register name="AMR"/>
         <!-- No branch is in flight across a call: every latch is clear (C6000NestedLiftAnalyzer). -->
         <register name="C6000_LATCH_T0"/>
         <register name="C6000_LATCH_T1"/>
