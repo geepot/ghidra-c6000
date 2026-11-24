@@ -170,8 +170,8 @@ public final class C6000PacketStagingAnalyzer extends AbstractAnalyzer {
 	public static Instruction landingSite(Instruction branch) {
 		int slot = field(branch, "c_latch_t");
 		Instruction at = branch;
-		// ponytail: sixteen instructions cover five delay cycles of three-member packets
-		for (int n = 0; n < 16 && at != null; n++, at = at.getNext())
+		// The rest of its execute packet and five more of up to eight instructions (SPRUFE8B 3.5; issue #122).
+		for (int n = 0; n <= C6000CallAnalyzer.MAX_WINDOW && at != null; n++, at = at.getNext())
 			if (landingKind(at, slot) != 0) return at;
 		return null;
 	}

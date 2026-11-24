@@ -466,6 +466,88 @@ CASES = [
         STW     .D1T2   B5,*+A6[A4]
         BNOP    .S2     B3,5
 """),
+    # issue #122: the call lands 20 instructions after it issues, behind three six-member packets.
+    # A latched branch is a call by the landing that reads its latch, wherever in its five delay
+    # cycles that is: a ? b + 107 : h(b + 15) + 16.
+    ("farcall", True, """{n}:
+        STW     .D2T2   B3,*B15--[2]
+||      MV      .L1     A4,A1
+        MV      .L1X    B4,A4
+        MVKL    .S2     {n}_ret,B3
+        MVKH    .S2     {n}_ret,B3
+  [ A1] B       .S1     {n}_x
+{n}_in:
+  [!A1] B       .S1     {n}_h
+||      ZERO    .L1     A16
+||      ZERO    .L2     B16
+||      ZERO    .S2     B17
+||      ZERO    .D1     A17
+||      ZERO    .D2     B18
+        ADD     .L1     A4,1,A4
+||      ZERO    .L2     B16
+||      ZERO    .S1     A18
+||      ZERO    .S2     B17
+||      ZERO    .D1     A17
+||      ZERO    .D2     B18
+        ADD     .L1     A4,2,A4
+||      ZERO    .L2     B16
+||      ZERO    .S1     A18
+||      ZERO    .S2     B17
+||      ZERO    .D1     A17
+||      ZERO    .D2     B18
+        ADD     .L1     A4,4,A4
+        NOP
+        ADDK    .S1     8,A4
+{n}_ret:
+        ADDK    .S1     16,A4
+        LDW     .D2T2   *++B15[2],B3
+        NOP             4
+        B       .S2     B3
+        NOP             5
+{n}_x:
+        ADDK    .S1     100,A4
+        LDW     .D2T2   *++B15[2],B3
+        NOP             4
+        B       .S2     B3
+        NOP             5
+"""),
+    # issue #124: X lands behind W in address order, but behind Y when the jump Z is taken, and Y
+    # issues after W. X's latch is held until its last landing on any path, so Y gets another:
+    # c ? (a && b ? 0x7ef : 0x3ef) : (b ? 0xc1f : 0x81f).
+    ("slotreuse", True, """{n}:
+        MV      .L1     A4,A1
+||      MV      .S1X    B4,A2
+||      MV      .L2X    A6,B0
+        ZERO    .L1     A4
+  [ A1] B       .S1     {n}_tgt
+{n}_in:
+  [ B0] B       .S2     {n}_far
+        ADDK    .S1     1,A4
+        ADDK    .S1     2,A4
+        ADDK    .S1     4,A4
+        ADDK    .S1     8,A4
+  [ B0] B       .S1     {n}_done
+{n}_tgt:
+  [ A2] B       .S1     {n}_y
+        ADDK    .S1     16,A4
+        NOP             3
+        ADDK    .S1     2048,A4
+        B       .S2     B3
+        NOP             5
+{n}_far:
+        ADDK    .S1     32,A4
+        ADDK    .S1     64,A4
+        ADDK    .S1     128,A4
+        ADDK    .S1     256,A4
+        ADDK    .S1     512,A4
+{n}_done:
+        B       .S2     B3
+        NOP             5
+{n}_y:
+        B       .S2     B3
+        ADDK    .S1     1024,A4
+        NOP             4
+"""),
     # Known-goods: an ordinary call; a forward predicated call; a loop branch to its own head with B3 there
     # A callback is only named by its address: the code that takes it makes it a function. The return
     # link beside it is an address too, and is not one.
@@ -934,6 +1016,8 @@ LIFTED = {
     "swjump": ["0x111", "0x222", "0x333", "0x999"],
     "jcallpre": ["jcallpre_h(param_2)", "param_2 + 3"],
     "pktcall": ["param_1 + 0x11", "pktcall_h("],
+    "farcall": ["farcall_h(param_2 + 0xf)", "param_2 + 0x6b"],
+    "slotreuse": ["0x3ef", "0x81f"],
     "landret": ["param_1 + 0xc", "param_3 != 0", "param_1 + 4"],
     # Ghidra 12.1.4 prints the test as param_3 == 0 with the arms the other way round
     "landlink": ["param_1 + 0xc", "if (param_3 ", "param_1 + 4"],

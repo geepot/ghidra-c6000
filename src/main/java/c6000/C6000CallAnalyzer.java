@@ -501,7 +501,16 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 				int slot = -1;
 				for (int k = 0; k < busy.length && slot < 0; k++) if (busy[k] < i) slot = k;
 				if (slot < 0) return refuse("more than eight branches are in flight at once");
-				busy[slot] = land;
+				// Held until its last landing on any path: on one where an earlier jump is taken it
+				// lands behind the instruction the hardware lands it behind, which may be later, and
+				// a landing outside the stretch holds the latch to its end (issue #124).
+				int until = land;
+				for (Instruction site : sites.getOrDefault(branch.getMinAddress(), Map.of()).values()) {
+					int j = 0;
+					while (j < stretch.size() && !stretch.get(j).getMinAddress().equals(site.getMinAddress())) j++;
+					until = Math.max(until, j);
+				}
+				busy[slot] = until;
 				latches.add(new Latch(branch, slot, behind, kind, target, false));
 			}
 			if (latches.isEmpty()) return refuse("no branch to latch");
