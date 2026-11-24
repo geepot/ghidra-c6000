@@ -20,7 +20,8 @@ public class C6000NestedWindowTest extends GhidraScript {
 		long entry, h, end;
 		long[] warn;
 		String[] c;
-		long[] functions, labels;
+		long[] functions, labels, declare;
+		@com.google.gson.annotations.SerializedName("plain_at") long plainAt;
 		String[] either, plain, absent;
 	}
 
@@ -37,6 +38,11 @@ public class C6000NestedWindowTest extends GhidraScript {
 				for (long at : new long[] { item.entry, item.h }) {
 					disassemble(toAddr(at));
 					createFunction(toAddr(at), at == item.entry ? item.name : item.name + "_h");
+				}
+				// More entries a symbol table or a seed list would give.
+				if (item.declare != null) for (long at : item.declare) {
+					disassemble(toAddr(at));
+					createFunction(toAddr(at), null);
 				}
 			}
 			return;
@@ -78,7 +84,7 @@ public class C6000NestedWindowTest extends GhidraScript {
 			if (item.plain != null || item.absent != null) {
 				var decompiler = new ghidra.app.decompiler.DecompInterface();
 				decompiler.openProgram(currentProgram);
-				var result = decompiler.decompileFunction(getFunctionAt(toAddr(item.entry)), 60, monitor);
+				var result = decompiler.decompileFunction(getFunctionAt(toAddr(item.plainAt != 0 ? item.plainAt : item.entry)), 60, monitor);
 				String c = result.decompileCompleted() ? result.getDecompiledFunction().getC() : String.valueOf(result.getErrorMessage());
 				decompiler.dispose();
 				if (item.plain != null) for (String text : item.plain)

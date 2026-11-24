@@ -913,9 +913,11 @@ public final class C6000DelaySlots {
                         if(C6000PacketStagingAnalyzer.flow(prior).isJump()||C6000PacketStagingAnalyzer.flow(prior).isCall()||C6000PacketStagingAnalyzer.flow(prior).isTerminal())return null;
                         var priorOwner=program.getFunctionManager().getFunctionContaining(priorAt);
                         // A physical predecessor's p bit does not prove that
-                        // an alternate entry executed it. Require the owned
-                        // prefix and reject incoming control into this suffix.
-                        if(owner==null||!owner.equals(priorOwner))return null;
+                        // an alternate entry executed it. Require the prefix to
+                        // have the branch's owner, or neither to have one (code
+                        // only a jump reaches, issue #115), and reject incoming
+                        // control into this suffix.
+                        if(!Objects.equals(owner,priorOwner))return null;
                         var incoming=program.getReferenceManager().getReferencesTo(issue.getAddress());
                         while(incoming.hasNext())if(incoming.next().getReferenceType().isFlow())return null;
                         if(C6000ExecutionPackets.startsMulticycleNop(prior)) {

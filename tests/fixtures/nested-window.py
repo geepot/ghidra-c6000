@@ -368,6 +368,32 @@ CASES = [
         B       .S2     B3
         NOP             5
 """),
+    # issue #115: the loop body is reached only by test's jump, so no function owns it, and its call
+    # is second in its execute packet. It still gets its five delay cycles: test(a) = a ? h(a + 7) : 0.
+    ("c2split", False, """{n}:
+        STW     .D2T2   B3,*B15--[2]
+        B       .S1     {n}_test
+        NOP             5
+{n}_body:
+        MV      .L2X    A4,B4
+||      B       .S1     {n}_h
+        ADD     .L1     A4,7,A4
+        MVKL    .S2     {n}_back,B3
+        MVKH    .S2     {n}_back,B3
+        NOP             2
+{n}_back:
+        B       .S1     {n}_exit
+        NOP             5
+{n}_test:
+        MV      .L2X    A4,B0
+  [ B0] B       .S1     {n}_body
+        NOP             5
+{n}_exit:
+        LDW     .D2T2   *++B15[2],B3
+        NOP             4
+        B       .S2     B3
+        NOP             5
+"""),
     # Known-goods: an ordinary call; a forward predicated call; a loop branch to its own head with B3 there
     # A callback is only named by its address: the code that takes it makes it a function. The return
     # link beside it is an address too, and is not one.
@@ -854,6 +880,10 @@ LIFTED = {
 # What the C of a case that latches nothing must hold, and must not.
 PLAIN = {"cpyret": ["return param_1 + 1;"]}
 ABSENT = {"cpyretp": ["return param_1 + 1;"]}
+# Labels declared as functions too, as a symbol table or a seed list would, and what the C of the
+# function at a label must hold.
+DECLARE = {"c2split": ["test", "exit"]}
+PLAIN_AT = {"c2split": ("test", ["c2split_h(param_1 + 7"])}
 # Cases that are warned or lifted depending on the decompiler, and what their C holds when lifted.
 EITHER = {"entmany": ["return 0x50;", "0x111", "+ 0xee"]}
 LINK = re.compile(r"(MVK[LH]\s+\.S[12]\s+|\.word\s+)(\w+)")
@@ -914,7 +944,9 @@ def main():
         # A lifted case is not warned: its branches are latched and its C is the hardware's.
         manifest.append(dict(name=name, entry=addresses[name], h=addresses[name + "_h"],
                              end=0x1000 + index * SIZE + SIZE - 1, warn=[] if name in LIFTED else warn,
-                             c=LIFTED.get(name, []), either=EITHER.get(name), plain=PLAIN.get(name), absent=ABSENT.get(name),
+                             c=LIFTED.get(name, []), either=EITHER.get(name), plain=PLAIN.get(name) or (PLAIN_AT[name][1] if name in PLAIN_AT else None), absent=ABSENT.get(name),
+                             plain_at=addresses[name + "_" + PLAIN_AT[name][0]] if name in PLAIN_AT else 0,
+                             declare=[addresses[name + "_" + label] for label in DECLARE.get(name, [])],
                              functions=[a for label, a in addresses.items() if label == name + "_cb"],
                              labels=[a for label, a in addresses.items() if label == name + "_notcb"]))
     if len(sys.argv) == 4:
