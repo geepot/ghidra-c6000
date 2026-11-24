@@ -37,6 +37,7 @@
     <register name="c_land1_t" hidden="true"/>
     <register name="c_land1_disp" hidden="true"/>
     <register name="c_land1_sure" hidden="true"/>
+    <register name="C6000_LANDED" hidden="true"/>
     <register name="c_land2_sure" hidden="true"/>
     <register name="c_land2" hidden="true"/>
     <register name="c_land2_ind" hidden="true"/>

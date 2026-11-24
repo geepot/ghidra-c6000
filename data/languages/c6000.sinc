@@ -105,6 +105,8 @@ define register offset=0x3300 size=4 [ C6000_STAGE_OLD C6000_STAGE_OLD2 ];
 define register offset=0x3400 size=4
   [ C6000_LATCH_T0 C6000_LATCH_T1 C6000_LATCH_T2 C6000_LATCH_T3 C6000_LATCH_T4 C6000_LATCH_T5 C6000_LATCH_T6 C6000_LATCH_T7
     C6000_LATCH_PC0 C6000_LATCH_PC1 C6000_LATCH_PC2 C6000_LATCH_PC3 C6000_LATCH_PC4 C6000_LATCH_PC5 C6000_LATCH_PC6 C6000_LATCH_PC7 ];
+# Whether the call landed behind this instruction was taken, for the jump to its return point.
+define register offset=0x3440 size=4 [ C6000_LANDED ];
 define register offset=0x4000 size=4
   [ C6000_NEW_A0 C6000_NEW_A1 C6000_NEW_A2 C6000_NEW_A3 C6000_NEW_A4 C6000_NEW_A5 C6000_NEW_A6 C6000_NEW_A7 C6000_NEW_A8 C6000_NEW_A9 C6000_NEW_A10 C6000_NEW_A11 C6000_NEW_A12 C6000_NEW_A13 C6000_NEW_A14 C6000_NEW_A15 C6000_NEW_A16 C6000_NEW_A17 C6000_NEW_A18 C6000_NEW_A19 C6000_NEW_A20 C6000_NEW_A21 C6000_NEW_A22 C6000_NEW_A23 C6000_NEW_A24 C6000_NEW_A25 C6000_NEW_A26 C6000_NEW_A27 C6000_NEW_A28 C6000_NEW_A29 C6000_NEW_A30 C6000_NEW_A31
     C6000_NEW_B0 C6000_NEW_B1 C6000_NEW_B2 C6000_NEW_B3 C6000_NEW_B4 C6000_NEW_B5 C6000_NEW_B6 C6000_NEW_B7 C6000_NEW_B8 C6000_NEW_B9 C6000_NEW_B10 C6000_NEW_B11 C6000_NEW_B12 C6000_NEW_B13 C6000_NEW_B14 C6000_NEW_B15 C6000_NEW_B16 C6000_NEW_B17 C6000_NEW_B18 C6000_NEW_B19 C6000_NEW_B20 C6000_NEW_B21 C6000_NEW_B22 C6000_NEW_B23 C6000_NEW_B24 C6000_NEW_B25 C6000_NEW_B26 C6000_NEW_B27 C6000_NEW_B28 C6000_NEW_B29 C6000_NEW_B30 C6000_NEW_B31 ];
@@ -625,25 +627,29 @@ LandTgt2: reloc is c_land2_disp [ reloc = (inst_start & 0xffffffe0) + (c_land2_d
 Land1: is c_land1=0 { }
 Land1: is c_land1=1 & c_land1_ind=0 & c_land1_sure=0 & Land1T & LandTgt1 { local t:4 = Land1T; Land1T = 0; if (t != 0) goto LandTgt1; }
 Land1: is c_land1=1 & c_land1_ind=1 & c_land1_sure=0 & Land1T & Land1Pc { local t:4 = Land1T; Land1T = 0; if (t == 0) goto <stay>; goto [Land1Pc]; <stay> Land1T = 0; }
-Land1: is c_land1=2 & c_land1_ind=0 & c_land1_sure=0 & Land1T & LandTgt1 { local t:4 = Land1T; Land1T = 0; if (t == 0) goto <stay>; call LandTgt1; <stay> }
-Land1: is c_land1=2 & c_land1_ind=1 & c_land1_sure=0 & Land1T & Land1Pc { local t:4 = Land1T; Land1T = 0; if (t == 0) goto <stay>; call [Land1Pc]; <stay> }
+Land1: is c_land1=2 & c_land1_ind=0 & c_land1_sure=0 & Land1T & LandTgt1 { local t:4 = Land1T; Land1T = 0; C6000_LANDED = t; if (t == 0) goto <stay>; call LandTgt1; <stay> }
+Land1: is c_land1=2 & c_land1_ind=1 & c_land1_sure=0 & Land1T & Land1Pc { local t:4 = Land1T; Land1T = 0; C6000_LANDED = t; if (t == 0) goto <stay>; call [Land1Pc]; <stay> }
 Land1: is c_land1=3 & c_land1_sure=0 & Land1T & Land1Pc { local t:4 = Land1T; Land1T = 0; if (t == 0) goto <stay>; return [Land1Pc]; <stay> }
 Land1: is c_land1=1 & c_land1_ind=0 & c_land1_sure=1 & Land1T & LandTgt1 { Land1T = 0; goto LandTgt1; }
 Land1: is c_land1=1 & c_land1_ind=1 & c_land1_sure=1 & Land1T & Land1Pc { Land1T = 0; goto [Land1Pc]; }
-Land1: is c_land1=2 & c_land1_ind=0 & c_land1_sure=1 & Land1T & LandTgt1 { Land1T = 0; call LandTgt1; }
-Land1: is c_land1=2 & c_land1_ind=1 & c_land1_sure=1 & Land1T & Land1Pc { Land1T = 0; call [Land1Pc]; }
+Land1: is c_land1=2 & c_land1_ind=0 & c_land1_sure=1 & Land1T & LandTgt1 { Land1T = 0; C6000_LANDED = 1; call LandTgt1; }
+Land1: is c_land1=2 & c_land1_ind=1 & c_land1_sure=1 & Land1T & Land1Pc { Land1T = 0; C6000_LANDED = 1; call [Land1Pc]; }
 Land1: is c_land1=3 & c_land1_sure=1 & Land1T & Land1Pc { Land1T = 0; return [Land1Pc]; }
 Land2: is c_land2=0 { }
 Land2: is c_land2=1 & c_land2_ind=0 & c_land2_sure=0 & Land2T & LandTgt2 { local t:4 = Land2T; Land2T = 0; if (t != 0) goto LandTgt2; }
 Land2: is c_land2=1 & c_land2_ind=1 & c_land2_sure=0 & Land2T & Land2Pc { local t:4 = Land2T; Land2T = 0; if (t == 0) goto <stay>; goto [Land2Pc]; <stay> Land2T = 0; }
-Land2: is c_land2=2 & c_land2_ind=0 & c_land2_sure=0 & Land2T & LandTgt2 { local t:4 = Land2T; Land2T = 0; if (t == 0) goto <stay>; call LandTgt2; <stay> }
-Land2: is c_land2=2 & c_land2_ind=1 & c_land2_sure=0 & Land2T & Land2Pc { local t:4 = Land2T; Land2T = 0; if (t == 0) goto <stay>; call [Land2Pc]; <stay> }
-Land2: is c_land2=3 & c_land2_sure=0 & Land2T & Land2Pc { local t:4 = Land2T; Land2T = 0; if (t == 0) goto <stay>; return [Land2Pc]; <stay> }
+Land2: is c_land2=2 & c_land2_ind=0 & c_land2_sure=0 & Land2T & LandTgt2 { local t:4 = Land2T; Land2T = 0; C6000_LANDED = t; if (t == 0) goto <stay>; call LandTgt2; <stay> }
+Land2: is c_land2=2 & c_land2_ind=1 & c_land2_sure=0 & Land2T & Land2Pc { local t:4 = Land2T; Land2T = 0; C6000_LANDED = t; if (t == 0) goto <stay>; call [Land2Pc]; <stay> }
+Land2: is c_land2=3 & c_land2_ind=1 & c_land2_sure=0 & Land2T & Land2Pc { local t:4 = Land2T; Land2T = 0; if (t == 0) goto <stay>; return [Land2Pc]; <stay> }
 Land2: is c_land2=1 & c_land2_ind=0 & c_land2_sure=1 & Land2T & LandTgt2 { Land2T = 0; goto LandTgt2; }
 Land2: is c_land2=1 & c_land2_ind=1 & c_land2_sure=1 & Land2T & Land2Pc { Land2T = 0; goto [Land2Pc]; }
-Land2: is c_land2=2 & c_land2_ind=0 & c_land2_sure=1 & Land2T & LandTgt2 { Land2T = 0; call LandTgt2; }
-Land2: is c_land2=2 & c_land2_ind=1 & c_land2_sure=1 & Land2T & Land2Pc { Land2T = 0; call [Land2Pc]; }
-Land2: is c_land2=3 & c_land2_sure=1 & Land2T & Land2Pc { Land2T = 0; return [Land2Pc]; }
+Land2: is c_land2=2 & c_land2_ind=0 & c_land2_sure=1 & Land2T & LandTgt2 { Land2T = 0; C6000_LANDED = 1; call LandTgt2; }
+Land2: is c_land2=2 & c_land2_ind=1 & c_land2_sure=1 & Land2T & Land2Pc { Land2T = 0; C6000_LANDED = 1; call [Land2Pc]; }
+Land2: is c_land2=3 & c_land2_ind=1 & c_land2_sure=1 & Land2T & Land2Pc { Land2T = 0; return [Land2Pc]; }
+# A call that does not return to the next instruction: the callee comes back where B3 points, which
+# may be earlier code or past instructions the call skips. The second landing, written as a return
+# to a displacement (c_land2=3, c_land2_ind=0), jumps there when the call beside it was taken.
+Land2: is c_land2=3 & c_land2_ind=0 & LandTgt2 { local r:4 = C6000_LANDED; C6000_LANDED = 0; if (r != 0) goto LandTgt2; }
 # c_landN_sure: the latch is set on every path that reaches the instruction, so the landing has no
 # fall-through and flow analysis stops where the hardware leaves.
 

@@ -461,6 +461,8 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 			String why;
 			Map<Address, Set<Boolean>> calls;
 			Map<Address, Instruction> past;
+			Map<Address, Set<Address>> backs;
+			landedBack = new HashMap<>();
 			landedBehind = new HashMap<>();
 			landedAsCall = new HashMap<>();
 			issuedBeyond = new LinkedHashMap<>();
@@ -471,6 +473,8 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 				sites = landedBehind;
 				calls = landedAsCall;
 				past = issuedBeyond;
+				backs = landedBack;
+				landedBack = null;
 				landedBehind = null;
 				landedAsCall = null;
 				issuedBeyond = null;
@@ -552,18 +556,30 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 			// has no fall-through: the plan's own run of every outcome says which, unless something
 			// outside it also reaches the code it runs.
 			Lifting plan = new Lifting(first, last, latches);
-			Map<String, boolean[]> uses;
-			Set<Address> walked;
-			landingUse = new HashMap<>();
-			landingWalk = new HashSet<>();
-			try {
-				why = compare(first, outer, null, plan);
-			}
-			finally {
-				uses = landingUse;
-				walked = landingWalk;
-				landingUse = null;
-				landingWalk = null;
+			Map<String, boolean[]> uses = null;
+			Set<Address> walked = null;
+			// As planned; and if that does not run what the hardware runs, with each call sent on to
+			// where it returns when that is not the next instruction (issues #105, #66).
+			for (int attempt = 0; attempt < 2; attempt++) {
+				List<Latch> tried = attempt == 0 ? latches : withReturns(latches, backs);
+				if (tried == null) break;
+				Lifting candidate = new Lifting(first, last, tried);
+				landingUse = new HashMap<>();
+				landingWalk = new HashSet<>();
+				try {
+					why = compare(first, outer, null, candidate);
+				}
+				finally {
+					uses = landingUse;
+					walked = landingWalk;
+					landingUse = null;
+					landingWalk = null;
+				}
+				if (why == null) {
+					latches = tried;
+					plan = candidate;
+					break;
+				}
 			}
 			if (why != null || entered(walked, first, latches)) return plan;
 			List<Latch> sure = new ArrayList<>();
@@ -572,7 +588,7 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 				// Outside the stretch a run ends once nothing is in flight, so a landing there is not seen passed.
 				Address at = latch.land().getMinAddress();
 				boolean inside = at.compareTo(first.getMinAddress()) >= 0 && at.compareTo(last) <= 0;
-				sure.add(new Latch(latch.branch(), latch.slot(), latch.land(), latch.kind(), latch.target(), inside && use != null && use[0] && !use[1]));
+				sure.add(new Latch(latch.branch(), latch.slot(), latch.land(), latch.kind(), latch.target(), latch.kind() != 4 && inside && use != null && use[0] && !use[1]));
 			}
 			return new Lifting(first, last, sure);
 		}
@@ -669,6 +685,35 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 			return returns;
 		}
 
+		/** Set while planning: where each transfer that lands as a call returns to. */
+		private Map<Address, Set<Address>> landedBack;
+
+		/**
+		 * The plan with a jump to its return point after each call that does not return to the
+		 * instruction after the one it lands behind: to earlier code, or past instructions the call
+		 * skips (kind 4, on the same instruction as its call). Null when a call returns to different
+		 * places, or its instruction cannot carry both.
+		 */
+		private List<Latch> withReturns(List<Latch> latches, Map<Address, Set<Address>> backs) {
+			Map<Address, Integer> count = new HashMap<>();
+			for (Latch latch : latches) count.merge(latch.land().getMinAddress(), 1, Integer::sum);
+			List<Latch> out = new ArrayList<>();
+			boolean any = false;
+			for (Latch latch : latches) {
+				out.add(latch);
+				Set<Address> back = latch.kind() == 2 ? backs.get(latch.branch().getMinAddress()) : null;
+				if (back == null) continue;
+				if (back.size() != 1) return null;
+				Address to = back.iterator().next();
+				Instruction after = next(latch.land());
+				if (after != null && after.getMinAddress().equals(to)) continue;
+				if (count.get(latch.land().getMinAddress()) != 1) return null;
+				out.add(new Latch(latch.branch(), latch.slot(), latch.land(), 4, to, false));
+				any = true;
+			}
+			return any ? out : null;
+		}
+
 		/** Set by the hardware run: a predicated transfer beyond the stretch it has no outcome for. */
 		private Instruction undecided;
 		/** Set while planning: each transfer the hardware issues beyond the stretch, with a branch in flight. */
@@ -735,7 +780,9 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 				if (kind == 0) continue;
 				Address target = field(insn, land + "_ind") != 0 ? null :
 					at.getNewAddress((at.getOffset() & ~31L) + 2L * signed(insn, land + "_disp"));
-				lands.add(new Landing(field(insn, land + "_t"), kind, target, field(insn, land + "_sure") != 0));
+				// A return to a displacement is the jump to a call's return point (c6000.sinc).
+				if (kind == 3 && target != null) kind = 4;
+				lands.add(new Landing(field(insn, land + "_t"), kind, target, kind != 4 && field(insn, land + "_sure") != 0));
 			}
 			return lands;
 		}
@@ -765,8 +812,11 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 		/** The transfer behind a flow reference from {@code from} to {@code label}: {@code from}, or the latched branch it lands. */
 		private Instruction entering(Instruction from, Address label) {
 			if (from == null || transfer(from)) return from;
-			for (Landing land : landingsAt(from.getMinAddress()))
-				if (label.equals(land.target())) return latchedBranch(from, land.slot());
+			for (Landing land : landingsAt(from.getMinAddress())) {
+				if (!label.equals(land.target())) continue;
+				// A callee's return is no jump whose window the look-back could follow.
+				return land.kind() == 4 ? null : latchedBranch(from, land.slot());
+			}
 			return from;
 		}
 
@@ -837,7 +887,16 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 					set[slot] = go ? insn : null;
 				}
 				else if (!idle(insn) && runs(insn, region, facts)) trace.add(at.toString());
+				boolean called = false;
 				for (Landing land : lifting == LISTED ? landingsAt(at) : landAt.getOrDefault(at, List.of())) {
+					if (land.kind() == 4) {
+						// The call beside it, if taken, comes back at its return point, not here.
+						if (!called) continue;
+						boolean pending = java.util.Arrays.stream(set).anyMatch(java.util.Objects::nonNull);
+						if (!pending && !inside(land.target(), region)) return new Run(trace, "continues at " + land.target(), null);
+						next = decode(land.target());
+						break;
+					}
 					Instruction branch = set[land.slot()];
 					if (landingUse != null) landingUse.computeIfAbsent(at + "/" + land.slot(), k -> new boolean[2])[branch != null ? 0 : 1] = true;
 					if (branch == null && land.sure()) return Run.unproven("the landing at " + at + " takes its latch as set, and it is not on this path");
@@ -849,7 +908,7 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 					String where = destination(branch, land.target());
 					if (others && (land.kind() == 2 || land.target() == null))
 						return Run.unproven("the latched lifting leaves for " + where + " with a branch still to land");
-					if (land.kind() == 2) { trace.add("calls " + where); continue; }
+					if (land.kind() == 2) { trace.add("calls " + where); called = true; continue; }
 					if (land.target() == null || (!others && !inside(land.target(), region))) return new Run(trace, "continues at " + where, null);
 					next = decode(land.target());
 					break;
@@ -1150,10 +1209,20 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 			for (int i = 0; i < start; i++) if (transfer(region.path().get(i)) && (predicate(region.path().get(i)) == null || executes(region.path(), i, facts) != Boolean.FALSE)) {
 				from = start;
 				for (int j = i + 1; j < start; j++) if (preCycles[j] >= preCycles[i] + 1 + DELAY_CYCLES) { from = j; break; }
+				// A call that has returned by then left B3 at its return point (issue #105).
+				Instruction earlier = listing.getInstructionAt(region.path().get(i).getMinAddress());
+				ret3.remove(b3);
+				if (from < start && earlier != null && predicate(earlier) == null && C6000PacketStagingAnalyzer.flow(earlier).isCall() &&
+					earlier.getFallThrough() != null && !C6000PacketStagingAnalyzer.inert(earlier))
+					ret3.put(b3, new long[] { earlier.getFallThrough().getOffset(), FULL });
 			}
 			for (int i = from; i < start; i++) {
 				Instruction insn = region.path().get(i);
-				if (entered(insn)) ret3.remove(b3);
+				if (entered(insn)) {
+					// Entered only where a latched call comes back: B3 is this address on that way in too.
+					long[] held = ret3.get(b3);
+					if (held == null || held[0] != insn.getMinAddress().getOffset() || !returnPointOnly(insn)) ret3.remove(b3);
+				}
 				if (transfer(insn) || idle(insn)) continue;
 				Register load = loadDestination(insn);
 				if (!(load != null ? overlaps(load, b3) : issueWrites(insn).stream().anyMatch(r -> overlaps(r, b3)))) continue;
@@ -1262,6 +1331,7 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 							Address back = linked != null ? linked : b3to != null && listing.getInstructionAt(b3to) != null ? b3to :
 								C6000PacketStagingAnalyzer.inert(listed) ? returnPoint(listed) : listed.getFallThrough();
 							if (back == null) return new Run(trace, "does not return", null);
+							if (landedBack != null) landedBack.computeIfAbsent(transfer.getMinAddress(), k -> new HashSet<>()).add(back);
 							// The callee returned through B3, which still holds that address.
 							ret3.put(b3, new long[] { back.getOffset(), FULL });
 							at = decode(back);
@@ -1291,6 +1361,17 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 			catch (MemoryAccessException e) {
 				return Run.unproven("a packet's parallel bits cannot be read");
 			}
+		}
+
+		/** Every flow into {@code insn}, other than falling in, is the jump of a latched call to its return point here. */
+		private boolean returnPointOnly(Instruction insn) {
+			Address at = insn.getMinAddress();
+			if (program.getSymbolTable().isExternalEntryPoint(at) || program.getFunctionManager().getFunctionAt(at) != null) return false;
+			for (Reference ref : program.getReferenceManager().getReferencesTo(at)) {
+				if (!ref.getReferenceType().isFlow() || ref.getReferenceType().isFallthrough()) continue;
+				if (landingsAt(ref.getFromAddress()).stream().noneMatch(land -> land.kind() == 4 && at.equals(land.target()))) return false;
+			}
+			return true;
 		}
 
 		/** Reached other than by falling in: a flow reference from elsewhere, or a function or external entry. */
@@ -1601,10 +1682,14 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 
 		/** {@code valuesOnly}: other transfers may issue in the window; only the registers at the landing are wanted. */
 		private Arrival arrive(Instruction branch, boolean valuesOnly) {
+			return arrive(branch, valuesOnly, true);
+		}
+
+		private Arrival arrive(Instruction branch, boolean valuesOnly, boolean throughJump) {
 			Map<Register, long[]> regs = new HashMap<>();
 			Instruction partner = null;
 			List<Instruction> path = lookBack(branch);
-			List<Instruction> via = viaJump(branch, path);
+			List<Instruction> via = throughJump ? viaJump(branch, path) : null;
 			if (via != null) path = via;
 			List<Instruction> execution = new ArrayList<>(path);
 			int branchIndex = execution.size();
@@ -1644,10 +1729,13 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 				Boolean runs = executes(execution, i, facts);
 				// Whether a transfer goes decides what is in flight: look harder for that.
 				if (runs == null && isFlow(insn)) runs = decided(execution, i, facts, 0);
-				// A transfer in the window of the jump this came in through, unless it is known not to
-				// go, is still in flight when the jump lands: the branch does not arrive alone.
-				if (via != null && insn != viaInsn && isFlow(insn) && !Boolean.FALSE.equals(runs) && i > slotIndex(path, viaInsn) &&
-					!targetOnly && !valuesOnly) return null;
+				// A transfer in the window of the jump this came in through that goes is still in
+				// flight when the jump lands: nothing is known through that jump, and the branch is
+				// judged by the code before it alone, as when no jump is followed. One that may go
+				// leaves B3 unknown; the path where it does is the nested-window check's to compare,
+				// as for a transfer in flight on the straight-line path.
+				if (via != null && insn != viaInsn && isFlow(insn) && (predicate(insn) == null || Boolean.TRUE.equals(runs)) && i > slotIndex(path, viaInsn) &&
+					!targetOnly && !valuesOnly) return arrive(branch, valuesOnly, false);
 				if (Boolean.FALSE.equals(runs)) {
 					if (via == null && isFlow(insn) && complementary(insn, branch) &&
 						stable(execution, i, branchIndex, predicate(branch), true) &&

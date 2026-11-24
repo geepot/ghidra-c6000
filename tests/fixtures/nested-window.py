@@ -304,8 +304,9 @@ CASES = [
         NOP             5
 """),
     # issue #105: B3 still holds the first call's link when [A1] B h issues, so h returns to back
-    # again: a predicated call that returns to earlier code (issue #66), which stays warned.
-    ("lnkjmp", True, """{n}:
+    # again: a predicated call that returns to earlier code (issue #66), lifted as the call and a
+    # jump to its return point.
+    ("lnkjmp", False, """{n}:
         STW     .D2T2   B3,*B15--[2]
 ||      MV      .L1X    B4,A1
         ADD     .L1     A4,1,A4
@@ -316,7 +317,6 @@ CASES = [
         NOP             5
 {n}_back:
         SUB     .L1     A1,1,A1
-{n}_in:
   [ A1] B       .S1     {n}_h
   [!A1] LDW     .D2T2   *++B15[2],B3
 ||[!A1] STW     .D1T1   A4,*A6
@@ -394,7 +394,7 @@ CASES = [
         B       .S2     B3
         NOP             5
 """),
-    # issue #108: g jumps into tail, which f's body holds and which has a warned nest (busytgt's).
+    # issue #108: g jumps into tail, which f's body holds and which has a warned nest (a pipelined loop).
     # The decompiler follows g's jump into that code, so g's jump is warned too (ENTERED).
     ("shlatpl", True, """{n}:
         STW     .D2T2   B3,*B15--[2]
@@ -417,26 +417,23 @@ CASES = [
         B       .S2     B3
         NOP             5
 {n}_tail:
-        STW     .D2T2   B3,*B15--[2]
-  [ A2] B       .S1     {n}_tgt
-        NOP             1
+        MV      .L2X    A2,B0
+  [ B0] B       .S1     {n}_k
+||[ B0] SUB     .L2     B0,1,B0
 {n}_in:
-  [ A2] B       .S1     {n}_h
-        NOP             3
-        ADD     .L1     A4,7,A4
-        LDW     .D2T2   *++B15[2],B3
-        NOP             4
-        B       .S2     B3
-        NOP             5
-{n}_tgt:
-        MVKL    .S2     {n}_ret,B3
-        MVKH    .S2     {n}_ret,B3
-        ADDK    .S1     1000,A4
-        NOP             5
-{n}_ret:
+  [ B0] B       .S1     {n}_k
+||[ B0] SUB     .L2     B0,1,B0
+  [ B0] B       .S1     {n}_k
+||[ B0] SUB     .L2     B0,1,B0
+{n}_k:
         ADD     .L1     A4,1,A4
-        LDW     .D2T2   *++B15[2],B3
-        NOP             4
+||[ B0] B       .S1     {n}_k
+||[ B0] SUB     .L2     B0,1,B0
+        NOP
+        NOP
+        NOP
+        NOP
+        NOP
         B       .S2     B3
         NOP             5
 """),
@@ -1160,6 +1157,14 @@ LIFTED = {
     "linktgt": ["linktgt_h(", "param_2 + 8", "+ 100"],
     "linkfly": ["linkfly_h(", "+ 0x10", "param_2 + 0x37"],
     "viacallp": ["viacallp_h(", "iVar1 + 3", "+ 100"],
+    # the call lands in the jump's target, which set its link, and comes back at ret, past the
+    # ADDK 1000: a jump to the return point follows the call. a ? h(b) + 1 : b + 7
+    "busytgt": ["busytgt_h(", "param_2 + 7", "+ 1"],
+    # issue #105: B3 still holds the first call's link, so the jump to h is a call back to the loop
+    # head: r = h(a + 1); while (--n) r = h(r); *p = r
+    "lnkjmp": ["lnkjmp_h(", "param_2 + -1", "*param_3 = "],
+    # issue #66: a predicated call whose link is the loop head: while (b) { b--; a = h(a); }
+    "loopcall": ["loopcall_h(", "param_2 + -1"],
     "landret": ["param_1 + 0xc", "param_3 != 0", "param_1 + 4"],
     # Ghidra 12.1.4 prints the test as param_3 == 0 with the arms the other way round
     "landlink": ["param_1 + 0xc", "if (param_3 ", "param_1 + 4"],

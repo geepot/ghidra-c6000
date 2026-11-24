@@ -117,6 +117,15 @@
 
 ### Fixed
 
+* A call that does not come back at the next instruction is lifted as the call and a jump to
+  where it returns: a predicated call whose link is earlier code (issue #66), a jump into a
+  function while B3 still holds an earlier call's return address (issue #105), and a call
+  that returns past instructions it skips. B3 is known to hold a call's return address once
+  that call has come back.
+* A call reached through a jump whose window holds a predicated branch that may go is a call
+  again when its link is set in its own window; only a branch that certainly goes makes the
+  look-back fall back to the code before the call.
+
 * A predicate's known value carries to another register that holds the same value: both are
   copies of one write, as `MV A4,A1` and `MV A4,A2` at a function's entry are. With it, a
   branch in a jump's window whose predicate that path has cleared is known not to go, the

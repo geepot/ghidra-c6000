@@ -87,7 +87,8 @@ public final class C6000NestedWindowAnalyzer extends AbstractAnalyzer {
 					reasons.put(branch.getMinAddress(), why);
 					chain.put(root(chain, inner.getMinAddress()), root(chain, branch.getMinAddress()));
 				}
-				Address back = walker.predicatedBackwardCall(branch);
+				// Latched, such a call lands as a call and then jumps to its return point.
+				Address back = C6000PacketStagingAnalyzer.inert(branch) ? null : walker.predicatedBackwardCall(branch);
 				if (back != null) {
 					bookmarks.setBookmark(branch.getMinAddress(), BookmarkType.WARNING, CATEGORY, branch +
 						" is a predicated call that returns to " + back + ", at or before it: native lifting cannot give it" +

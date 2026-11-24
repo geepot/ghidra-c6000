@@ -82,6 +82,8 @@
         <register name="C6000_LATCH_T5"/>
         <register name="C6000_LATCH_T6"/>
         <register name="C6000_LATCH_T7"/>
+        <!-- Set by a landed call and read after it returns. -->
+        <register name="C6000_LANDED"/>
         <register name="A11_A10"/><register name="A13_A12"/><register name="A15_A14"/>
         <register name="B11_B10"/><register name="B13_B12"/><register name="B15_B14"/>
       </unaffected>

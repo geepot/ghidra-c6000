@@ -82,7 +82,10 @@ public final class C6000NestedLiftAnalyzer extends AbstractAnalyzer {
 					monitor.checkCancelled();
 					String op = C6000CallAnalyzer.baseName(branch);
 					if (!op.startsWith("B") || op.startsWith("BITC") || op.startsWith("BITR") || !tried.add(branch.getAddress())) continue;
-					if (walker.nestedTransfer(branch) == null || walker.nativeMismatch(branch) == null) continue;
+					// Nested with another transfer, or a predicated call that returns to earlier code,
+					// which needs its return and its fall-through both (issue #66).
+					if ((walker.nestedTransfer(branch) == null && walker.predicatedBackwardCall(branch) == null) ||
+						walker.nativeMismatch(branch) == null) continue;
 					var plan = walker.liftPlan(branch);
 					if (plan == null || walker.liftMismatch(plan, branch) != null) continue;
 					try {
@@ -119,7 +122,7 @@ public final class C6000NestedLiftAnalyzer extends AbstractAnalyzer {
 			String slot = landings.merge(at, 1, Integer::sum) == 1 ? "c_land1" : "c_land2";
 			// A plain instruction carries the landing in its wrapper; a latched branch in its own ending.
 			if (!land.containsKey(program.getRegister("c_inert"))) put(program, land, "c_staged", 1);
-			put(program, land, slot, latch.kind());
+			put(program, land, slot, latch.kind() == 4 ? 3 : latch.kind());
 			put(program, land, slot + "_t", latch.slot());
 			put(program, land, slot + "_ind", latch.target() == null ? 1 : 0);
 			long disp = latch.target() == null ? 0 : (latch.target().getOffset() - (at.getOffset() & ~31L)) / 2;
@@ -178,7 +181,7 @@ public final class C6000NestedLiftAnalyzer extends AbstractAnalyzer {
 				// landed jump's target its own type, or it becomes a function.
 				var references = program.getReferenceManager();
 				for (var latch : plan.latches()) {
-					if (latch.kind() != 1 || latch.target() == null) continue;
+					if ((latch.kind() != 1 && latch.kind() != 4) || latch.target() == null) continue;
 					for (Reference ref : references.getReferencesFrom(latch.land().getMinAddress())) {
 						if (!ref.getToAddress().equals(latch.target()) || !ref.getReferenceType().isCall()) continue;
 						references.delete(ref);
