@@ -394,7 +394,7 @@ CASES = [
         B       .S2     B3
         NOP             5
 """),
-    # issue #108: g jumps into tail, which f's body holds and which has a warned nest (#65's pjreg).
+    # issue #108: g jumps into tail, which f's body holds and which has a warned nest (busytgt's).
     # The decompiler follows g's jump into that code, so g's jump is warned too (ENTERED).
     ("shlatpl", True, """{n}:
         STW     .D2T2   B3,*B15--[2]
@@ -418,22 +418,22 @@ CASES = [
         NOP             5
 {n}_tail:
         STW     .D2T2   B3,*B15--[2]
-||      ADD     .L1     A4,2,A4
-  [!A2] B       .S1     {n}_t_nop
-        MVKL    .S2     {n}_t_ret,B3
-        MVKH    .S2     {n}_t_ret,B3
-        MVKL    .S1     {n}_h,A3
-        MVKH    .S1     {n}_h,A3
+  [ A2] B       .S1     {n}_tgt
+        NOP             1
 {n}_in:
-  [!A2] B       .S2X    A3
+  [ A2] B       .S1     {n}_h
+        NOP             3
         ADD     .L1     A4,7,A4
         LDW     .D2T2   *++B15[2],B3
         NOP             4
         B       .S2     B3
         NOP             5
-{n}_t_nop:
+{n}_tgt:
+        MVKL    .S2     {n}_ret,B3
+        MVKH    .S2     {n}_ret,B3
+        ADDK    .S1     1000,A4
         NOP             5
-{n}_t_ret:
+{n}_ret:
         ADD     .L1     A4,1,A4
         LDW     .D2T2   *++B15[2],B3
         NOP             4
@@ -547,6 +547,105 @@ CASES = [
         B       .S2     B3
         ADDK    .S1     1024,A4
         NOP             4
+"""),
+    # issue #123: the jump lands on a predicated branch while the B far of its window is still in
+    # flight. That branch is nested with it just the same and is latched too:
+    # !a ? 0x3ff : b ? 0x7ef : 0x3ef.
+    ("tgtpred", True, """{n}:
+        MV      .L1     A4,A1
+||      MV      .S1X    B4,A2
+        ZERO    .L1     A4
+  [ A1] B       .S1     {n}_tgt
+{n}_in:
+        B       .S2     {n}_far
+        ADDK    .S1     1,A4
+        ADDK    .S1     2,A4
+        ADDK    .S1     4,A4
+        ADDK    .S1     8,A4
+        ADDK    .S1     16,A4
+{n}_tgt:
+  [ A2] B       .S1     {n}_y
+{n}_far:
+        ADDK    .S1     32,A4
+        ADDK    .S1     64,A4
+        ADDK    .S1     128,A4
+        ADDK    .S1     256,A4
+        ADDK    .S1     512,A4
+{n}_done:
+        B       .S2     B3
+        NOP             5
+{n}_y:
+        B       .S2     B3
+        ADDK    .S1     1024,A4
+        NOP             4
+"""),
+    # issue #112: a link written in a jump's window is not the jump's when the code it goes to does
+    # not come back through B3. Here top issues the call the link is for:
+    # c ? (a ? h(b) + 16 : b + 8) : h(b) + 100.
+    ("linktgt", True, """{n}:
+        STW     .D2T2   B3,*B15--[2]
+||      MV      .L1     A4,A1
+||      MV      .L2X    A6,B0
+        MV      .L1X    B4,A4
+  [!B0] B       .S1     {n}_top
+  [!B0] MVKL    .S2     {n}_back,B3
+  [!B0] MVKH    .S2     {n}_back,B3
+        NOP             3
+  [!A1] B       .S1     {n}_x
+{n}_in:
+  [ A1] B       .S1     {n}_h
+  [!A1] ADDK    .S1     1,A4
+  [ A1] MVKL    .S2     {n}_ret,B3
+  [ A1] MVKH    .S2     {n}_ret,B3
+        NOP             2
+{n}_ret:
+        ADDK    .S1     16,A4
+        LDW     .D2T2   *++B15[2],B3
+        NOP             4
+        B       .S2     B3
+        NOP             5
+{n}_x:
+        ADDK    .S1     7,A4
+        LDW     .D2T2   *++B15[2],B3
+        NOP             4
+        B       .S2     B3
+        NOP             5
+{n}_top:
+        B       .S1     {n}_h
+        NOP             5
+{n}_back:
+        ADDK    .S1     100,A4
+        LDW     .D2T2   *++B15[2],B3
+        NOP             4
+        B       .S2     B3
+        NOP             5
+"""),
+    # issue #112: and here the call is in flight with the jump and lands behind its target:
+    # a ? b + 55 : h(b + 1) + 16.
+    ("linkfly", True, """{n}:
+        STW     .D2T2   B3,*B15--[2]
+||      MV      .L1     A4,A1
+        MV      .L1X    B4,A4
+  [!A1] B       .S1     {n}_x
+{n}_in:
+  [!A1] B       .S1     {n}_h
+||[!A1] MVKL    .S2     {n}_ret,B3
+  [!A1] MVKH    .S2     {n}_ret,B3
+  [ A1] ADDK    .S1     5,A4
+        NOP             2
+        ADDK    .S1     50,A4
+        LDW     .D2T2   *++B15[2],B3
+        NOP             4
+        B       .S2     B3
+        NOP             5
+{n}_x:
+        ADDK    .S1     1,A4
+{n}_ret:
+        ADDK    .S1     16,A4
+        LDW     .D2T2   *++B15[2],B3
+        NOP             4
+        B       .S2     B3
+        NOP             5
 """),
     # Known-goods: an ordinary call; a forward predicated call; a loop branch to its own head with B3 there
     # A callback is only named by its address: the code that takes it makes it a function. The return
@@ -1018,6 +1117,13 @@ LIFTED = {
     "pktcall": ["param_1 + 0x11", "pktcall_h("],
     "farcall": ["farcall_h(param_2 + 0xf)", "param_2 + 0x6b"],
     "slotreuse": ["0x3ef", "0x81f"],
+    # issue #65's pair: the jump goes to code of its own that does not come back through B3, so the
+    # link in its window is the call's, which lands behind the jump's target: a ? b + 7 : h(b) + 1
+    "pjcall": ["pjcall_h(", "iVar1 + 1", "param_2 + 7"],
+    "pjreg": ["pjreg_h(", "iVar1 + 1", "param_2 + 7"],
+    "tgtpred": ["0x3e0", "0x7e0"],
+    "linktgt": ["linktgt_h(", "param_2 + 8", "+ 100"],
+    "linkfly": ["linkfly_h(", "+ 0x10", "param_2 + 0x37"],
     "landret": ["param_1 + 0xc", "param_3 != 0", "param_1 + 4"],
     # Ghidra 12.1.4 prints the test as param_3 == 0 with the arms the other way round
     "landlink": ["param_1 + 0xc", "if (param_3 ", "param_1 + 4"],

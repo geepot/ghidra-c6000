@@ -117,6 +117,16 @@
 
 ### Fixed
 
+* A branch the hardware issues in the code a jump went to, while a branch of the nest is
+  still in flight, is nested with it too: the comparison runs both outcomes of its
+  predicate and the lifting latches it, outside the stretch (issue #123).
+* Whose link is in B3 when a transfer lands is decided by what its target does with it:
+  another function returns through it by the calling convention; code of the same function
+  does only if every way through it ends in a branch through B3 with B3 unwritten. A jump to
+  code that sets B3 or issues the call itself is a jump (issue #112), and so #65's
+  jump-and-call pair is lifted.
+* Two landings behind one instruction fire in the order their branches issued.
+
 * A branch that is not first in its execute packet gets its delay window in code no
   function owns too (issue #115).
 * A function that jumps into another function's code carries a `C6000 Nested Delay Window

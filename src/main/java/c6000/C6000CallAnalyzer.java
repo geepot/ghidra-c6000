@@ -460,16 +460,20 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 			Map<Address, Map<Address, Instruction>> sites;
 			String why;
 			Map<Address, Set<Boolean>> calls;
+			Map<Address, Instruction> past;
 			landedBehind = new HashMap<>();
 			landedAsCall = new HashMap<>();
+			issuedBeyond = new LinkedHashMap<>();
 			try {
 				why = compare(first, outer, null, null);
 			}
 			finally {
 				sites = landedBehind;
 				calls = landedAsCall;
+				past = issuedBeyond;
 				landedBehind = null;
 				landedAsCall = null;
+				issuedBeyond = null;
 			}
 			if (why != null) return refuse(why);
 			List<Latch> latches = new ArrayList<>();
@@ -515,6 +519,13 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 			}
 			if (latches.isEmpty()) return refuse("no branch to latch");
 			Address last = stretch.get(stretch.size() - 1).getMaxAddress();
+			// A branch the hardware issues in the code a jump went to, while a branch of the stretch is
+			// still in flight, is nested with it just the same: it is latched too (issue #123).
+			for (Instruction beyond : past.values()) {
+				Instruction listed = listing.getInstructionAt(beyond.getMinAddress());
+				if (listed == null || !latchBeyond(listed, latches, landings))
+					return refuse(beyond + " at " + beyond.getMinAddress() + " issues outside the stretch with a branch still in flight, and cannot be latched with it");
+			}
 			for (Latch latch : List.copyOf(latches)) {
 				for (Instruction site : sites.getOrDefault(latch.branch().getMinAddress(), Map.of()).values()) {
 					Address at = site.getMinAddress();
@@ -532,6 +543,11 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 					latches.add(new Latch(latch.branch(), latch.slot(), site, latch.kind(), latch.target(), false));
 				}
 			}
+			// Two landings behind one instruction fire in the order their branches issued, which is the
+			// order they land in: the stretch's branches in address order, then those issued beyond it.
+			Map<Address, Integer> rank = new HashMap<>();
+			for (Latch latch : latches) rank.putIfAbsent(latch.branch().getMinAddress(), rank.size());
+			latches.sort(java.util.Comparator.comparingInt(l -> rank.get(l.branch().getMinAddress())));
 			// A landing whose latch is set whenever its instruction is reached needs no test, and then
 			// has no fall-through: the plan's own run of every outcome says which, unless something
 			// outside it also reaches the code it runs.
@@ -564,26 +580,99 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 		/** A landing in another branch's native delay slot: latch that branch too, landing where its window ends (SPRUFE8B 3.5, 4.2.6), so the slot can carry it. */
 		private boolean latchOwner(Instruction slot, List<Latch> latches, Map<Address, Integer> landings) {
 			Instruction owner = C6000DelaySlots.unitOwner(program, slot);
-			for (Latch latch : latches) if (latch.branch().equals(owner)) return true;
-			if (owner == slot || !transfer(owner) || C6000PacketStagingAnalyzer.inert(owner) || untimed(program, owner)) return false;
+			if (owner == slot) return false;
+			List<Instruction> window = window(owner);
+			return window != null && window.contains(slot) && latchBeyond(owner, latches, landings);
+		}
+
+		/**
+		 * Latch a branch outside the stretch, landing where its own delay cycles end in address
+		 * order: one in whose native delay slot a branch of the stretch lands (issue #109), or one
+		 * the hardware issues in the code a jump went to while a branch is still in flight (issue
+		 * #123). Its window must hold no other transfer.
+		 */
+		private boolean latchBeyond(Instruction owner, List<Latch> latches, Map<Address, Integer> landings) {
+			for (Latch latch : latches) if (latch.branch().getMinAddress().equals(owner.getMinAddress())) return true;
+			if (!transfer(owner) || C6000PacketStagingAnalyzer.inert(owner) || untimed(program, owner)) return false;
 			for (String form : UNLIFTABLE) if (baseName(owner).startsWith(form)) return false;
 			List<Instruction> window = window(owner);
-			if (window == null || window.isEmpty() || !window.contains(slot)) return false;
+			if (window == null) return false;
 			for (Instruction insn : window) if (transfer(insn)) return false;
 			boolean register = owner.getRegister(0) != null;
 			Address[] flows = C6000PacketStagingAnalyzer.hardware(owner).getDefaultFlows();
 			if (!register && flows.length != 1) return false;
 			var flow = C6000PacketStagingAnalyzer.flow(owner);
-			int kind = flow.isCall() ? 2 : register && flow.isTerminal() ? 3 : 1;
+			boolean ret = register && (flow.isTerminal() || "B3".equals(owner.getDefaultOperandRepresentation(0)) &&
+				(owner.getFlowOverride() == FlowOverride.NONE || owner.getFlowOverride() == FlowOverride.RETURN));
+			int kind = flow.isCall() ? 2 : ret ? 3 : 1;
 			Set<Integer> used = new HashSet<>();
 			for (Latch latch : latches) used.add(latch.slot());
 			int free = 0;
 			while (used.contains(free)) free++;
-			Instruction land = window.get(window.size() - 1);
+			Instruction land = window.isEmpty() ? owner : window.get(window.size() - 1);
 			if (free >= 8 || landings.merge(land.getMinAddress(), 1, Integer::sum) > 2) return false;
 			latches.add(new Latch(owner, free, land, kind, register ? null : flows[0], false));
 			return true;
 		}
+
+		/**
+		 * True when the code at {@code target} comes back through B3 as it found it: every way through
+		 * it ends in a branch through B3, with no write to B3, no branch through another register and
+		 * no transfer into another function on the way. That is a subroutine, which returns to
+		 * whatever link B3 holds, even while it still lies in its caller's body; code that sets B3 or
+		 * issues a call of its own does not. Loops are followed once.
+		 * ponytail: a write counts when it issues, not when it lands; refine with issue cycles if a
+		 * subroutine ever loads B3 in the last cycles before it returns through the old value.
+		 */
+		private boolean returnsThroughLink(Address target) {
+			Register b3 = program.getRegister("B3");
+			Function mine = program.getFunctionManager().getFunctionContaining(target);
+			java.util.Deque<Address> work = new java.util.ArrayDeque<>(List.of(target));
+			Set<Address> seen = new HashSet<>();
+			boolean returns = false;
+			int budget = 8 * MAX_WINDOW;
+			while (!work.isEmpty()) {
+				Instruction insn = decode(work.pop());
+				while (true) {
+					if (insn == null || budget-- < 0) return false;
+					if (!seen.add(insn.getMinAddress())) break;
+					Register load = loadDestination(insn);
+					if (load != null ? overlaps(load, b3) : issueWrites(insn).stream().anyMatch(r -> overlaps(r, b3))) return false;
+					if (transfer(insn)) {
+						Register through = insn.getRegister(0);
+						if (through != null) {
+							if (!b3.equals(through)) return false;
+							returns = true;
+						}
+						else {
+							Address[] flows = C6000PacketStagingAnalyzer.hardware(insn).getDefaultFlows();
+							Function entered = flows.length == 1 ? program.getFunctionManager().getFunctionAt(flows[0]) : null;
+							if (flows.length != 1 || C6000PacketStagingAnalyzer.flow(insn).isCall() || (entered != null && !entered.equals(mine))) return false;
+							work.push(flows[0]);
+						}
+						// What issues in its delay cycles runs either way; past them only when it is not taken.
+						List<Instruction> window = window(insn);
+						if (window == null) return false;
+						for (Instruction slot : window) {
+							if (transfer(slot)) return false;
+							Register loaded = loadDestination(slot);
+							if (loaded != null ? overlaps(loaded, b3) : issueWrites(slot).stream().anyMatch(r -> overlaps(r, b3))) return false;
+							seen.add(slot.getMinAddress());
+						}
+						if (predicate(insn) == null) break;
+						insn = window.isEmpty() ? next(insn) : next(window.get(window.size() - 1));
+						continue;
+					}
+					insn = next(insn);
+				}
+			}
+			return returns;
+		}
+
+		/** Set by the hardware run: a predicated transfer beyond the stretch it has no outcome for. */
+		private Instruction undecided;
+		/** Set while planning: each transfer the hardware issues beyond the stretch, with a branch in flight. */
+		private Map<Address, Instruction> issuedBeyond;
 
 		/** Set while planning: per landing, whether it ever fired and whether it was ever passed with its latch clear; and every instruction run. */
 		private Map<String, boolean[]> landingUse;
@@ -805,9 +894,13 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 			if (proposal == null && lifting == null && listed(first, current.getMinAddress())) lifting = LISTED;
 
 			segCycles = issueCycles(path);
-			for (int mask = 0; mask < 1 << predicated.size(); mask++) {
+			// Predicated transfers the hardware issues beyond the stretch while a branch is in flight,
+			// found as the runs reach them; nothing is known about their predicates, so both outcomes run.
+			List<Instruction> beyond = new ArrayList<>();
+			for (int mask = 0; mask < 1 << (predicated.size() + beyond.size()); mask++) {
 				// One outcome per predicated transfer, kept only when its predicates can agree.
 				Map<Address, Boolean> taken = new HashMap<>();
+				for (int v = 0; v < beyond.size(); v++) taken.put(beyond.get(v).getMinAddress(), (mask >> predicated.size() + v & 1) != 0);
 				segTaken = taken;
 				List<PredicateFact> facts = new ArrayList<>();
 				boolean consistent = true;
@@ -820,7 +913,14 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 					addFact(facts, i, path.get(i), value);
 				}
 				if (!consistent) continue;
+				undecided = null;
 				Run hardware = hardware(first, region, taken, facts);
+				if (undecided != null) {
+					if (predicated.size() + beyond.size() >= MAX_PATH_TRANSFERS) return "it has too many predicated transfers to compare";
+					beyond.add(undecided);
+					mask = -1; // start over with one more outcome
+					continue;
+				}
 				if (hardware.unproven() != null) return hardware.unproven();
 				if (landedBehind != null) continue; // planning: only where the hardware lands each branch
 				Run lifted = proposal != null ? proposed(first, region, taken, facts, proposal) :
@@ -963,7 +1063,14 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 						span = Math.max(span, 1 + extraCycles(program, insn));
 						if (transfer(insn)) {
 							Boolean go = predicate(insn) == null ? Boolean.TRUE : taken.get(insn.getMinAddress());
-							if (go == null) return Run.unproven(insn + " at " + insn.getMinAddress() + " issues with transfers in flight, on a predicate this check cannot follow");
+							boolean beyond = !region.index().containsKey(insn.getMinAddress());
+							if (go == null) {
+								// A predicated transfer in the code a jump went to, issued with a branch still
+								// in flight: one more outcome to run, both ways (issue #123).
+								if (beyond) undecided = insn;
+								return Run.unproven(insn + " at " + insn.getMinAddress() + " issues with transfers in flight, on a predicate this check cannot follow");
+							}
+							if (beyond && issuedBeyond != null) issuedBeyond.putIfAbsent(insn.getMinAddress(), insn);
 							if (go) flights.add(new Flight(cycle + 1 + DELAY_CYCLES, insn));
 						}
 						else if (!idle(insn) && runs(insn, region, facts)) {
@@ -1008,15 +1115,14 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 							Address to = transfer.getMinAddress().getNewAddress(held[0] & 0xffffffffL);
 							if (!to.equals(target) && listing.getInstructionAt(to) != null) linked = to;
 						}
-						// Of two arms on opposite predicates that share one link, an arm into its own
-						// function's code is the else-branch and the link is the other arm's. An arm
-						// through B3 is the return and leaves the link to this one. Where the listing
-						// already says call, that was decided with both arms in view.
-						if (linked != null && !call && Boolean.TRUE.equals(localTarget(transfer))) for (int i : region.predicated()) {
-							Instruction arm = region.path().get(i);
-							if (!arm.getMinAddress().equals(transfer.getMinAddress()) && complementary(transfer, arm) &&
-								!b3.equals(arm.getRegister(0))) linked = null;
-						}
+						// A link in B3 makes a call of the transfer whose target comes back through it.
+						// Another function does, by the calling convention. Code of this function does
+						// only if it branches through B3 before it writes B3 or issues any other
+						// transfer: else the link is for some other branch, one still in flight or one
+						// the target issues itself (issues #112, #113). Where the listing already says
+						// call, that was decided with both arms in view.
+						if (linked != null && !call && target != null && Boolean.TRUE.equals(localTarget(transfer)) && !returnsThroughLink(target))
+							linked = null;
 						// A jump to another function's entry runs it to its return through B3. Where B3
 						// holds an address in this function, set at any time before, that is where it
 						// comes back: a call, though no link was written for it (issues #105, #106).
