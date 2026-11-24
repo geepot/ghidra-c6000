@@ -303,6 +303,50 @@ CASES = [
         B       .S2     B9
         NOP             5
 """),
+    # issue #105: B3 still holds the first call's link when [A1] B h issues, so h returns to back
+    # again: a predicated call that returns to earlier code (issue #66), which stays warned.
+    ("lnkjmp", True, """{n}:
+        STW     .D2T2   B3,*B15--[2]
+||      MV      .L1X    B4,A1
+        ADD     .L1     A4,1,A4
+        MVKL    .S2     {n}_back,B3
+        MVKH    .S2     {n}_back,B3
+        NOP
+        B       .S1     {n}_h
+        NOP             5
+{n}_back:
+        SUB     .L1     A1,1,A1
+{n}_in:
+  [ A1] B       .S1     {n}_h
+  [!A1] LDW     .D2T2   *++B15[2],B3
+||[!A1] STW     .D1T1   A4,*A6
+        NOP             4
+        B       .S2     B3
+        NOP             5
+"""),
+    # issue #106: the call's link is set before the jump and the call, one cycle apart. The jump
+    # lands at top and the call behind top's ADD; h returns to ret, inside the loop:
+    # a = b + 3; while (--n) a = h(a + 3).
+    ("jcallpre", True, """{n}:
+        STW     .D2T2   B3,*B15--[2]
+||      MV      .L1     A4,A1
+        MV      .L1X    B4,A4
+{n}_top:
+        ADD     .L1     A4,3,A4
+{n}_ret:
+        SUB     .L1     A1,1,A1
+        NOP             1
+  [ A1] MVKL    .S2     {n}_ret,B3
+  [ A1] MVKH    .S2     {n}_ret,B3
+  [ A1] B       .S1     {n}_top
+{n}_in:
+  [ A1] B       .S1     {n}_h
+        NOP             4
+        LDW     .D2T2   *++B15[2],B3
+        NOP             4
+        B       .S2     B3
+        NOP             5
+"""),
     # Known-goods: an ordinary call; a forward predicated call; a loop branch to its own head with B3 there
     # A callback is only named by its address: the code that takes it makes it a function. The return
     # link beside it is an address too, and is not one.
@@ -769,6 +813,7 @@ LIFTED = {
     "tri": ["return 3;", "0x13", "0x43b"],
     "bnop4": ["param_1 + 1"],
     "swjump": ["0x111", "0x222", "0x333", "0x999"],
+    "jcallpre": ["jcallpre_h(param_2)", "param_2 + 3"],
     "landret": ["param_1 + 0xc", "param_3 != 0", "param_1 + 4"],
     # Ghidra 12.1.4 prints the test as param_3 == 0 with the arms the other way round
     "landlink": ["param_1 + 0xc", "if (param_3 ", "param_1 + 4"],

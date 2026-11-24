@@ -1015,6 +1015,16 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 							if (!arm.getMinAddress().equals(transfer.getMinAddress()) && complementary(transfer, arm) &&
 								!b3.equals(arm.getRegister(0))) linked = null;
 						}
+						// A jump to another function's entry runs it to its return through B3. Where B3
+						// holds an address in this function, set at any time before, that is where it
+						// comes back: a call, though no link was written for it (issues #105, #106).
+						long[] old = ret3.get(b3);
+						if (!call && linked == null && old != null && target != null && Boolean.FALSE.equals(localTarget(transfer)) &&
+							program.getFunctionManager().getFunctionAt(target) != null) {
+							Address to = transfer.getMinAddress().getNewAddress(old[0] & 0xffffffffL);
+							Function mine = program.getFunctionManager().getFunctionContaining(transfer.getMinAddress());
+							if (mine != null && mine.getBody().contains(to) && listing.getInstructionAt(to) != null) linked = to;
+						}
 						if (landedAsCall != null) landedAsCall.computeIfAbsent(transfer.getMinAddress(), k -> new HashSet<>()).add(call || linked != null);
 						if (call || linked != null) {
 							// The callee runs to its return, which needs nothing else in flight.
@@ -1028,6 +1038,8 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 							Address back = linked != null ? linked : b3to != null && listing.getInstructionAt(b3to) != null ? b3to :
 								C6000PacketStagingAnalyzer.inert(listed) ? returnPoint(listed) : listed.getFallThrough();
 							if (back == null) return new Run(trace, "does not return", null);
+							// The callee returned through B3, which still holds that address.
+							ret3.put(b3, new long[] { back.getOffset(), FULL });
 							at = decode(back);
 							cycle = landing.lands();
 						}
@@ -1400,7 +1412,8 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 			if (via != null) addFact(facts, slotIndex(path, viaInsn), viaInsn, true);
 			addFact(facts, branchIndex, branch, true);
 			java.util.Collections.reverse(facts);
-			List<Integer> returns = new ArrayList<>();
+			// Each earlier call: the cycle it lands, and the address its callee returns to.
+			List<long[]> returns = new ArrayList<>();
 			int dead = Integer.MAX_VALUE;
 			for (int i = 0; i < path.size(); i++) {
 				Instruction insn = path.get(i);
@@ -1416,7 +1429,8 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 				// A callee may change every register the ABI does not make it preserve. That is done
 				// when it returns, before the return point's own writes.
 				for (var back = returns.iterator(); back.hasNext();) {
-					if (back.next() <= issue[i]) { back.remove(); trace.forget(callClobbered()); }
+					long[] call = back.next();
+					if (call[0] <= issue[i]) { back.remove(); trace.returned(callClobbered(), call[1]); }
 				}
 				if (entered[i]) {
 					// Reached only with another transfer in flight: nothing from there is known.
@@ -1425,7 +1439,11 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 				}
 				if (insn != viaInsn && isFlow(insn)) {
 					trace.write(issue[i], program.getRegister("B3"), null, i);
-					if (C6000PacketStagingAnalyzer.flow(insn).isCall()) returns.add(issue[i] + 1 + DELAY_CYCLES);
+					if (C6000PacketStagingAnalyzer.flow(insn).isCall()) {
+						Instruction listed = listing.getInstructionAt(insn.getMinAddress());
+						Address back = listed == null ? null : listed.getFallThrough();
+						returns.add(new long[] { issue[i] + 1 + DELAY_CYCLES, back == null ? -1 : back.getOffset() });
+					}
 					// Past the window of a jump or return that always goes, nothing falls through.
 					if (!C6000PacketStagingAnalyzer.flow(insn).isCall() && predicate(insn) == null) dead = issue[i] + 1 + DELAY_CYCLES;
 				}
@@ -1435,7 +1453,7 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 			// SPRUFE8B 3.5 / Tables 4-6 and 4-11: all members of a
 			// packet read the same E1 snapshot, before any E1 writer commits.
 			trace.before(issue[branchIndex]);
-			for (int back : returns) if (back <= issue[branchIndex]) trace.forget(callClobbered());
+			for (long[] call : returns) if (call[0] <= issue[branchIndex]) trace.returned(callClobbered(), call[1]);
 			// A branch reached only by a jump with another transfer in flight does not arrive alone.
 			if (entered[branchIndex] && !meetEntries(branch, regs, trace, dead <= issue[branchIndex]) && !targetOnly && !valuesOnly)
 				return null;
@@ -1796,6 +1814,14 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 				for (List<Write> writes : pending.values())
 					writes.replaceAll(w -> registers.stream().anyMatch(c -> overlaps(c, w.register())) ? new Write(w.register(), null, w.owner()) : w);
 				for (Register r : registers) lastWriter.merge(r, at, Math::max);
+			}
+			/**
+			 * A callee has returned to {@code back}: what it may change is unknown, and B3 holds the
+			 * address it returned through (SPRUFE8B 4.2.6 B; SPRAB89 3.3), until something writes it.
+			 */
+			void returned(List<Register> changed, long back) {
+				forget(changed);
+				if (back >= 0) values.put(program.getRegister("B3"), new long[] { back, FULL });
 			}
 			/** No value is held or still to land. */
 			boolean holdsNothing() {
