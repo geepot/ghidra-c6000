@@ -881,7 +881,7 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 		}
 
 		/** The transfer behind a flow reference from {@code from} to {@code label}: {@code from}, or the latched branch it lands. */
-		private Instruction entering(Instruction from, Address label) {
+		Instruction entering(Instruction from, Address label) {
 			if (from == null || transfer(from)) return from;
 			for (Landing land : landingsAt(from.getMinAddress())) {
 				if (!label.equals(land.target())) continue;
@@ -2398,6 +2398,11 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 		 * taken.
 		 */
 		List<Instruction> entryPath(Instruction branch, List<Instruction> linear) {
+			return entryPath(branch, linear, false);
+		}
+
+		/** {@code anyBranch}: {@code branch} need not be a register branch. */
+		List<Instruction> entryPath(Instruction branch, List<Instruction> linear, boolean anyBranch) {
 			enteredBy = -1;
 			for (int k = linear.size() - 1; k > 0; k--) {
 				Instruction label = listing.getInstructionAt(linear.get(k).getMinAddress());
@@ -2417,10 +2422,24 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 				Instruction owner = prior == null ? null : C6000DelaySlots.unitOwner(program, prior);
 				boolean falls = owner == null || !transfer(owner) || predicate(owner) != null ||
 					C6000PacketStagingAnalyzer.flow(owner).isCall();
+				// Nor does anything fall in past two jumps on opposite outcomes of one flag, both
+				// landed by the label, with the flag unchanged between them (SPRUFE8B 3.6, 4.2.6).
+				if (falls && owner != null && transfer(owner) && predicate(owner) != null && !C6000PacketStagingAnalyzer.flow(owner).isCall()) {
+					List<Instruction> upTo = new ArrayList<>(linear.subList(0, k + 1));
+					int[] cycles = issueCycles(upTo);
+					int second = -1;
+					for (int j = 0; j < upTo.size(); j++) if (upTo.get(j).getMinAddress().equals(owner.getMinAddress())) second = j;
+					Register flag = program.getRegister(predicate(owner).replace("!", ""));
+					for (int j = 0; second > 0 && j < second && falls; j++) {
+						Instruction other = upTo.get(j);
+						falls = !(transfer(other) && complementary(other, owner) && !C6000PacketStagingAnalyzer.flow(listing.getInstructionAt(other.getMinAddress()) == null ? other : listing.getInstructionAt(other.getMinAddress())).isCall() &&
+							cycles[second] + 1 + DELAY_CYCLES <= cycles[k] && unchanged(upTo, cycles, j, second, flag));
+					}
+				}
 				if (jumps.size() != 1 || falls) return linear;
 				Instruction jump = jumps.get(0);
 				List<Instruction> taken = window(jump);
-				if (taken == null || branch.getRegister(0) == null) return linear;
+				if (taken == null || (!anyBranch && branch.getRegister(0) == null)) return linear;
 				List<Instruction> path = new ArrayList<>(lookBack(jump));
 				int at = path.size();
 				path.add(jump);

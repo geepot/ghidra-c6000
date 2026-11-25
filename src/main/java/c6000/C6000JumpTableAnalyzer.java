@@ -300,10 +300,13 @@ public class C6000JumpTableAnalyzer extends AbstractAnalyzer {
 			if (landing.getFlowType().isJump() || landing.getFlowType().isTerminal()) break;
 			for (Reference ref : program.getReferenceManager().getReferencesTo(landing.getMinAddress())) {
 				if (!ref.getReferenceType().isJump()) continue;
-				Instruction jump = listing.getInstructionAt(ref.getFromAddress());
+				// A latched jump enters where it lands: the path follows the branch itself.
+				Instruction jump = walker.entering(listing.getInstructionAt(ref.getFromAddress()), landing.getMinAddress());
 				List<Instruction> slots = jump == null ? null : walker.window(jump);
 				if (slots == null) continue;
-				List<Instruction> path = new ArrayList<>(walker.lookBack(jump));
+				// What runs before that jump may itself come in through one (Walker.entryPath).
+				List<Instruction> path = new ArrayList<>(walker.entryPath(jump, walker.lookBack(jump), true));
+				walker.enteredBy = -1;
 				int via = path.size();
 				path.add(jump);
 				path.addAll(slots);
@@ -388,6 +391,12 @@ public class C6000JumpTableAnalyzer extends AbstractAnalyzer {
 					else if (!words && constant(regs, r1) != null) derived = linearOf(linear, r0, at).plus(constant(regs, r1));
 					else if (!words && constant(regs, r0) != null) derived = linearOf(linear, r1, at).plus(constant(regs, r0));
 				}
+			}
+			else if ((name.equals("SUBAW") || name.equals("SUBAH") || name.equals("SUBAB")) && n == 3 &&
+					insn.getRegister(0) != null && insn.getScalar(1) != null) {
+				// SUBAx src2,ucst5,dst: src2 less the constant scaled by the access size (SPRUFE8B 3.12 SUBAB/SUBAH/SUBAW).
+				int shift = name.equals("SUBAW") ? 2 : name.equals("SUBAH") ? 1 : 0;
+				derived = linearOf(linear, insn.getRegister(0), at).plus(-(insn.getScalar(1).getUnsignedValue() << shift));
 			}
 			else if (name.equals("SUB") && n == 3 && insn.getRegister(0) != null) {
 				// SUB idx,K or SUB idx,r with r a known constant (MVK K,r). Written first minus second on

@@ -424,6 +424,58 @@ CASES = [
         B       .S2     B3
         NOP             5
 """),
+    # A switch whose bound check is entered by one jump (the biased index set in that jump's
+    # slots, by SUBAW), behind two jumps on opposite outcomes of a flag so that nothing falls in,
+    # and whose dispatch tail is entered by a second jump: a in 8..11 picks 10, 20, 30, 40.
+    ("swtwo", False, """{n}:
+        MV      .L2X    A4,B5
+        CMPGT   .L2     B5,0,B1
+        CMPGT   .L2     B5,0,B2
+  [ B1] B       .S1     {n}_g
+        SUBAW   .D2     B5,2,B0
+        NOP             4
+  [ B2] B       .S1     {n}_x
+  [!B2] BNOP    .S1     {n}_y,4
+        NOP
+{n}_g:  CMPLTU  .L2     3,B0,B1
+  [!B1] B       .S1     {n}_t
+  [!B1] MVKL    .S1     {n}_tab,A0
+  [!B1] MVKH    .S1     {n}_tab,A0
+        SHL     .S2     B5,2,B0
+        ADDK    .S2     -32,B0
+        NOP
+        B       .S2     B3
+        MVK     .S1     99,A4
+        NOP             4
+{n}_t:  ADD     .L1X    A0,B0,A4
+        LDW     .D1T2   *A4,B0
+        NOP             4
+        B       .S2     B0
+        NOP             5
+{n}_x:  B       .S2     B3
+        MVK     .S1     1,A4
+        NOP             4
+{n}_y:  B       .S2     B3
+        MVK     .S1     2,A4
+        NOP             4
+{n}_c0: B       .S2     B3
+        MVK     .S1     10,A4
+        NOP             4
+{n}_c1: B       .S2     B3
+        MVK     .S1     20,A4
+        NOP             4
+{n}_c2: B       .S2     B3
+        MVK     .S1     30,A4
+        NOP             4
+{n}_c3: B       .S2     B3
+        MVK     .S1     40,A4
+        NOP             4
+{n}_tab:
+        .word   {n}_c0
+        .word   {n}_c1
+        .word   {n}_c2
+        .word   {n}_c3
+"""),
     # issue #129: a call whose link is written 45 instructions before its B: h(a + 45) + 1
     ("farlink", False, """{n}:
         STW     .D2T2   B3,*B15--[2]
@@ -1275,7 +1327,7 @@ LIFTED = {
     "callarml0": ["param_2 + 3;", "return param_2 + 100;"],
 }
 # What the C of a case that latches nothing must hold, and must not.
-PLAIN = {"cpyret": ["return param_1 + 1;"], "farlink": ["farlink_h(param_1 + 0x2d)", "+ 1;"], "twocall": ["(0,*param_1)", "(0,param_1[1])"]}
+PLAIN = {"cpyret": ["return param_1 + 1;"], "swtwo": ["switch(", "0x28"], "farlink": ["farlink_h(param_1 + 0x2d)", "+ 1;"], "twocall": ["(0,*param_1)", "(0,param_1[1])"]}
 ABSENT = {"cpyretp": ["return param_1 + 1;"], "a3arg": ["a3arg_h(7"]}
 # Labels declared as functions too, as a symbol table or a seed list would, and what the C of the
 # function at a label must hold.
