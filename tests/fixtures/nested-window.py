@@ -904,6 +904,71 @@ CASES = [
         B       .S2     B3
         NOP             5
 """),
+    # Near data read relative to DP (B14, not known here): each displacement is also the address of code
+    # in a function nothing but a pointer in data reaches. None is an address taken as a value.
+    ("dpoff", False, """{n}:
+        LDW     .D2T1   *+B14({n}_notcb),A4
+        LDW     .D2T1   *+B14({n}_notcb2),A5
+        B       .S2     B3
+        LDW     .D2T1   *+B14({n}_notcb3),A6
+        NOP             3
+        ADD     .L1     A4,A5,A4
+{n}_sum:
+        ZERO    .L1     A5
+{n}_notcb:
+        MV      .L1X    B4,A1
+{n}_notcb2:
+        LDW     .D1T1   *A4++,A6
+        NOP             4
+        ADD     .L1     A5,A6,A5
+        SUB     .S1     A1,1,A1
+  [A1]  B       .S1     {n}_notcb2
+        NOP             5
+{n}_notcb3:
+        B       .S2     B3
+        MV      .L1     A5,A4
+        NOP             4
+        NOP
+"""),
+    # The same with the word index, not the byte offset, equal to the address (Scalar Operand References).
+    ("dpidx", False, """{n}:
+        LDW     .D2T1   *+B14[{n}_notcb],A4
+        B       .S2     B3
+        LDW     .D2T1   *+B14[{n}_notcb2],A5
+        NOP             3
+        ADD     .L1     A4,1,A4
+{n}_sum:
+        ZERO    .L1     A5
+{n}_notcb:
+        MV      .L1X    B4,A1
+        ADD     .L1     A5,A1,A5
+{n}_notcb2:
+        B       .S2     B3
+        MV      .L1     A5,A4
+        NOP             4
+        NOP
+"""),
+    # Known-good: callbacks stored in a table in near data are values, though the stores are relative to DP.
+    ("cbtab", False, """{n}:
+        MVKL    .S1     {n}_cb,A4
+        MVKH    .S1     {n}_cb,A4
+        STW     .D2T1   A4,*+B14(0x4000)
+        MVKL    .S1     {n}_cb2,A4
+        MVKH    .S1     {n}_cb2,A4
+        B       .S2     B3
+        STW     .D2T1   A4,*+B14(0x4004)
+        NOP             4
+        NOP
+        NOP
+{n}_cb:
+        B       .S2     B3
+        ADD     .L1     A4,1,A4
+        NOP             4
+{n}_cb2:
+        B       .S2     B3
+        ADD     .L1     A4,2,A4
+        NOP             4
+"""),
     ("plain", False, """{n}:
         STW     .D2T2   B3,*B15--[2]
         B       .S1     {n}_h
@@ -1397,7 +1462,7 @@ DECLARE = {"c2split": ["test", "exit"], "twocall": ["callee"]}
 PLAIN_AT = {"c2split": ("test", ["c2split_h(param_1 + 7"])}
 # Cases that are warned or lifted depending on the decompiler, and what their C holds when lifted.
 EITHER = {"entmany": ["0x101", "+ 0xae", "+ 0x50"], "samepred": ["+ 0xf) * 2", "param_2 + 1"]}
-LINK = re.compile(r"(MVK[LH]\s+\.S[12]\s+|\.word\s+)(\w+)")
+LINK = re.compile(r"(MVK[LH]\s+\.S[12]\s+|\.word\s+|\*\+B14[(\[])([a-z]\w+)")
 
 
 def assemble(compiler, source, object_file, log):
@@ -1423,7 +1488,8 @@ def main():
     for name, _, body in CASES:
         sections.append(' .sect ".pf_' + name + '"\n .nocmp\n' + body.format(n=name) + H.format(n=name))
     text = "\n".join(sections)
-    assembly.write_text(text)
+    # A scaled index takes no label: any index of the same width stands in for it in the first pass.
+    assembly.write_text(re.sub(r"B14\[[a-z]\w+\]", "B14[0x1000]", text))
     assemble(tool("cl6x"), assembly, object_file, log)
     # Section offsets of every label: each case's labels are prefixed by its name.
     listed = subprocess.run([str(tool("nm6x")), str(object_file)], text=True, stdout=subprocess.PIPE, check=True).stdout
@@ -1459,8 +1525,8 @@ def main():
                              plain_at=addresses[name + "_" + PLAIN_AT[name][0]] if name in PLAIN_AT else 0,
                              entered=[a for label, a in addresses.items() if label == name + "_enter"],
                              declare=[addresses[name + "_" + label] for label in DECLARE.get(name, [])],
-                             functions=[a for label, a in addresses.items() if label == name + "_cb"],
-                             labels=[a for label, a in addresses.items() if label == name + "_notcb"]))
+                             functions=[a for label, a in addresses.items() if re.fullmatch(name + "_cb\\d*", label)],
+                             labels=[a for label, a in addresses.items() if re.fullmatch(name + "_notcb\\d*", label)]))
     if len(sys.argv) == 4:
         image = b"".join(image[index:index + 4][::-1] for index in range(0, len(image), 4))
     image_path.write_bytes(image)

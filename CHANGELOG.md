@@ -131,6 +131,10 @@
 
 ### Fixed
 
+* The offset of a load or store from DP (`*+B14(offset)`, SPRUFE8B 3.9.3) is no longer taken for an
+  address. Where DP was not known, constant propagation gave the instruction a data reference to the
+  bare offset, and Ghidra's Scalar Operand References did the same for a large word index, so
+  `C6000 Code Pointers` made functions in the middle of code loaded at such addresses (issue #130).
 * `C6000 Code Pointers` joins `MVK`/`MVKL` and `MVKH` on one register itself. Ghidra's constant
   tracking gives no reference where the halves are apart or a call lands between them, so a
   callback whose address is loaded that way was missed.
