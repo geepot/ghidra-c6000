@@ -1881,13 +1881,14 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 			List<PredicateFact> facts = new ArrayList<>();
 
 			// Code a jump from elsewhere enters is also reached without what the look-back saw before it:
-			// neither a fall-through fact nor a register constant from before the entry holds there.
+			// neither a fall-through fact nor a register constant from before the entry holds there. Before
+			// it they do, and say which of the writes that the entries are compared by have run (issue #135).
 			boolean[] entered = new boolean[execution.size()];
 			for (int i = 0; i < execution.size(); i++)
 				entered[i] = !(via != null && i == branchIndex) && enteredFromElsewhere(execution.get(i));
 			for (int i = 0; i < path.size(); i++) {
 				Instruction insn = path.get(i);
-				if ((isFlow(insn) && predicate(insn) == null) || entered[i]) facts.clear();
+				if (isFlow(insn) && predicate(insn) == null) facts.clear();
 				if (via == null && predicate(insn) != null && C6000PacketStagingAnalyzer.flow(insn).isJump() &&
 					!C6000PacketStagingAnalyzer.flow(insn).isCall() && !C6000PacketStagingAnalyzer.flow(insn).isTerminal() &&
 					!inWindow(insn, branch)) {
@@ -1896,7 +1897,6 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 				}
 			}
 			// Taken-edge constraints take precedence over speculative physical look-back.
-			if (entered[branchIndex]) facts.clear();
 			if (via != null) addFact(facts, slotIndex(path, viaInsn), viaInsn, true);
 			addFact(facts, branchIndex, branch, true);
 			java.util.Collections.reverse(facts);
@@ -1907,6 +1907,20 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 			Address cutTo = null;
 			for (int i = 0; i < path.size(); i++) {
 				Instruction insn = path.get(i);
+				if (via == null && entered[i]) dropFacts(facts, i);
+				trace.before(issue[i]);
+				// A callee may change every register the ABI does not make it preserve. That is done
+				// when it returns, before the return point's own writes.
+				for (var back = returns.iterator(); back.hasNext();) {
+					long[] call = back.next();
+					if (call[0] <= issue[i]) { back.remove(); trace.returned(callClobbered(), call[1]); }
+				}
+				// Also where the label's own instruction does not run on the path that falls in.
+				if (entered[i]) {
+					// Reached only with another transfer in flight: nothing from there is known.
+					if (!meetEntries(insn, regs, trace, dead <= issue[i])) trace.forget();
+					dead = Integer.MAX_VALUE;
+				}
 				Boolean runs = executes(execution, i, facts);
 				// Whether a transfer goes decides what is in flight: look harder for that.
 				if (runs == null && isFlow(insn)) runs = decided(execution, i, facts, 0);
@@ -1923,18 +1937,6 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 						// The other arm is still in flight when this one issues (SPRUFE8B 3.5).
 						issue[branchIndex] - issue[i] <= DELAY_CYCLES) partner = insn;
 					continue;
-				}
-				trace.before(issue[i]);
-				// A callee may change every register the ABI does not make it preserve. That is done
-				// when it returns, before the return point's own writes.
-				for (var back = returns.iterator(); back.hasNext();) {
-					long[] call = back.next();
-					if (call[0] <= issue[i]) { back.remove(); trace.returned(callClobbered(), call[1]); }
-				}
-				if (entered[i]) {
-					// Reached only with another transfer in flight: nothing from there is known.
-					if (!meetEntries(insn, regs, trace, dead <= issue[i])) trace.forget();
-					dead = Integer.MAX_VALUE;
 				}
 				// An earlier jump that goes whenever this branch does, still in flight as it issues,
 				// lands inside this branch's delay cycles: from then on the jump's target issues, not
@@ -1963,6 +1965,8 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 				trace.instruction(insn, runs, issue[i], i);
 			}
 
+			if (via == null && entered[branchIndex]) dropFacts(facts, branchIndex);
+
 			// SPRUFE8B 3.5 / Tables 4-6 and 4-11: all members of a
 			// packet read the same E1 snapshot, before any E1 writer commits.
 			trace.before(issue[branchIndex]);
@@ -1990,6 +1994,11 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 			}
 			if (landed == null) return null;
 			return new Arrival(landed, target, facts, branchIndex, trace);
+		}
+
+		/** At a label the path that falls in meets the others: what it was followed past holds before it only (issue #135). */
+		private static void dropFacts(List<PredicateFact> facts, int label) {
+			facts.removeIf(fact -> fact.index() < label);
 		}
 
 		/** Every register an instruction from {@code from} to {@code to}, in address order, can write; null when unknown. */

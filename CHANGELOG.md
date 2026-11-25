@@ -131,6 +131,12 @@
 
 ### Fixed
 
+* A call two paths join at is recognised where the path falling in writes its link under a predicate
+  that the jump it fell through decides. Those facts were dropped for the whole path when the branch,
+  or an instruction before it, is a label; they now hold up to the label, where the paths' registers
+  are compared. Such a call became a jump, and the code at its return point was left out (issue #135).
+  They are compared at a label that is a jump not taken on the way, too: a call could be made there of
+  a branch that returns to another place when it is reached by the label.
 * A stretch is planned and checked from every place it can be entered, not only from its
   start: code behind a return or an unconditional jump inside it is reached some other way,
   and its branches were latched as jumps without any run saying how they land. Calls there

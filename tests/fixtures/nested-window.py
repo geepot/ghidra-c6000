@@ -33,6 +33,37 @@ RET = """        LDW     .D2T2   *++B15[2],B3
         NOP             5
 """
 # name, known-bad, body; {n} is the case name, labels ending _in mark the transfers to warn at.
+def join(link, call=".S2     B5", label="", far="        ADDKPC  .S2     {n}_on,B3,0\n"):
+    """Two arms that share one call and both write its link, the near one under its own predicate."""
+    return """{n}:
+        STW     .D2T2   B3,*B15--[2]
+||      MV      .L1     A4,A2
+        MV      .L1X    B4,A4
+||      MV      .L2X    A6,B5
+  [ A2] B       .S1     {n}_far
+""" + link + """        SHL     .S1     A4,3,A4
+{n}_go:
+""" + label + """        B       """ + call + """
+        NOP             5
+{n}_on:
+        ADDK    .S1     9,A4
+""" + RET + """{n}_far:
+        B       .S1     {n}_go
+""" + far + """        ADDK    .S1     7,A4
+        NOP             3
+"""
+
+
+JOIN_LINK = """        NOP             1
+  [!A2] ADDKPC  .S2     {n}_on,B3,0
+        NOP             3
+"""
+JOIN_HALVES = """||[!A2] MVKL    .S2     {n}_on,B3
+        NOP             1
+  [!A2] MVKH    .S2     {n}_on,B3
+        NOP             3
+"""
+
 CASES = [
     # issue #64: a call and a return on complementary predicates, the return in the call's window
     ("callret", True, """{n}:
@@ -812,6 +843,22 @@ CASES = [
         B       .S2     B3
         NOP             5
 """),
+    # issue #135: the call two arms share is a label, and the near arm's link is written under the
+    # predicate its jump decides: a ? p(b + 7) + 9 : p(b << 3) + 9. Also a displacement call, a link in
+    # halves, and a label one instruction before the call.
+    ("mjoin", False, join(JOIN_LINK)),
+    ("mjoind", False, join(JOIN_LINK, call=".S1     {n}_h")),
+    ("mjoinp", False, join(JOIN_HALVES)),
+    ("mjoinm", False, join(JOIN_LINK, label="        ADDK    .S1     1,A4\n")),
+    # known-good: the near link is unpredicated
+    ("mjoinu", False, join(JOIN_LINK.replace("[!A2]", "     "))),
+    # no call: behind the label the near arm's predicate is not known, so that link may not be written;
+    # and the far arm's link is another
+    ("mjoinf", False, join("        NOP             5\n", label="  [!A2] ADDKPC  .S2     {n}_on,B3,0\n", far="        NOP             1\n")),
+    ("mjoinx", False, join(JOIN_LINK, far="        ADDKPC  .S2     {n}_far,B3,0\n")),
+    # the same, and the label is a jump that is not taken on the way to the call
+    ("mjoinj", False, join(JOIN_LINK.replace("[!A2]", "     "), call=".S1     {n}_h", label="  [ B0] B       .S1     {n}_far\n        NOP             5\n",
+                           far="        ADDKPC  .S2     {n}_far,B3,0\n").replace("||      MV      .L2X    A6,B5", "||      MV      .L2X    A6,B0")),
     # issue #98: a call and a jump on opposite predicates in one execute packet. Both land after
     # the packet's five delay cycles, so the slots run on both paths first: *b = c ? h(a + 0x11) : a + 0x11.
     ("pktcall", True, """{n}:
@@ -1779,8 +1826,10 @@ LIFTED = {
 }
 # What the C of a case that latches nothing must hold, and must not.
 PLAIN = {"cpyret": ["return param_1 + 1;"], "cpycall": ["return iVar1 + 7;"], "cpyfar": ["return iVar1 + 7;"], "cpyti": ["return param_2 + 1;"],
-         "swtwo": ["switch(", "0x28"], "farlink": ["farlink_h(param_1 + 0x2d)", "+ 1;"], "twocall": ["(0,*param_1)", "(0,param_1[1])"]}
-ABSENT = {"cpyretp": ["return param_1 + 1;"], "a3arg": ["a3arg_h(7"],
+         "swtwo": ["switch(", "0x28"], "farlink": ["farlink_h(param_1 + 0x2d)", "+ 1;"], "twocall": ["(0,*param_1)", "(0,param_1[1])"],
+         **{name: ["(*param_3)(param_2)", "+ 9"] for name in ("mjoin", "mjoinp", "mjoinu")},
+         "mjoind": ["mjoind_h(param_2)", "+ 9"], "mjoinm": ["(*param_3)(param_2 + 1)", "+ 9"]}
+ABSENT = {"cpyretp": ["return param_1 + 1;"], "a3arg": ["a3arg_h(7"], "mjoinf": ["+ 9"], "mjoinx": ["+ 9"], "mjoinj": ["+ 9"],
           **{name: ["return iVar1 + 7;"] for name in ("cpyclob", "cpyclobs", "cpybdec", "cpydeep", "cpyunk", "cpytwo")}}
 # Labels declared as functions too, as a symbol table or a seed list would, and what the C of the
 # function at a label must hold.
