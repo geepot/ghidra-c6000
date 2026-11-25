@@ -135,6 +135,9 @@
   that jump arrives with, for a branch that issues once that transfer has landed: it is reached only
   where the transfer was not taken. They were forgotten for all the code there, so a call whose link
   was set before became a jump, with no warning (issue #137).
+* A nest that issues as the last branch of a latched one lands is lifted with it: the landing that one
+  put outside the stretch is the plan's own and is replaced, where the latch it reads is set by a
+  branch the plan latches, for the same target. The plan was refused (issue #139).
 * A stretch is planned and checked from every place it can be entered, not only from its
   start: code behind a return or an unconditional jump inside it is reached some other way,
   and its branches were latched as jumps without any run saying how they land. Calls there

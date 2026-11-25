@@ -827,6 +827,88 @@ CASES = [
         B       .S2     B3
         NOP             5
 """),
+    # issue #139: the second nest starts as the first one's last branch lands, so its plan starts at the
+    # first one's branches; their landing in x, latched before, is the plan's own.
+    # f(0, 0, 1, 0) = 0xc3. adjnop (known-good): one cycle apart. adjsame (known-bad): the landing in x
+    # is another stretch's, for the same target; that stretch's latch is another one.
+    *[(name, False, """{n}:
+        MV      .L1     A4,A1
+||      MV      .L2     B4,B0
+        MV      .L1     A6,A2
+||      MV      .L2     B6,B1
+        ZERO    .L1     A4
+  [ A1] B       .S1     {n}_x
+  [ B0] B       .S2     {n}_y
+        ADDK    .S1     1,A4
+        NOP             4
+""" + gap + """  [ A2] B       .S1     {n}_u
+  [ B1] B       .S2     {n}_v
+        ADDK    .S1     2,A4
+        NOP             4
+        ADDK    .S1     4,A4
+        B       .S2     B3
+        NOP             5
+{n}_x:
+        ADDK    .S1     8,A4
+        ADDK    .S1     16,A4
+        B       .S2     B3
+        NOP             5
+{n}_y:
+        ADDK    .S1     32,A4
+        B       .S2     B3
+        NOP             5
+{n}_u:
+        ADDK    .S1     64,A4
+        ADDK    .S1     128,A4
+        B       .S2     B3
+        NOP             5
+{n}_v:
+        ADDK    .S1     256,A4
+        B       .S2     B3
+        NOP             5
+""") for name, gap in (("adj", ""), ("adjnop", "        NOP             1\n"))],
+    ("adjsame", True, """{n}:
+        MV      .L1     A4,A1
+||      MV      .L2     B4,B0
+        MV      .L1     A6,A2
+||      MV      .L2     B6,B1
+        MV      .L2     B8,B2
+        ZERO    .L1     A4
+  [ A1] B       .S1     {n}_x
+  [ B0] B       .S2     {n}_y
+        ADDK    .S1     1,A4
+        NOP             4
+        ADDK    .S1     2,A4
+        NOP             5
+  [ A2] B       .S1     {n}_u
+{n}_in1:
+  [ B1] B       .S2     {n}_x
+{n}_in2:
+  [ B2] B       .S1     {n}_y
+        ADDK    .S1     4,A4
+        NOP
+        NOP
+        NOP
+        NOP
+        NOP
+        NOP
+        B       .S2     B3
+        NOP             5
+{n}_x:
+        ADDK    .S1     8,A4
+        ADDK    .S1     16,A4
+        B       .S2     B3
+        NOP             5
+{n}_y:
+        ADDK    .S1     32,A4
+        B       .S2     B3
+        NOP             5
+{n}_u:
+        ADDK    .S1     64,A4
+        ADDK    .S1     128,A4
+        B       .S2     B3
+        NOP             5
+"""),
     # issue #129: a call whose link is written 45 instructions before its B: h(a + 45) + 1
     ("farlink", False, """{n}:
         STW     .D2T2   B3,*B15--[2]
@@ -1804,6 +1886,7 @@ LIFTED = {
     "swjump": ["0x111", "0x222", "0x333", "0x999"],
     "jcallpre": ["jcallpre_h(param_2)", "param_2 + 3"],
     "twoland": ["+ 0x1e1c", "+ 0xe1c", "+ 0x100"],
+    "adj": ["0xc3", "0x19"], "adjnop": ["0xc3", "0x19"],
     "retent": ["retent_h(", "+ 1"],
     "jcallpre8": ["jcallpre8_h(param_2)", "param_2 + 3"],
     "regpre": ["(*param_3)(", "+ 1"],

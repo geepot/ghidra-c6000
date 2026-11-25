@@ -627,7 +627,7 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 						// ponytail: one stretch's landings per instruction outside it; merge them when two stretches' targets meet
 						Instruction listed = listing.getInstructionAt(at);
 						// A native delay slot holds no flow of its own.
-						if (listed == null || !landingsAt(at).isEmpty() || listed.isInDelaySlot() && !latchOwner(listed, latches, landings))
+						if (listed == null || !ownLandings(at, latches, sites) || listed.isInDelaySlot() && !latchOwner(listed, latches, landings))
 							return refuse("a branch lands behind " + at + ", which cannot carry it");
 						for (Instruction prior : before(listed))
 							if (C6000PacketStagingAnalyzer.inert(prior)) return refuse("a branch lands behind " + at + ", inside another latched stretch");
@@ -680,6 +680,21 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 				sure.add(new Latch(latch.branch(), latch.slot(), latch.land(), latch.kind(), latch.target(), latch.kind() != 4 && inside && use != null && use[0] && !use[1]));
 			}
 			return new Lifting(first, last, sure);
+		}
+
+		/** Every landing at {@code at} is there for a branch of the plan that an earlier lifting latched, and the plan lands it there too: it replaces it (issue #139). */
+		private boolean ownLandings(Address at, List<Latch> latches, Map<Address, Map<Address, Instruction>> sites) {
+			for (Landing held : landingsAt(at)) {
+				boolean own = false;
+				for (Latch latch : latches) {
+					Instruction listed = listing.getInstructionAt(latch.branch().getMinAddress());
+					own |= listed != null && C6000PacketStagingAnalyzer.inert(listed) && field(listed, "c_latch_t") == held.slot() &&
+						latch.kind() == held.kind() && java.util.Objects.equals(latch.target(), held.target()) &&
+						sites.getOrDefault(latch.branch().getMinAddress(), Map.of()).containsKey(at);
+				}
+				if (!own) return false;
+			}
+			return true;
 		}
 
 		/** A landing in another branch's native delay slot: latch that branch too, landing where its window ends (SPRUFE8B 3.5, 4.2.6), so the slot can carry it. */
