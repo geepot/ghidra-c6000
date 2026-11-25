@@ -734,6 +734,45 @@ CASES = [
         B       .S2     B3
         NOP             5
 """),
+    # issue #140: the first nest's second branch lands behind l's first instruction, between the
+    # second nest's branches; that instruction carries both stretches' landings.
+    # f(0, 0, 1, 0) = 1 + 2 + 4 + 8 + 16 + 7680 = 3 + 0x1e1c; f(1, 1, ., .) = 1 + 4 + 256
+    ("twoland", True, """{n}:
+        MV      .L1     A4,A1
+||      MV      .L2     B4,B0
+        MV      .L1     A6,A2
+||      MV      .L2     B6,B1
+        ZERO    .L1     A4
+  [ A1] B       .S1     {n}_l
+  [ B0] B       .S2     {n}_y
+        ADDK    .S1     1,A4
+        NOP             4
+        ADDK    .S1     2,A4
+  [ A2] B       .S1     {n}_u
+{n}_l:  ADDK    .S1     4,A4
+        ADDK    .S1     8,A4
+{n}_in:
+  [ B1] B       .S2     {n}_v
+        ADDK    .S1     16,A4
+        NOP             4
+        ADDK    .S1     32,A4
+        ADDK    .S1     64,A4
+        ADDK    .S1     128,A4
+        B       .S2     B3
+        NOP             5
+{n}_y:  ADDK    .S1     256,A4
+        B       .S2     B3
+        NOP             5
+{n}_u:  ADDK    .S1     512,A4
+        ADDK    .S1     1024,A4
+        ADDK    .S1     2048,A4
+        ADDK    .S1     4096,A4
+        B       .S2     B3
+        NOP             5
+{n}_v:  ADDK    .S1     8192,A4
+        B       .S2     B3
+        NOP             5
+"""),
     # issue #129: a call whose link is written 45 instructions before its B: h(a + 45) + 1
     ("farlink", False, """{n}:
         STW     .D2T2   B3,*B15--[2]
@@ -1648,6 +1687,7 @@ LIFTED = {
     "bnop4": ["param_1 + 1"],
     "swjump": ["0x111", "0x222", "0x333", "0x999"],
     "jcallpre": ["jcallpre_h(param_2)", "param_2 + 3"],
+    "twoland": ["+ 0x1e1c", "+ 0xe1c", "+ 0x100"],
     "jcallpre8": ["jcallpre8_h(param_2)", "param_2 + 3"],
     "regpre": ["(*param_3)(", "+ 1"],
     "pktcall": ["param_1 + 0x11", "pktcall_h("],

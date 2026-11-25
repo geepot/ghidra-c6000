@@ -131,6 +131,11 @@
 
 ### Fixed
 
+* A nest whose stretch holds a landing of another stretch is lifted: the instruction carries
+  that landing beside the plan's own, and the plan takes latches the other stretch does not
+  use. Such a plan was dropped without a word (issue #140). Where a plan that passed its check
+  is still dropped, the nested-window warning now says why.
+
 * A branch through a scratch register that holds the function's entry link is a return also in a
   function that makes calls, if each callee is proven to leave that register alone: cl6x 8.3.15
   keeps the link in one when it knows what a callee in the same file writes. It was lifted as a call

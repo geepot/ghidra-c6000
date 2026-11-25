@@ -83,6 +83,9 @@ public final class C6000NestedWindowAnalyzer extends AbstractAnalyzer {
 					var plan = walker.liftPlan(branch);
 					String unlifted = plan == null ? walker.liftRefusal : walker.liftMismatch(plan, branch);
 					if (unlifted != null) why += "; not lifted by latching because " + (plan == null ? unlifted : "then " + unlifted);
+					// A plan that passed its check and was dropped all the same (issue #140).
+					String dropped = unlifted == null ? C6000NestedLiftAnalyzer.dropped(program, branch.getMinAddress()) : null;
+					if (dropped != null) why += "; a lifting by latching was planned and dropped because " + dropped;
 					pairs.add(new Instruction[] { branch, inner });
 					reasons.put(branch.getMinAddress(), why);
 					chain.put(root(chain, inner.getMinAddress()), root(chain, branch.getMinAddress()));

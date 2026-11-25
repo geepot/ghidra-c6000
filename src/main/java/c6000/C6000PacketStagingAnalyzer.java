@@ -202,7 +202,7 @@ public final class C6000PacketStagingAnalyzer extends AbstractAnalyzer {
 		return 0;
 	}
 
-	private static int field(Instruction ins, String name) {
+	static int field(Instruction ins, String name) {
 		Register field = ins.getProgram().getRegister(name);
 		BigInteger value = field == null ? null : ins.getValue(field, false);
 		return value == null ? 0 : value.intValue();
