@@ -3,7 +3,7 @@
 """MVK low halves that an MVKH completes, or does not (SPRUFE8B pp. 380, 383; 4.2.6). Usage: IMAGE [be].
 
 Load at 0x1000 with auto-analysis; C6000LowHalfReferenceTest.java prepare declares
-f, h, g, k and m. Words are TI cl6x 8.3.15 output (-mv6740 --abi=eabi --no_compress),
+f, h, g, k, m and p. Words are TI cl6x 8.3.15 output (-mv6740 --abi=eabi --no_compress),
 listed by dis6x. Each MVK loads 0x1068, the address of g, which Ghidra's Scalar
 Operand References analyzer takes for a data reference:
 
@@ -21,6 +21,10 @@ Operand References analyzer takes for a data reference:
                                                  BNOP lands before the MVKH issues: kept
   10a0 m  MVK 0x1068,B10 || B g ; NOP 5 ; MVKH 0x10000,B10
                                                  the MVKH would issue in cycle 6, where the B lands: kept
+  10c0 p  MVK 0,B11 ; MVKH 0x10680000,B11 ; [B0] MVKH 0x10680000,B12
+                                                 the high half of 0x10680000 is not the address 0x1068: no reference
+          MVK 0x1068,A4 ; MVKH 0x0,A4 ; B B3 ; NOP 5
+                                                 returns 0x1068: the MVKH's reference is kept
 """
 
 from pathlib import Path
@@ -34,6 +38,7 @@ WORDS = [
     0x00000000, 0x00000000, 0x020000A8, 0x000C0362, 0x00008000, 0x00000000, 0x00000000, 0x00000000,
     0x0488342A, 0x0FFAA120, 0x048000EA, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000,
     0x0508342B, 0x0FFFF910, 0x00008000, 0x050000EA, 0x00000000, 0x00000000, 0x00000000, 0x00000000,
+    0x0580002A, 0x0588346A, 0x2608346A, 0x02083428, 0x02000068, 0x000C0362, 0x00008000, 0x00000000,
 ]
 
 

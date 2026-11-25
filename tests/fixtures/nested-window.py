@@ -1291,6 +1291,28 @@ CASES = [
         SUB     .L1X    A4,B4,A4
         NOP             4
 """),
+    # An MVKH's operand is the register's high half (SPRUFE8B p. 383): A3 is 0xHHHH0000 here (a float,
+    # say), not the address 0x0000HHHH (issue #134).
+    ("cbhalf", False, """{n}:
+        ZERO    .L1     A3
+||      B       .S2     B3
+        MVKH    .S1     {n}_notcb<<16,A3
+        MV      .L1     A3,A4
+        NOP             3
+{n}_sum:
+        MV      .L1     A4,A5
+        ZERO    .L1     A4
+{n}_notcb:
+        LDW     .D1T1   *A5++,A6
+        SUB     .L2     B4,1,B4
+        MV      .L2     B4,B0
+        NOP             2
+  [ B0] B       .S1     {n}_notcb
+        ADD     .L1     A4,A6,A4
+        NOP             4
+        B       .S2     B3
+        NOP             5
+"""),
     ("plain", False, """{n}:
         STW     .D2T2   B3,*B15--[2]
         B       .S1     {n}_h
@@ -1789,6 +1811,7 @@ PLAIN_AT = {"c2split": ("test", ["c2split_h(param_1 + 7"]), "cbraw": ("cb", ["pa
 # Cases that are warned or lifted depending on the decompiler, and what their C holds when lifted.
 EITHER = {"entmany": ["0x101", "+ 0xae", "+ 0x50"], "samepred": ["+ 0xf) * 2", "param_2 + 1"]}
 LINK = re.compile(r"(MVK[LH]\s+\.S[12]\s+|\.word\s+|\*\+B14[(\[])([a-z]\w+)")
+HIGH = re.compile(r"(MVKH\s+\.S[12]\s+)([a-z]\w+)<<16")
 
 
 def assemble(compiler, source, object_file, log):
@@ -1814,8 +1837,8 @@ def main():
     for name, _, body in CASES:
         sections.append(' .sect ".pf_' + name + '"\n .nocmp\n' + body.format(n=name) + H.format(n=name))
     text = "\n".join(sections)
-    # A scaled index takes no label: any index of the same width stands in for it in the first pass.
-    assembly.write_text(re.sub(r"B14\[[a-z]\w+\]", "B14[0x1000]", text))
+    # A scaled index takes no label, and a shifted one does not relocate: any of the same width stands in in the first pass.
+    assembly.write_text(HIGH.sub(r"\g<1>0x10000000", re.sub(r"B14\[[a-z]\w+\]", "B14[0x1000]", text)))
     assemble(tool("cl6x"), assembly, object_file, log)
     # Section offsets of every label: each case's labels are prefixed by its name.
     listed = subprocess.run([str(tool("nm6x")), str(object_file)], text=True, stdout=subprocess.PIPE, check=True).stdout
@@ -1826,6 +1849,7 @@ def main():
         for label, offset in offsets.items():
             if label == name or label.startswith(name + "_"):
                 addresses[label] = 0x1000 + index * SIZE + offset
+    text = HIGH.sub(lambda m: m.group(1) + hex(addresses[m.group(2)] << 16), text)
     assembly.write_text(LINK.sub(lambda m: m.group(1) + hex(addresses[m.group(2)]), text))
     assemble(tool("cl6x"), assembly, object_file, log)
     spec = importlib.util.spec_from_file_location(
