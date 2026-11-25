@@ -97,4 +97,69 @@
       </unaffected>
     </prototype>
   </default_proto>
+    <prototype name="__c6000_unknown" extrapop="0" stackshift="0" strategy="standard">
+      <input>
+        <!-- As __c6000 without the entry for A3: where a prototype is not known, the
+             decompiler tries every input entry as an argument, and A3 is an ordinary scratch
+             register to cl6x (issue #132). -->
+        <pentry minsize="1" maxsize="4"><register name="A4"/></pentry>
+        <pentry minsize="5" maxsize="8"><register name="A5_A4"/></pentry>
+        <pentry minsize="1" maxsize="4"><register name="B4"/></pentry>
+        <pentry minsize="5" maxsize="8"><register name="B5_B4"/></pentry>
+        <pentry minsize="1" maxsize="4"><register name="A6"/></pentry>
+        <pentry minsize="5" maxsize="8"><register name="A7_A6"/></pentry>
+        <pentry minsize="1" maxsize="4"><register name="B6"/></pentry>
+        <pentry minsize="5" maxsize="8"><register name="B7_B6"/></pentry>
+        <pentry minsize="1" maxsize="4"><register name="A8"/></pentry>
+        <pentry minsize="5" maxsize="8"><register name="A9_A8"/></pentry>
+        <pentry minsize="1" maxsize="4"><register name="B8"/></pentry>
+        <pentry minsize="5" maxsize="8"><register name="B9_B8"/></pentry>
+        <pentry minsize="1" maxsize="4"><register name="A10"/></pentry>
+        <pentry minsize="5" maxsize="8"><register name="A11_A10"/></pentry>
+        <pentry minsize="1" maxsize="4"><register name="B10"/></pentry>
+        <pentry minsize="5" maxsize="8"><register name="B11_B10"/></pentry>
+        <pentry minsize="1" maxsize="4"><register name="A12"/></pentry>
+        <pentry minsize="5" maxsize="8"><register name="A13_A12"/></pentry>
+        <pentry minsize="1" maxsize="4"><register name="B12"/></pentry>
+        <pentry minsize="5" maxsize="8"><register name="B13_B12"/></pentry>
+      </input>
+      <output>
+        <pentry minsize="1" maxsize="4"><register name="A4"/></pentry>
+        <pentry minsize="5" maxsize="8"><addr space="join" piece1="A5" piece2="A4"/></pentry>
+        <!-- Larger: the hidden buffer address arrives in A3 (input hiddenret); A4 is not
+             set to it on return. -->
+        <rule>
+          <datatype name="any" minsize="9"/>
+          <hidden_return voidlock="true"/>
+        </rule>
+      </output>
+      <!-- Prologues save the callee-saved registers in pairs (STDW A11:A10), so the pairs are
+           listed too; otherwise the decompiler reports every saved pair as an input
+           (SPRAB89 §3.2, §4.4.4.1; SPRUFE8B 2.2 and Table 2-1, register pairs). -->
+      <unaffected>
+        <register name="A10"/><register name="A11"/><register name="A12"/>
+        <register name="A13"/><register name="A14"/><register name="A15"/>
+        <register name="B10"/><register name="B11"/><register name="B12"/>
+        <register name="B13"/><register name="B14"/><register name="B15"/>
+        <!-- EABI: AMR is zero at call boundaries, so a call leaves it as it was (SPRAB89 3.2). -->
+        <register name="AMR"/>
+        <!-- No branch is in flight across a call: every latch is clear (C6000NestedLiftAnalyzer). -->
+        <register name="C6000_LATCH_T0"/>
+        <register name="C6000_LATCH_T1"/>
+        <register name="C6000_LATCH_T2"/>
+        <register name="C6000_LATCH_T3"/>
+        <register name="C6000_LATCH_T4"/>
+        <register name="C6000_LATCH_T5"/>
+        <register name="C6000_LATCH_T6"/>
+        <register name="C6000_LATCH_T7"/>
+        <!-- Set by a landed call and read after it returns. -->
+        <register name="C6000_LANDED"/>
+        <register name="A11_A10"/><register name="A13_A12"/><register name="A15_A14"/>
+        <register name="B11_B10"/><register name="B13_B12"/><register name="B15_B14"/>
+      </unaffected>
+    </prototype>
+  <!-- What the decompiler assumes of the function at hand and of a callee while their
+       prototypes are not committed. -->
+  <eval_current_prototype name="__c6000_unknown"/>
+  <eval_called_prototype name="__c6000_unknown"/>
 </compiler_spec>

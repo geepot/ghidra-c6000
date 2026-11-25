@@ -407,6 +407,23 @@ CASES = [
         B       .S2     B3
         NOP             5
 """),
+    # issue #132: a scratch value left in A3 is no argument of the second call: h(h(a))
+    ("a3arg", False, """{n}:
+        STW     .D2T2   B3,*B15--[2]
+        B       .S1     {n}_h
+        MVKL    .S2     {n}_r,B3
+        MVKH    .S2     {n}_r,B3
+        NOP             3
+{n}_r:  MVK     .S1     7,A3
+        MVKL    .S2     {n}_r2,B3
+        MVKH    .S2     {n}_r2,B3
+        B       .S1     {n}_h
+        NOP             5
+{n}_r2: LDW     .D2T2   *++B15[2],B3
+        NOP             4
+        B       .S2     B3
+        NOP             5
+"""),
     # issue #129: a call whose link is written 45 instructions before its B: h(a + 45) + 1
     ("farlink", False, """{n}:
         STW     .D2T2   B3,*B15--[2]
@@ -1259,7 +1276,7 @@ LIFTED = {
 }
 # What the C of a case that latches nothing must hold, and must not.
 PLAIN = {"cpyret": ["return param_1 + 1;"], "farlink": ["farlink_h(param_1 + 0x2d)", "+ 1;"], "twocall": ["(0,*param_1)", "(0,param_1[1])"]}
-ABSENT = {"cpyretp": ["return param_1 + 1;"]}
+ABSENT = {"cpyretp": ["return param_1 + 1;"], "a3arg": ["a3arg_h(7"]}
 # Labels declared as functions too, as a symbol table or a seed list would, and what the C of the
 # function at a label must hold.
 DECLARE = {"c2split": ["test", "exit"], "twocall": ["callee"]}

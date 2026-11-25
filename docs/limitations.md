@@ -235,3 +235,11 @@ a packet-aware executor.
 Only the [database generator](internals.md#function-id) is shipped. A database derived
 from TI's run-time library is not distributed because its licensing must be assessed
 separately.
+
+## Flow type `INVALID` on an instruction that carries two landings
+
+A latched nest can make one instruction carry two transfers: two branches that land behind it, or
+a call and the jump to where it returns. Ghidra has a flow type for one kind of transfer per
+instruction, so such an instruction's flow type reads `INVALID`. Its references have the right
+types and its p-code is what the decompiler uses, so function bodies and C are not affected; code
+that asks `getFlowType()` for it (a script, another analyzer) is told nothing useful.

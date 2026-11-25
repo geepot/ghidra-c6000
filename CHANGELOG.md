@@ -131,6 +131,13 @@
 
 ### Fixed
 
+* A value left in A3 is no longer printed as the first argument of a call whose callee has no
+  committed prototype (issue #132). The compiler spec gains `__c6000_unknown`, the default
+  model without the entry for a large result's buffer address, and names it as the model the
+  decompiler assumes where a prototype is not committed. Declared functions keep `__c6000`.
+* The pipeline analyses keep each instruction's hardware form between changes to the program,
+  which took a third off the analysis time on a compiled test image.
+
 * A call's link is found however far before its branch it was written: the look-back reaches to
   B3's last write in the straight-line code before it, where it stopped 40 words back (issue
   #129) or at the cycles a transfer stays in flight (issue #106's `jcallpre8`).
