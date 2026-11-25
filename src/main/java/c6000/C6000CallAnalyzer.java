@@ -1203,6 +1203,10 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 			Set<Integer> skipped = new HashSet<>();
 			while (true) {
 				int last = lastWrite(path, cycles, register, i, skipped);
+				if (last == TIED && depth < 3 && skipTied(path, cycles, register, i, skipped, w -> {
+					Boolean runs = executes(path, w, known);
+					return runs != null ? runs : holds(region, w, facts, depth + 1);
+				})) continue;
 				if (last < 0 || segment(region, last) != segment(region, i)) return null;
 				// Whether a predicated write runs is the same question one step back.
 				Boolean runs = predicate(path.get(last)) == null ? Boolean.TRUE : executes(path, last, known);
@@ -1236,6 +1240,7 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 			Set<Integer> skipped = new HashSet<>();
 			while (true) {
 				int last = lastWrite(path, cycles, register, i, skipped);
+				if (last == TIED && depth < 3 && skipTied(path, cycles, register, i, skipped, w -> decided(path, w, facts, depth + 1))) continue;
 				if (last < 0) return null;
 				Boolean runs = predicate(path.get(last)) == null ? Boolean.TRUE : depth < 3 ? decided(path, last, facts, depth + 1) : null;
 				if (runs == null) return null;
@@ -1245,23 +1250,46 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 			}
 		}
 
-		/** The last write to {@code register} that lands before path instruction {@code i} reads it; -1 if none or two land together. */
+		/** {@link #lastWrite}: the last two writes land in one cycle. */
+		private static final int TIED = -2;
+
+		/** The last write to {@code register} that lands before path instruction {@code i} reads it; -1 if none, {@link #TIED} if two land together. */
 		private int lastWrite(List<Instruction> path, int[] cycles, Register register, int i, Set<Integer> skipped) {
 			int last = -1;
 			long lands = Long.MIN_VALUE;
 			boolean tie = false;
 			for (int w = 0; w < i; w++) {
 				if (skipped.contains(w)) continue;
-				Instruction writer = path.get(w);
-				Register load = loadDestination(writer);
-				boolean writes = load != null ? overlaps(load, register) :
-					issueWrites(writer).stream().anyMatch(r -> overlaps(r, register));
-				long at = cycles[w] + resultDelay(writer);
-				if (!writes || at >= cycles[i]) continue;
+				long at = cycles[w] + resultDelay(path.get(w));
+				if (!writes(path.get(w), register) || at >= cycles[i]) continue;
 				if (at > lands) { lands = at; last = w; tie = false; }
 				else if (at == lands) tie = true;
 			}
-			return tie ? -1 : last;
+			return tie ? TIED : last;
+		}
+
+		private boolean writes(Instruction insn, Register register) {
+			Register load = loadDestination(insn);
+			return load != null ? overlaps(load, register) : issueWrites(insn).stream().anyMatch(r -> overlaps(r, register));
+		}
+
+		/**
+		 * Two writes to one register may land in one cycle when their predicates are opposite (SPRUFE8B
+		 * 3.8.8): skip those of the last such cycle that do not run. False when none is known not to.
+		 */
+		private boolean skipTied(List<Instruction> path, int[] cycles, Register register, int i, Set<Integer> skipped,
+				java.util.function.IntFunction<Boolean> runs) {
+			long lands = Long.MIN_VALUE;
+			List<Integer> tied = new ArrayList<>();
+			for (int w = 0; w < i; w++) {
+				long at = cycles[w] + resultDelay(path.get(w));
+				if (skipped.contains(w) || !writes(path.get(w), register) || at >= cycles[i] || at < lands) continue;
+				if (at > lands) tied.clear();
+				lands = at;
+				tied.add(w);
+			}
+			tied.removeIf(w -> predicate(path.get(w)) == null || !Boolean.FALSE.equals(runs.apply(w)));
+			return skipped.addAll(tied);
 		}
 
 		/**
