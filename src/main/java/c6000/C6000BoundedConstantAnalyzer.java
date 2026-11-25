@@ -24,6 +24,8 @@ import ghidra.program.model.listing.Program;
 import ghidra.program.model.listing.Instruction;
 import ghidra.program.model.lang.Register;
 import ghidra.program.model.data.DataType;
+import ghidra.program.model.pcode.PcodeOp;
+import ghidra.program.model.pcode.Varnode;
 import ghidra.program.model.symbol.RefType;
 import ghidra.program.util.SymbolicPropogator;
 import ghidra.program.util.VarnodeContext;
@@ -52,6 +54,16 @@ public class C6000BoundedConstantAnalyzer extends ConstantPropagationAnalyzer {
 		C6000CallAnalyzer.Walker walker = new C6000CallAnalyzer.Walker(program);
 		ConstantPropagationContextEvaluator evaluator =
 			new ConstantPropagationContextEvaluator(monitor) {
+				@Override
+				public Address evaluateConstant(VarnodeContext context, Instruction instruction,
+						int pcodeop, Address constant, int size, DataType type, RefType referenceType) {
+					// Ghidra tries the offset of an access from an unknown register as an address. An
+					// offset from DP (B14, SPRUFE8B 3.9.3) is not one, even where code is loaded there.
+					if ((referenceType.isRead() || referenceType.isWrite()) &&
+						dpOffset(context, instruction, constant.getOffset())) return null;
+					return super.evaluateConstant(context, instruction, pcodeop, constant, size, type, referenceType);
+				}
+
 				@Override
 				public boolean evaluateReference(VarnodeContext context, Instruction instruction,
 						int pcodeop, Address target, int size, DataType type, RefType referenceType) {
@@ -83,5 +95,16 @@ public class C6000BoundedConstantAnalyzer extends ConstantPropagationAnalyzer {
 			.setMinStoreLoadOffset(minStoreLoadRefAddress)
 			.setCreateComplexDataFromPointers(createComplexDataFromPointers);
 		return propagator.flowConstants(start, bounded, evaluator, true, monitor);
+	}
+
+	/** True when {@code instruction}, or its delay slots, access memory {@code offset} bytes from a DP whose value is unknown. */
+	private static boolean dpOffset(VarnodeContext context, Instruction instruction, long offset) {
+		for (PcodeOp op : instruction.getPcode(true)) {
+			if (op.getOpcode() != PcodeOp.LOAD && op.getOpcode() != PcodeOp.STORE) continue;
+			Varnode at = context.getValue(op.getInput(1), true, null);
+			if (at != null && at.getOffset() == offset && context.isSymbolicSpace(at.getSpace()) &&
+				at.getAddress().getAddressSpace().getName().equals("B14")) return true;
+		}
+		return false;
 	}
 }

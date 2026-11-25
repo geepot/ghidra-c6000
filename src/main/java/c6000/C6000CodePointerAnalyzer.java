@@ -28,6 +28,7 @@ import ghidra.program.model.listing.Function;
 import ghidra.program.model.listing.Instruction;
 import ghidra.program.model.listing.Program;
 import ghidra.program.model.mem.MemoryBlock;
+import ghidra.program.model.scalar.Scalar;
 import ghidra.program.model.symbol.RefType;
 import ghidra.program.model.symbol.Reference;
 import ghidra.util.Msg;
@@ -71,6 +72,8 @@ public final class C6000CodePointerAnalyzer extends AbstractAnalyzer {
 					// A value, not a transfer and not memory this instruction reads or writes.
 					if (type != RefType.PARAM && type != RefType.DATA) continue;
 					Address target = ref.getToAddress();
+					// The index of a load or store, *+B14[target], which Scalar Operand References takes for an address.
+					if (index(insn, ref.getOperandIndex(), target)) continue;
 					// B3 holds the return address (SPRAB89 3.3): an address put there is a return point, not a callee.
 					if (java.util.Arrays.asList(C6000PacketStagingAnalyzer.hardware(insn).getResultObjects()).contains(program.getRegister("B3"))) continue;
 					if (!target.isMemoryAddress() || !entry(program, pseudo, target)) continue;
@@ -112,6 +115,14 @@ public final class C6000CodePointerAnalyzer extends AbstractAnalyzer {
 	private static boolean preserved(Register register) {
 		String name = register.getName();
 		return name.matches("[AB]1[0-5]");
+	}
+
+	private static boolean index(Instruction insn, int operand, Address target) {
+		String name = C6000CallAnalyzer.baseName(insn);
+		if (operand < 0 || !name.startsWith("LD") && !name.startsWith("ST")) return false;
+		for (Object part : insn.getOpObjects(operand))
+			if (part instanceof Scalar s && s.getUnsignedValue() == target.getOffset()) return true;
+		return false;
 	}
 
 	/** True when {@code at} starts code that no function owns and nothing falls into. */
