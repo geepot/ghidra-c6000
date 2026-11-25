@@ -137,6 +137,10 @@
   are now latched as calls; where such an entry cannot be lifted, the nest is refused with
   its reason instead of being lifted unchecked.
 
+* `C6000 Low-Half References` also drops Ghidra's data reference from an `MVKH` to its bare operand:
+  the operand is the register's high half (SPRUFE8B p. 383), so the register never holds that address.
+  `C6000 Code Pointers` made a function there, in the middle of any code loaded at the address that
+  the high half of a float constant spells (issue #134).
 * `C6000 Code Pointers` decodes a callback before making it a function; one found behind words
   that do not decode was a function of one byte that no analyzer had seen. A callback right
   behind the last delay slot of a jump or return that always goes is found too: that slot's

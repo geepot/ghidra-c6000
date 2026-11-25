@@ -11,12 +11,13 @@ import ghidra.program.model.listing.Instruction;
 import ghidra.program.model.listing.Program;
 import ghidra.program.model.mem.MemoryAccessException;
 import ghidra.program.model.symbol.Reference;
+import ghidra.program.model.symbol.ReferenceManager;
 import ghidra.program.model.symbol.SourceType;
 import ghidra.util.exception.CancelledException;
 import ghidra.util.task.TaskMonitor;
 import java.util.Set;
 
-// Drops the scalar DATA reference of an MVK low half that an MVKH completes to another value (SPRUFE8B pp. 380, 383).
+// Drops the scalar DATA reference of an MVK low half that an MVKH completes to another value, and of an MVKH's high half (SPRUFE8B pp. 380, 383).
 public final class C6000LowHalfReferenceAnalyzer extends AbstractAnalyzer {
     // SPRUFE8B 4.2.6, Table 4-11: a branch lands six cycles after it issues, so none issued at or after the MVK lands within five.
     private static final int WINDOW = 5;
@@ -42,10 +43,12 @@ public final class C6000LowHalfReferenceAnalyzer extends AbstractAnalyzer {
         var references = program.getReferenceManager();
         for (Instruction mvk : program.getListing().getInstructions(set, true)) {
             monitor.checkCancelled();
-            if (!op(mvk).equals("MVK") && !op(mvk).equals("MVKL")) continue;
             var scalar = mvk.getScalar(0);
             Register dst = mvk.getRegister(1);
             if (scalar == null || dst == null) continue;
+            // MVKH writes its operand to the high half (SPRUFE8B p. 383), so dst is never the bare operand.
+            if (op(mvk).equals("MVKH")) drop(references, mvk, scalar.getUnsignedValue());
+            if (!op(mvk).equals("MVK") && !op(mvk).equals("MVKL")) continue;
             long low = scalar.getSignedValue() & 0xffffffffL;
             Long full;
             try {
@@ -55,11 +58,15 @@ public final class C6000LowHalfReferenceAnalyzer extends AbstractAnalyzer {
                 continue;
             }
             if (full == null || full == low) continue;
-            for (Reference r : references.getReferencesFrom(mvk.getAddress()))
-                if (r.getSource() == SourceType.ANALYSIS && r.getReferenceType().isData() &&
-                        r.getToAddress().getOffset() == low) references.delete(r);
+            drop(references, mvk, low);
         }
         return true;
+    }
+
+    private static void drop(ReferenceManager references, Instruction insn, long operand) {
+        for (Reference r : references.getReferencesFrom(insn.getAddress()))
+            if (r.getSource() == SourceType.ANALYSIS && r.getReferenceType().isData() &&
+                    r.getToAddress().getOffset() == operand) references.delete(r);
     }
 
     // dst after an unpredicated MVKH within WINDOW cycles, or null if dst is read or written first or a branch may land before it.

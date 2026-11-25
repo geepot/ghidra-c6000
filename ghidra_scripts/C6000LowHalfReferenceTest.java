@@ -6,8 +6,8 @@ import c6000.C6000PacketContext;
 import ghidra.app.script.GhidraScript;
 
 public class C6000LowHalfReferenceTest extends GhidraScript {
-	private static final long[] ENTRIES = { 0x1000L, 0x1024L, 0x1068L, 0x1080L, 0x10a0L };
-	private static final String[] NAMES = { "f", "h", "g", "k", "m" };
+	private static final long[] ENTRIES = { 0x1000L, 0x1024L, 0x1068L, 0x1080L, 0x10a0L, 0x10c0L };
+	private static final String[] NAMES = { "f", "h", "g", "k", "m", "p" };
 
 	@Override
 	protected void run() throws Exception {
@@ -27,20 +27,24 @@ public class C6000LowHalfReferenceTest extends GhidraScript {
 		// Known-good: completed to another address, in straight code and in a call's slots.
 		expect(0x1000L, false);
 		expect(0x1028L, false);
+		// Known-good: the high half of an MVKH, unpredicated and predicated; a full value, 0x1068, is kept.
+		expect(0x10c4L, false);
+		expect(0x10c8L, false);
+		expect(0x10d0L, true);
 		// Known-bad: completed to the same address, read before the MVKH, a B or BNOP landing first, MVKH in cycle 6.
 		expect(0x1008L, true);
 		expect(0x1010L, true);
 		expect(0x1040L, true);
 		expect(0x1080L, true);
 		expect(0x10a0L, true);
-		println("C6000_LOW_HALF_REFERENCE_OK checks=7");
+		println("C6000_LOW_HALF_REFERENCE_OK checks=10");
 	}
 
 	private void expect(long at, boolean kept) {
-		if (getInstructionAt(toAddr(at)) == null) throw new AssertionError("no MVK at " + toAddr(at));
+		if (getInstructionAt(toAddr(at)) == null) throw new AssertionError("no instruction at " + toAddr(at));
 		boolean has = false;
 		for (var r : getReferencesFrom(toAddr(at))) has |= r.getToAddress().equals(toAddr(0x1068L));
-		if (has != kept) throw new AssertionError("MVK at " + toAddr(at) + (kept ? " lost" : " keeps") +
+		if (has != kept) throw new AssertionError(getInstructionAt(toAddr(at)) + " at " + toAddr(at) + (kept ? " lost" : " keeps") +
 			" its reference to 00001068");
 	}
 }
