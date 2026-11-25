@@ -773,6 +773,31 @@ CASES = [
         B       .S2     B3
         NOP             5
 """),
+    # A pair of calls on opposite outcomes, one cycle apart, behind a return whose landing puts it
+    # in their stretch: no run from the stretch's start issues them, so the stretch is also run
+    # from e, where a jump comes in. a ? (b ? h(a) : h(a + 1)) + 1 : a
+    ("retent", True, """{n}:
+        STW     .D2T2   B3,*B15--[2]
+||      MV      .L2     B4,B0
+        MV      .L1     A4,A1
+  [ A1] B       .S1     {n}_e
+        NOP             5
+        LDW     .D2T2   *++B15[2],B3
+        NOP             4
+        B       .S2     B3
+        NOP             5
+{n}_e:
+  [ B0] B       .S1     {n}_h
+{n}_in:
+  [!B0] B       .S1     {n}_h
+        NOP
+        ADDKPC  .S2     {n}_r,B3,2
+{n}_r:  ADD     .L1     A4,1,A4
+        LDW     .D2T2   *++B15[2],B3
+        NOP             4
+        B       .S2     B3
+        NOP             5
+"""),
     # issue #129: a call whose link is written 45 instructions before its B: h(a + 45) + 1
     ("farlink", False, """{n}:
         STW     .D2T2   B3,*B15--[2]
@@ -1714,6 +1739,7 @@ LIFTED = {
     "swjump": ["0x111", "0x222", "0x333", "0x999"],
     "jcallpre": ["jcallpre_h(param_2)", "param_2 + 3"],
     "twoland": ["+ 0x1e1c", "+ 0xe1c", "+ 0x100"],
+    "retent": ["retent_h(", "+ 1"],
     "jcallpre8": ["jcallpre8_h(param_2)", "param_2 + 3"],
     "regpre": ["(*param_3)(", "+ 1"],
     "pktcall": ["param_1 + 0x11", "pktcall_h("],
