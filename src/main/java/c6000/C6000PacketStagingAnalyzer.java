@@ -106,7 +106,26 @@ public final class C6000PacketStagingAnalyzer extends AbstractAnalyzer {
 	 * The instruction without staging: what the hardware instruction reads, writes and does. Analyses
 	 * that model the pipeline themselves ask this, not the staged listing.
 	 */
-	static Instruction hardware(Instruction ins) {
+	static synchronized Instruction hardware(Instruction ins) {
+		// The analyses ask this for the same instruction objects many times between changes to the
+		// program; each answer costs a context read from the database and often a decode.
+		Program owner = ins.getProgram();
+		long stamp = owner.getModificationNumber();
+		if (hardwareOf.get() != owner || hardwareStamp != stamp || hardwareCache.size() > 200_000) {
+			hardwareCache.clear();
+			hardwareOf = new java.lang.ref.WeakReference<>(owner);
+			hardwareStamp = stamp;
+		}
+		Instruction known = hardwareCache.get(ins);
+		if (known == null) hardwareCache.put(ins, known = hardwareNow(ins));
+		return known;
+	}
+
+	private static final java.util.IdentityHashMap<Instruction, Instruction> hardwareCache = new java.util.IdentityHashMap<>();
+	private static java.lang.ref.WeakReference<Program> hardwareOf = new java.lang.ref.WeakReference<>(null);
+	private static long hardwareStamp;
+
+	private static Instruction hardwareNow(Instruction ins) {
 		Program program = ins.getProgram();
 		Register[] fields = HARDWARE_FIELDS.computeIfAbsent(program.getLanguage(), C6000PacketStagingAnalyzer::hardwareFields);
 		if (fields.length == 0) return ins;
