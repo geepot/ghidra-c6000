@@ -1121,6 +1121,31 @@ CASES = [
         ADDK    .S1     1024,A4
         NOP             4
 """),
+    # issue #138: the flag of the second branch is written twice in the return's packet, under opposite
+    # predicates (SPRUFE8B 3.8.8): with the return it is 5, so both are never taken.
+    # n ? a + 3 : a == b ? a + 115 : a + 31. trets (known-good): the two writes a cycle apart; tretu
+    # (known-bad): the pair's predicate is another flag, so both may be taken.
+    *[(name, name == "tretu", """{n}:
+        MV      .L2X    A6,B2
+||      MV      .L1X    B4,A3
+        MV      .L2     B6,B1
+  [ B2] B       .S2     B3
+""" + pair + label + """  [!A0] B       .S1     {n}_y
+        ADDK    .S1     2,A4
+        NOP             2
+        ADDK    .S1     4,A4
+        ADDK    .S1     8,A4
+        ADDK    .S1     16,A4
+        B       .S2     B3
+        NOP             5
+{n}_y:
+        ADDK    .S1     100,A4
+        B       .S2     B3
+        NOP             5
+""") for name, pair, label in (
+        ("tret", "||[ B2] MVK     .S1     5,A0\n||[!B2] SUB     .L1     A4,A3,A0\n        ADDK    .S1     1,A4\n", ""),
+        ("trets", "||[!B2] SUB     .L1     A4,A3,A0\n  [ B2] MVK     .S1     5,A0\n||      ADD     .L1     A4,1,A4\n", ""),
+        ("tretu", "||[ B1] MVK     .S1     5,A0\n||[!B1] SUB     .L1     A4,A3,A0\n        ADDK    .S1     1,A4\n", "{n}_in:\n"))],
     # issue #123: the jump lands on a predicated branch while the B far of its window is still in
     # flight. That branch is nested with it just the same and is latched too:
     # !a ? 0x3ff : b ? 0x7ef : 0x3ef.
@@ -1276,6 +1301,40 @@ CASES = [
   [!A2] ZERO    .L1     A1
 {n}_in:
   [ A1] B       .S1     {n}_other
+        NOP             2
+        ADD     .L1     A4,1,A4
+        NOP             2
+        ADDK    .S1     10,A4
+{n}_other:
+        ADDK    .S1     100,A4
+        LDW     .D2T2   *++B15[2],B3
+        NOP             4
+        B       .S2     B3
+        NOP             5
+{n}_call:
+        B       .S1     {n}_h
+        NOP             5
+{n}_ret:
+        ADDK    .S1     3,A4
+        LDW     .D2T2   *++B15[2],B3
+        NOP             4
+        B       .S2     B3
+        NOP             5
+"""),
+    # issue #138: viacallp with A1 written once on either predicate, in one packet, as A0.
+    ("viatied", True, """{n}:
+        STW     .D2T2   B3,*B15--[2]
+||      MV      .L1     A4,A1
+        MV      .L1     A4,A2
+        MV      .L1X    B4,A4
+        MVKL    .S2     {n}_ret,B3
+        MVKH    .S2     {n}_ret,B3
+  [!A1] B       .S1     {n}_call
+        NOP             1
+  [!A2] ZERO    .L1     A0
+||[ A2] MV      .S1X    B4,A0
+{n}_in:
+  [ A0] B       .S1     {n}_other
         NOP             2
         ADD     .L1     A4,1,A4
         NOP             2
@@ -2018,11 +2077,13 @@ LIFTED = {
     "pjcall": ["pjcall_h(", "iVar1 + 1", "param_2 + 7"],
     "pjreg": ["pjreg_h(", "iVar1 + 1", "param_2 + 7"],
     "tgtpred": ["0x3e0", "0x7e0"],
+    "tret": ["param_1 + 3", "+ 0x73", "+ 0x1f"], "trets": ["param_1 + 3", "+ 0x73", "+ 0x1f"],
     "linktgt": ["linktgt_h(", "param_2 + 8", "+ 100"],
     "linkfly": ["linkfly_h(", "+ 0x10", "param_2 + 0x37"],
     "viacallp": ["viacallp_h(", "iVar1 + 3", "+ 100"],
     **{name: [name + "_h(", "+ 0x10", "+ 0x44"] for name in ("kpre", "kprefar", "kprereg", "kpreown")},
     **{name: [name + "_h(", "+ 0x10", "+ 0x40", "+ 0x81"] for name in ("kwp", "kwpown")},
+    "viatied": ["viatied_h(", "+ 3;", "+ 100"],
     # the call lands in the jump's target, which set its link, and comes back at ret, past the
     # ADDK 1000: a jump to the return point follows the call. a ? h(b) + 1 : b + 7
     "busytgt": ["busytgt_h(", "param_2 + 7", "+ 1"],
