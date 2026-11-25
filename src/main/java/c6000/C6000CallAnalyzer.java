@@ -712,6 +712,11 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 		 * subroutine ever loads B3 in the last cycles before it returns through the old value.
 		 */
 		private boolean returnsThroughLink(Address target) {
+			return returnsThroughLink(target, null);
+		}
+
+		/** The same, also with no write to {@code kept}; the code may then come back through an entry copy of B3 too. */
+		private boolean returnsThroughLink(Address target, Register kept) {
 			Register b3 = program.getRegister("B3");
 			Function mine = program.getFunctionManager().getFunctionContaining(target);
 			java.util.Deque<Address> work = new java.util.ArrayDeque<>(List.of(target));
@@ -725,10 +730,12 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 					if (!seen.add(insn.getMinAddress())) break;
 					Register load = loadDestination(insn);
 					if (load != null ? overlaps(load, b3) : issueWrites(insn).stream().anyMatch(r -> overlaps(r, b3))) return false;
+					// BDEC counts its register down, and BDEC and BPOS go either way without a predicate.
+					if (kept != null && (mayWrite(insn, kept) || baseName(insn).startsWith("BDEC") || baseName(insn).startsWith("BPOS"))) return false;
 					if (transfer(insn)) {
 						Register through = insn.getRegister(0);
 						if (through != null) {
-							if (!b3.equals(through)) return false;
+							if (!b3.equals(through) && (kept == null || mine == null || !mine.getEntryPoint().equals(target) || !copiesEntryLink(insn))) return false;
 							returns = true;
 						}
 						else {
@@ -744,6 +751,7 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 							if (transfer(slot)) return false;
 							Register loaded = loadDestination(slot);
 							if (loaded != null ? overlaps(loaded, b3) : issueWrites(slot).stream().anyMatch(r -> overlaps(r, b3))) return false;
+							if (kept != null && mayWrite(slot, kept)) return false;
 							seen.add(slot.getMinAddress());
 						}
 						if (predicate(insn) == null) break;
@@ -2434,9 +2442,47 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 		 * True when the register {@code branch} goes through holds the link its function was entered
 		 * with: an unpredicated instruction on the entry's straight-line code, before any transfer,
 		 * leaves B3's entry value in it, nothing else in the function writes it, and it survives the
-		 * function's calls (SPRAB89 3.3: A10-A15 and B10-B15 are preserved). Such a branch returns.
+		 * function's calls: it is preserved (SPRAB89 3.3: A10-A15 and B10-B15) or each call goes to a
+		 * subroutine that leaves it alone, as cl6x relies on between functions of one file. Such a
+		 * branch returns.
 		 */
 		boolean holdsEntryLink(Instruction branch) {
+			if (!copiesEntryLink(branch)) return false;
+			Register through = C6000PacketStagingAnalyzer.hardware(branch).getRegister(0);
+			if (through.getName().matches("[AB]1[0-5]")) return true;
+			Function function = program.getFunctionManager().getFunctionContaining(branch.getMinAddress());
+			for (Instruction other : listing.getInstructions(function.getBody(), true)) {
+				if (!C6000PacketStagingAnalyzer.flow(other).isCall()) continue;
+				Address[] flows = C6000PacketStagingAnalyzer.hardware(other).getDefaultFlows();
+				// A register call counts where its constant is proven, not where a reference was guessed.
+				Long value = flows.length == 0 ? issueTarget(other) : null;
+				Address callee = flows.length == 1 ? flows[0] : value == null ? null : other.getMinAddress().getNewAddress(value);
+				if (callee == null || !returnsThroughLink(callee, through)) return false;
+			}
+			return true;
+		}
+
+		/** {@code insn} writes {@code register} or part of it, when it issues or later. */
+		private boolean mayWrite(Instruction insn, Register register) {
+			Register load = loadDestination(insn);
+			return load != null && overlaps(load, register) || issueWrites(insn).stream().anyMatch(r -> overlaps(r, register));
+		}
+
+		/** {@link #holdsEntryLink} but for the calls: the function's only write to the register is the entry's copy of B3. */
+		private boolean copiesEntryLink(Instruction branch) {
+			return copiesEntryLink(branch, false);
+		}
+
+		/**
+		 * The register {@code branch} goes through held the link its function was entered with, and only a callee
+		 * may have changed it. Unlike {@link #holdsEntryLink} this is no proof, and the copy may also issue beside
+		 * the function's first branch or in its delay slots.
+		 */
+		boolean mayHoldEntryLink(Instruction branch) {
+			return copiesEntryLink(branch, true);
+		}
+
+		private boolean copiesEntryLink(Instruction branch, boolean window) {
 			Register through = C6000PacketStagingAnalyzer.hardware(branch).getRegister(0);
 			Register b3 = program.getRegister("B3");
 			Function function = program.getFunctionManager().getFunctionContaining(branch.getMinAddress());
@@ -2447,10 +2493,17 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 			regs.put(b3, new long[] { link, FULL });
 			Address copy = null;
 			Instruction insn = listing.getInstructionAt(function.getEntryPoint());
-			for (int n = 0; insn != null && n < LOOK_BACK && !transfer(insn); n++, insn = next(insn)) {
+			Address last = null;
+			for (int n = 0; insn != null && n < LOOK_BACK; n++, insn = next(insn)) {
+				if (last != null && insn.getMinAddress().compareTo(last) > 0) break;
+				if (transfer(insn)) {
+					List<Instruction> slots = window && last == null ? window(insn) : null;
+					if (slots == null || slots.isEmpty()) break;
+					last = slots.get(slots.size() - 1).getMinAddress();
+					continue;
+				}
 				if (n > 0 && externalEntry(insn)) return false;
-				boolean writes = issueWrites(insn).stream().anyMatch(r -> overlaps(r, through)) ||
-					(loadDestination(insn) != null && overlaps(loadDestination(insn), through));
+				boolean writes = mayWrite(insn, through);
 				track(insn, regs);
 				if (!writes) continue;
 				long[] value = regs.get(through);
@@ -2458,9 +2511,7 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 				copy = insn.getMinAddress();
 			}
 			if (copy == null) return false;
-			boolean preserved = through.getName().matches("[AB]1[0-5]");
 			for (Instruction other : listing.getInstructions(function.getBody(), true)) {
-				if (!preserved && C6000PacketStagingAnalyzer.flow(other).isCall()) return false;
 				if (other.getMinAddress().equals(copy) || other.getPrototype().hasDelaySlots()) continue;
 				for (Object written : C6000PacketStagingAnalyzer.hardware(other).getResultObjects())
 					if (written instanceof Register r && overlaps(r, through)) return false;

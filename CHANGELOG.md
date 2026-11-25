@@ -131,6 +131,12 @@
 
 ### Fixed
 
+* A branch through a scratch register that holds the function's entry link is a return also in a
+  function that makes calls, if each callee is proven to leave that register alone: cl6x 8.3.15
+  keeps the link in one when it knows what a callee in the same file writes. It was lifted as a call
+  through an unrecovered jump table, with no warning (issue #131). Where a callee is not proven to, or
+  the copy issues beside the function's first branch or in its delay slots, the new `C6000 Link Copy
+  Warnings` analyzer bookmarks the branch.
 * `C6000 Code Pointers` joins `MVK`/`MVKL` and `MVKH` on one register itself. Ghidra's constant
   tracking gives no reference where the halves are apart or a call lands between them, so a
   callback whose address is loaded that way was missed.

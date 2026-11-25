@@ -20,7 +20,7 @@ public class C6000NestedWindowTest extends GhidraScript {
 		long entry, h, end;
 		long[] warn;
 		String[] c;
-		long[] functions, labels, declare, entered;
+		long[] functions, labels, declare, entered, link;
 		@com.google.gson.annotations.SerializedName("plain_at") long plainAt;
 		String[] either, plain, absent;
 	}
@@ -87,6 +87,16 @@ public class C6000NestedWindowTest extends GhidraScript {
 				if (!marked && (jump == null || !jump.getFlowType().isCall()))
 					throw new AssertionError(item.name + ": the jump at " + toAddr(at) + " into warned code is not warned");
 			}
+			// A register branch that may return through a copy of the entry link is warned, and no other (issue #131).
+			Set<Long> links = new TreeSet<>(), wanted = new TreeSet<>();
+			bookmarks = currentProgram.getBookmarkManager().getBookmarksIterator(BookmarkType.WARNING);
+			while (bookmarks.hasNext()) {
+				Bookmark bookmark = bookmarks.next();
+				if (bookmark.getCategory().equals("C6000 Link Copy") && range.contains(bookmark.getAddress())) links.add(bookmark.getAddress().getOffset());
+			}
+			if (item.link != null) for (long at : item.link) wanted.add(at);
+			if (!links.equals(wanted))
+				throw new AssertionError(item.name + ": link copy warnings at " + hex(links) + ", want " + hex(wanted));
 			// A callback taken by address is a function (C6000 Code Pointers); a plain label is not.
 			if (item.functions != null) for (long at : item.functions)
 				if (getFunctionAt(toAddr(at)) == null) throw new AssertionError(item.name + ": no function at " + toAddr(at));

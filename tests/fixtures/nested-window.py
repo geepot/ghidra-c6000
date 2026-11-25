@@ -303,6 +303,238 @@ CASES = [
         B       .S2     B9
         NOP             5
 """),
+    # the copy survives a call to a subroutine that leaves B9 alone: (a ? 2a : 0) + 7.
+    ("cpycall", False, """{n}:
+        ADD     .D2     B3,0,B9
+        MV      .L1     A4,A1
+  [!A1] B       .S1     {n}_r
+        NOP             5
+        B       .S1     {n}_h
+        MVKL    .S2     {n}_r,B3
+        MVKH    .S2     {n}_r,B3
+        NOP             3
+{n}_r:
+        ADD     .L1     A4,7,A4
+        B       .S2     B9
+        NOP             5
+"""),
+    # the same through a register whose constant is proven.
+    ("cpyfar", False, """{n}:
+        ADD     .D2     B3,0,B9
+        MV      .L1     A4,A1
+  [!A1] B       .S1     {n}_r
+        NOP             5
+        MVKL    .S2     {n}_h,B5
+        MVKH    .S2     {n}_h,B5
+        MVKL    .S2     {n}_r,B3
+        MVKH    .S2     {n}_r,B3
+        B       .S2     B5
+        NOP             5
+{n}_r:
+        ADD     .L1     A4,7,A4
+        B       .S2     B9
+        NOP             5
+"""),
+    # cl6x 8.3.15 -O1, both functions in one file: it keeps the link in A1 across its call to g, which
+    # it knows writes A0 only: if (p[1]) g(p, a + 5); return a + 1;
+    ("cpyti", False, """{n}:
+        LDW     .D1T1   *A4(4),A0
+        MV      .L1X    B4,A3
+        ADD     .L2     5,B4,B4
+        MV      .L1X    B3,A1
+        NOP             1
+  [!A0] BNOP    .S1     {n}_e,5
+        CALLP   .S2     {n}_g,B3
+{n}_e:
+        BNOP    .S2X    A1,4
+        ADD     .L1     1,A3,A4
+{n}_g:
+        MV      .L1X    B3,A0
+        STW     .D1T2   B4,*A4(0)
+        BNOP    .S2X    A0,5
+"""),
+    # Known-bads for the rule: the callee writes B9,
+    ("cpyclob", False, """{n}:
+        ADD     .D2     B3,0,B9
+        MV      .L1     A4,A1
+  [!A1] B       .S1     {n}_r
+        NOP             5
+        B       .S1     {n}_g
+        MVKL    .S2     {n}_r,B3
+        MVKH    .S2     {n}_r,B3
+        NOP             3
+{n}_r:
+        ADD     .L1     A4,7,A4
+{n}_link:
+        B       .S2     B9
+        NOP             5
+{n}_g:
+        MVK     .S2     5,B9
+        B       .S2     B3
+        NOP             5
+"""),
+    # writes it in its return's delay slots,
+    ("cpyclobs", False, """{n}:
+        ADD     .D2     B3,0,B9
+        MV      .L1     A4,A1
+  [!A1] B       .S1     {n}_r
+        NOP             5
+        B       .S1     {n}_g
+        MVKL    .S2     {n}_r,B3
+        MVKH    .S2     {n}_r,B3
+        NOP             3
+{n}_r:
+        ADD     .L1     A4,7,A4
+{n}_link:
+        B       .S2     B9
+        NOP             5
+{n}_g:
+        B       .S2     B3
+        MVK     .S2     5,B9
+        NOP             4
+"""),
+    # after a BDEC that falls through,
+    ("cpybdec", False, """{n}:
+        ADD     .D2     B3,0,B9
+        MV      .L1     A4,A1
+  [!A1] B       .S1     {n}_r
+        NOP             5
+        B       .S1     {n}_g
+        MVKL    .S2     {n}_r,B3
+        MVKH    .S2     {n}_r,B3
+        NOP             3
+{n}_r:
+        ADD     .L1     A4,7,A4
+{n}_link:
+        B       .S2     B9
+        NOP             5
+{n}_g:
+        MV      .L2X    A4,B5
+        BDEC    .S2     {n}_gx,B5
+        NOP             5
+        MVK     .S2     5,B9
+{n}_gx:
+        B       .S2     B3
+        NOP             5
+"""),
+    # or calls code that does; the callee is not known, or is g on one path.
+    ("cpydeep", False, """{n}:
+        ADD     .D2     B3,0,B9
+        MV      .L1     A4,A1
+  [!A1] B       .S1     {n}_r
+        NOP             5
+        B       .S1     {n}_g
+        MVKL    .S2     {n}_r,B3
+        MVKH    .S2     {n}_r,B3
+        NOP             3
+{n}_r:
+        ADD     .L1     A4,7,A4
+{n}_link:
+        B       .S2     B9
+        NOP             5
+{n}_g:
+        STW     .D2T2   B3,*B15--[2]
+        B       .S1     {n}_g2
+        MVKL    .S2     {n}_gr,B3
+        MVKH    .S2     {n}_gr,B3
+        NOP             3
+{n}_gr:
+        LDW     .D2T2   *++B15[2],B3
+        NOP             4
+        B       .S2     B3
+        NOP             5
+{n}_g2:
+        B       .S2     B3
+        MVK     .S2     5,B9
+        NOP             4
+"""),
+    ("cpyunk", False, """{n}:
+        ADD     .D2     B3,0,B9
+        MV      .L1     A4,A1
+  [!A1] B       .S1     {n}_r
+        NOP             5
+        MVKL    .S2     {n}_r,B3
+        MVKH    .S2     {n}_r,B3
+        B       .S2     B4
+        NOP             5
+{n}_r:
+        ADD     .L1     A4,7,A4
+{n}_link:
+        B       .S2     B9
+        NOP             5
+"""),
+    ("cpytwo", False, """{n}:
+        MV      .L1X    B4,A2
+        ADD     .D2     B3,0,B9
+        MV      .L1     A4,A1
+  [!A1] B       .S1     {n}_r
+        NOP             5
+        MVKL    .S2     {n}_h,B5
+        MVKH    .S2     {n}_h,B5
+  [ A2] MVKL    .S2     {n}_g,B5
+  [ A2] MVKH    .S2     {n}_g,B5
+        MVKL    .S2     {n}_r,B3
+        MVKH    .S2     {n}_r,B3
+        B       .S2     B5
+        NOP             5
+{n}_r:
+        ADD     .L1     A4,7,A4
+{n}_link:
+        B       .S2     B9
+        NOP             5
+{n}_g:
+        MVK     .S2     5,B9
+        B       .S2     B3
+        NOP             5
+"""),
+    # Not followed: the copy issues in the slots of the first branch, or beside it.
+    ("cpyslot", False, """{n}:
+        MV      .L1     A4,A1
+  [!A1] B       .S1     {n}_r
+        ADD     .D2     B3,0,B9
+        NOP             4
+        ADD     .L1     A4,3,A4
+{n}_r:
+        ADD     .L1     A4,7,A4
+{n}_link:
+        B       .S2     B9
+        NOP             5
+"""),
+    ("cpybeside", False, """{n}:
+        MV      .L1     A4,A1
+  [!A1] B       .S1     {n}_r
+||      ADD     .D2     B3,0,B9
+        NOP             5
+        ADD     .L1     A4,3,A4
+{n}_r:
+        ADD     .L1     A4,7,A4
+{n}_link:
+        B       .S2     B9
+        NOP             5
+"""),
+    # Not that: the instruction past the slots of the first branch, which may not issue, writes the register;
+    # or the function writes it again.
+    ("cpypast", False, """{n}:
+        MV      .L1     A4,A1
+  [!A1] B       .S1     {n}_r
+        NOP             5
+        ADD     .D2     B3,0,B9
+{n}_r:
+        ADD     .L1     A4,7,A4
+        B       .S2     B9
+        NOP             5
+"""),
+    ("cpyagain", False, """{n}:
+        MV      .L1     A4,A1
+  [!A1] B       .S1     {n}_r
+        ADD     .D2     B3,0,B9
+        NOP             4
+        MV      .L2X    A6,B9
+{n}_r:
+        ADD     .L1     A4,7,A4
+        B       .S2     B9
+        NOP             5
+"""),
     # issue #105: B3 still holds the first call's link when [A1] B h issues, so h returns to back
     # again: a predicated call that returns to earlier code (issue #66), lifted as the call and a
     # jump to its return point.
@@ -1389,11 +1621,13 @@ LIFTED = {
     "callarml0": ["param_2 + 3;", "return param_2 + 100;"],
 }
 # What the C of a case that latches nothing must hold, and must not.
-PLAIN = {"cpyret": ["return param_1 + 1;"], "swtwo": ["switch(", "0x28"], "farlink": ["farlink_h(param_1 + 0x2d)", "+ 1;"], "twocall": ["(0,*param_1)", "(0,param_1[1])"]}
-ABSENT = {"cpyretp": ["return param_1 + 1;"], "a3arg": ["a3arg_h(7"]}
+PLAIN = {"cpyret": ["return param_1 + 1;"], "cpycall": ["return iVar1 + 7;"], "cpyfar": ["return iVar1 + 7;"], "cpyti": ["return param_2 + 1;"],
+         "swtwo": ["switch(", "0x28"], "farlink": ["farlink_h(param_1 + 0x2d)", "+ 1;"], "twocall": ["(0,*param_1)", "(0,param_1[1])"]}
+ABSENT = {"cpyretp": ["return param_1 + 1;"], "a3arg": ["a3arg_h(7"],
+          **{name: ["return iVar1 + 7;"] for name in ("cpyclob", "cpyclobs", "cpybdec", "cpydeep", "cpyunk", "cpytwo")}}
 # Labels declared as functions too, as a symbol table or a seed list would, and what the C of the
 # function at a label must hold.
-DECLARE = {"c2split": ["test", "exit"], "twocall": ["callee"]}
+DECLARE = {"c2split": ["test", "exit"], "twocall": ["callee"], "cpyti": ["g"], "cpyclob": ["g"], "cpyclobs": ["g"], "cpybdec": ["g"], "cpydeep": ["g", "g2"], "cpytwo": ["g"]}
 PLAIN_AT = {"c2split": ("test", ["c2split_h(param_1 + 7"])}
 # Cases that are warned or lifted depending on the decompiler, and what their C holds when lifted.
 EITHER = {"entmany": ["0x101", "+ 0xae", "+ 0x50"], "samepred": ["+ 0xf) * 2", "param_2 + 1"]}
@@ -1458,6 +1692,7 @@ def main():
                              c=LIFTED.get(name, []), either=EITHER.get(name), plain=PLAIN.get(name) or (PLAIN_AT[name][1] if name in PLAIN_AT else None), absent=ABSENT.get(name),
                              plain_at=addresses[name + "_" + PLAIN_AT[name][0]] if name in PLAIN_AT else 0,
                              entered=[a for label, a in addresses.items() if label == name + "_enter"],
+                             link=[a for label, a in addresses.items() if label == name + "_link"],
                              declare=[addresses[name + "_" + label] for label in DECLARE.get(name, [])],
                              functions=[a for label, a in addresses.items() if label == name + "_cb"],
                              labels=[a for label, a in addresses.items() if label == name + "_notcb"]))
