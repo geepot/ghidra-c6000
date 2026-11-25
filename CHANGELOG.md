@@ -131,6 +131,11 @@
 
 ### Fixed
 
+* A value's origin is not disturbed by a write that has issued and not yet landed, such as a
+  load in the packet that copies the register: the copy still has the value from before. Two
+  predicates that are copies of one value were not recognised as such there, so an outcome
+  that cannot happen was run.
+
 * Code reached only by a jump with another transfer of its window still in flight keeps the registers
   that jump arrives with, for a branch that issues once that transfer has landed: it is reached only
   where the transfer was not taken. They were forgotten for all the code there, so a call whose link

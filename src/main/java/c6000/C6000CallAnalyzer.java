@@ -1349,11 +1349,11 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 				final Register register = held;
 				int last = lastWrite(path, cycles, register, i, Set.of());
 				if (last < 0) {
-					// No write on the path, or two at once: only "no write at all" is an origin.
-					for (int w = 0; w < i; w++) {
+					// Two at once: not an origin. No write landed by then: the value from before the path,
+					// whatever has issued and not yet landed (a load issued beside the read, say).
+					if (last == TIED) for (int w = 0; w < i; w++) {
 						Instruction writer = path.get(w);
-						Register load = loadDestination(writer);
-						if (load != null ? overlaps(load, register) : issueWrites(writer).stream().anyMatch(r -> overlaps(r, register)))
+						if (writes(writer, register) && cycles[w] + resultDelay(writer) < cycles[i])
 							return new long[] { register.getAddress().getOffset(), w, 1 };
 					}
 					return new long[] { register.getAddress().getOffset(), -1, 0 };
