@@ -1470,7 +1470,7 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 						// transfer: else the link is for some other branch, one still in flight or one
 						// the target issues itself (issues #112, #113). Where the listing already says
 						// call, that was decided with both arms in view.
-						if (linked != null && !call && target != null && Boolean.TRUE.equals(localTarget(transfer)) && !returnsThroughLink(target))
+						if (linked != null && !call && target != null && Boolean.TRUE.equals(nestLocal(transfer, region.start())) && !returnsThroughLink(target))
 							linked = null;
 						// A jump to another function's entry runs it to its return through B3. Where B3
 						// holds an address in this function, set at any time before, that is where it
@@ -1531,6 +1531,20 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 			catch (MemoryAccessException e) {
 				return Run.unproven("a packet's parallel bits cannot be read");
 			}
+		}
+
+		/**
+		 * {@link C6000CallAnalyzer#localTarget}, where the rest of a window that was cut at a nested branch
+		 * is in no function yet: it belongs to the function its stretch starts in (issue #136).
+		 */
+		private Boolean nestLocal(Instruction transfer, Address start) {
+			Boolean local = localTarget(transfer);
+			Function own = local != null || listing.getFunctionContaining(transfer.getMinAddress()) != null ? null : listing.getFunctionContaining(start);
+			Address[] flows = C6000PacketStagingAnalyzer.hardware(transfer).getDefaultFlows();
+			if (own == null || transfer.getRegister(0) != null || flows.length != 1) return local;
+			Function entered = program.getFunctionManager().getFunctionAt(flows[0]);
+			Function owner = entered != null ? entered : listing.getFunctionContaining(flows[0]);
+			return owner == null ? null : owner.equals(own);
 		}
 
 		/** Every flow into {@code insn}, other than falling in, is the jump of a latched call to its return point here. */

@@ -1548,6 +1548,98 @@ CASES = [
         ADD     .L1     A4,A4,A4
         NOP             4
 """),
+    # issue #136: the branch in the jump's window, and the rest of that window, are in no function while
+    # the nest is planned; its target is in this one, so the link is not its own. A loop's jump, and one
+    # forward. The link is the call's at the end.
+    ("lguard", False, """{n}:
+        STW     .D2T2   B3,*B15--[2]
+||      MV      .L2     B4,B0
+  [!B0] B       .S1     {n}_e
+        NOP             5
+{n}_top:
+        SUB     .L2     B0,1,B0
+        B       .S1     {n}_t
+        ADDKPC  .S2     {n}_ret,B3,0
+  [ B0] B       .S2     {n}_top
+        ADDK    .S1     1,A4
+        NOP             2
+{n}_e:
+""" + RET + """{n}_t:
+        SHL     .S1     A4,1,A4
+        ADDK    .S1     3,A4
+        B       .S1     {n}_h
+        ADDKPC  .S2     {n}_ret,B3,4
+{n}_ret:
+        ADDK    .S1     50,A4
+""" + RET),
+    ("lafter", False, """{n}:
+        STW     .D2T2   B3,*B15--[2]
+||      MV      .L2     B4,B0
+        B       .S1     {n}_t
+        ADDKPC  .S2     {n}_ret,B3,0
+  [ B0] B       .S2     {n}_l
+        ADDK    .S1     1,A4
+        NOP             2
+        ADDK    .S1     64,A4
+""" + RET + """{n}_t:
+        SHL     .S1     A4,1,A4
+        ADDK    .S1     3,A4
+        NOP             1
+{n}_l:
+        ADDK    .S1     5,A4
+        B       .S1     {n}_h
+        ADDKPC  .S2     {n}_ret,B3,4
+{n}_ret:
+        ADDK    .S1     50,A4
+""" + RET),
+    # known-good: a predicated jump, so the window is in the function
+    ("lguard0", False, """{n}:
+        STW     .D2T2   B3,*B15--[2]
+||      MV      .L2     B4,B0
+||      MV      .L1     A6,A2
+  [!B0] B       .S1     {n}_e
+        NOP             5
+{n}_top:
+        SUB     .L2     B0,1,B0
+  [ A2] B       .S1     {n}_t
+        ADDKPC  .S2     {n}_ret,B3,0
+  [ B0] B       .S2     {n}_top
+        ADDK    .S1     1,A4
+        NOP             2
+        ADDK    .S1     16,A4
+        ADDK    .S1     32,A4
+{n}_e:
+""" + RET + """{n}_t:
+        SHL     .S1     A4,1,A4
+        ADDK    .S1     3,A4
+        B       .S1     {n}_h
+        ADDKPC  .S2     {n}_ret,B3,4
+{n}_ret:
+        ADDK    .S1     50,A4
+""" + RET),
+    # known-good: the target is in no function either, and the link is the branch's: a callee that
+    # nothing else names, with a call of its own
+    ("lnewfn", False, """{n}:
+        STW     .D2T2   B3,*B15--[2]
+||      MV      .L2     B4,B0
+        B       .S1     {n}_t
+        ADDKPC  .S2     {n}_ret,B3,0
+  [ B0] B       .S2     {n}_g
+        ADDK    .S1     1,A4
+        NOP             2
+{n}_t:
+        SHL     .S1     A4,1,A4
+        ADDK    .S1     3,A4
+        NOP             1
+{n}_ret:
+        ADDK    .S1     50,A4
+""" + RET + """{n}_g:
+        STW     .D2T2   B3,*B15--[2]
+        B       .S1     {n}_h
+        ADDKPC  .S2     {n}_gr,B3,4
+{n}_gr:
+        ADDK    .S1     5,A4
+""" + RET),
     # Known-good (issue #116): localsub with B3 set to h before the pair, so the B B3 is a call to h that returns
     # to ret. a ? b + 1017 : 2(b + 1) + 16.
     ("localptr", False, """{n}:
@@ -1771,6 +1863,8 @@ LIFTED = {
     "localsub": ["return param_2 + 1;"],
     # known-good, latched before the fix: the B B3 stays a call to h, which returns to ret
     "localptr": ["localptr_h(", "iVar1 + 0x10"],
+    "lguard": ["do {", "lguard_h()", "+ 0x32"], "lguard0": ["do {", "lguard0_h()", "+ 0x32"],
+    "lafter": ["lafter_h(", "+ 0x32"], "lnewfn": ["iVar1 + 0x32"],
     # b ? (a ? a + 0x1f0 : 0x5d8) : (a ? a + 0x187 : 0x56f): the landing in twin's delay slot is carried
     "owntail": ["param_1 + 7;", "+ 0x568;"],
     # a ? 2b + 16 : b + 103: the call returns where B3 points, not to its listed fall-through
@@ -1780,7 +1874,7 @@ LIFTED = {
 # What the C of a case that latches nothing must hold, and must not.
 PLAIN = {"cpyret": ["return param_1 + 1;"], "cpycall": ["return iVar1 + 7;"], "cpyfar": ["return iVar1 + 7;"], "cpyti": ["return param_2 + 1;"],
          "swtwo": ["switch(", "0x28"], "farlink": ["farlink_h(param_1 + 0x2d)", "+ 1;"], "twocall": ["(0,*param_1)", "(0,param_1[1])"]}
-ABSENT = {"cpyretp": ["return param_1 + 1;"], "a3arg": ["a3arg_h(7"],
+ABSENT = {**{name: ["func_0x"] for name in ("lguard", "lguard0", "lafter")}, "lnewfn": ["lnewfn_h("], "cpyretp": ["return param_1 + 1;"], "a3arg": ["a3arg_h(7"],
           **{name: ["return iVar1 + 7;"] for name in ("cpyclob", "cpyclobs", "cpybdec", "cpydeep", "cpyunk", "cpytwo")}}
 # Labels declared as functions too, as a symbol table or a seed list would, and what the C of the
 # function at a label must hold.
