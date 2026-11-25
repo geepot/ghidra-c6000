@@ -246,7 +246,7 @@ public final class C6000NestedLiftAnalyzer extends AbstractAnalyzer {
 			}
 			boolean runs = kept(program, walker, plan, outer);
 			boolean over = runs && enters && owner != null && C6000DelaySlots.pastOverlapLimit(program, owner, ghidra.util.task.TaskMonitor.DUMMY);
-			failed = !runs ? "the listing it gave did not run as the hardware does" :
+			failed = !runs ? keptWhy :
 				"it adds an entry into a native delay window, past what the decompiler takes in one function (issue #99)";
 			if (runs && !over) {
 				// Ghidra types every flow of an instruction that also lands a call as a call: give each
@@ -296,7 +296,10 @@ public final class C6000NestedLiftAnalyzer extends AbstractAnalyzer {
 		for (var latch : plan.latches()) {
 			Instruction branch = program.getListing().getInstructionAt(latch.branch().getMinAddress());
 			// An encoding with no latched form decodes as it was.
-			if (branch == null || !latches(program, branch, latch.slot())) return false;
+			if (branch == null || !latches(program, branch, latch.slot())) {
+				keptWhy = "the branch at " + latch.branch().getMinAddress() + " has no latched form";
+				return false;
+			}
 			if (!done.add(branch.getMinAddress())) continue;
 			if (branch.isFallThroughOverridden()) branch.clearFallThroughOverride();
 			// Its landing says what it is; an override here would change a landing it carries for another branch.
@@ -311,8 +314,13 @@ public final class C6000NestedLiftAnalyzer extends AbstractAnalyzer {
 			}
 		}
 		Instruction now = program.getListing().getInstructionAt(outer.getMinAddress());
-		return now != null && walker.nativeMismatch(now) == null;
+		keptWhy = now == null ? "its outer branch no longer decodes" : walker.nativeMismatch(now);
+		if (keptWhy != null) keptWhy = "the listing it gave does not run as the hardware does: " + keptWhy;
+		return keptWhy == null;
 	}
+
+	/** Why the last {@link #kept} refused. */
+	private static String keptWhy;
 
 	/** The instruction's p-code records its predicate in its latch: it is the latched form. */
 	private static boolean latches(Program program, Instruction branch, int slot) {

@@ -537,8 +537,24 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 			landedBehind = new HashMap<>();
 			landedAsCall = new HashMap<>();
 			issuedBeyond = new LinkedHashMap<>();
+			// A transfer of the stretch that no run from its start issues is reached some other way,
+			// by a jump to it or past a return: the stretch is run from there too, or nothing would
+			// say how that transfer lands.
+			List<Instruction[]> entries = new ArrayList<>();
+			issuedAny = new HashSet<>();
 			try {
 				why = compare(first, outer, null, null);
+				for (int i = 0; why == null && i < stretch.size(); i++) {
+					// The first instruction no run has issued, with a transfer still to come.
+					if (issuedAny.contains(stretch.get(i).getMinAddress())) continue;
+					Instruction through = null;
+					for (int j = i; through == null && j < stretch.size(); j++) if (transfer(stretch.get(j))) through = stretch.get(j);
+					if (through == null) break;
+					entries.add(new Instruction[] { stretch.get(i), through });
+					why = compare(stretch.get(i), through, null, null);
+					// Whatever that run did not reach either is not reached from here.
+					issuedAny.add(stretch.get(i).getMinAddress());
+				}
 			}
 			finally {
 				sites = landedBehind;
@@ -549,6 +565,7 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 				landedBehind = null;
 				landedAsCall = null;
 				issuedBeyond = null;
+				issuedAny = null;
 			}
 			if (why != null) return refuse(why);
 			List<Latch> latches = new ArrayList<>();
@@ -639,6 +656,7 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 				landingWalk = new HashSet<>();
 				try {
 					why = compare(first, outer, null, candidate);
+					for (int i = 0; why == null && i < entries.size(); i++) why = compare(entries.get(i)[0], entries.get(i)[1], null, candidate);
 				}
 				finally {
 					uses = landingUse;
@@ -814,6 +832,9 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 			}
 			return leaves;
 		}
+
+		/** Set while planning: every instruction a hardware run has issued. */
+		private Set<Address> issuedAny;
 
 		/** Set while planning: where each transfer that lands as a call returns to. */
 		private Map<Address, Set<Address>> landedBack;
@@ -1385,6 +1406,7 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 							if (!flights.isEmpty()) return Run.unproven("it loops back to " + insn.getMinAddress() + " with transfers still in flight");
 							return new Run(trace, "issues " + insn.getMinAddress() + " again", null);
 						}
+						if (issuedAny != null) issuedAny.add(insn.getMinAddress());
 						if (issued.size() > MAX_ISSUED) return Run.unproven("its windows issue too many instructions to compare");
 						if (untimed(program, insn)) return Run.unproven(insn + " at " + insn.getMinAddress() + " has timing outside the cycle model");
 						span = Math.max(span, 1 + extraCycles(program, insn));

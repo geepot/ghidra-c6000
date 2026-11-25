@@ -131,6 +131,12 @@
 
 ### Fixed
 
+* A stretch is planned and checked from every place it can be entered, not only from its
+  start: code behind a return or an unconditional jump inside it is reached some other way,
+  and its branches were latched as jumps without any run saying how they land. Calls there
+  are now latched as calls; where such an entry cannot be lifted, the nest is refused with
+  its reason instead of being lifted unchecked.
+
 * `C6000 Code Pointers` decodes a callback before making it a function; one found behind words
   that do not decode was a function of one byte that no analyzer had seen. A callback right
   behind the last delay slot of a jump or return that always goes is found too: that slot's
