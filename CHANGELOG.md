@@ -135,10 +135,11 @@
   table: the search follows the latched branch behind a landing, takes what runs before the
   jump into the tail as an entry path of its own, knows that nothing falls in past two jumps on
   opposite outcomes of one flag, and tracks `SUBAB`/`SUBAH`/`SUBAW`.
-* A branch is not a call returning past its own delay cycles when an earlier jump on the same
-  predicate is still in flight as it issues: that jump lands inside those cycles, so the link
-  written after them is not this branch's. On a compiled runtime image this made two false
-  functions inside `__TI_scanfi`.
+* When an earlier jump on a branch's own predicate is still in flight as the branch issues,
+  the branch's delay cycles continue at that jump's target once it lands. A link written in
+  the code after the branch past that point is not its link (this made two false functions
+  inside `__TI_scanfi` of a compiled runtime image); a link the target writes is, which is how
+  cl6x gives a call its link through a jump to a shared `ADDKPC`.
 
 * A value left in A3 is no longer printed as the first argument of a call whose callee has no
   committed prototype (issue #132). The compiler spec gains `__c6000_unknown`, the default

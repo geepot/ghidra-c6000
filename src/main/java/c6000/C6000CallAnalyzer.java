@@ -1822,6 +1822,8 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 			// Each earlier call: the cycle it lands, and the address its callee returns to.
 			List<long[]> returns = new ArrayList<>();
 			int dead = Integer.MAX_VALUE;
+			long cut = Long.MAX_VALUE;
+			Address cutTo = null;
 			for (int i = 0; i < path.size(); i++) {
 				Instruction insn = path.get(i);
 				Boolean runs = executes(execution, i, facts);
@@ -1854,12 +1856,19 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 					dead = Integer.MAX_VALUE;
 				}
 				// An earlier jump that goes whenever this branch does, still in flight as it issues,
-				// lands inside this branch's delay cycles: what issues before the branch lands is then
-				// the jump's target, not the code after the branch, so no link there is this branch's.
-				// That path is the nested-window check's to compare (SPRUFE8B 3.5, 4.2.6).
-				if (insn != viaInsn && isFlow(insn) && predicate(insn) != null && Boolean.TRUE.equals(runs) &&
+				// lands inside this branch's delay cycles: from then on the jump's target issues, not
+				// the code after the branch (SPRUFE8B 3.5, 4.2.6). A link written after the branch
+				// past that point is not its link; one the target writes is.
+				// Only on the branch's own predicate: that it goes because the straight line was
+				// followed past another jump is a guess about how the branch is reached.
+				if (insn != viaInsn && isFlow(insn) && predicate(insn) != null && predicate(insn).equals(predicate(branch)) &&
+					stable(execution, i, branchIndex, predicate(branch), true) &&
 					!C6000PacketStagingAnalyzer.flow(insn).isCall() && issue[branchIndex] - issue[i] <= DELAY_CYCLES &&
-					issue[branchIndex] > issue[i] && !targetOnly && !valuesOnly) return null;
+					issue[branchIndex] > issue[i] && issue[i] + 1L + DELAY_CYCLES < cut) {
+					cut = issue[i] + 1L + DELAY_CYCLES;
+					Address[] to = C6000PacketStagingAnalyzer.hardware(insn).getDefaultFlows();
+					cutTo = insn.getRegister(0) == null && to.length == 1 ? to[0] : null;
+				}
 				if (insn != viaInsn && isFlow(insn)) {
 					trace.write(issue[i], program.getRegister("B3"), null, i);
 					if (C6000PacketStagingAnalyzer.flow(insn).isCall()) {
@@ -1889,7 +1898,15 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 
 			if (targetOnly) return new Arrival(null, target, facts, branchIndex, trace);
 			// What the hardware has issued when the branch lands: B3 then is where the callee returns to.
-			Landed landed = land(branch, execution, issue, branchIndex, regs, trace, facts, partner, valuesOnly);
+			windowCut = cut;
+			windowTarget = cutTo;
+			Landed landed;
+			try {
+				landed = land(branch, execution, issue, branchIndex, regs, trace, facts, partner, valuesOnly);
+			}
+			finally {
+				windowCut = Long.MAX_VALUE;
+			}
 			if (landed == null) return null;
 			return new Arrival(landed, target, facts, branchIndex, trace);
 		}
@@ -1957,6 +1974,10 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 		 * predicates follow that order. Null when it does not decode, cannot be timed, or issues a transfer
 		 * that may be taken with the branch.
 		 */
+		/** The cycle from which the code after the branch at hand no longer issues: an earlier jump has landed, at {@link #windowTarget}. */
+		private long windowCut = Long.MAX_VALUE;
+		private Address windowTarget;
+
 		private Landed land(Instruction branch, List<Instruction> prefix, int[] prefixCycles, int branchIndex,
 				Map<Register, long[]> values, Constants trace, List<PredicateFact> facts, Instruction partner, boolean valuesOnly) {
 			List<Instruction> issued = new ArrayList<>(prefix);
@@ -1974,7 +1995,7 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 					span = Math.max(span, 1 + extraCycles(program, prefix.get(i)));
 				}
 				Instruction last = branch;
-				boolean nested = false;
+				boolean nested = false, turned = false;
 				long end = branch.getMaxAddress().getOffset() + 1;
 				Instruction at = parallelWithNext(branch) ? next(branch) : null;
 				if (at == null && parallelWithNext(branch)) return null;
@@ -2004,7 +2025,10 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 					}
 					long nextCycle = cycle + (long) span;
 					if (ours <= nextCycle) break;
-					at = next(last);
+					// ponytail: the cut is taken at a packet boundary; a multi-cycle NOP across it is not split.
+					boolean turn = !turned && nextCycle >= windowCut;
+					at = turn ? (windowTarget == null ? null : decode(windowTarget)) : next(last);
+					turned |= turn;
 					cycle = (int) nextCycle;
 					if (at == null) return null;
 					span = 1;
