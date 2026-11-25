@@ -281,8 +281,7 @@ def main():
         runs = [(item, variant) for item in cases for variant in
                 (("default", "analysis", "c67x", "c67x-analysis")
                  if item[0] in {"pipeline-c67x", "pipeline-resources", "delayed-call-timing",
-                                "analysis-float", "analysis-nonaligned"} else ("default",))]
-                                "analysis-float", "circular-mask-switch"} else ("default",))]
+                                "analysis-float", "analysis-nonaligned", "circular-mask-switch"} else ("default",))]
         for index, ((fixture, manifests, scripts, analysis), variant) in enumerate(runs):
             directory = work / endian / f"{index:02d}-{fixture}-{variant}"
             directory.mkdir()
