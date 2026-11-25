@@ -131,6 +131,11 @@
 
 ### Fixed
 
+* `C6000 Code Pointers` decodes a callback before making it a function; one found behind words
+  that do not decode was a function of one byte that no analyzer had seen. A callback right
+  behind the last delay slot of a jump or return that always goes is found too: that slot's
+  fall-through is where the listing goes on, not the program (issue #130).
+
 * A nest whose stretch holds a landing of another stretch is lifted: the instruction carries
   that landing beside the plan's own, and the plan takes latches the other stretch does not
   use. Such a plan was dropped without a word (issue #140). Where a plan that passed its check

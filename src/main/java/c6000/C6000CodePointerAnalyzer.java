@@ -77,7 +77,7 @@ public final class C6000CodePointerAnalyzer extends AbstractAnalyzer {
 					// B3 holds the return address (SPRAB89 3.3): an address put there is a return point, not a callee.
 					if (java.util.Arrays.asList(C6000PacketStagingAnalyzer.hardware(insn).getResultObjects()).contains(program.getRegister("B3"))) continue;
 					if (!target.isMemoryAddress() || !entry(program, pseudo, target)) continue;
-					if (found.add(target)) analysis.createFunction(target, false);
+					if (found.add(target)) make(program, analysis, target);
 				}
 			}
 		}
@@ -98,7 +98,7 @@ public final class C6000CodePointerAnalyzer extends AbstractAnalyzer {
 				if (plain && name.equals("MVKH") && low.containsKey(dst)) {
 					Address target = listed.getMinAddress().getNewAddress(((value.getUnsignedValue() & 0xffffL) << 16) | (low.get(dst) & 0xffffL));
 					if (program.getMemory().contains(target) && entry(program, pseudo, target) && found.add(target))
-						analysis.createFunction(target, false);
+						make(program, analysis, target);
 				}
 				// Anything else that writes a register ends what its low half is known to be.
 				for (Object result : insn.getResultObjects()) if (result instanceof Register r) low.keySet().removeIf(k -> k.equals(r) || k.getBaseRegister().equals(r.getBaseRegister()));
@@ -109,6 +109,12 @@ public final class C6000CodePointerAnalyzer extends AbstractAnalyzer {
 		}
 		if (!found.isEmpty()) Msg.info(this, getName() + "> " + found.size() + " function(s) from code pointers");
 		return true;
+	}
+
+	/** A function at {@code target}, whose code is decoded first: one made over undecoded bytes has no body. */
+	private static void make(Program program, AutoAnalysisManager analysis, Address target) {
+		if (program.getListing().getInstructionAt(target) == null) analysis.disassemble(target);
+		analysis.createFunction(target, false);
 	}
 
 	/** A10-A15 and B10-B15 survive a call (SPRAB89 3.2). */
@@ -151,6 +157,12 @@ public final class C6000CodePointerAnalyzer extends AbstractAnalyzer {
 		for (Reference ref : program.getReferenceManager().getReferencesTo(at))
 			if (ref.getReferenceType().isJump() && functions.getFunctionContaining(ref.getFromAddress()) != null) return false;
 		Instruction prior = listing.getInstructionBefore(at);
-		return prior == null || !at.equals(prior.getFallThrough()) || functions.getFunctionContaining(prior.getMinAddress()) == null;
+		if (prior == null || !at.equals(prior.getFallThrough()) || functions.getFunctionContaining(prior.getMinAddress()) == null) return true;
+		// The last delay slot of a jump or return that always goes: its fall-through is where the
+		// listing goes on, not where the program does (SPRUFE8B 4.2.6).
+		Instruction owner = C6000DelaySlots.unitOwner(program, prior);
+		if (owner == null || owner == prior || owner.getMinAddress().equals(prior.getMinAddress())) return false;
+		var flow = C6000PacketStagingAnalyzer.flow(owner);
+		return (flow.isJump() || flow.isTerminal()) && !flow.isConditional() && !flow.isCall();
 	}
 }

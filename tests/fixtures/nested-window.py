@@ -1240,6 +1240,32 @@ CASES = [
         ADD     .L1     A4,2,A4
         NOP             4
 """),
+    # issue #130: a callback right behind a function's last delay slot, and one behind words that
+    # do not decode, which must be decoded before it is made a function (its C is checked).
+    ("cbnext", False, """{n}:
+        MVKL    .S1     {n}_cb,A4
+        B       .S2     B3
+        MVKH    .S1     {n}_cb,A4
+        NOP             4
+{n}_cb:
+        B       .S2     B3
+        ADD     .L1     A4,1,A4
+        NOP             4
+"""),
+    ("cbraw", False, """{n}:
+        MVKL    .S1     {n}_cb,A4
+        B       .S2     B3
+        MVKH    .S1     {n}_cb,A4
+        NOP             4
+        .word   0xfffffffe
+        .word   0xfffffffe
+{n}_cb:
+        MV      .L1X    B4,A4
+||      MV      .L2X    A4,B4
+        B       .S2     B3
+        SUB     .L1X    A4,B4,A4
+        NOP             4
+"""),
     ("plain", False, """{n}:
         STW     .D2T2   B3,*B15--[2]
         B       .S1     {n}_h
@@ -1733,7 +1759,7 @@ ABSENT = {"cpyretp": ["return param_1 + 1;"], "a3arg": ["a3arg_h(7"],
 # Labels declared as functions too, as a symbol table or a seed list would, and what the C of the
 # function at a label must hold.
 DECLARE = {"c2split": ["test", "exit"], "twocall": ["callee"], "cpyti": ["g"], "cpyclob": ["g"], "cpyclobs": ["g"], "cpybdec": ["g"], "cpydeep": ["g", "g2"], "cpytwo": ["g"]}
-PLAIN_AT = {"c2split": ("test", ["c2split_h(param_1 + 7"])}
+PLAIN_AT = {"c2split": ("test", ["c2split_h(param_1 + 7"]), "cbraw": ("cb", ["param_2 - param_1"])}
 # Cases that are warned or lifted depending on the decompiler, and what their C holds when lifted.
 EITHER = {"entmany": ["0x101", "+ 0xae", "+ 0x50"], "samepred": ["+ 0xf) * 2", "param_2 + 1"]}
 LINK = re.compile(r"(MVK[LH]\s+\.S[12]\s+|\.word\s+|\*\+B14[(\[])([a-z]\w+)")
