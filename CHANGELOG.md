@@ -131,6 +131,14 @@
 
 ### Fixed
 
+* `C6000 Code Pointers` joins `MVK`/`MVKL` and `MVKH` on one register itself. Ghidra's constant
+  tracking gives no reference where the halves are apart or a call lands between them, so a
+  callback whose address is loaded that way was missed.
+* A `CALLP` whose callee never returns through the link it is given ends its function: the
+  callee returns for it, as cl6x's `__c6xabi_pop_rts` does (called with A3, it reloads B3 and
+  branches through that). The code after it was taken for part of the function, which hid a
+  function that starts right there.
+
 * A switch whose setup is entered through a second jump, or through a latched one, gets its
   table: the search follows the latched branch behind a landing, takes what runs before the
   jump into the tail as an entry path of its own, knows that nothing falls in past two jumps on

@@ -23,6 +23,7 @@ import ghidra.app.util.PseudoDisassembler;
 import ghidra.app.util.importer.MessageLog;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.address.AddressSetView;
+import ghidra.program.model.lang.Register;
 import ghidra.program.model.listing.Function;
 import ghidra.program.model.listing.Instruction;
 import ghidra.program.model.listing.Program;
@@ -77,8 +78,40 @@ public final class C6000CodePointerAnalyzer extends AbstractAnalyzer {
 				}
 			}
 		}
+		// Ghidra's constant tracking gives no reference for a constant whose halves are apart, or
+		// have a call landing between them: join MVK/MVKL and MVKH on one register here.
+		for (Function function : program.getFunctionManager().getFunctions(set, true)) {
+			java.util.Map<Register, Long> low = new java.util.HashMap<>();
+			for (Instruction listed : program.getListing().getInstructions(function.getBody(), true)) {
+				monitor.checkCancelled();
+				// Another path may come in here with another half.
+				for (Reference ref : listed.getReferenceIteratorTo()) if (ref.getReferenceType().isFlow() && !ref.getReferenceType().isFallthrough()) low.clear();
+				Instruction insn = C6000PacketStagingAnalyzer.hardware(listed);
+				String name = C6000CallAnalyzer.baseName(insn);
+				name = name.contains(".") ? name.substring(0, name.indexOf('.')) : name;
+				Register dst = insn.getNumOperands() == 2 ? insn.getRegister(1) : null;
+				ghidra.program.model.scalar.Scalar value = insn.getNumOperands() == 2 ? insn.getScalar(0) : null;
+				boolean plain = dst != null && value != null && !"B3".equals(dst.getName());
+				if (plain && name.equals("MVKH") && low.containsKey(dst)) {
+					Address target = listed.getMinAddress().getNewAddress(((value.getUnsignedValue() & 0xffffL) << 16) | (low.get(dst) & 0xffffL));
+					if (program.getMemory().contains(target) && entry(program, pseudo, target) && found.add(target))
+						analysis.createFunction(target, false);
+				}
+				// Anything else that writes a register ends what its low half is known to be.
+				for (Object result : insn.getResultObjects()) if (result instanceof Register r) low.keySet().removeIf(k -> k.equals(r) || k.getBaseRegister().equals(r.getBaseRegister()));
+				if (plain && (name.equals("MVK") || name.equals("MVKL"))) low.put(dst, value.getUnsignedValue());
+				// A callee may change every register the ABI does not make it preserve.
+				if (listed.getFlowType().isCall() && !C6000PacketStagingAnalyzer.inert(listed)) low.keySet().removeIf(k -> !preserved(k));
+			}
+		}
 		if (!found.isEmpty()) Msg.info(this, getName() + "> " + found.size() + " function(s) from code pointers");
 		return true;
+	}
+
+	/** A10-A15 and B10-B15 survive a call (SPRAB89 3.2). */
+	private static boolean preserved(Register register) {
+		String name = register.getName();
+		return name.matches("[AB]1[0-5]");
 	}
 
 	/** True when {@code at} starts code that no function owns and nothing falls into. */

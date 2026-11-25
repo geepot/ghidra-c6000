@@ -868,6 +868,42 @@ CASES = [
         ADD     .L1     A4,1,A4
         NOP             4
 """),
+    # A callback whose address is loaded in two halves that are apart: Ghidra's constant tracking
+    # gives no reference, and C6000 Code Pointers joins MVKL and MVKH itself.
+    ("cbsplit", False, """{n}:
+        MVKL    .S1     {n}_cb,A4
+        MV      .L2     B4,B5
+        ADD     .L2     B5,1,B5
+        STW     .D2T2   B5,*B15--[2]
+        MVKH    .S1     {n}_cb,A4
+        B       .S2     B3
+        LDW     .D2T2   *++B15[2],B5
+        NOP             4
+        NOP
+        NOP
+        NOP
+{n}_cb:
+        B       .S2     B3
+        ADD     .L1     A4,1,A4
+        NOP             4
+"""),
+    # A function that ends in CALLP to code that reloads B3 and returns through it, with the link
+    # in A3 (cl6x's __c6xabi_pop_rts): nothing runs after the CALLP, so the callback right behind
+    # it is a function of its own.
+    ("cbpop", False, """{n}:
+        MVKL    .S1     {n}_cb,A4
+        MVKH    .S1     {n}_cb,A4
+        CALLP   .S1     {n}_pop,A3
+{n}_cb:
+        B       .S2     B3
+        ADD     .L1     A4,1,A4
+        NOP             4
+{n}_pop:
+        LDW     .D2T2   *++B15[2],B3
+        NOP             4
+        B       .S2     B3
+        NOP             5
+"""),
     ("plain", False, """{n}:
         STW     .D2T2   B3,*B15--[2]
         B       .S1     {n}_h

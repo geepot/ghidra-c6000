@@ -756,6 +756,57 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 			return returns;
 		}
 
+		/**
+		 * The code at {@code target}, called with its link in {@code link}, never comes back through
+		 * it: every way through it ends in a branch through another register, {@code link} is not
+		 * written and nothing else is called or jumped to outside it. cl6x's {@code __c6xabi_pop_rts}
+		 * is such code: called with CALLP and A3, it reloads B3 and returns to its caller's caller.
+		 * False when that is not shown.
+		 */
+		boolean abandonsLink(Address target, Register link) {
+			Function mine = program.getFunctionManager().getFunctionContaining(target);
+			java.util.Deque<Address> work = new java.util.ArrayDeque<>(List.of(target));
+			Set<Address> seen = new HashSet<>();
+			boolean leaves = false;
+			int budget = 8 * MAX_WINDOW;
+			while (!work.isEmpty()) {
+				Instruction insn = decode(work.pop());
+				while (true) {
+					if (insn == null || budget-- < 0) return false;
+					if (!seen.add(insn.getMinAddress())) break;
+					Register load = loadDestination(insn);
+					if (load != null ? overlaps(load, link) : issueWrites(insn).stream().anyMatch(r -> overlaps(r, link))) return false;
+					if (transfer(insn)) {
+						Register through = insn.getRegister(0);
+						if (through != null) {
+							if (overlaps(through, link)) return false;
+							leaves = true;
+						}
+						else {
+							Address[] flows = C6000PacketStagingAnalyzer.hardware(insn).getDefaultFlows();
+							Function entered = flows.length == 1 ? program.getFunctionManager().getFunctionAt(flows[0]) : null;
+							if (flows.length != 1 || C6000PacketStagingAnalyzer.flow(insn).isCall() || baseName(insn).startsWith("CALLP") ||
+								(entered != null && !entered.equals(mine))) return false;
+							work.push(flows[0]);
+						}
+						List<Instruction> window = window(insn);
+						if (window == null) return false;
+						for (Instruction slot : window) {
+							if (transfer(slot)) return false;
+							Register loaded = loadDestination(slot);
+							if (loaded != null ? overlaps(loaded, link) : issueWrites(slot).stream().anyMatch(r -> overlaps(r, link))) return false;
+							seen.add(slot.getMinAddress());
+						}
+						if (predicate(insn) == null) break;
+						insn = window.isEmpty() ? next(insn) : next(window.get(window.size() - 1));
+						continue;
+					}
+					insn = next(insn);
+				}
+			}
+			return leaves;
+		}
+
 		/** Set while planning: where each transfer that lands as a call returns to. */
 		private Map<Address, Set<Address>> landedBack;
 

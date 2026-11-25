@@ -59,6 +59,25 @@ public class C6000ReturnAnalyzer extends AbstractAnalyzer {
 			monitor.checkCancelled();
 			Instruction instruction = instructions.next();
 			String name = C6000CallAnalyzer.mnemonic(instruction);
+			// CALLP with a link the callee never returns through: the callee returns for this
+			// function, as __c6xabi_pop_rts does, and nothing runs after the call.
+			// CALLP with a link the callee never returns through: the callee returns for this
+			// function, as __c6xabi_pop_rts does, and nothing runs after the call.
+			if (name.contains("CALLP")) {
+				String text = instruction.toString();
+				ghidra.program.model.lang.Register link = program.getRegister(text.substring(text.lastIndexOf(',') + 1).trim());
+				ghidra.program.model.address.Address[] to = C6000PacketStagingAnalyzer.hardware(instruction).getDefaultFlows();
+				if (instruction.getFlowOverride() != FlowOverride.NONE || link == null || "B3".equals(link.getName()) || to.length != 1) continue;
+				if (walker == null) walker = new C6000CallAnalyzer.Walker(program);
+				if (walker.abandonsLink(to[0], link)) {
+					instruction.setFlowOverride(FlowOverride.CALL_RETURN);
+					recovered++;
+					// What followed the call was in its function's body only by falling through.
+					ghidra.program.model.listing.Function owner = program.getFunctionManager().getFunctionContaining(instruction.getMinAddress());
+					if (owner != null) ghidra.app.cmd.function.CreateFunctionCmd.fixupFunctionBody(program, owner, monitor);
+				}
+				continue;
+			}
 			if (!(name.endsWith("B.S1") || name.endsWith("B.S2") ||
 				name.endsWith("BNOP.S1") || name.endsWith("BNOP.S2"))) continue;
 			// A latched branch transfers nothing; the instruction it lands behind carries the return (issue #73).
