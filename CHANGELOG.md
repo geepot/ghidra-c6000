@@ -131,6 +131,9 @@
 
 ### Fixed
 
+* A predicated branch issued in a jump's target with another branch in flight is run one way only where
+  what the run has issued, and the outcomes it took, decide its predicate. The outcome that cannot
+  happen was run too, and a nest whose lifting could not carry it kept its warning (issue #141).
 * A stretch is planned and checked from every place it can be entered, not only from its
   start: code behind a return or an unconditional jump inside it is reached some other way,
   and its branches were latched as jumps without any run saying how they land. Calls there

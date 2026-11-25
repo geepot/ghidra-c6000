@@ -1041,6 +1041,33 @@ CASES = [
         ADDK    .S1     1024,A4
         NOP             4
 """),
+    # issue #141: t is shared exit code; come to from [A1]B t, its [!A1]B y is never taken. The loop's
+    # jump lands behind it. f(1, 3) = 11. utail0 (known-good): the loop's jump lands before [!A1]B y.
+    # utailw (known-bad): t writes A1 first, so [!A1]B y may go either way.
+    *[(name, name == "utailw", """{n}:
+        MV      .L1     A4,A1
+||      MV      .L2     B4,B0
+        ZERO    .L1     A4
+{n}_top:
+        SUB     .L2     B0,1,B0
+  [ A1] B       .S1     {n}_t
+""" + loop + """        NOP             3
+        ADDK    .S1     2,A4
+        ADDK    .S1     4,A4
+{n}_t:
+""" + first + """  [!A1] B       .S1     {n}_y
+        ADDK    .S1     8,A4
+        NOP             4
+        B       .S2     B3
+        NOP             5
+{n}_y:
+        ADDK    .S1     16,A4
+        B       .S2     B3
+        NOP             5
+""") for name, loop, first in (
+        ("utail", "  [ B0] B       .S2     {n}_top\n        ADDK    .S1     1,A4\n", ""),
+        ("utail0", "  [ B0] B       .S2     {n}_top\n        ADDK    .S1     1,A4\n", "        NOP             1\n"),
+        ("utailw", "        ADDK    .S1     1,A4\n{n}_in:\n  [ B0] B       .S2     {n}_top\n", "        MV      .L1     A6,A1\n"))],
     # issue #112: a link written in a jump's window is not the jump's when the code it goes to does
     # not come back through B3. Here top issues the call the link is for:
     # c ? (a ? h(b) + 16 : b + 8) : h(b) + 100.
@@ -1745,6 +1772,7 @@ LIFTED = {
     "pktcall": ["param_1 + 0x11", "pktcall_h("],
     "farcall": ["farcall_h(param_2 + 0xf)", "param_2 + 0x6b"],
     "slotreuse": ["0x3ef", "0x81f"],
+    "utail": ["+ 1;", "+ 8"], "utail0": ["+ 1;", "+ 8"],
     # issue #65's pair: the jump goes to code of its own that does not come back through B3, so the
     # link in its window is the call's, which lands behind the jump's target: a ? b + 7 : h(b) + 1
     "pjcall": ["pjcall_h(", "iVar1 + 1", "param_2 + 7"],

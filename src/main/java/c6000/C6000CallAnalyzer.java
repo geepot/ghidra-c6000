@@ -1245,6 +1245,21 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 			}
 		}
 
+		/** The same for the last instruction of a run in issue order, which carries its own cycles. */
+		private Boolean decided(List<Instruction> ran, int[] cycles, List<PredicateFact> outcomes) {
+			List<Instruction> outerPath = timedPath;
+			int[] outerCycles = timedCycles;
+			timedPath = ran;
+			timedCycles = cycles;
+			try {
+				return decided(ran, ran.size() - 1, outcomes, 0);
+			}
+			finally {
+				timedPath = outerPath;
+				timedCycles = outerCycles;
+			}
+		}
+
 		/** The last write to {@code register} that lands before path instruction {@code i} reads it; -1 if none or two land together. */
 		private int lastWrite(List<Instruction> path, int[] cycles, Register register, int i, Set<Integer> skipped) {
 			int last = -1;
@@ -1395,6 +1410,12 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 				if (value == null) ret3.remove(b3);
 				else ret3.put(b3, new long[] { value, FULL });
 			}
+			// What this run issues, behind the code before the stretch, and the outcomes it takes: they may
+			// decide a branch beyond the stretch (issue #141).
+			List<Instruction> ran = new ArrayList<>(pre.subList(0, start));
+			int[] ranCycles = java.util.Arrays.copyOf(preCycles, start + MAX_ISSUED + 1);
+			int ranFrom = preCycles[start];
+			List<PredicateFact> outcomes = new ArrayList<>();
 			try {
 				while (true) {
 					// One execute packet, issued in this cycle.
@@ -1410,9 +1431,14 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 						if (issued.size() > MAX_ISSUED) return Run.unproven("its windows issue too many instructions to compare");
 						if (untimed(program, insn)) return Run.unproven(insn + " at " + insn.getMinAddress() + " has timing outside the cycle model");
 						span = Math.max(span, 1 + extraCycles(program, insn));
+						ranCycles[ran.size()] = (int) (ranFrom + cycle);
+						ran.add(insn);
 						if (transfer(insn)) {
-							Boolean go = predicate(insn) == null ? Boolean.TRUE : taken.get(insn.getMinAddress());
 							boolean beyond = !region.index().containsKey(insn.getMinAddress());
+							Boolean sure = beyond && predicate(insn) != null ? decided(ran, ranCycles, outcomes) : null;
+							if (sure != null) taken.put(insn.getMinAddress(), sure);
+							Boolean go = predicate(insn) == null ? Boolean.TRUE : taken.get(insn.getMinAddress());
+							if (go != null) addFact(outcomes, ran.size() - 1, insn, go);
 							if (go == null) {
 								// A predicated transfer in the code a jump went to, issued with a branch still
 								// in flight: one more outcome to run, both ways (issue #123).
@@ -1493,6 +1519,9 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 							// The callee runs to its return, which needs nothing else in flight.
 							if (!flights.isEmpty()) return new Run(trace, "calls " + destination(transfer, target) + " with transfers in flight", null);
 							trace.add("calls " + destination(transfer, target));
+							// The callee may change any predicate register.
+							ran = new ArrayList<>();
+							outcomes.clear();
 							link.clear();
 							// It returns where B3 points on this path when known (SPRUFE8B 3.5, 4.2.6); a latched call's listed fall-through is only its next instruction.
 							long[] r3 = ret3.get(b3);
