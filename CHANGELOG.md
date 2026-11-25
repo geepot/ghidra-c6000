@@ -131,6 +131,10 @@
 
 ### Fixed
 
+* Code reached only by a jump with another transfer of its window still in flight keeps the registers
+  that jump arrives with, for a branch that issues once that transfer has landed: it is reached only
+  where the transfer was not taken. They were forgotten for all the code there, so a call whose link
+  was set before became a jump, with no warning (issue #137).
 * A stretch is planned and checked from every place it can be entered, not only from its
   start: code behind a return or an unconditional jump inside it is reached some other way,
   and its branches were latched as jumps without any run saying how they land. Calls there

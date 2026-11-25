@@ -1674,9 +1674,11 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 		 * same value, or has not written the register since it last passed the label (a loop's back
 		 * edge). A call, or a path this cannot follow, leaves nothing known. With {@code only}, nothing
 		 * falls into the label: what the entering jumps agree on replaces what the look-back held.
+		 * Returns how many cycles after the label issues another transfer of such a jump's window may
+		 * still land; code issued before that runs with it in flight, later code only where it is not taken.
 		 */
-		private boolean meetEntries(Instruction label, Map<Register, long[]> regs, Constants trace, boolean only) {
-			boolean clean = true;
+		private long meetEntries(Instruction label, Map<Register, long[]> regs, Constants trace, boolean only) {
+			long flying = 0;
 			List<Instruction> jumps = new ArrayList<>();
 			Boolean external = null;
 			for (Reference ref : program.getReferenceManager().getReferencesTo(label.getMinAddress())) {
@@ -1686,14 +1688,14 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 				if (jump == null || ref.getReferenceType().isCall() || entryDepth == 0 || jumps.size() == ENTRY_PATHS ||
 					(external == null ? (external = externalEntry(label)) : external)) {
 					trace.forget();
-					return true;
+					return 0;
 				}
 				jumps.add(jump);
 			}
 			if (jumps.isEmpty()) {
 				// A function or program entry, or an address held as data: how it is reached is not known.
 				trace.forget();
-				return true;
+				return 0;
 			}
 			Instruction savedVia = viaInsn;
 			Address savedReturn = backwardReturn;
@@ -1711,10 +1713,10 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 					targetOnly = saved;
 					if (other == null) {
 						trace.forget();
-						return true;
+						return 0;
 					}
 					// The jump arrives with another transfer of its window still in flight.
-					if (only && other.landed().nested()) clean = false;
+					if (only || flying > 0) flying = Math.max(flying, other.landed().flying());
 					List<Instruction> issued = other.landed().issued();
 					int since = -1;
 					for (int i = 0; i < issued.size(); i++) if (issued.get(i).getMinAddress().equals(label.getMinAddress())) since = i;
@@ -1742,7 +1744,7 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 				viaInsn = savedVia;
 				backwardReturn = savedReturn;
 			}
-			return clean;
+			return flying;
 		}
 
 		Call recognize(Instruction branch) {
@@ -1932,8 +1934,9 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 					if (call[0] <= issue[i]) { back.remove(); trace.returned(callClobbered(), call[1]); }
 				}
 				if (entered[i]) {
-					// Reached only with another transfer in flight: nothing from there is known.
-					if (!meetEntries(insn, regs, trace, dead <= issue[i])) trace.forget();
+					// Reached only with another transfer in flight: nothing from there is known until that has
+					// landed, or not, before the branch issues (SPRUFE8B 4.2.6; issue #137).
+					if (meetEntries(insn, regs, trace, dead <= issue[i]) > issue[branchIndex] - issue[i]) trace.forget();
 					dead = Integer.MAX_VALUE;
 				}
 				// An earlier jump that goes whenever this branch does, still in flight as it issues,
@@ -1968,7 +1971,7 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 			trace.before(issue[branchIndex]);
 			for (long[] call : returns) if (call[0] <= issue[branchIndex]) trace.returned(callClobbered(), call[1]);
 			// A branch reached only by a jump with another transfer in flight does not arrive alone.
-			if (entered[branchIndex] && !meetEntries(branch, regs, trace, dead <= issue[branchIndex]) && !targetOnly && !valuesOnly)
+			if (entered[branchIndex] && meetEntries(branch, regs, trace, dead <= issue[branchIndex]) > 0 && !targetOnly && !valuesOnly)
 				return null;
 			Register source = branch.getRegister(0);
 			Long target = null;
@@ -2045,9 +2048,12 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 			return false;
 		}
 
-		/** The registers when the branch lands, the address after the last instruction issued before that, and the issue order. */
+		/**
+		 * The registers when the branch lands, the address after the last instruction issued before that, the
+		 * issue order, and how many cycles after the landing the last other transfer of the window may land.
+		 */
 		private record Landed(Map<Register, long[]> values, long end, Instruction partner, List<Instruction> issued, int[] cycles,
-				boolean nested) {}
+				long flying) {}
 
 		/**
 		 * Issue what the hardware issues from {@code branch}'s packet until {@code branch}, taken, lands six
@@ -2076,7 +2082,8 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 					span = Math.max(span, 1 + extraCycles(program, prefix.get(i)));
 				}
 				Instruction last = branch;
-				boolean nested = false, turned = false;
+				boolean turned = false;
+				long flying = 0;
 				long end = branch.getMaxAddress().getOffset() + 1;
 				Instruction at = parallelWithNext(branch) ? next(branch) : null;
 				if (at == null && parallelWithNext(branch)) return null;
@@ -2091,7 +2098,8 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 							// One that may be taken with the branch lands in the callee: no call to place here.
 							if (!Boolean.FALSE.equals(runs)) {
 								if (!valuesOnly) return null;
-								nested = true;
+								// A callee's return is not followed: nothing is known behind a call.
+								flying = C6000PacketStagingAnalyzer.flow(insn).isCall() ? Integer.MAX_VALUE : Math.max(flying, cycle + 1 + DELAY_CYCLES - ours);
 							}
 							if (partner == null && complementary(branch, insn)) partner = insn;
 						}
@@ -2117,7 +2125,7 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 				// Retire every pending write: a load's E5 or a later multi-cycle result supersedes an
 				// earlier E1 link even after the callee is entered.
 				trace.before(Integer.MAX_VALUE);
-				return new Landed(values, end, partner, issued, cycles, nested);
+				return new Landed(values, end, partner, issued, cycles, flying);
 			}
 			catch (MemoryAccessException e) {
 				return null;

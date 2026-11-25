@@ -22,6 +22,35 @@ import subprocess
 import sys
 
 SIZE = 0x100
+
+def flyjump(jump="      ", other=False, pre="", nest="  [ B0] B       .S2     {n}_x\n", link="        NOP             1\n",
+            slots="        ADDK    .S1     4,A4\n", call=".S1     {n}_h\n        NOP             5\n"):
+    """A jump with a second branch in its window leads to a call: the second lands before the call issues."""
+    return """{n}:
+        STW     .D2T2   B3,*B15--[2]
+||      MV      .L2     B4,B0
+        MV      .L1     A6,A2
+""" + pre + "  " + jump + """B       .S1     {n}_t
+        ADDK    .S1     1,A4
+""" + nest + link + """        NOP             2
+""" + ("        ADDK    .S1     128,A4\n" + RET if other else "") + """{n}_x:
+        ADDK    .S1     64,A4
+""" + RET + """{n}_t:
+        SHL     .S1     A4,2,A4
+""" + slots + "        B       " + call + """{n}_ret:
+        ADDK    .S1     16,A4
+""" + RET
+
+
+FLY_PRE = """        MVKL    .S2     {n}_ret,B3
+        MVKH    .S2     {n}_ret,B3
+"""
+FLY_REG = """        MVKL    .S2     {n}_h,B5
+        MVKH    .S2     {n}_h,B5
+"""
+FLY_LINK = "        ADDKPC  .S2     {n}_ret,B3,0\n"
+FLY_OWN = ".S1     {n}_h\n        ADDKPC  .S2     {n}_ret,B3,4\n"
+
 H = """{n}_h:
         B       .S2     B3
         ADD     .L1     A4,A4,A4
@@ -1109,6 +1138,20 @@ CASES = [
         B       .S2     B3
         NOP             5
 """),
+    # issue #137: the code at t is reached only with [B0]B x in flight, but the call issues as that
+    # lands or later, so only where it is not taken: what the jump arrives with holds. The link is set
+    # before the jump, or in its window (kwp); kprefar's call is farther back, kprereg's goes through B5.
+    ("kpre", False, flyjump(pre=FLY_PRE)),
+    ("kprefar", False, flyjump(pre=FLY_PRE, slots="        ADDK    .S1     4,A4\n" * 9)),
+    ("kprereg", False, flyjump(pre=FLY_PRE + FLY_REG, call=".S2     B5\n        NOP             5\n")),
+    ("kwp", False, flyjump(jump="[ A2] ", other=True, link=FLY_LINK)),
+    # known-goods: no second branch, or the link written again at the call
+    ("kpre0", False, flyjump(pre=FLY_PRE, nest="        NOP             1\n")),
+    ("kpreown", False, flyjump(call=FLY_OWN)),
+    ("kwp0", False, flyjump(jump="[ A2] ", other=True, link=FLY_LINK, nest="        NOP             1\n")),
+    ("kwpown", False, flyjump(jump="[ A2] ", other=True, call=FLY_OWN)),
+    # known-bad: the call issues one cycle earlier, with [B0]B x in flight
+    ("kpreearly", True, flyjump(pre=FLY_PRE + "{n}_in:\n", slots="")),
     # issue #114: the call is reached only by the jump, whose window issues a branch on A1 after
     # [!A2] ZERO A1 has cleared it; A1 and A2 were both copies of a, so on the jump's path that
     # branch does not go and the call arrives with its link: a ? (b ? b + 101 : 111) : h(b) + 3.
@@ -1753,6 +1796,8 @@ LIFTED = {
     "linktgt": ["linktgt_h(", "param_2 + 8", "+ 100"],
     "linkfly": ["linkfly_h(", "+ 0x10", "param_2 + 0x37"],
     "viacallp": ["viacallp_h(", "iVar1 + 3", "+ 100"],
+    **{name: [name + "_h(", "+ 0x10", "+ 0x44"] for name in ("kpre", "kprefar", "kprereg", "kpreown")},
+    **{name: [name + "_h(", "+ 0x10", "+ 0x40", "+ 0x81"] for name in ("kwp", "kwpown")},
     # the call lands in the jump's target, which set its link, and comes back at ret, past the
     # ADDK 1000: a jump to the return point follows the call. a ? h(b) + 1 : b + 7
     "busytgt": ["busytgt_h(", "param_2 + 7", "+ 1"],
@@ -1778,7 +1823,7 @@ LIFTED = {
     "callarml0": ["param_2 + 3;", "return param_2 + 100;"],
 }
 # What the C of a case that latches nothing must hold, and must not.
-PLAIN = {"cpyret": ["return param_1 + 1;"], "cpycall": ["return iVar1 + 7;"], "cpyfar": ["return iVar1 + 7;"], "cpyti": ["return param_2 + 1;"],
+PLAIN = {"kpre0": ["kpre0_h(", "+ 0x10"], "kwp0": ["kwp0_h(", "+ 0x10"], "cpyret": ["return param_1 + 1;"], "cpycall": ["return iVar1 + 7;"], "cpyfar": ["return iVar1 + 7;"], "cpyti": ["return param_2 + 1;"],
          "swtwo": ["switch(", "0x28"], "farlink": ["farlink_h(param_1 + 0x2d)", "+ 1;"], "twocall": ["(0,*param_1)", "(0,param_1[1])"]}
 ABSENT = {"cpyretp": ["return param_1 + 1;"], "a3arg": ["a3arg_h(7"],
           **{name: ["return iVar1 + 7;"] for name in ("cpyclob", "cpyclobs", "cpybdec", "cpydeep", "cpyunk", "cpytwo")}}
