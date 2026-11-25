@@ -476,6 +476,32 @@ CASES = [
         .word   {n}_c2
         .word   {n}_c3
 """),
+    # A jump and, in its window, a branch to h on the same predicate; the link is written after
+    # the jump has landed, so it never runs with the branch: with a, four instructions of x run
+    # and h is entered with the caller's link, a ? h(b + 15) : b + 1. The branch is no call
+    # returning to ret (seen in a compiled runtime's scanf).
+    ("samepred", True, """{n}:
+        MV      .L1     A4,A1
+        MV      .L1X    B4,A4
+  [ A1] B       .S1     {n}_x
+        NOP             3
+{n}_in:
+  [ A1] B       .S1     {n}_h
+        NOP
+        MVKL    .S2     {n}_ret,B3
+        MVKH    .S2     {n}_ret,B3
+        NOP             2
+{n}_ret:
+        ADD     .L1     A4,1,A4
+        B       .S2     B3
+        NOP             5
+{n}_x:  ADD     .L1     A4,1,A4
+        ADD     .L1     A4,2,A4
+        ADD     .L1     A4,4,A4
+        ADD     .L1     A4,8,A4
+        B       .S2     B3
+        NOP             5
+"""),
     # issue #129: a call whose link is written 45 instructions before its B: h(a + 45) + 1
     ("farlink", False, """{n}:
         STW     .D2T2   B3,*B15--[2]
@@ -1334,7 +1360,7 @@ ABSENT = {"cpyretp": ["return param_1 + 1;"], "a3arg": ["a3arg_h(7"]}
 DECLARE = {"c2split": ["test", "exit"], "twocall": ["callee"]}
 PLAIN_AT = {"c2split": ("test", ["c2split_h(param_1 + 7"])}
 # Cases that are warned or lifted depending on the decompiler, and what their C holds when lifted.
-EITHER = {"entmany": ["0x101", "+ 0xae", "+ 0x50"]}
+EITHER = {"entmany": ["0x101", "+ 0xae", "+ 0x50"], "samepred": ["+ 0xf) * 2", "param_2 + 1"]}
 LINK = re.compile(r"(MVK[LH]\s+\.S[12]\s+|\.word\s+)(\w+)")
 
 

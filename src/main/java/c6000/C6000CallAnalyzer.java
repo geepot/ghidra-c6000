@@ -1853,6 +1853,13 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 					if (!meetEntries(insn, regs, trace, dead <= issue[i])) trace.forget();
 					dead = Integer.MAX_VALUE;
 				}
+				// An earlier jump that goes whenever this branch does, still in flight as it issues,
+				// lands inside this branch's delay cycles: what issues before the branch lands is then
+				// the jump's target, not the code after the branch, so no link there is this branch's.
+				// That path is the nested-window check's to compare (SPRUFE8B 3.5, 4.2.6).
+				if (insn != viaInsn && isFlow(insn) && predicate(insn) != null && Boolean.TRUE.equals(runs) &&
+					!C6000PacketStagingAnalyzer.flow(insn).isCall() && issue[branchIndex] - issue[i] <= DELAY_CYCLES &&
+					issue[branchIndex] > issue[i] && !targetOnly && !valuesOnly) return null;
 				if (insn != viaInsn && isFlow(insn)) {
 					trace.write(issue[i], program.getRegister("B3"), null, i);
 					if (C6000PacketStagingAnalyzer.flow(insn).isCall()) {

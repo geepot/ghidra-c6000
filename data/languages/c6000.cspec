@@ -158,8 +158,8 @@
         <register name="B11_B10"/><register name="B13_B12"/><register name="B15_B14"/>
       </unaffected>
     </prototype>
-  <!-- What the decompiler assumes of the function at hand and of a callee while their
-       prototypes are not committed. -->
-  <eval_current_prototype name="__c6000_unknown"/>
+  <!-- What the decompiler assumes of a callee whose prototype is not committed. The function
+       at hand keeps __c6000: the decompiler prints the name of any other model in every
+       declaration. -->
   <eval_called_prototype name="__c6000_unknown"/>
 </compiler_spec>

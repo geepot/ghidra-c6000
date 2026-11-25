@@ -131,10 +131,20 @@
 
 ### Fixed
 
+* A switch whose setup is entered through a second jump, or through a latched one, gets its
+  table: the search follows the latched branch behind a landing, takes what runs before the
+  jump into the tail as an entry path of its own, knows that nothing falls in past two jumps on
+  opposite outcomes of one flag, and tracks `SUBAB`/`SUBAH`/`SUBAW`.
+* A branch is not a call returning past its own delay cycles when an earlier jump on the same
+  predicate is still in flight as it issues: that jump lands inside those cycles, so the link
+  written after them is not this branch's. On a compiled runtime image this made two false
+  functions inside `__TI_scanfi`.
+
 * A value left in A3 is no longer printed as the first argument of a call whose callee has no
   committed prototype (issue #132). The compiler spec gains `__c6000_unknown`, the default
   model without the entry for a large result's buffer address, and names it as the model the
-  decompiler assumes where a prototype is not committed. Declared functions keep `__c6000`.
+  decompiler assumes of a callee whose prototype is not committed. Declared functions, and the
+  function being decompiled, keep `__c6000`.
 * The pipeline analyses keep each instruction's hardware form between changes to the program,
   which took a third off the analysis time on a compiled test image.
 
