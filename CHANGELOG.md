@@ -131,6 +131,12 @@
 
 ### Fixed
 
+* A call's link is found however far before its branch it was written: the look-back reaches to
+  B3's last write in the straight-line code before it, where it stopped 40 words back (issue
+  #129) or at the cycles a transfer stays in flight (issue #106's `jcallpre8`).
+* A register branch in a latched nest that lands just before the address B3 holds from before
+  the nest is the call that link was written for (issue #133).
+
 * A call that does not come back at the next instruction is lifted as the call and a jump to
   where it returns: a predicated call whose link is earlier code (issue #66), a jump into a
   function while B3 still holds an earlier call's return address (issue #105), and a call

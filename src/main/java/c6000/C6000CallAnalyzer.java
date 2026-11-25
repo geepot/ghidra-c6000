@@ -405,6 +405,42 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 			return prior;
 		}
 
+		private Stretch reachFor;
+		private List<Instruction> reach = List.of();
+		// ponytail: a fixed reach; follow B3 through the function's flow if a link is ever set farther back.
+		private static final int LINK_REACH = 512;
+
+		/**
+		 * The instructions physically before {@code insn}, back to the last one that gives B3 a value
+		 * without reading it; empty when none does before the code stops being straight-line: at an
+		 * unpredicated transfer, a function's entry or a gap. What B3 held before that write does not
+		 * matter, and a predicated one that may not run leaves it unknown to whoever applies it.
+		 */
+		List<Instruction> linkReach(Instruction insn) {
+			Register b3 = program.getRegister("B3");
+			List<Instruction> more = new ArrayList<>();
+			Instruction at = insn;
+			while (more.size() < LINK_REACH) {
+				if (program.getFunctionManager().getFunctionAt(at.getMinAddress()) != null) break;
+				Instruction previous = listing.getInstructionBefore(at.getMinAddress());
+				if (previous == null || (!adjacent(previous, at) && !headerBetween(previous, at))) break;
+				if (transfer(previous) && predicate(previous) == null) break;
+				more.add(0, previous);
+				at = previous;
+				if (definesLink(previous, b3)) return more;
+			}
+			return List.of();
+		}
+
+		/** {@code insn} gives B3 a value without reading it. */
+		private boolean definesLink(Instruction insn, Register b3) {
+			if (transfer(insn) || idle(insn)) return false;
+			Register load = loadDestination(insn);
+			if (!(load != null ? overlaps(load, b3) : issueWrites(insn).stream().anyMatch(r -> overlaps(r, b3)))) return false;
+			for (Object input : C6000PacketStagingAnalyzer.hardware(insn).getInputObjects()) if (input instanceof Register r && overlaps(r, b3)) return false;
+			return true;
+		}
+
 		/** Only a fetch-packet header lies between {@code a} and {@code b}. */
 		private boolean headerBetween(Instruction a, Instruction b) {
 			long gap = a.getMaxAddress().getOffset() + 1;
@@ -1238,21 +1274,33 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 			Register b3 = program.getRegister("B3");
 			Map<Register, long[]> link = new HashMap<>();
 			Map<Register, long[]> ret3 = new HashMap<>();
-			int start = region.index().getOrDefault(first.getMinAddress(), 0);
-			int[] preCycles = issueCycles(region.path());
+			// The code before the stretch, reaching back to B3's last write: a link may be set any time
+			// before the branch that uses it (issues #106, #129).
+			if (reachFor != region) {
+				reachFor = region;
+				int stretchAt = region.index().getOrDefault(first.getMinAddress(), 0);
+				reach = region.path().subList(0, stretchAt).stream().anyMatch(insn -> definesLink(insn, b3)) ? List.of() : linkReach(region.path().get(0));
+			}
+			List<Instruction> pre = new ArrayList<>(reach);
+			pre.addAll(region.path());
+			int shift = reach.size();
+			List<PredicateFact> preFacts = new ArrayList<>();
+			for (PredicateFact fact : facts) preFacts.add(new PredicateFact(fact.index() + shift, fact.predicate(), fact.taken()));
+			int start = shift + region.index().getOrDefault(first.getMinAddress(), 0);
+			int[] preCycles = issueCycles(pre);
 			int from = 0;
-			for (int i = 0; i < start; i++) if (transfer(region.path().get(i)) && (predicate(region.path().get(i)) == null || executes(region.path(), i, facts) != Boolean.FALSE)) {
+			for (int i = 0; i < start; i++) if (transfer(pre.get(i)) && (predicate(pre.get(i)) == null || executes(pre, i, preFacts) != Boolean.FALSE)) {
 				from = start;
 				for (int j = i + 1; j < start; j++) if (preCycles[j] >= preCycles[i] + 1 + DELAY_CYCLES) { from = j; break; }
 				// A call that has returned by then left B3 at its return point (issue #105).
-				Instruction earlier = listing.getInstructionAt(region.path().get(i).getMinAddress());
+				Instruction earlier = listing.getInstructionAt(pre.get(i).getMinAddress());
 				ret3.remove(b3);
 				if (from < start && earlier != null && predicate(earlier) == null && C6000PacketStagingAnalyzer.flow(earlier).isCall() &&
 					earlier.getFallThrough() != null && !C6000PacketStagingAnalyzer.inert(earlier))
 					ret3.put(b3, new long[] { earlier.getFallThrough().getOffset(), FULL });
 			}
 			for (int i = from; i < start; i++) {
-				Instruction insn = region.path().get(i);
+				Instruction insn = pre.get(i);
 				if (entered(insn)) {
 					// Entered only where a latched call comes back: B3 is this address on that way in too.
 					long[] held = ret3.get(b3);
@@ -1261,7 +1309,7 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 				if (transfer(insn) || idle(insn)) continue;
 				Register load = loadDestination(insn);
 				if (!(load != null ? overlaps(load, b3) : issueWrites(insn).stream().anyMatch(r -> overlaps(r, b3)))) continue;
-				Boolean runs = predicate(insn) == null ? Boolean.TRUE : executes(region.path(), i, facts);
+				Boolean runs = predicate(insn) == null ? Boolean.TRUE : executes(pre, i, preFacts);
 				if (runs == Boolean.FALSE) continue;
 				Long value = load != null || runs == null ? null : constantWrite(insn, b3, ret3);
 				if (value == null) ret3.remove(b3);
@@ -1352,6 +1400,12 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 							Address to = transfer.getMinAddress().getNewAddress(old[0] & 0xffffffffL);
 							Function mine = program.getFunctionManager().getFunctionContaining(transfer.getMinAddress());
 							if (mine != null && mine.getBody().contains(to) && listing.getInstructionAt(to) != null) linked = to;
+						}
+						// A register branch, not through B3, that lands just before the address B3 holds
+						// from before the stretch: the call that link was written for (issue #133).
+						if (!call && linked == null && old != null && transfer.getRegister(0) != null && !b3.equals(transfer.getRegister(0))) {
+							Instruction after = next(insn);
+							if (after != null && after.getMinAddress().getOffset() == (old[0] & 0xffffffffL)) linked = after.getMinAddress();
 						}
 						if (landedAsCall != null) landedAsCall.computeIfAbsent(transfer.getMinAddress(), k -> new HashSet<>()).add(call || linked != null);
 						if (call || linked != null) {
@@ -1726,6 +1780,15 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 			List<Instruction> path = lookBack(branch);
 			List<Instruction> via = throughJump ? viaJump(branch, path) : null;
 			if (via != null) path = via;
+			// A link may be set any distance before its branch (issue #129).
+			Register link = program.getRegister("B3");
+			if (!path.isEmpty() && path.stream().noneMatch(insn -> definesLink(insn, link))) {
+				List<Instruction> more = linkReach(path.get(0));
+				if (!more.isEmpty()) {
+					path = new ArrayList<>(path);
+					path.addAll(0, more);
+				}
+			}
 			List<Instruction> execution = new ArrayList<>(path);
 			int branchIndex = execution.size();
 			execution.add(branch);

@@ -347,6 +347,80 @@ CASES = [
         B       .S2     B3
         NOP             5
 """),
+    # issue #106: jcallpre with the link written eight idle cycles before the branches, beyond the
+    # cycles a transfer stays in flight.
+    ("jcallpre8", True, """{n}:
+        STW     .D2T2   B3,*B15--[2]
+||      MV      .L1     A4,A1
+        MV      .L1X    B4,A4
+{n}_top:
+        ADD     .L1     A4,3,A4
+{n}_ret:
+        SUB     .L1     A1,1,A1
+        NOP             1
+  [ A1] MVKL    .S2     {n}_ret,B3
+  [ A1] MVKH    .S2     {n}_ret,B3
+        NOP             8
+  [ A1] B       .S1     {n}_top
+{n}_in:
+  [ A1] B       .S1     {n}_h
+        NOP             4
+        LDW     .D2T2   *++B15[2],B3
+        NOP             4
+        B       .S2     B3
+        NOP             5
+"""),
+    # issue #133: a register call in a nest, its link written before the nest:
+    # a ? p(b) + 1 : y ? b + 107 : b + 15
+    ("regpre", True, """{n}:
+        STW     .D2T2   B3,*B15--[2]
+||      MV      .L1     A4,A2
+        MV      .L1X    B4,A4
+        MV      .L2X    A6,B5
+        MV      .L2     B6,B0
+  [ A2] ZERO    .L2     B0
+        MVKL    .S2     {n}_ret,B3
+        MVKH    .S2     {n}_ret,B3
+  [!A2] B       .S1     {n}_x
+{n}_in:
+  [ A2] B       .S2     B5
+        NOP             1
+  [ B0] B       .S1     {n}_y
+        NOP             3
+{n}_ret:
+        ADD     .L1     A4,1,A4
+        LDW     .D2T2   *++B15[2],B3
+        NOP             4
+        B       .S2     B3
+        NOP             5
+{n}_x:  ADD     .L1     A4,1,A4
+        ADD     .L1     A4,2,A4
+        ADD     .L1     A4,4,A4
+        ADD     .L1     A4,8,A4
+        LDW     .D2T2   *++B15[2],B3
+        NOP             4
+        B       .S2     B3
+        NOP             5
+{n}_y:  ADDK    .S1     100,A4
+        LDW     .D2T2   *++B15[2],B3
+        NOP             4
+        B       .S2     B3
+        NOP             5
+"""),
+    # issue #129: a call whose link is written 45 instructions before its B: h(a + 45) + 1
+    ("farlink", False, """{n}:
+        STW     .D2T2   B3,*B15--[2]
+        MVKL    .S2     {n}_ret,B3
+        MVKH    .S2     {n}_ret,B3
+""" + "        ADD     .L1     A4,1,A4\n" * 45 + """        B       .S1     {n}_h
+        NOP             5
+{n}_ret:
+        ADD     .L1     A4,1,A4
+        LDW     .D2T2   *++B15[2],B3
+        NOP             4
+        B       .S2     B3
+        NOP             5
+"""),
     # issue #98: a call and a jump on opposite predicates in one execute packet. Both land after
     # the packet's five delay cycles, so the slots run on both paths first: *b = c ? h(a + 0x11) : a + 0x11.
     ("pktcall", True, """{n}:
@@ -1146,6 +1220,8 @@ LIFTED = {
     "bnop4": ["param_1 + 1"],
     "swjump": ["0x111", "0x222", "0x333", "0x999"],
     "jcallpre": ["jcallpre_h(param_2)", "param_2 + 3"],
+    "jcallpre8": ["jcallpre8_h(param_2)", "param_2 + 3"],
+    "regpre": ["(*param_3)(", "+ 1"],
     "pktcall": ["param_1 + 0x11", "pktcall_h("],
     "farcall": ["farcall_h(param_2 + 0xf)", "param_2 + 0x6b"],
     "slotreuse": ["0x3ef", "0x81f"],
@@ -1182,7 +1258,7 @@ LIFTED = {
     "callarml0": ["param_2 + 3;", "return param_2 + 100;"],
 }
 # What the C of a case that latches nothing must hold, and must not.
-PLAIN = {"cpyret": ["return param_1 + 1;"], "twocall": ["(0,*param_1)", "(0,param_1[1])"]}
+PLAIN = {"cpyret": ["return param_1 + 1;"], "farlink": ["farlink_h(param_1 + 0x2d)", "+ 1;"], "twocall": ["(0,*param_1)", "(0,param_1[1])"]}
 ABSENT = {"cpyretp": ["return param_1 + 1;"]}
 # Labels declared as functions too, as a symbol table or a seed list would, and what the C of the
 # function at a label must hold.
