@@ -1853,6 +1853,97 @@ CASES = [
         ADD     .L1     A4,5,A4
         NOP             4
 """),
+    # issue #157: the call to h lands behind the first NOP and returns to r1, one NOP further on:
+    # b ? h(a + 1) + 2 : g(a + 1) + 100.
+    ("lk3g0", True, """{n}:
+        STW     .D2T2   B3,*B15--[2]
+||      MV      .L1X    B4,A1
+        MVKL    .S2     {n}_r1,B3
+  [!A1] B       .S1     {n}_j
+{n}_in:
+  [ A1] B       .S1     {n}_h
+||      MVKH    .S2     {n}_r1,B3
+  [!A1] B       .S1     {n}_g
+        ADD     .L1     A4,1,A4
+  [!A1] MVKL    .S2     {n}_r2,B3
+  [!A1] MVKH    .S2     {n}_r2,B3
+        NOP
+        NOP
+{n}_r1:
+        ADD     .L1     A4,2,A4
+        LDW     .D2T2   *++B15[2],B3
+        NOP             4
+        B       .S2     B3
+        NOP             5
+{n}_j:
+        NOP             2
+{n}_r2:
+        ADDK    .S1     100,A4
+        LDW     .D2T2   *++B15[2],B3
+        NOP             4
+        B       .S2     B3
+        NOP             5
+{n}_g:
+        B       .S2     B3
+        ADD     .L1     A4,5,A4
+        NOP             4
+"""),
+    # issue #156: the first call's return point r1 is the last delay slot of the second call's
+    # window, and a second nest lies in the code after it: with b, h(a + 1) + 2, h again, then
+    # c ? + 0x1f : + 0xf; without, g(a + 1) + 100.
+    ("lk3gc", True, """{n}:
+        STW     .D2T2   B3,*B15--[2]
+||      MV      .L1X    B4,A1
+        MVKL    .S2     {n}_r1,B3
+  [!A1] B       .S1     {n}_j
+{n}_in:
+  [ A1] B       .S1     {n}_h
+||      MVKH    .S2     {n}_r1,B3
+  [!A1] B       .S1     {n}_g
+        ADD     .L1     A4,1,A4
+  [!A1] MVKL    .S2     {n}_r2,B3
+  [!A1] MVKH    .S2     {n}_r2,B3
+        NOP
+{n}_r1:
+        ADD     .L1     A4,2,A4
+        MVKL    .S2     {n}_r3,B3
+        MVKH    .S2     {n}_r3,B3
+        B       .S1     {n}_h
+        NOP             5
+{n}_r3:
+        B       .S1     {n}_x
+||      ADD     .L1     A4,1,A4
+        MV      .L1     A6,A2
+        NOP
+  [ A2] B       .S1     {n}_y
+        NOP             2
+{n}_x:
+        ADD     .L1     A4,2,A4
+        ADD     .L1     A4,4,A4
+        ADD     .L1     A4,8,A4
+        LDW     .D2T2   *++B15[2],B3
+        NOP             4
+        B       .S2     B3
+        NOP             5
+{n}_y:
+        ADDK    .S1     0x10,A4
+        LDW     .D2T2   *++B15[2],B3
+        NOP             4
+        B       .S2     B3
+        NOP             5
+{n}_j:
+        NOP             2
+{n}_r2:
+        ADDK    .S1     100,A4
+        LDW     .D2T2   *++B15[2],B3
+        NOP             4
+        B       .S2     B3
+        NOP             5
+{n}_g:
+        B       .S2     B3
+        ADD     .L1     A4,5,A4
+        NOP             4
+"""),
     # issue #152: a load lands four delay slots after it issues, so the ADD in its first slot
     # reads the old A3: *p + c + 1, not 2 * *p + 1.
     ("ldlat", False, """{n}:
@@ -2406,6 +2497,8 @@ LIFTED = {
     "twoland": ["+ 0x1e1c", "+ 0xe1c", "+ 0x100"],
     "lnkkept": ["lnkkept_h(", "param_2 + -1", "while"],
     "armsame": ["armsame_h(", "+ 100", "FUN_0000", "+ 1"],
+    "lk3g0": ["lk3g0_h(", "+ 2", "+ 100"],
+    "lk3gc": ["lk3gc_h(", "+ 0xf", "+ 0x1f", "+ 100"],
     "lkm3": ["lkm3_h(", "+ 100"], "lkm": ["lkm_h(", "+ 100", "+ 5"],
     "cpylt": ["+ 5", "return 3"], "cpyltu": [],
     "adj": ["0xc3", "0x19"], "adjnop": ["0xc3", "0x19"],
@@ -2463,7 +2556,7 @@ ABSENT = {"lnkclob": ["while", "do {"], "ldlat": ["* 2"], **{name: ["func_0x"] f
           **{name: ["return iVar1 + 7;"] for name in ("cpyclob", "cpyclobs", "cpybdec", "cpydeep", "cpyunk", "cpytwo")}}
 # Labels declared as functions too, as a symbol table or a seed list would, and what the C of the
 # function at a label must hold.
-DECLARE = {"armsame": ["g"], "lnkclob": ["g"], "lnkkept": ["g"], "cpylt": ["g"], "cpyltu": ["g"], "c2split": ["test", "exit"], "twocall": ["callee"], "cpyti": ["g"], "cpyclob": ["g"], "cpyclobs": ["g"], "cpybdec": ["g"], "cpydeep": ["g", "g2"], "cpytwo": ["g"]}
+DECLARE = {"lk3gc": ["g"], "lk3g0": ["g"], "armsame": ["g"], "lnkclob": ["g"], "lnkkept": ["g"], "cpylt": ["g"], "cpyltu": ["g"], "c2split": ["test", "exit"], "twocall": ["callee"], "cpyti": ["g"], "cpyclob": ["g"], "cpyclobs": ["g"], "cpybdec": ["g"], "cpydeep": ["g", "g2"], "cpytwo": ["g"]}
 PLAIN_AT = {"c2split": ("test", ["c2split_h(param_1 + 7"]), "cbraw": ("cb", ["param_2 - param_1"]), "cbd": ("cb", ["+ 0x1f", "+ 0xf"])}
 # Cases that are warned or lifted depending on the decompiler, and what their C holds when lifted.
 EITHER = {"entmany": ["0x101", "+ 0xae", "+ 0x50"], "samepred": ["+ 0xf) * 2", "param_2 + 1"]}

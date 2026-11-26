@@ -78,7 +78,7 @@ public final class C6000NestedLiftAnalyzer extends AbstractAnalyzer {
 			// A lifting decodes its stretch again, so start over after each one.
 			while (again) {
 				again = false;
-				for (Instruction branch : program.getListing().getInstructions(function.getBody(), true)) {
+				for (Instruction branch : program.getListing().getInstructions(reach(program, function), true)) {
 					monitor.checkCancelled();
 					String op = C6000CallAnalyzer.baseName(branch);
 					if (!op.startsWith("B") || op.startsWith("BITC") || op.startsWith("BITR") || !tried.add(branch.getAddress())) continue;
@@ -105,6 +105,36 @@ public final class C6000NestedLiftAnalyzer extends AbstractAnalyzer {
 		}
 		if (lifted > 0) Msg.info(this, getName() + "> latched " + lifted + " stretch(es)");
 		return true;
+	}
+
+	/**
+	 * The function's body, and the code no function owns that its flow runs on into. A body is fitted
+	 * to the windows its code had when it was made: a call's return point that was another window's
+	 * delay slot then is not entered from outside, and what follows it stays out of the body though
+	 * the function, and the decompiler, run it (issue #156).
+	 */
+	private static ghidra.program.model.address.AddressSetView reach(Program program, Function function) {
+		var functions = program.getFunctionManager();
+		var listing = program.getListing();
+		ghidra.program.model.address.AddressSet set = new ghidra.program.model.address.AddressSet(function.getBody());
+		java.util.Deque<Instruction> work = new java.util.ArrayDeque<>();
+		for (Instruction insn : listing.getInstructions(function.getBody(), true)) work.add(insn);
+		// ponytail: a bound on the code taken in beyond the body.
+		for (int budget = 4096; !work.isEmpty() && budget > 0;) {
+			Instruction insn = work.pop();
+			List<Address> next = new ArrayList<>();
+			if (insn.getFallThrough() != null) next.add(insn.getFallThrough());
+			for (Reference ref : insn.getReferencesFrom())
+				if (ref.getReferenceType().isFlow() && !ref.getReferenceType().isCall()) next.add(ref.getToAddress());
+			for (Address at : next) {
+				Instruction to = listing.getInstructionAt(at);
+				if (to == null || set.contains(at) || functions.getFunctionContaining(at) != null) continue;
+				set.add(to.getMinAddress(), to.getMaxAddress());
+				work.add(to);
+				budget--;
+			}
+		}
+		return set;
 	}
 
 	/** Why the last plan for each branch was dropped though its check passed, for the warning that stays. */

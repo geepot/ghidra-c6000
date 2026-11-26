@@ -141,6 +141,14 @@
 
 ### Fixed
 
+* `C6000 Nested Branch Lifting` follows a function's flow into code no function owns. A body
+  is fitted to the windows its code had when it was made, so code behind a call's return point
+  that was once another window's delay slot stays outside it, and a nest there was never
+  lifted though the decompiler runs it (issue #156).
+* An instruction that lands two calls to different functions has no primary call reference:
+  Ghidra rewrites every call of an instruction to that reference's target, so the C showed the
+  first callee at both (issue #158).
+
 * A held late result of a predicated instruction is no longer held past another write to its
   register (issue #160). The commit runs whether the instruction did or not, and where it did
   not it put the register's old value back over that write: a load under one predicate with a
