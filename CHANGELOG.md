@@ -141,6 +141,12 @@
 
 ### Fixed
 
+* A held late result of a predicated instruction is no longer held past another write to its
+  register (issue #160). The commit runs whether the instruction did or not, and where it did
+  not it put the register's old value back over that write: a load under one predicate with a
+  write under the opposite one in its delay slots lost the write. Introduced with the hold for
+  issue #152.
+
 * A nest that starts at a function's entry is compared with the hardware from that entry. The
   comparison began at the last branch that could still be in flight, which for a function right
   behind another's return window is that return: it has landed before the entry issues, the

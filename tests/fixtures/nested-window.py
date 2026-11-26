@@ -1805,6 +1805,19 @@ CASES = [
         B       .S2     B3
         NOP             5
 """),
+    # issue #160: a predicated load, and a write to its register under the opposite predicate in
+    # its delay slots: with b the load does not run and A1 is the compare's, a == 5.
+    ("ld54m", False, """{n}:
+        CMPEQ   .L2     B4,0,B0
+        MV      .L1     A4,A1
+  [ B0] LDW     .D1T1   *A6,A1
+        NOP             2
+  [!B0] CMPEQ   .L1     5,A4,A1
+        NOP             2
+  [!A1] ADD     .L1     A4,1,A4
+        B       .S2     B3
+        NOP             5
+"""),
     # issue #152: a load lands four delay slots after it issues, so the ADD in its first slot
     # reads the old A3: *p + c + 1, not 2 * *p + 1.
     ("ldlat", False, """{n}:
@@ -2406,7 +2419,7 @@ LIFTED = {
     "callarml0": ["param_2 + 3;", "return param_2 + 100;"],
 }
 # What the C of a case that latches nothing must hold, and must not.
-PLAIN = {"ldlat": ["param_3 + 1"], "lnkpathc": ["lnkpathc_h(", "*param_3 = "], "kpre0": ["kpre0_h(", "+ 0x10"], "kwp0": ["kwp0_h(", "+ 0x10"], "cpyret": ["return param_1 + 1;"], "cpycall": ["return iVar1 + 7;"], "cpyfar": ["return iVar1 + 7;"], "cpyti": ["return param_2 + 1;"],
+PLAIN = {"ldlat": ["param_3 + 1"], "ld54m": ["== 5"], "lnkpathc": ["lnkpathc_h(", "*param_3 = "], "kpre0": ["kpre0_h(", "+ 0x10"], "kwp0": ["kwp0_h(", "+ 0x10"], "cpyret": ["return param_1 + 1;"], "cpycall": ["return iVar1 + 7;"], "cpyfar": ["return iVar1 + 7;"], "cpyti": ["return param_2 + 1;"],
          "swtwo": ["switch(", "0x28"], "farlink": ["farlink_h(param_1 + 0x2d)", "+ 1;"], "twocall": ["(0,*param_1)", "(0,param_1[1])"],
          **{name: ["(*param_3)(param_2)", "+ 9"] for name in ("mjoin", "mjoinp", "mjoinu")},
          "mjoind": ["mjoind_h(param_2)", "+ 9"], "mjoinm": ["(*param_3)(param_2 + 1)", "+ 9"]}

@@ -85,7 +85,8 @@ public final class C6000SamePacketHazardAnalyzer extends AbstractAnalyzer {
 								" issues before " + hazard.register() + " from " + hazard.writer() + " at " + hazard.writer().getAddress() +
 								" lands, " + hazard.late() + " delay slot(s) after it (SPRUFE8B 3.4), but native lifting has" +
 								" already written it, and " + (hazard.straight() ? "the write could not be held back to there" :
-									"control can come in or leave between the two, or a second late write to it issues, so the write could not be held back")) +
+									"control can come in or leave between the two, or another write to it issues that the held one must not undo," +
+									" so the write could not be held back")) +
 							", so " + function.getName() + " may decompile wrongly (issue " + (hazard.late() == 0 ? "#71" : "#152") + ")");
 					}
 				}
@@ -172,6 +173,10 @@ public final class C6000SamePacketHazardAnalyzer extends AbstractAnalyzer {
 					second |= overlap(late, also) != null;
 				}
 				if (floating(reader)) continue;
+				// A held write is committed whether its instruction ran or not: where it did not, the
+				// commit puts the old value back. That undoes any write to the register in between, so
+				// past one nothing of a predicated writer is held (issue #160).
+				if (PREDICATE.matcher(writer.getMnemonicString()).find() && overlap(late, writes(reader)) != null) second = true;
 				Varnode register = overlap(late, reads(program, reader));
 				if (register == null) register = overlap(late, writes(reader));
 				if (register == null) continue;
