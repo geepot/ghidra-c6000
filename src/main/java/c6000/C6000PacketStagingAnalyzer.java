@@ -121,7 +121,7 @@ public final class C6000PacketStagingAnalyzer extends AbstractAnalyzer {
 		return known;
 	}
 
-	private static final java.util.IdentityHashMap<Instruction, Instruction> hardwareCache = new java.util.IdentityHashMap<>();
+	private static java.util.IdentityHashMap<Instruction, Instruction> hardwareCache = new java.util.IdentityHashMap<>();
 	private static java.lang.ref.WeakReference<Program> hardwareOf = new java.lang.ref.WeakReference<>(null);
 	private static long hardwareStamp;
 
@@ -185,10 +185,29 @@ public final class C6000PacketStagingAnalyzer extends AbstractAnalyzer {
 		return known;
 	}
 
-	private static final java.util.IdentityHashMap<Instruction, ghidra.program.model.symbol.FlowType> flowCache =
+	private static java.util.IdentityHashMap<Instruction, ghidra.program.model.symbol.FlowType> flowCache =
 		new java.util.IdentityHashMap<>();
 	private static java.lang.ref.WeakReference<Program> flowOf = new java.lang.ref.WeakReference<>(null);
 	private static long flowStamp;
+
+	/**
+	 * Analysis is over: drop the instruction caches. They are static, and their keys are instructions,
+	 * which reach their program; the weak program reference does not help while an entry holds one.
+	 * Kept, they hold up to 200,000 instructions (about 741 B each once nothing else does) until the
+	 * next call, and in the tool they keep a closed program's objects alive. New maps, because
+	 * IdentityHashMap.clear() keeps its full-size table. Anything asked after this just refills them.
+	 */
+	@Override
+	public void analysisEnded(Program program) {
+		release();
+	}
+
+	static synchronized void release() {
+		hardwareCache = new java.util.IdentityHashMap<>();
+		hardwareOf = new java.lang.ref.WeakReference<>(null);
+		flowCache = new java.util.IdentityHashMap<>();
+		flowOf = new java.lang.ref.WeakReference<>(null);
+	}
 
 	private static ghidra.program.model.symbol.FlowType flowNow(Instruction ins) {
 		Instruction hardware = hardware(ins);
