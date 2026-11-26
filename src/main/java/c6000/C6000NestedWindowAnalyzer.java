@@ -96,6 +96,14 @@ public final class C6000NestedWindowAnalyzer extends AbstractAnalyzer {
 				// A jump into another function whose callee comes back somewhere native lifting has no
 				// call returning to, where latching did not lift it (issue #155).
 				String elsewhere = inner != null || !walker.entersFunction(branch) ? null : walker.nativeMismatch(branch);
+				if (inner == null && walker.entersFunction(branch) && walker.unprovenLink != null) {
+					bookmarks.setBookmark(branch.getMinAddress(), BookmarkType.WARNING, SPLIT, branch + " enters another function with B3 as an" +
+						" earlier call left it. That call returned to " + walker.unprovenLink + ", and its callee is not shown to come back" +
+						" through B3 itself, so B3 may or may not still hold that address: the function entered returns there if it" +
+						" does, and to the caller if not. It is lifted as a tail call, so " + function.getName() +
+						" may decompile wrongly (issues #105, #155)");
+					warned++;
+				}
 				// Only where the two were run and differ: a jump that could not be compared says nothing about its link.
 				if (elsewhere != null && walker.differs) {
 					var plan = walker.liftPlan(branch);

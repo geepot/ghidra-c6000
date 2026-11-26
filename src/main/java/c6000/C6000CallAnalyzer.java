@@ -830,6 +830,74 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 			return returns;
 		}
 
+		private final Map<Address, Boolean> keepsLink = new HashMap<>();
+
+		/**
+		 * After the call {@code call} has returned, B3 holds the address it returned to: every way
+		 * out of its callee is a branch through B3 itself, which goes where B3 points (SPRUFE8B
+		 * 4.2.6 B). A callee that returns through a copy of its link, having used B3 for a call of
+		 * its own, leaves something else there (cl6x does this for callees in one file, issue
+		 * #131), and so may one that cannot be followed: then nothing is known of B3.
+		 */
+		boolean returnsThroughB3(Instruction call) {
+			Instruction listed = listing.getInstructionAt(call.getMinAddress());
+			Address[] to = C6000PacketStagingAnalyzer.hardware(call).getDefaultFlows();
+			Address target = call.getRegister(0) == null && to.length == 1 ? to[0] : null;
+			// A register call: where the listing knows the one function it calls.
+			if (target == null && listed != null) for (Reference ref : listed.getReferencesFrom())
+				if (ref.getReferenceType().isCall()) {
+					if (target != null && !target.equals(ref.getToAddress())) return false;
+					target = ref.getToAddress();
+				}
+			if (target == null) return false;
+			Boolean known = keepsLink.get(target);
+			if (known == null) keepsLink.put(target, known = leavesThroughB3(target));
+			return known;
+		}
+
+		private boolean leavesThroughB3(Address target) {
+			Register b3 = program.getRegister("B3");
+			java.util.Deque<Address> work = new java.util.ArrayDeque<>(List.of(target));
+			Set<Address> seen = new HashSet<>();
+			boolean returns = false;
+			// ponytail: a bound on the walk; a callee larger than this is taken as not followed.
+			int budget = 64 * MAX_WINDOW;
+			while (!work.isEmpty()) {
+				Instruction insn = decode(work.pop());
+				while (true) {
+					if (insn == null || budget-- < 0) return false;
+					if (!seen.add(insn.getMinAddress())) break;
+					if (baseName(insn).startsWith("CALLP")) { insn = next(insn); continue; }
+					if (!transfer(insn)) { insn = next(insn); continue; }
+					Instruction at = listing.getInstructionAt(insn.getMinAddress());
+					var flow = C6000PacketStagingAnalyzer.flow(at != null ? at : insn);
+					List<Instruction> window = window(insn);
+					if (window == null) return false;
+					for (Instruction slot : window) if (transfer(slot)) return false;
+					Instruction after = window.isEmpty() ? next(insn) : next(window.get(window.size() - 1));
+					// A call of its own comes back behind its window.
+					if (flow.isCall() && flow.hasFallthrough()) { insn = after; continue; }
+					boolean counted = baseName(insn).startsWith("BDEC") || baseName(insn).startsWith("BPOS");
+					Register through = counted ? null : insn.getRegister(0);
+					if (through != null) {
+						// A way out through anything but B3, or a jump through a register to who knows where.
+						if (!b3.equals(through) || !(flow.isTerminal() || flow.isComputed())) return false;
+						returns = true;
+					}
+					else {
+						Address[] flows = C6000PacketStagingAnalyzer.hardware(insn).getDefaultFlows();
+						if (flows.length != 1) return false;
+						// Its own code, or another function that returns for it.
+						work.push(flows[0]);
+					}
+					// Past its window only when it may not go.
+					if (predicate(insn) == null && !counted) break;
+					insn = after;
+				}
+			}
+			return returns;
+		}
+
 		/**
 		 * The code at {@code target}, called with its link in {@code link}, never comes back through
 		 * it: every way through it ends in a branch through another register, {@code link} is not
@@ -1140,6 +1208,7 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 
 		private String compare(Instruction first, Instruction outer, Proposal proposal, Lifting lifting) {
 			differs = false;
+			unprovenLink = null;
 			List<Instruction> stretch = new ArrayList<>();
 			long end = Math.max(windowEnd(first), windowEnd(outer));
 			if (windowEnd(first) < 0 || windowEnd(outer) < 0) return "a delay window there is incomplete";
@@ -1460,7 +1529,15 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 
 		private record Flight(long lands, Instruction transfer) {}
 
+		/**
+		 * After a comparison: a jump into another function was run with B3 as an earlier call left it,
+		 * and that call's callee is not shown to come back through B3. The address is where that call
+		 * returned: if B3 still holds it, the function entered returns there and not to the caller.
+		 */
+		Address unprovenLink;
+
 		private Run hardware(Instruction first, Stretch region, Map<Address, Boolean> taken, List<PredicateFact> facts) {
+			Address unproven = null;
 			List<String> trace = new ArrayList<>();
 			List<Flight> flights = new ArrayList<>();
 			Set<Address> issued = new HashSet<>();
@@ -1488,12 +1565,16 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 			for (int i = 0; i < start; i++) if (transfer(pre.get(i)) && (predicate(pre.get(i)) == null || executes(pre, i, preFacts) != Boolean.FALSE)) {
 				from = start;
 				for (int j = i + 1; j < start; j++) if (preCycles[j] >= preCycles[i] + 1 + DELAY_CYCLES) { from = j; break; }
-				// A call that has returned by then left B3 at its return point (issue #105).
+				// A call that has returned by then left B3 at its return point, if its callee came back
+				// through B3 (issue #105).
 				Instruction earlier = listing.getInstructionAt(pre.get(i).getMinAddress());
 				ret3.remove(b3);
+				unproven = null;
 				if (from < start && earlier != null && predicate(earlier) == null && C6000PacketStagingAnalyzer.flow(earlier).isCall() &&
-					earlier.getFallThrough() != null && !C6000PacketStagingAnalyzer.inert(earlier))
-					ret3.put(b3, new long[] { earlier.getFallThrough().getOffset(), FULL });
+					earlier.getFallThrough() != null && !C6000PacketStagingAnalyzer.inert(earlier)) {
+					if (returnsThroughB3(earlier)) ret3.put(b3, new long[] { earlier.getFallThrough().getOffset(), FULL });
+					else unproven = earlier.getFallThrough();
+				}
 			}
 			for (int i = from; i < start; i++) {
 				Instruction insn = pre.get(i);
@@ -1510,6 +1591,7 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 				Long value = load != null || runs == null ? null : constantWrite(insn, b3, ret3);
 				if (value == null) ret3.remove(b3);
 				else ret3.put(b3, new long[] { value, FULL });
+				unproven = null;
 			}
 			// The stretch's first instruction may itself be a label another path comes in at, with
 			// whatever B3 that path has (issue #151).
@@ -1568,6 +1650,7 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 								Long r3 = load != null || !sure ? null : constantWrite(insn, b3, ret3);
 								if (r3 == null) ret3.remove(b3);
 								else ret3.put(b3, new long[] { r3, FULL });
+								unproven = null;
 							}
 						}
 						if (!parallelWithNext(insn)) break;
@@ -1621,7 +1704,11 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 							Function owner = program.getFunctionManager().getFunctionContaining(to);
 							if (mine != null && (owner == null || owner.equals(mine)) && decode(to) != null) linked = to;
 						}
-						// With no link of this function in B3 it is the tail call the listing has.
+						// With no link of this function in B3 it is the tail call the listing has. Where B3
+						// is as an earlier call left it, and that callee is not shown to come back through
+						// B3, even that is not known: it is noted for a warning.
+						if (!call && linked == null && unproven != null && target != null && program.getFunctionManager().getFunctionAt(target) != null &&
+							Boolean.FALSE.equals(localTarget(transfer))) unprovenLink = unproven;
 						if (tail && linked == null) call = true;
 						// A register branch, not through B3, that lands just before the address B3 holds
 						// from before the stretch: the call that link was written for (issue #133).
@@ -1646,8 +1733,10 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 								C6000PacketStagingAnalyzer.inert(listed) ? returnPoint(listed) : listed.getFallThrough();
 							if (back == null) return new Run(trace, "does not return", null);
 							if (landedBack != null) landedBack.computeIfAbsent(transfer.getMinAddress(), k -> new HashSet<>()).add(back);
-							// The callee returned through B3, which still holds that address.
-							ret3.put(b3, new long[] { back.getOffset(), FULL });
+							// The callee returned to where B3 pointed; B3 still holds that address if it came
+							// back through B3 itself, and something unknown if through a copy.
+							if (returnsThroughB3(transfer)) ret3.put(b3, new long[] { back.getOffset(), FULL });
+							else unproven = back;
 							at = decode(back);
 							cycle = landing.lands();
 						}
@@ -2140,7 +2229,8 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 					trace.write(issue[i], program.getRegister("B3"), null, i);
 					if (C6000PacketStagingAnalyzer.flow(insn).isCall()) {
 						Instruction listed = listing.getInstructionAt(insn.getMinAddress());
-						Address back = listed == null ? null : listed.getFallThrough();
+						// B3 holds the return address afterwards only if the callee came back through B3.
+						Address back = listed == null || !returnsThroughB3(listed) ? null : listed.getFallThrough();
 						returns.add(new long[] { issue[i] + 1 + DELAY_CYCLES, back == null ? -1 : back.getOffset() });
 					}
 					// Past the window of a jump or return that always goes, nothing falls through.
@@ -2546,8 +2636,9 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 				for (Register r : registers) lastWriter.merge(r, at, Math::max);
 			}
 			/**
-			 * A callee has returned to {@code back}: what it may change is unknown, and B3 holds the
-			 * address it returned through (SPRUFE8B 4.2.6 B; SPRAB89 3.3), until something writes it.
+			 * A callee has returned: what it may change is unknown. Where it came back through B3
+			 * itself ({@link #returnsThroughB3}), {@code back} is that address and B3 holds it until
+			 * something writes it (SPRUFE8B 4.2.6 B); else {@code back} is negative and B3 is unknown.
 			 */
 			void returned(List<Register> changed, long back) {
 				forget(changed);

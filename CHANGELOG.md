@@ -141,6 +141,13 @@
 
 ### Fixed
 
+* After a call, B3 is taken to hold the return address only where the callee is followed and
+  every way out of it is a branch through B3 itself. It was assumed for every call. A callee
+  that returns through a copy of its link, having used B3 for a call of its own (cl6x does
+  this within one file), leaves something else there, and so may one that cannot be followed:
+  B3 is then unknown, a jump into another function behind such a call stays a tail call, and
+  where B3 was not written again it is warned (`C6000 Split Link`).
+
 * A call whose link is an address of its own function other than the end of its delay window
   is a call that returns there (issue #155): it was lifted as a tail call, or predicated as a
   jump into the callee, and everything after the return was lost. A jump into another

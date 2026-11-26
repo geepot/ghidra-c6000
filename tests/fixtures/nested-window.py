@@ -1734,6 +1734,52 @@ CASES = [
         B       .S2     B3
         NOP             5
 """),
+    # After a call B3 holds the return address only if the callee came back through B3 itself.
+    # g keeps its link in B9, uses B3 and returns through B9 (as cl6x does for a callee in the
+    # same file, issue #131), so the jump to h behind it is not a call returning to back: it
+    # stays a tail call and is warned. In lnkkept g returns through B3, the jump is a call that
+    # returns to back, and the C is the loop: a = g(a); while (--n) a = h(a).
+    ("lnkclob", False, """{n}:
+        STW     .D2T2   B3,*B15--[2]
+||      MV      .L1X    B4,A1
+{n}_top:
+        B       .S1     {n}_g
+        MVKL    .S2     {n}_back,B3
+        MVKH    .S2     {n}_back,B3
+        NOP             3
+{n}_back:
+        SUB     .L1     A1,1,A1
+{n}_split:
+        B       .S1     {n}_h
+        NOP             5
+{n}_g:
+        MV      .L2     B3,B9
+        MVK     .S2     0,B3
+        B       .S2     B9
+        ADD     .L1     A4,1,A4
+        NOP             4
+"""),
+    ("lnkkept", True, """{n}:
+        STW     .D2T2   B3,*B15--[2]
+||      MV      .L1X    B4,A1
+{n}_top:
+        B       .S1     {n}_g
+        MVKL    .S2     {n}_back,B3
+        MVKH    .S2     {n}_back,B3
+        NOP             3
+{n}_back:
+        SUB     .L1     A1,1,A1
+{n}_in:
+  [ A1] B       .S1     {n}_h
+  [!A1] LDW     .D2T2   *++B15[2],B3
+        NOP             4
+        B       .S2     B3
+        NOP             5
+{n}_g:
+        B       .S2     B3
+        ADD     .L1     A4,1,A4
+        NOP             4
+"""),
     # issue #152: a load lands four delay slots after it issues, so the ADD in its first slot
     # reads the old A3: *p + c + 1, not 2 * *p + 1.
     ("ldlat", False, """{n}:
@@ -2285,6 +2331,7 @@ LIFTED = {
     "swjump": ["0x111", "0x222", "0x333", "0x999"],
     "jcallpre": ["jcallpre_h(param_2)", "param_2 + 3"],
     "twoland": ["+ 0x1e1c", "+ 0xe1c", "+ 0x100"],
+    "lnkkept": ["lnkkept_h(", "param_2 + -1", "while"],
     "lkm3": ["lkm3_h(", "+ 100"], "lkm": ["lkm_h(", "+ 100", "+ 5"],
     "cpylt": ["+ 5", "return 3"], "cpyltu": [],
     "adj": ["0xc3", "0x19"], "adjnop": ["0xc3", "0x19"],
@@ -2338,11 +2385,11 @@ PLAIN = {"ldlat": ["param_3 + 1"], "lnkpathc": ["lnkpathc_h(", "*param_3 = "], "
          "swtwo": ["switch(", "0x28"], "farlink": ["farlink_h(param_1 + 0x2d)", "+ 1;"], "twocall": ["(0,*param_1)", "(0,param_1[1])"],
          **{name: ["(*param_3)(param_2)", "+ 9"] for name in ("mjoin", "mjoinp", "mjoinu")},
          "mjoind": ["mjoind_h(param_2)", "+ 9"], "mjoinm": ["(*param_3)(param_2 + 1)", "+ 9"]}
-ABSENT = {"ldlat": ["* 2"], **{name: ["func_0x"] for name in ("lguard", "lguard0", "lafter")}, "lnewfn": ["lnewfn_h("], "cpyretp": ["return param_1 + 1;"], "a3arg": ["a3arg_h(7"], "mjoinf": ["+ 9"], "mjoinx": ["+ 9"], "mjoinj": ["+ 9"],
+ABSENT = {"lnkclob": ["while", "do {"], "ldlat": ["* 2"], **{name: ["func_0x"] for name in ("lguard", "lguard0", "lafter")}, "lnewfn": ["lnewfn_h("], "cpyretp": ["return param_1 + 1;"], "a3arg": ["a3arg_h(7"], "mjoinf": ["+ 9"], "mjoinx": ["+ 9"], "mjoinj": ["+ 9"],
           **{name: ["return iVar1 + 7;"] for name in ("cpyclob", "cpyclobs", "cpybdec", "cpydeep", "cpyunk", "cpytwo")}}
 # Labels declared as functions too, as a symbol table or a seed list would, and what the C of the
 # function at a label must hold.
-DECLARE = {"cpylt": ["g"], "cpyltu": ["g"], "c2split": ["test", "exit"], "twocall": ["callee"], "cpyti": ["g"], "cpyclob": ["g"], "cpyclobs": ["g"], "cpybdec": ["g"], "cpydeep": ["g", "g2"], "cpytwo": ["g"]}
+DECLARE = {"lnkclob": ["g"], "lnkkept": ["g"], "cpylt": ["g"], "cpyltu": ["g"], "c2split": ["test", "exit"], "twocall": ["callee"], "cpyti": ["g"], "cpyclob": ["g"], "cpyclobs": ["g"], "cpybdec": ["g"], "cpydeep": ["g", "g2"], "cpytwo": ["g"]}
 PLAIN_AT = {"c2split": ("test", ["c2split_h(param_1 + 7"]), "cbraw": ("cb", ["param_2 - param_1"])}
 # Cases that are warned or lifted depending on the decompiler, and what their C holds when lifted.
 EITHER = {"entmany": ["0x101", "+ 0xae", "+ 0x50"], "samepred": ["+ 0xf) * 2", "param_2 + 1"]}
