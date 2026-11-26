@@ -676,15 +676,20 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 					break;
 				}
 			}
-			if (why != null || entered(walked, first, latches)) return plan;
+			if (why != null) return plan;
 			List<Latch> sure = new ArrayList<>();
+			// Where control always leaves: a jump or return landing that every run passes with its latch set.
+			Set<Address> exits = new HashSet<>();
 			for (Latch latch : latches) {
 				boolean[] use = uses.get(latch.land().getMinAddress() + "/" + latch.slot());
 				// Outside the stretch a run ends once nothing is in flight, so a landing there is not seen passed.
 				Address at = latch.land().getMinAddress();
 				boolean inside = at.compareTo(first.getMinAddress()) >= 0 && at.compareTo(last) <= 0;
-				sure.add(new Latch(latch.branch(), latch.slot(), latch.land(), latch.kind(), latch.target(), latch.kind() != 4 && inside && use != null && use[0] && !use[1]));
+				boolean always = latch.kind() != 4 && inside && use != null && use[0] && !use[1];
+				sure.add(new Latch(latch.branch(), latch.slot(), latch.land(), latch.kind(), latch.target(), always));
+				if (always && (latch.kind() == 1 || latch.kind() == 3)) exits.add(at);
 			}
+			if (entered(walked, first, latches, exits)) return plan;
 			return new Lifting(first, last, sure);
 		}
 
@@ -780,7 +785,13 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 						else {
 							Address[] flows = C6000PacketStagingAnalyzer.hardware(insn).getDefaultFlows();
 							Function entered = flows.length == 1 ? program.getFunctionManager().getFunctionAt(flows[0]) : null;
-							if (flows.length != 1 || C6000PacketStagingAnalyzer.flow(insn).isCall() || (entered != null && !entered.equals(mine))) return false;
+							var flow = C6000PacketStagingAnalyzer.flow(insn);
+							// A callee that leaves for another function with B3 as it found it is returned
+							// for by that function: it is walked too, to its return (issue #153). Not for
+							// a local subroutine, whose jump into another function is a way out of it.
+							boolean leaves = kept != null && entered != null && !entered.equals(mine);
+							if (flows.length != 1 || (flow.isCall() && (!leaves || flow.hasFallthrough())) ||
+								(entered != null && !entered.equals(mine) && !leaves)) return false;
 							work.push(flows[0]);
 						}
 						// What issues in its delay cycles runs either way; past them only when it is not taken.
@@ -896,7 +907,7 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 		private Set<Address> landingWalk;
 
 		/** True when code a plan runs, past its first instruction, is also reached from outside the plan. */
-		private boolean entered(Set<Address> walked, Instruction first, List<Latch> latches) {
+		private boolean entered(Set<Address> walked, Instruction first, List<Latch> latches, Set<Address> exits) {
 			Set<Address> own = new HashSet<>();
 			for (Latch latch : latches) {
 				own.add(latch.branch().getMinAddress());
@@ -913,6 +924,25 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 				if (prior == null || walked.contains(prior.getMinAddress()) || !adjacent(prior, insn) && !headerBetween(prior, insn)) continue;
 				Instruction owner = C6000DelaySlots.unitOwner(program, prior);
 				if (walked.contains(owner.getMinAddress())) continue;
+				// Code the plan does not run, behind an instruction where its control always leaves and
+				// with no way in of its own, is not run at all: nothing falls in from it.
+				boolean dead = false;
+				Instruction back = prior;
+				for (int guard = 0; guard < MAX_WINDOW && back != null && !dead; guard++) {
+					if (walked.contains(back.getMinAddress())) {
+						dead = exits.contains(back.getMinAddress());
+						break;
+					}
+					if (externalEntry(back)) break;
+					boolean named = false;
+					for (Reference ref : program.getReferenceManager().getReferencesTo(back.getMinAddress()))
+						named |= ref.getReferenceType().isFlow() && !ref.getReferenceType().isFallthrough();
+					if (named) break;
+					Instruction before = listing.getInstructionBefore(back.getMinAddress());
+					if (before == null || !adjacent(before, back) && !headerBetween(before, back)) break;
+					back = before;
+				}
+				if (dead) continue;
 				if (!transfer(owner) || C6000PacketStagingAnalyzer.flow(owner).hasFallthrough()) return true;
 			}
 			return false;

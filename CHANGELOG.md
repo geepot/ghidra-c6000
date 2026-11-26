@@ -141,6 +141,13 @@
 
 ### Fixed
 
+* A return through a copy of B3 is proven past a callee that leaves for another function with
+  B3 as it found it: that function is walked too, to its return (issue #153).
+* A landing that every run passes with its latch set is lifted as certain also where unreached
+  code lies between it and a later instruction of the plan; such code was taken for a way in.
+  The decompiler then no longer sees a path past an unconditional latched return, which hid
+  the value the function returns.
+
 * `C6000 Link Copy Warnings` covers a latched branch too: one through a copy of B3 that lands
   as a computed jump, because the call before it is not proven to leave the copy alone, had no
   warning (issue #153).
