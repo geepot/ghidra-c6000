@@ -93,6 +93,20 @@ public final class C6000NestedWindowAnalyzer extends AbstractAnalyzer {
 					reasons.put(branch.getMinAddress(), why);
 					chain.put(root(chain, inner.getMinAddress()), root(chain, branch.getMinAddress()));
 				}
+				// A jump into another function whose callee comes back somewhere native lifting has no
+				// call returning to, where latching did not lift it (issue #155).
+				String elsewhere = inner != null || !walker.entersFunction(branch) ? null : walker.nativeMismatch(branch);
+				// Only where the two were run and differ: a jump that could not be compared says nothing about its link.
+				if (elsewhere != null && walker.differs) {
+					var plan = walker.liftPlan(branch);
+					String unlifted = plan == null ? walker.liftRefusal : walker.liftMismatch(plan, branch);
+					if (unlifted == null) unlifted = C6000NestedLiftAnalyzer.dropped(program, branch.getMinAddress());
+					bookmarks.setBookmark(branch.getMinAddress(), BookmarkType.WARNING, CATEGORY, branch + " at " + branch.getMinAddress() +
+						" enters another function with a link in B3 that native lifting has no call returning to: " + elsewhere +
+						(unlifted == null ? "" : "; not lifted by latching because " + unlifted) +
+						", so " + function.getName() + " may decompile wrongly (issue #155)");
+					warned++;
+				}
 				// Latched, such a call lands as a call and then jumps to its return point.
 				Address back = C6000PacketStagingAnalyzer.inert(branch) ? null : walker.predicatedBackwardCall(branch);
 				if (back != null) {

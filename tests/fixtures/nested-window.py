@@ -1692,6 +1692,48 @@ CASES = [
         B       .S2     B5
         NOP             5
 """),
+    # issue #155: a call whose link is not the end of its delay window. h returns to r, past the
+    # ADD 5: 2a + 100. In lkm the link and the call are predicated: b ? a + 5 : 2a + 100.
+    ("lkm3", True, """{n}:
+        STW     .D2T2   B3,*B15--[2]
+||      MV      .L1X    B4,A1
+        MVKL    .S2     {n}_r,B3
+        MVKH    .S2     {n}_r,B3
+{n}_in:
+        B       .S1     {n}_h
+        NOP             5
+        ADD     .L1     A4,5,A4
+        LDW     .D2T2   *++B15[2],B3
+        NOP             4
+        B       .S2     B3
+        NOP             5
+{n}_r:
+        ADDK    .S1     100,A4
+        LDW     .D2T2   *++B15[2],B3
+        NOP             4
+        B       .S2     B3
+        NOP             5
+"""),
+    ("lkm", True, """{n}:
+        STW     .D2T2   B3,*B15--[2]
+||      MV      .L1X    B4,A1
+  [!A1] MVKL    .S2     {n}_r,B3
+  [!A1] MVKH    .S2     {n}_r,B3
+{n}_in:
+  [!A1] B       .S1     {n}_h
+        NOP             5
+        ADD     .L1     A4,5,A4
+        LDW     .D2T2   *++B15[2],B3
+        NOP             4
+        B       .S2     B3
+        NOP             5
+{n}_r:
+        ADDK    .S1     100,A4
+        LDW     .D2T2   *++B15[2],B3
+        NOP             4
+        B       .S2     B3
+        NOP             5
+"""),
     # issue #152: a load lands four delay slots after it issues, so the ADD in its first slot
     # reads the old A3: *p + c + 1, not 2 * *p + 1.
     ("ldlat", False, """{n}:
@@ -2243,6 +2285,7 @@ LIFTED = {
     "swjump": ["0x111", "0x222", "0x333", "0x999"],
     "jcallpre": ["jcallpre_h(param_2)", "param_2 + 3"],
     "twoland": ["+ 0x1e1c", "+ 0xe1c", "+ 0x100"],
+    "lkm3": ["lkm3_h(", "+ 100"], "lkm": ["lkm_h(", "+ 100", "+ 5"],
     "cpylt": ["+ 5", "return 3"], "cpyltu": [],
     "adj": ["0xc3", "0x19"], "adjnop": ["0xc3", "0x19"],
     "retent": ["retent_h(", "+ 1"],

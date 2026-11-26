@@ -141,6 +141,16 @@
 
 ### Fixed
 
+* A call whose link is an address of its own function other than the end of its delay window
+  is a call that returns there (issue #155): it was lifted as a tail call, or predicated as a
+  jump into the callee, and everything after the return was lost. A jump into another
+  function's entry is now compared with the hardware like a nested branch and lifted by
+  latching as the call and a jump to its return point; where that cannot be done it is warned.
+  In that comparison a tail call the listing has is a jump whose return B3 decides, and stays
+  the tail call it is when B3 holds no address of the function.
+* The link known before a stretch is not trusted where the stretch begins on a label that
+  another path jumps to.
+
 * A return through a copy of B3 is proven past a callee that leaves for another function with
   B3 as it found it: that function is walked too, to its return (issue #153).
 * A landing that every run passes with its latch set is lifted as certain also where unreached

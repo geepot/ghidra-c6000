@@ -84,7 +84,9 @@ public final class C6000NestedLiftAnalyzer extends AbstractAnalyzer {
 					if (!op.startsWith("B") || op.startsWith("BITC") || op.startsWith("BITR") || !tried.add(branch.getAddress())) continue;
 					// Nested with another transfer, or a predicated call that returns to earlier code,
 					// which needs its return and its fall-through both (issue #66).
-					if ((walker.nestedTransfer(branch) == null && walker.predicatedBackwardCall(branch) == null) ||
+					// Or a call that returns somewhere other than the end of its window (issue #155).
+					if ((walker.nestedTransfer(branch) == null && walker.predicatedBackwardCall(branch) == null &&
+							!walker.entersFunction(branch)) ||
 						walker.nativeMismatch(branch) == null) continue;
 					var plan = walker.liftPlan(branch);
 					if (plan == null || walker.liftMismatch(plan, branch) != null) continue;

@@ -250,6 +250,22 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 			this.pseudo = new PseudoDisassembler(program);
 		}
 
+		/**
+		 * A displacement B into another function's entry that the listing does not have as a call
+		 * that comes back: a jump or a tail call. Where its callee returns is B3's to say (SPRUFE8B
+		 * 3.5, 4.2.6); if B3 holds an address of this function that is not the end of the branch's
+		 * window, native lifting has no call that returns there, and the hardware comparison says so
+		 * (issue #155). This only picks the branches worth that comparison.
+		 */
+		boolean entersFunction(Instruction branch) {
+			if (!(baseName(branch).equals("B.S1") || baseName(branch).equals("B.S2")) || C6000PacketStagingAnalyzer.inert(branch)) return false;
+			Address[] to = C6000PacketStagingAnalyzer.hardware(branch).getDefaultFlows();
+			Function entered = to.length == 1 ? program.getFunctionManager().getFunctionAt(to[0]) : null;
+			Function mine = program.getFunctionManager().getFunctionContaining(branch.getMinAddress());
+			var flow = C6000PacketStagingAnalyzer.flow(branch);
+			return entered != null && mine != null && !entered.equals(mine) && !(flow.isCall() && flow.hasFallthrough());
+		}
+
 		/** The return point, in its caller at or before it, of a predicated displacement B to another function; else null. */
 		Address predicatedBackwardCall(Instruction branch) {
 			backwardReturn = null;
@@ -865,6 +881,9 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 			return leaves;
 		}
 
+		/** After a comparison: it found the two running differently, rather than being unable to compare. */
+		boolean differs;
+
 		/** Set while planning: every instruction a hardware run has issued. */
 		private Set<Address> issuedAny;
 
@@ -1120,6 +1139,7 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 		}
 
 		private String compare(Instruction first, Instruction outer, Proposal proposal, Lifting lifting) {
+			differs = false;
 			List<Instruction> stretch = new ArrayList<>();
 			long end = Math.max(windowEnd(first), windowEnd(outer));
 			if (windowEnd(first) < 0 || windowEnd(outer) < 0) return "a delay window there is incomplete";
@@ -1187,8 +1207,10 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 				Run lifted = proposal != null ? proposed(first, region, taken, facts, proposal) :
 					lifting != null ? latched(first, region, taken, facts, lifting) : lifted(first, region, taken, facts);
 				if (lifted.unproven() != null) return lifted.unproven();
-				if (!hardware.trace().equals(lifted.trace()) || !hardware.exit().equals(lifted.exit()))
+				if (!hardware.trace().equals(lifted.trace()) || !hardware.exit().equals(lifted.exit())) {
+					differs = true;
 					return difference(region, taken, hardware, lifted);
+				}
 			}
 			return null;
 		}
@@ -1489,6 +1511,12 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 				if (value == null) ret3.remove(b3);
 				else ret3.put(b3, new long[] { value, FULL });
 			}
+			// The stretch's first instruction may itself be a label another path comes in at, with
+			// whatever B3 that path has (issue #151).
+			if (entered(first)) {
+				long[] held = ret3.get(b3);
+				if (held == null || held[0] != first.getMinAddress().getOffset() || !returnPointOnly(first)) ret3.remove(b3);
+			}
 			// What this run issues, behind the code before the stretch, and the outcomes it takes: they may
 			// decide a branch beyond the stretch (issue #141).
 			List<Instruction> ran = new ArrayList<>(pre.subList(0, start));
@@ -1558,7 +1586,10 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 						Address target = transfer.getRegister(0) != null || C6000PacketStagingAnalyzer.hardware(transfer).getDefaultFlows().length != 1 ? null :
 							C6000PacketStagingAnalyzer.hardware(transfer).getDefaultFlows()[0];
 						Instruction listed = listing.getInstructionAt(transfer.getMinAddress());
-						boolean call = listed != null && C6000PacketStagingAnalyzer.flow(listed).isCall();
+						// A tail call in the listing is a jump here: where its callee returns is B3's to say.
+						boolean tail = listed != null && C6000PacketStagingAnalyzer.flow(listed).isCall() &&
+							!C6000PacketStagingAnalyzer.flow(listed).hasFallthrough() && !C6000PacketStagingAnalyzer.inert(listed);
+						boolean call = listed != null && C6000PacketStagingAnalyzer.flow(listed).isCall() && !tail;
 						// A transfer that lands with a fresh link in B3 is a call that returns there, whatever
 						// the listing makes of it; one through B3 itself goes where B3 pointed before.
 						Address linked = null;
@@ -1581,12 +1612,17 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 						// holds an address in this function, set at any time before, that is where it
 						// comes back: a call, though no link was written for it (issues #105, #106).
 						long[] old = ret3.get(b3);
-						if (!call && linked == null && old != null && target != null && Boolean.FALSE.equals(localTarget(transfer)) &&
+						if ((!call || latched) && linked == null && old != null && target != null && Boolean.FALSE.equals(localTarget(transfer)) &&
 							program.getFunctionManager().getFunctionAt(target) != null) {
 							Address to = transfer.getMinAddress().getNewAddress(old[0] & 0xffffffffL);
 							Function mine = program.getFunctionManager().getFunctionContaining(transfer.getMinAddress());
-							if (mine != null && mine.getBody().contains(to) && listing.getInstructionAt(to) != null) linked = to;
+							// In this function, or in code no function owns yet: lifted as a tail call, the
+							// jump ends the body before the address its link names (issue #155).
+							Function owner = program.getFunctionManager().getFunctionContaining(to);
+							if (mine != null && (owner == null || owner.equals(mine)) && decode(to) != null) linked = to;
 						}
+						// With no link of this function in B3 it is the tail call the listing has.
+						if (tail && linked == null) call = true;
 						// A register branch, not through B3, that lands just before the address B3 holds
 						// from before the stretch: the call that link was written for (issue #133).
 						if (!call && linked == null && old != null && transfer.getRegister(0) != null && !b3.equals(transfer.getRegister(0))) {
