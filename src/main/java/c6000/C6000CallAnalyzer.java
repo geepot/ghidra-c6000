@@ -2377,7 +2377,7 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 		}
 
 		/** Relative E1 cycle of each physical instruction, including idle spans. */
-		private int[] issueCycles(List<Instruction> path) {
+		int[] issueCycles(List<Instruction> path) {
 			// A sequence built in issue order (land) carries its own cycles; address order says nothing there.
 			if (path == timedPath) return timedCycles;
 			int[] cycles = new int[path.size()];int cycle = 0, span = 1;
@@ -2402,7 +2402,7 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 		}
 
 		/** LD*, and LL/CMTL, which also write in E5 (SPRU732, LL and CMTL). */
-		private static Register loadDestination(Instruction insn) {
+		static Register loadDestination(Instruction insn) {
 			String name = baseName(insn);
 			return loadDestinationName(name) && insn.getNumOperands() >= 2 ? insn.getRegister(insn.getNumOperands() - 1) : null;
 		}
@@ -3094,6 +3094,18 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 		if (THREE_DELAY.contains(op)) return 3;
 		if (ONE_DELAY.contains(op)) return 1;
 		return dot >= 0 && name.startsWith("M", dot + 1) ? 3 : 0;
+	}
+
+	/** {@link #resultDelay} where the instruction's own table gives it; -1 where it is only the estimate for a multiplier unit. */
+	static int exactResultDelay(Instruction insn) {
+		String name = baseName(insn);
+		if (loadDestinationName(name)) return 4;
+		int dot = name.indexOf('.');
+		String op = dot < 0 ? name : name.substring(0, dot);
+		if (LONG_DELAY.containsKey(op)) return LONG_DELAY.get(op);
+		if (THREE_DELAY.contains(op)) return 3;
+		if (ONE_DELAY.contains(op)) return 1;
+		return dot >= 0 && name.startsWith("M", dot + 1) ? -1 : 0;
 	}
 
 	private static boolean loadDestinationName(String name) {

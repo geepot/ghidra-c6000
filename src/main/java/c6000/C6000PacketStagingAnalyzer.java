@@ -281,27 +281,50 @@ public final class C6000PacketStagingAnalyzer extends AbstractAnalyzer {
 	/** One staged write: the member that writes, its register, and the member after which the result is committed. */
 	private record Stage(Instruction writer, int[] registers, Instruction committer) {}
 
+	/** Where the write {@code writer} holds for {@code register} is committed: the first instruction after it that carries the commit; null if none. */
+	static Address committed(Program program, Instruction writer, Varnode register) {
+		if (!staged(program, writer, register)) return null;
+		int[] index = index(program, register);
+		Instruction at = writer;
+		for (int n = 0; n < 4 * C6000CallAnalyzer.MAX_WINDOW && at != null; n++, at = at.getNext())
+			for (String slot : new String[] { "c_cm1", "c_cm2" })
+				if (field(at, slot) == 1 && field(at, slot + "_reg") == index[0]) return at.getAddress();
+		return null;
+	}
+
 	private static int stage(Program program, Function function, TaskMonitor monitor) throws Exception {
-		// The old reads of each writer's register, grouped by writer.
-		Map<Address, List<C6000SamePacketHazardAnalyzer.OldRead>> byWriter = new LinkedHashMap<>();
-		for (var read : C6000SamePacketHazardAnalyzer.oldReads(program, function, monitor))
-			byWriter.computeIfAbsent(read.writer().getAddress(), k -> new ArrayList<>()).add(read);
-		List<Stage> stages = new ArrayList<>();
+		// The old reads of each writer's register, grouped by writer: first those of its own execute
+		// packet, as before; then the later ones of a result that lands cycles after (issue #152).
+		Map<Address, Stage> byWriter = new LinkedHashMap<>();
 		Map<Address, Integer> commits = new HashMap<>();
-		for (var reads : byWriter.values()) {
-			Instruction writer = reads.get(0).writer();
-			int[] registers = index(program, reads.get(0).register());
-			// One whole A or B register, or one pair, per writer; a transfer's own writes are not its peers' to read.
-			if (registers == null || transfer(writer) ||
-				reads.stream().anyMatch(r -> !r.register().equals(reads.get(0).register()))) continue;
-			Instruction last = reads.get(reads.size() - 1).reader();
-			// Two results at most are committed after one member; a pair takes both.
-			if (commits.merge(last.getAddress(), registers.length, Integer::sum) > 2) {
-				commits.merge(last.getAddress(), -registers.length, Integer::sum);
-				continue;
+		for (boolean late : new boolean[] { false, true }) {
+			Map<Address, List<C6000SamePacketHazardAnalyzer.OldRead>> reads = new LinkedHashMap<>();
+			for (var read : late ? C6000SamePacketHazardAnalyzer.lateReads(program, function, monitor) :
+					C6000SamePacketHazardAnalyzer.oldReads(program, function, monitor))
+				// Held only as far as control cannot come in or leave before the commit; a later
+				// reader then keeps its warning.
+				if (read.straight()) reads.computeIfAbsent(read.writer().getAddress(), k -> new ArrayList<>()).add(read);
+			for (var mine : reads.values()) {
+				Instruction writer = mine.get(0).writer();
+				int[] registers = index(program, mine.get(0).register());
+				// One whole A or B register, or one pair, per writer; a transfer's own writes are not its peers' to read.
+				if (registers == null || transfer(writer) ||
+					mine.stream().anyMatch(r -> !r.register().equals(mine.get(0).register()))) continue;
+				Instruction last = mine.get(mine.size() - 1).reader();
+				Stage before = byWriter.get(writer.getAddress());
+				// A write already held for its own packet is held on for the same register only.
+				if (before != null && (!java.util.Arrays.equals(before.registers(), registers) ||
+					last.getAddress().compareTo(before.committer().getAddress()) <= 0)) continue;
+				// Two results at most are committed after one member; a pair takes both.
+				if (commits.merge(last.getAddress(), registers.length, Integer::sum) > 2) {
+					commits.merge(last.getAddress(), -registers.length, Integer::sum);
+					continue;
+				}
+				if (before != null) commits.merge(before.committer().getAddress(), -registers.length, Integer::sum);
+				byWriter.put(writer.getAddress(), new Stage(writer, registers, last));
 			}
-			stages.add(new Stage(writer, registers, last));
 		}
+		List<Stage> stages = new ArrayList<>(byWriter.values());
 		Map<Address, Map<String, Integer>> wanted = wanted(stages);
 		apply(program, function, wanted, monitor);
 		// Keep only what the p-code now does; anything else goes back and stays a warned hazard.

@@ -136,6 +136,13 @@
 
 ### Fixed
 
+* A load's result lands four delay slots after it issues, a 16-bit multiply's one. Where a
+  later instruction issues before that and reads the register, or writes it and must be
+  overwritten by it, native lifting now holds the write until the last such instruction has
+  run, as it does for a same-packet read (issue #152). It does so in straight-line code only;
+  elsewhere the reader gets a `C6000 Same-Packet Hazards` warning that says why. Before, the C
+  read the new value there with no warning.
+
 * `C6000 Code Pointers` follows a word of data that holds the address of code (a table of
   handlers, a pointer a structure keeps), and reads the constants built in decoded code that no
   function owns. The same test as before decides: the start of code no function owns and

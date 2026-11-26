@@ -1598,6 +1598,17 @@ CASES = [
         .word   {n}_cb
         .word   {n}_notcb
 """),
+    # issue #152: a load lands four delay slots after it issues, so the ADD in its first slot
+    # reads the old A3: *p + c + 1, not 2 * *p + 1.
+    ("ldlat", False, """{n}:
+        MV      .L1     A6,A3
+        LDW     .D1T1   *A4,A3
+        ADD     .L1     A3,1,A5
+        NOP             3
+        ADD     .L1     A3,A5,A4
+        B       .S2     B3
+        NOP             5
+"""),
     ("plain", False, """{n}:
         STW     .D2T2   B3,*B15--[2]
         B       .S1     {n}_h
@@ -2185,11 +2196,11 @@ LIFTED = {
     "callarml0": ["param_2 + 3;", "return param_2 + 100;"],
 }
 # What the C of a case that latches nothing must hold, and must not.
-PLAIN = {"kpre0": ["kpre0_h(", "+ 0x10"], "kwp0": ["kwp0_h(", "+ 0x10"], "cpyret": ["return param_1 + 1;"], "cpycall": ["return iVar1 + 7;"], "cpyfar": ["return iVar1 + 7;"], "cpyti": ["return param_2 + 1;"],
+PLAIN = {"ldlat": ["param_3 + 1"], "kpre0": ["kpre0_h(", "+ 0x10"], "kwp0": ["kwp0_h(", "+ 0x10"], "cpyret": ["return param_1 + 1;"], "cpycall": ["return iVar1 + 7;"], "cpyfar": ["return iVar1 + 7;"], "cpyti": ["return param_2 + 1;"],
          "swtwo": ["switch(", "0x28"], "farlink": ["farlink_h(param_1 + 0x2d)", "+ 1;"], "twocall": ["(0,*param_1)", "(0,param_1[1])"],
          **{name: ["(*param_3)(param_2)", "+ 9"] for name in ("mjoin", "mjoinp", "mjoinu")},
          "mjoind": ["mjoind_h(param_2)", "+ 9"], "mjoinm": ["(*param_3)(param_2 + 1)", "+ 9"]}
-ABSENT = {**{name: ["func_0x"] for name in ("lguard", "lguard0", "lafter")}, "lnewfn": ["lnewfn_h("], "cpyretp": ["return param_1 + 1;"], "a3arg": ["a3arg_h(7"], "mjoinf": ["+ 9"], "mjoinx": ["+ 9"], "mjoinj": ["+ 9"],
+ABSENT = {"ldlat": ["* 2"], **{name: ["func_0x"] for name in ("lguard", "lguard0", "lafter")}, "lnewfn": ["lnewfn_h("], "cpyretp": ["return param_1 + 1;"], "a3arg": ["a3arg_h(7"], "mjoinf": ["+ 9"], "mjoinx": ["+ 9"], "mjoinj": ["+ 9"],
           **{name: ["return iVar1 + 7;"] for name in ("cpyclob", "cpyclobs", "cpybdec", "cpydeep", "cpyunk", "cpytwo")}}
 # Labels declared as functions too, as a symbol table or a seed list would, and what the C of the
 # function at a label must hold.

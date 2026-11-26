@@ -113,13 +113,24 @@ register an earlier member writes, the write is held until the last such reader 
 whole A or B register, or one register pair, per writer and commits at most two results
 after one member. A
 same-packet read it cannot stage, such as one of a control register, keeps its
-`C6000 Same-Packet Hazards` warning. Results that land cycles later (multiplies, loads,
-floating point) are still written at once by native lifting; only an exact schedule
-models that.
+`C6000 Same-Packet Hazards` warning.
 
-`C6000 Code Pointers` finds a callback only where both halves of its address are loaded
-together; an `MVK` whose `MVKH` is hoisted elsewhere gives no reference to follow, and a
-function reached only through a table in compressed initialisation data is not found.
+A result that lands cycles after its instruction issues is written at once by native
+lifting. For a load (four delay slots) and a 16-bit multiply (one), where a later instruction
+issues before the result lands and reads its register, or writes it and must be overwritten
+by it, the write is held the same way until the last such instruction has run (issue #152).
+That is done only in straight-line code: where control can come in or leave between the two,
+or a second late write to the register issues meanwhile, the reader keeps a
+`C6000 Same-Packet Hazards` warning that says so. A software-pipelined loop that uses a value
+loaded in an earlier iteration is such a case; only an exact schedule models it. Nothing is
+held or warned for floating-point instructions and other multiplies: they read their operands
+and write their result words in several pipeline stages, which the issue cycle alone does not
+decide.
+
+`C6000 Code Pointers` follows an address built by `MVK`/`MVKH` and a word of data that holds
+one, to the start of code no function owns and nothing falls into. A function reached only
+through a table in compressed initialisation data, or named nowhere in the image, is not
+found; `C6000 Unowned Code` notes decoded code that belongs to no function.
 
 Native lifting latches branches issued in each other's delay windows where that is what
 the hardware runs on every path (`C6000 Nested Branch Lifting`): each such branch records
