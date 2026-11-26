@@ -148,6 +148,16 @@ public final class C6000SamePacketHazardAnalyzer extends AbstractAnalyzer {
 			op.endsWith("SPU") || op.endsWith("DPU") || op.endsWith("INT") && (op.startsWith("SP") || op.startsWith("DP")) || op.endsWith("TRUNC");
 	}
 
+	/** Nothing strictly between path[w] and path[j] writes the register {@code writer} is predicated on. */
+	private static boolean unwritten(Program program, List<Instruction> path, int w, int j, Instruction writer) {
+		var m = PREDICATE.matcher(writer.getMnemonicString());
+		Register predicate = m.find() ? program.getRegister(m.group(2)) : null;
+		if (predicate == null) return false;
+		Set<Varnode> flag = Set.of(new Varnode(predicate.getAddress(), predicate.getMinimumByteSize()));
+		for (int k = w + 1; k < j; k++) if (overlap(writes(path.get(k)), flag) != null) return false;
+		return true;
+	}
+
 	private static void late(Program program, C6000CallAnalyzer.Walker walker, List<Instruction> path, List<OldRead> found) {
 		if (path.size() < 2) return;
 		int[] cycles = walker.issueCycles(path);
@@ -173,6 +183,13 @@ public final class C6000SamePacketHazardAnalyzer extends AbstractAnalyzer {
 					second |= overlap(late, also) != null;
 				}
 				if (floating(reader)) continue;
+				// Opposite predicates on one register that nothing in between writes: only one of the
+				// two runs, so the reader never meets the late result. Its own write to the register
+				// still ends what can be held, for the reason below.
+				if (exclusive(program, writer, reader) && unwritten(program, path, w, j, writer)) {
+					if (overlap(late, writes(reader)) != null) second = true;
+					continue;
+				}
 				// A held write is committed whether its instruction ran or not: where it did not, the
 				// commit puts the old value back. That undoes any write to the register in between, so
 				// past one nothing of a predicated writer is held (issue #160).
