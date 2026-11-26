@@ -40,6 +40,8 @@ public final class C6000NestedWindowAnalyzer extends AbstractAnalyzer {
 	public static final String CATEGORY = "C6000 Nested Delay Window";
 	/** On a jump into another function's code that carries a {@link #CATEGORY} warning (issue #108). */
 	public static final String ENTERED = "C6000 Nested Delay Window (entered)";
+	/** A jump into another function whose return link differs between the paths that reach it. */
+	public static final String SPLIT = "C6000 Split Link";
 
 	public C6000NestedWindowAnalyzer() {
 		super("C6000 Nested Delay Windows",
@@ -64,6 +66,7 @@ public final class C6000NestedWindowAnalyzer extends AbstractAnalyzer {
 		for (Function function : program.getFunctionManager().getFunctions(set, true)) {
 			monitor.checkCancelled();
 			bookmarks.removeBookmarks(function.getBody(), BookmarkType.WARNING, CATEGORY, monitor);
+			bookmarks.removeBookmarks(function.getBody(), BookmarkType.WARNING, SPLIT, monitor);
 			// An active reviewed schedule lifts every transfer in flight.
 			if (C6000ProgramActions.hasActiveReview(program, function)) continue;
 			// Nested pairs, outer then inner, chained where one's inner is another's outer: a pipelined
@@ -99,6 +102,21 @@ public final class C6000NestedWindowAnalyzer extends AbstractAnalyzer {
 						" may decompile wrongly (issue #66)");
 					warned++;
 				}
+			}
+			// A jump into another function that is reached with a link of this function in B3 on
+			// one path and something else on another (issue #151).
+			for (Instruction branch : program.getListing().getInstructions(function.getBody(), true)) {
+				monitor.checkCancelled();
+				if (!C6000CallAnalyzer.baseName(branch).startsWith("B") || branch.getRegister(0) != null || C6000PacketStagingAnalyzer.inert(branch)) continue;
+				Address[] to = C6000PacketStagingAnalyzer.hardware(branch).getDefaultFlows();
+				Function entered = to.length == 1 ? program.getFunctionManager().getFunctionAt(to[0]) : null;
+				if (entered == null || entered.equals(function)) continue;
+				if (walker.recognize(branch) != null || walker.splitLink == null) continue;
+				bookmarks.setBookmark(branch.getMinAddress(), BookmarkType.WARNING, SPLIT, branch + " is reached with " + walker.splitLink +
+					", an address of " + function.getName() + ", in B3 on one path and with something else on another: " + entered.getName() +
+					" returns there on the first and to the caller's link on the other, but the jump is lifted one way, so " +
+					function.getName() + " may decompile wrongly (issue #151)");
+				warned++;
 			}
 			Map<Address, List<Instruction[]>> chains = new LinkedHashMap<>();
 			for (Instruction[] pair : pairs)

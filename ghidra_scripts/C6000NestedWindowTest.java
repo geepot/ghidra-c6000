@@ -20,7 +20,7 @@ public class C6000NestedWindowTest extends GhidraScript {
 		long entry, h, end;
 		long[] warn;
 		String[] c;
-		long[] functions, labels, declare, entered, link, unowned;
+		long[] functions, labels, declare, entered, link, unowned, split;
 		@com.google.gson.annotations.SerializedName("plain_at") long plainAt;
 		String[] either, plain, absent;
 	}
@@ -97,6 +97,16 @@ public class C6000NestedWindowTest extends GhidraScript {
 			if (item.link != null) for (long at : item.link) wanted.add(at);
 			if (!links.equals(wanted))
 				throw new AssertionError(item.name + ": link copy warnings at " + hex(links) + ", want " + hex(wanted));
+			// A jump whose return link differs between the paths that reach it is warned (issue #151).
+			Set<Long> splits = new TreeSet<>(), splitWanted = new TreeSet<>();
+			bookmarks = currentProgram.getBookmarkManager().getBookmarksIterator(BookmarkType.WARNING);
+			while (bookmarks.hasNext()) {
+				Bookmark bookmark = bookmarks.next();
+				if (bookmark.getCategory().equals("C6000 Split Link") && range.contains(bookmark.getAddress())) splits.add(bookmark.getAddress().getOffset());
+			}
+			if (item.split != null) for (long at : item.split) splitWanted.add(at);
+			if (!splits.equals(splitWanted))
+				throw new AssertionError(item.name + ": split link warnings at " + hex(splits) + ", want " + hex(splitWanted));
 			// Code that nothing names is noted where it starts and is no function (C6000 Unowned Code).
 			if (item.unowned != null) for (long at : item.unowned) {
 				boolean noted = false;

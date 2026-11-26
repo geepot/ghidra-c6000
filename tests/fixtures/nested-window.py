@@ -968,7 +968,7 @@ CASES = [
     ("mjoinf", False, join("        NOP             5\n", label="  [!A2] ADDKPC  .S2     {n}_on,B3,0\n", far="        NOP             1\n")),
     ("mjoinx", False, join(JOIN_LINK, far="        ADDKPC  .S2     {n}_far,B3,0\n")),
     # the same, and the label is a jump that is not taken on the way to the call
-    ("mjoinj", False, join(JOIN_LINK.replace("[!A2]", "     "), call=".S1     {n}_h", label="  [ B0] B       .S1     {n}_far\n        NOP             5\n",
+    ("mjoinj", False, join(JOIN_LINK.replace("[!A2]", "     "), call=".S1     {n}_h", label="  [ B0] B       .S1     {n}_far\n        NOP             5\n{n}_split:\n",
                            far="        ADDKPC  .S2     {n}_far,B3,0\n").replace("||      MV      .L2X    A6,B5", "||      MV      .L2X    A6,B0")),
     # issue #98: a call and a jump on opposite predicates in one execute packet. Both land after
     # the packet's five delay cycles, so the slots run on both paths first: *b = c ? h(a + 0x11) : a + 0x11.
@@ -1598,6 +1598,49 @@ CASES = [
         .word   {n}_cb
         .word   {n}_notcb
 """),
+    # issue #151: the jump to h is reached with this function's link in B3 when n > 0 and with the
+    # caller's when n == 0. It is lifted one way, so it is warned. In lnkpathc the n == 0 arm
+    # returns itself, the jump only ever sees back in B3, and it is a call with no warning.
+    ("lnkpath", False, """{n}:
+        MV      .L1X    B4,A1
+  [!A1] B       .S1     {n}_split
+        NOP             5
+        STW     .D2T2   B3,*B15--[2]
+        MVKL    .S2     {n}_back,B3
+        MVKH    .S2     {n}_back,B3
+        NOP
+{n}_split:
+        B       .S1     {n}_h
+        NOP             5
+{n}_back:
+        SUB     .L1     A1,1,A1
+  [ A1] B       .S1     {n}_split
+  [!A1] LDW     .D2T2   *++B15[2],B3
+||[!A1] STW     .D1T1   A4,*A6
+        NOP             4
+        B       .S2     B3
+        NOP             5
+"""),
+    ("lnkpathc", False, """{n}:
+        MV      .L1X    B4,A1
+  [!A1] B       .S2     B3
+        NOP             5
+        STW     .D2T2   B3,*B15--[2]
+        MVKL    .S2     {n}_back,B3
+        MVKH    .S2     {n}_back,B3
+        NOP
+{n}_j:
+        B       .S1     {n}_h
+        NOP             5
+{n}_back:
+        SUB     .L1     A1,1,A1
+  [ A1] B       .S1     {n}_j
+  [!A1] LDW     .D2T2   *++B15[2],B3
+||[!A1] STW     .D1T1   A4,*A6
+        NOP             4
+        B       .S2     B3
+        NOP             5
+"""),
     # issue #152: a load lands four delay slots after it issues, so the ADD in its first slot
     # reads the old A3: *p + c + 1, not 2 * *p + 1.
     ("ldlat", False, """{n}:
@@ -2196,7 +2239,7 @@ LIFTED = {
     "callarml0": ["param_2 + 3;", "return param_2 + 100;"],
 }
 # What the C of a case that latches nothing must hold, and must not.
-PLAIN = {"ldlat": ["param_3 + 1"], "kpre0": ["kpre0_h(", "+ 0x10"], "kwp0": ["kwp0_h(", "+ 0x10"], "cpyret": ["return param_1 + 1;"], "cpycall": ["return iVar1 + 7;"], "cpyfar": ["return iVar1 + 7;"], "cpyti": ["return param_2 + 1;"],
+PLAIN = {"ldlat": ["param_3 + 1"], "lnkpathc": ["lnkpathc_h(", "*param_3 = "], "kpre0": ["kpre0_h(", "+ 0x10"], "kwp0": ["kwp0_h(", "+ 0x10"], "cpyret": ["return param_1 + 1;"], "cpycall": ["return iVar1 + 7;"], "cpyfar": ["return iVar1 + 7;"], "cpyti": ["return param_2 + 1;"],
          "swtwo": ["switch(", "0x28"], "farlink": ["farlink_h(param_1 + 0x2d)", "+ 1;"], "twocall": ["(0,*param_1)", "(0,param_1[1])"],
          **{name: ["(*param_3)(param_2)", "+ 9"] for name in ("mjoin", "mjoinp", "mjoinu")},
          "mjoind": ["mjoind_h(param_2)", "+ 9"], "mjoinm": ["(*param_3)(param_2 + 1)", "+ 9"]}
@@ -2274,6 +2317,7 @@ def main():
                              entered=[a for label, a in addresses.items() if label == name + "_enter"],
                              link=[a for label, a in addresses.items() if label == name + "_link"],
                              unowned=[a for label, a in addresses.items() if label == name + "_unowned"],
+                             split=[a for label, a in addresses.items() if label == name + "_split"],
                              declare=[addresses[name + "_" + label] for label in DECLARE.get(name, [])],
                              functions=[a for label, a in addresses.items() if re.fullmatch(name + "_cb\\d*", label)],
                              labels=[a for label, a in addresses.items() if re.fullmatch(name + "_notcb\\d*", label)]))

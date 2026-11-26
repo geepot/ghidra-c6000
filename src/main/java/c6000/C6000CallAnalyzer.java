@@ -1839,7 +1839,28 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 			return flying;
 		}
 
+		/**
+		 * Set by {@link #recognize}: an address in the branch's own function that B3 holds on the path
+		 * falling into a label before the branch, where another way into that label brings something
+		 * else. A jump into another function from there returns to that address on one path and to
+		 * the caller on another, which one lifting of the jump cannot be (issue #151).
+		 */
+		Address splitLink;
+
+		private void noteSplitLink(Instruction branch, long[] before, Map<Register, long[]> regs) {
+			if (before == null || before[1] != FULL) return;
+			long[] after = regs.get(program.getRegister("B3"));
+			if (after != null && after[1] == FULL && after[0] == before[0]) return;
+			Address to = branch.getMinAddress().getNewAddress(before[0] & 0xffffffffL);
+			// Its own code, or code no function owns yet: lifted as a tail jump, the branch ends the
+			// body before the address the link names.
+			Function mine = program.getFunctionManager().getFunctionContaining(branch.getMinAddress());
+			Function owner = program.getFunctionManager().getFunctionContaining(to);
+			if (mine != null && (owner == null || owner.equals(mine)) && program.getMemory().contains(to)) splitLink = to;
+		}
+
 		Call recognize(Instruction branch) {
+			splitLink = null;
 			Arrival arrival = arrive(branch);
 			if (arrival == null) return null;
 			Landed landed = arrival.landed();
@@ -2013,7 +2034,9 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 				if (entered[i]) {
 					// Reached only with another transfer in flight: nothing from there is known until that has
 					// landed, or not, before the branch issues (SPRUFE8B 4.2.6; issue #137).
+					long[] linkBefore = regs.get(program.getRegister("B3"));
 					if (meetEntries(insn, regs, trace, dead <= issue[i]) > issue[branchIndex] - issue[i]) trace.forget();
+					noteSplitLink(branch, linkBefore, regs);
 					dead = Integer.MAX_VALUE;
 				}
 				Boolean runs = executes(execution, i, facts);
@@ -2067,8 +2090,12 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 			trace.before(issue[branchIndex]);
 			for (long[] call : returns) if (call[0] <= issue[branchIndex]) trace.returned(callClobbered(), call[1]);
 			// A branch reached only by a jump with another transfer in flight does not arrive alone.
-			if (entered[branchIndex] && meetEntries(branch, regs, trace, dead <= issue[branchIndex]) > 0 && !targetOnly && !valuesOnly)
-				return null;
+			if (entered[branchIndex]) {
+				long[] linkBefore = regs.get(program.getRegister("B3"));
+				long flying = meetEntries(branch, regs, trace, dead <= issue[branchIndex]);
+				noteSplitLink(branch, linkBefore, regs);
+				if (flying > 0 && !targetOnly && !valuesOnly) return null;
+			}
 			Register source = branch.getRegister(0);
 			Long target = null;
 			if (source != null) {

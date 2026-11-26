@@ -67,6 +67,11 @@
 
 ### Added
 
+* A jump into another function that is reached with a link of its own function in B3 on one
+  path and something else on another is warned (`C6000 Split Link`, issue #151): the callee
+  returns to that address on the first path and to the caller on the other, and the jump is
+  lifted one way.
+
 * `C6000 Unowned Code` notes each run of decoded code that belongs to no function, at its first
   instruction that is not padding. Such code is not decompiled or checked; where nothing calls
   it, jumps to it or names it, nothing says where a function starts in it, so making one is
