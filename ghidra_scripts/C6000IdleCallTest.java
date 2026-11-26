@@ -33,12 +33,16 @@ public class C6000IdleCallTest extends GhidraScript {
 				RefType.COMPUTED_JUMP, SourceType.ANALYSIS, 0);
 			return;
 		}
-		// Known-bads: B3 untouched, B3 an earlier call's link, B3 another function, a local target, a predicated B.
+		// Known-bads: B3 untouched, B3 another function, a local target, a predicated B.
 		notCall(0x1044L, true);
-		notCall(0x10d4L, true);
-		// The same link past nullified writes, and past a lone MVKH that keeps its low half.
+		// B3 still an earlier call's link, an address of this function: run returns there again, so
+		// the B is a call that returns to earlier code, latched with a jump to that address (issues
+		// #105, #155). The same past a lone MVKH that rewrites its high half with the same value.
+		linkedCall(0x10d4L);
+		linkedCall(0x11f4L);
+		// Past a label that a jump enters, with nullified writes on the way, the link is not
+		// followed: that B stays the tail call the listing has.
 		notCall(0x11c0L, true);
-		notCall(0x11f4L, true);
 		notCall(0x1064L, false);
 		notCall(0x1084L, false);
 		Instruction pred = getInstructionAt(toAddr(0x10e8L));
@@ -79,6 +83,14 @@ public class C6000IdleCallTest extends GhidraScript {
 			f == null || !f.getEntryPoint().equals(toAddr(caller))) {
 			throw new AssertionError("window of " + toAddr(at) + " to " + toAddr(end) + ": slot " + s +
 				" function " + f + ", last " + last + "; " + describe(b));
+		}
+	}
+
+	/** Latched, and landing as a call to run. */
+	private void linkedCall(long at) {
+		Instruction b = getInstructionAt(toAddr(at));
+		if (b == null || !c6000.C6000PacketStagingAnalyzer.inert(b) || !c6000.C6000PacketStagingAnalyzer.flow(b).isCall()) {
+			throw new AssertionError("call through an earlier link at " + toAddr(at) + ": " + describe(b));
 		}
 	}
 

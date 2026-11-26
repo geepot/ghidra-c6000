@@ -17,7 +17,7 @@ prepare declares the fourteen functions, as ELF symbols would. Words are TI cl6x
                 local target: a jump that sets B3 for the call at 0x109c
        109c     B run ; NOP 5                                 call, returns to jlocal
   10c0 stale    B run ; MVK 0x10d0,B3 ; MVKH ; NOP 3          call, returns to 0x10d0
-       10d0     MVK 1,A4 ; B run ; NOP 5                      B3 still the call's link: tail call
+       10d0     MVK 1,A4 ; B run ; NOP 5                      B3 still the call's link, 0x10d0: a call that returns there
   10e0 pred     MVK 1,A1 ; 10e4 ADD 1,A4,A4 ; [A1] B run || MVK 0x10e4,B3 ; MVKH ; NOP 4
                 predicated: not a call returning to 0x10e4 ; 10f8 B B3 ; NOP 5
   1100 run      B B3 ; NOP 5
@@ -32,7 +32,7 @@ prepare declares the fourteen functions, as ELF symbols would. Words are TI cl6x
                 [A1] MVK 0x11b0,B3 ; [A1] MVKH ; B run ; NOP 5 ; 11c8 B B3 ; NOP 5
                 the B3 writes are nullified, B3 still the call's link: tail call
   11e0 partial  B run ; MVK 0x11f0,B3 ; MVKH ; NOP 3 ; 11f0 MVKH 0,B3 ; B run ; NOP 5
-                B3's low half still the call's link: tail call
+                B3 still the call's link, 0x11f0: a call that returns there
   1200 regref   regcall's code, its B given a reference to run by the test
                 a register B with a known target: still not a call returning to regref
 """
