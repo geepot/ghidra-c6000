@@ -3254,6 +3254,26 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 		private long decodedStamp = -1;
 
 		private boolean parallelWithNext(Instruction instruction) throws MemoryAccessException {
+			// issueCycles() asks this for every pair on every path it times, and the proof checks time the
+			// same paths again and again: on the real image this memory read was ~17% of all CPU. Memoize
+			// by instruction, cleared on any program change and capped like the walker's other caches; a
+			// failure (no compact header) is remembered and thrown again, so callers see what they did.
+			long stamp = program.getModificationNumber();
+			if (parallelStamp != stamp || parallelBits.size() > 200_000) { parallelBits.clear(); parallelStamp = stamp; }
+			Object known = parallelBits.get(instruction);
+			if (known == null) {
+				try { known = parallelWithNextNow(instruction); }
+				catch (MemoryAccessException e) { known = e; }
+				parallelBits.put(instruction, known);
+			}
+			if (known instanceof MemoryAccessException e) throw e;
+			return (Boolean) known;
+		}
+
+		private final java.util.IdentityHashMap<Instruction, Object> parallelBits = new java.util.IdentityHashMap<>();
+		private long parallelStamp = -1;
+
+		private boolean parallelWithNextNow(Instruction instruction) throws MemoryAccessException {
 			Address address = instruction.getMinAddress();
 			if (instruction.getLength() == 4) {
 				return (program.getMemory().getInt(address) & 1) != 0;
