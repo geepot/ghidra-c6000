@@ -3097,6 +3097,11 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 				String p = predicate(instruction);
 				if (query >= anchor && p != null && p.replace("!", "").equals(register.getName()) &&
 					(p.startsWith("!") ? !nonzero : nonzero) == false) continue;
+				// Only a write to the register can falsify the fact; skip the p-code evaluation below for
+				// everything else (whatever constantWrite returned, such an instruction changed nothing here).
+				boolean writes = false;
+				for (Register r : issueWrites(instruction)) if (overlaps(r, register)) { writes = true; break; }
+				if (!writes) continue;
 				// A constant replacement can preserve the predicate's truth value,
 				// even when the instruction's own predicate is not known.
 				// Backwards, one that would falsify the fact cannot have run (SPRUFE8B 3.12 MVK, 4.2.1).
