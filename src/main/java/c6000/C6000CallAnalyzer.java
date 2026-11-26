@@ -1653,7 +1653,7 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 						if (issuedAny != null) issuedAny.add(insn.getMinAddress());
 						if (issued.size() > MAX_ISSUED) return Run.unproven("its windows issue too many instructions to compare");
 						if (untimed(program, insn)) return Run.unproven(insn + " at " + insn.getMinAddress() + " has timing outside the cycle model");
-						span = Math.max(span, 1 + extraCycles(program, insn));
+						span = Math.max(span, 1 + extraCycles(insn));
 						ranCycles[ran.size()] = (int) (ranFrom + cycle);
 						ran.add(insn);
 						if (transfer(insn)) {
@@ -2429,7 +2429,7 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 				int span = 1;
 				for (int i = branchIndex; i >= 0 && cycles[i] == cycle; i--) {
 					if (untimed(program, prefix.get(i))) return null;
-					span = Math.max(span, 1 + extraCycles(program, prefix.get(i)));
+					span = Math.max(span, 1 + extraCycles(prefix.get(i)));
 				}
 				Instruction last = branch;
 				boolean turned = false;
@@ -2455,7 +2455,7 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 						}
 						trace.before(cycle);
 						trace.instruction(insn, runs, cycle, index);
-						span = Math.max(span, 1 + extraCycles(program, insn));
+						span = Math.max(span, 1 + extraCycles(insn));
 						last = insn;
 						end = insn.getMaxAddress().getOffset() + 1;
 						if (!parallelWithNext(insn)) break;
@@ -2594,7 +2594,7 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 					int span = 1;
 					while (true) {
 						if (!baseName(current).equals("NOP")) return null;
-						span = Math.max(span, 1 + extraCycles(program, current));
+						span = Math.max(span, 1 + extraCycles(current));
 						if (!parallelWithNext(current)) break;
 						current = next(current);
 						if (current == null) return null;
@@ -2640,7 +2640,7 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 					catch (MemoryAccessException unavailable) { parallel = false; }
 					if (!parallel) { cycle += span;span = 1; }
 				}
-				cycles[i] = cycle;span = Math.max(span, 1 + extraCycles(program, path.get(i)));
+				cycles[i] = cycle;span = Math.max(span, 1 + extraCycles(path.get(i)));
 			}
 			return cycles;
 		}
@@ -3173,7 +3173,7 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 						Instruction next = next(current);
 						if (next == null || slots.size() >= MAX_WINDOW || untimed(program, next)) return null;
 						slots.add(next);
-						packetCycles = Math.max(packetCycles, 1 + extraCycles(program, next));
+						packetCycles = Math.max(packetCycles, 1 + extraCycles(next));
 						current = next;
 					} while (parallelWithNext(current));
 					if (!branchPacket) cycles += packetCycles;
@@ -3269,6 +3269,23 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 			if (known instanceof MemoryAccessException e) throw e;
 			return (Boolean) known;
 		}
+
+		/**
+		 * The cycles an instruction adds past its own (NOP and BNOP counts, CALLP, protected loads), as
+		 * C6000CallAnalyzer.extraCycles gives them: issueCycles() and the packet walks ask again for every
+		 * instruction on every path (~11% of CPU on our cl6x-compiled image, through baseName and a header read).
+		 * Memoized by instruction, cleared on any program change and capped like parallelWithNext.
+		 */
+		private int extraCycles(Instruction insn) {
+			long stamp = program.getModificationNumber();
+			if (extraStamp != stamp || extraCycleMemo.size() > 200_000) { extraCycleMemo.clear(); extraStamp = stamp; }
+			Integer known = extraCycleMemo.get(insn);
+			if (known == null) extraCycleMemo.put(insn, known = C6000CallAnalyzer.extraCycles(program, insn));
+			return known;
+		}
+
+		private final java.util.IdentityHashMap<Instruction, Integer> extraCycleMemo = new java.util.IdentityHashMap<>();
+		private long extraStamp = -1;
 
 		private final java.util.IdentityHashMap<Instruction, Object> parallelBits = new java.util.IdentityHashMap<>();
 		private long parallelStamp = -1;
