@@ -20,7 +20,7 @@ public class C6000NestedWindowTest extends GhidraScript {
 		long entry, h, end;
 		long[] warn;
 		String[] c;
-		long[] functions, labels, declare, entered, link;
+		long[] functions, labels, declare, entered, link, unowned;
 		@com.google.gson.annotations.SerializedName("plain_at") long plainAt;
 		String[] either, plain, absent;
 	}
@@ -97,6 +97,14 @@ public class C6000NestedWindowTest extends GhidraScript {
 			if (item.link != null) for (long at : item.link) wanted.add(at);
 			if (!links.equals(wanted))
 				throw new AssertionError(item.name + ": link copy warnings at " + hex(links) + ", want " + hex(wanted));
+			// Code that nothing names is noted where it starts and is no function (C6000 Unowned Code).
+			if (item.unowned != null) for (long at : item.unowned) {
+				boolean noted = false;
+				for (Bookmark bookmark : currentProgram.getBookmarkManager().getBookmarks(toAddr(at)))
+					noted |= bookmark.getCategory().equals("C6000 Unowned Code");
+				if (!noted || getFunctionContaining(toAddr(at)) != null)
+					throw new AssertionError(item.name + ": " + toAddr(at) + " noted as unowned code: " + noted + ", in " + getFunctionContaining(toAddr(at)));
+			}
 			// A callback taken by address is a function (C6000 Code Pointers); a plain label is not.
 			if (item.functions != null) for (long at : item.functions)
 				if (getFunctionAt(toAddr(at)) == null) throw new AssertionError(item.name + ": no function at " + toAddr(at));

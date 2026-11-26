@@ -67,6 +67,11 @@
 
 ### Added
 
+* `C6000 Unowned Code` notes each run of decoded code that belongs to no function, at its first
+  instruction that is not padding. Such code is not decompiled or checked; where nothing calls
+  it, jumps to it or names it, nothing says where a function starts in it, so making one is
+  left to the user.
+
 * `C6000 Code Pointers` analyzer. A function passed as a callback or stored in a pointer is
   only named by its address. Where an instruction of a function takes an address as a value
   and that address starts code that no function owns, this makes it a function. It leaves
@@ -130,6 +135,12 @@
   are skipped (issue #71).
 
 ### Fixed
+
+* `C6000 Code Pointers` follows a word of data that holds the address of code (a table of
+  handlers, a pointer a structure keeps), and reads the constants built in decoded code that no
+  function owns. The same test as before decides: the start of code no function owns and
+  nothing falls into. On a raw image whose functions are reached through such tables this
+  finds most of the program; nothing is made where nothing names an address.
 
 * The entries a stretch is planned and checked from include each label inside it that a jump
   from outside the stretch comes in at: such a path runs without what was in flight before the

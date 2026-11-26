@@ -1571,6 +1571,33 @@ CASES = [
         B       .S2     B3
         NOP             5
 """),
+    # A callback named only by a word of data (a table of handlers) is a function. A word that
+    # points into the middle of a function makes none, and code that nothing names is noted
+    # where it starts and left alone.
+    ("cbdata", False, """{n}:
+        ADD     .L1     A4,1,A4
+{n}_notcb:
+        B       .S2     B3
+        NOP             5
+        NOP
+        NOP
+        NOP
+{n}_cb:
+        B       .S2     B3
+        ADD     .L1     A4,1,A4
+        NOP             4
+        NOP
+        NOP
+        NOP
+{n}_unowned:
+        ADD     .L1     A4,2,A4
+        B       .S2     B3
+        NOP             5
+        NOP
+        NOP
+        .word   {n}_cb
+        .word   {n}_notcb
+"""),
     ("plain", False, """{n}:
         STW     .D2T2   B3,*B15--[2]
         B       .S1     {n}_h
@@ -2235,6 +2262,7 @@ def main():
                              plain_at=addresses[name + "_" + PLAIN_AT[name][0]] if name in PLAIN_AT else 0,
                              entered=[a for label, a in addresses.items() if label == name + "_enter"],
                              link=[a for label, a in addresses.items() if label == name + "_link"],
+                             unowned=[a for label, a in addresses.items() if label == name + "_unowned"],
                              declare=[addresses[name + "_" + label] for label in DECLARE.get(name, [])],
                              functions=[a for label, a in addresses.items() if re.fullmatch(name + "_cb\\d*", label)],
                              labels=[a for label, a in addresses.items() if re.fullmatch(name + "_notcb\\d*", label)]))

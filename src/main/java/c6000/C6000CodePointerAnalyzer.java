@@ -64,8 +64,27 @@ public final class C6000CodePointerAnalyzer extends AbstractAnalyzer {
 		var analysis = AutoAnalysisManager.getAnalysisManager(program);
 		var pseudo = new PseudoDisassembler(program);
 		java.util.Set<Address> found = new java.util.HashSet<>();
+		// The code that may name a callback: the new functions, and decoded code no function owns,
+		// which nothing would read otherwise. A run of such code is read like a body of its own.
+		java.util.List<java.util.List<Instruction>> code = new java.util.ArrayList<>();
 		for (Function function : program.getFunctionManager().getFunctions(set, true)) {
-			for (Instruction insn : program.getListing().getInstructions(function.getBody(), true)) {
+			java.util.List<Instruction> body = new java.util.ArrayList<>();
+			for (Instruction insn : program.getListing().getInstructions(function.getBody(), true)) body.add(insn);
+			code.add(body);
+		}
+		ghidra.program.model.address.AddressSet decoded = new ghidra.program.model.address.AddressSet();
+		java.util.List<Instruction> run = null;
+		Instruction last = null;
+		for (Instruction insn : program.getListing().getInstructions(true)) {
+			monitor.checkCancelled();
+			decoded.add(insn.getMinAddress(), insn.getMaxAddress());
+			if (program.getFunctionManager().getFunctionContaining(insn.getMinAddress()) != null) { last = null; continue; }
+			if (last == null || !last.getMaxAddress().next().equals(insn.getMinAddress())) code.add(run = new java.util.ArrayList<>());
+			run.add(insn);
+			last = insn;
+		}
+		for (java.util.List<Instruction> body : code) {
+			for (Instruction insn : body) {
 				monitor.checkCancelled();
 				for (Reference ref : insn.getReferencesFrom()) {
 					RefType type = ref.getReferenceType();
@@ -83,9 +102,9 @@ public final class C6000CodePointerAnalyzer extends AbstractAnalyzer {
 		}
 		// Ghidra's constant tracking gives no reference for a constant whose halves are apart, or
 		// have a call landing between them: join MVK/MVKL and MVKH on one register here.
-		for (Function function : program.getFunctionManager().getFunctions(set, true)) {
+		for (java.util.List<Instruction> body : code) {
 			java.util.Map<Register, Long> low = new java.util.HashMap<>();
-			for (Instruction listed : program.getListing().getInstructions(function.getBody(), true)) {
+			for (Instruction listed : body) {
 				monitor.checkCancelled();
 				// Another path may come in here with another half.
 				for (Reference ref : listed.getReferenceIteratorTo()) if (ref.getReferenceType().isFlow() && !ref.getReferenceType().isFallthrough()) low.clear();
@@ -105,6 +124,26 @@ public final class C6000CodePointerAnalyzer extends AbstractAnalyzer {
 				if (plain && (name.equals("MVK") || name.equals("MVKL"))) low.put(dst, value.getUnsignedValue());
 				// A callee may change every register the ABI does not make it preserve.
 				if (listed.getFlowType().isCall() && !C6000PacketStagingAnalyzer.inert(listed)) low.keySet().removeIf(k -> !preserved(k));
+			}
+		}
+		// A word of data that holds the address: a table of handlers, a pointer a structure keeps.
+		// The same test decides: the start of code no function owns and nothing falls into.
+		ghidra.program.model.mem.Memory memory = program.getMemory();
+		ghidra.program.model.address.AddressSet data = memory.getLoadedAndInitializedAddressSet().subtract(decoded);
+		for (ghidra.program.model.address.AddressRange range : data) {
+			long first = (range.getMinAddress().getOffset() + 3) & ~3L;
+			for (long at = first; at + 3 <= range.getMaxAddress().getOffset(); at += 4) {
+				monitor.checkCancelled();
+				Address target;
+				try {
+					target = range.getMinAddress().getNewAddress(memory.getInt(range.getMinAddress().getNewAddress(at)) & 0xffffffffL);
+				}
+				catch (ghidra.program.model.mem.MemoryAccessException e) {
+					break;
+				}
+				if ((target.getOffset() & 3) != 0 || !memory.contains(target) || found.contains(target) || !entry(program, pseudo, target)) continue;
+				found.add(target);
+				make(program, analysis, target);
 			}
 		}
 		if (!found.isEmpty()) Msg.info(this, getName() + "> " + found.size() + " function(s) from code pointers");
