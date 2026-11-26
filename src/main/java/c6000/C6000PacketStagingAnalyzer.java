@@ -169,7 +169,28 @@ public final class C6000PacketStagingAnalyzer extends AbstractAnalyzer {
 	 * which would change the landing it may carry for another branch: it is a call or a return as
 	 * the landing that reads its latch says.
 	 */
-	public static ghidra.program.model.symbol.FlowType flow(Instruction ins) {
+	public static synchronized ghidra.program.model.symbol.FlowType flow(Instruction ins) {
+		// Like hardware(): the walker asks this for the same instruction many times between program
+		// changes, and for an inert (latched) branch each answer scans a window of up to MAX_WINDOW
+		// instructions (landingSite). Cache it with the same program-modification invalidation.
+		Program owner = ins.getProgram();
+		long stamp = owner.getModificationNumber();
+		if (flowOf.get() != owner || flowStamp != stamp || flowCache.size() > 200_000) {
+			flowCache.clear();
+			flowOf = new java.lang.ref.WeakReference<>(owner);
+			flowStamp = stamp;
+		}
+		ghidra.program.model.symbol.FlowType known = flowCache.get(ins);
+		if (known == null) flowCache.put(ins, known = flowNow(ins));
+		return known;
+	}
+
+	private static final java.util.IdentityHashMap<Instruction, ghidra.program.model.symbol.FlowType> flowCache =
+		new java.util.IdentityHashMap<>();
+	private static java.lang.ref.WeakReference<Program> flowOf = new java.lang.ref.WeakReference<>(null);
+	private static long flowStamp;
+
+	private static ghidra.program.model.symbol.FlowType flowNow(Instruction ins) {
 		Instruction hardware = hardware(ins);
 		if (hardware == ins) return ins.getFlowType();
 		var override = ins.getFlowOverride();
@@ -197,8 +218,10 @@ public final class C6000PacketStagingAnalyzer extends AbstractAnalyzer {
 
 	/** The kind of the landing {@code ins} carries for latch {@code slot}: 1 jump, 2 call, 3 return; 0 if none. */
 	private static int landingKind(Instruction ins, int slot) {
-		for (String name : new String[] { "c_land1", "c_land2" })
-			if (field(ins, name) != 0 && field(ins, name + "_t") == slot) return field(ins, name);
+		for (String name : new String[] { "c_land1", "c_land2" }) {
+			int kind = field(ins, name);
+			if (kind != 0 && field(ins, name + "_t") == slot) return kind;
+		}
 		return 0;
 	}
 
