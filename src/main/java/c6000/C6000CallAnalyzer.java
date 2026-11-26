@@ -2350,6 +2350,39 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 		 * data, at any byte of {@code insn}.
 		 */
 		private boolean externalEntry(Instruction insn) {
+			return entryFact(externalEntries, insn, false);
+		}
+
+		/** A jump, branch or call from another address targets {@code insn}, or it is an entry. */
+		private boolean enteredFromElsewhere(Instruction insn) {
+			return entryFact(enteredElsewhere, insn, true);
+		}
+
+		// Both answers ask the database three times for every byte of the instruction (symbol table,
+		// function manager, references); the look-backs ask them again for the same instructions on
+		// every branch, which made externalEntry the walker's largest source of garbage (about 44% of
+		// what recognize() allocates). They depend only on program state: memoize per address and
+		// length, cleared on any program change and capped like the other caches. Address keys keep
+		// no instruction alive; the values are small cached Integers, so a hit allocates nothing.
+		private final Map<Address, Integer> externalEntries = new HashMap<>(), enteredElsewhere = new HashMap<>();
+		private long entryStamp = -1;
+
+		private boolean entryFact(Map<Address, Integer> memo, Instruction insn, boolean flowIn) {
+			long stamp = program.getModificationNumber();
+			if (entryStamp != stamp || externalEntries.size() + enteredElsewhere.size() > 200_000) {
+				externalEntries.clear();
+				enteredElsewhere.clear();
+				entryStamp = stamp;
+			}
+			int length = insn.getLength();
+			Integer known = memo.get(insn.getMinAddress());
+			if (known != null && known >> 1 == length) return (known & 1) != 0;
+			boolean fact = flowIn ? enteredFromElsewhereNow(insn) : externalEntryNow(insn);
+			memo.put(insn.getMinAddress(), length << 1 | (fact ? 1 : 0));
+			return fact;
+		}
+
+		private boolean externalEntryNow(Instruction insn) {
 			for (Address at = insn.getMinAddress(); at.compareTo(insn.getMaxAddress()) <= 0; at = at.next()) {
 				if (program.getSymbolTable().isExternalEntryPoint(at) || program.getFunctionManager().getFunctionAt(at) != null) return true;
 				for (Reference ref : program.getReferenceManager().getReferencesTo(at)) if (ref.getReferenceType().isData()) return true;
@@ -2357,8 +2390,7 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 			return false;
 		}
 
-		/** A jump, branch or call from another address targets {@code insn}, or it is an entry. */
-		private boolean enteredFromElsewhere(Instruction insn) {
+		private boolean enteredFromElsewhereNow(Instruction insn) {
 			if (externalEntry(insn)) return true;
 			for (Reference ref : program.getReferenceManager().getReferencesTo(insn.getMinAddress())) {
 				if (ref.getReferenceType().isFlow() && !ref.getReferenceType().isFallthrough()) return true;
