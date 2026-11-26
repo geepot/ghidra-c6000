@@ -1641,6 +1641,33 @@ CASES = [
         B       .S2     B3
         NOP             5
 """),
+    # issue #153: a return through a copy of B3, latched in another branch's window, behind a call
+    # that is not proven to leave the copy alone: it lands as a computed jump, and is warned like
+    # an unlatched one.
+    ("cpylt", True, """{n}:
+        ADD     .D2     B3,0,B9
+        B       .S1     {n}_g
+        MVKL    .S2     {n}_r,B3
+        MVKH    .S2     {n}_r,B3
+        NOP             3
+{n}_r:
+        MV      .L1     A4,A1
+  [ A1] B       .S1     {n}_x
+{n}_in:
+{n}_link:
+        B       .S2     B9
+        ADD     .L1     A4,1,A4
+        NOP             3
+        ADD     .L1     A4,2,A4
+        NOP             5
+{n}_x:
+        ADD     .L1     A4,4,A4
+        NOP             5
+{n}_g:
+        ADD     .L1     A4,1,A4
+        B       .S1     {n}_h
+        NOP             5
+"""),
     # issue #152: a load lands four delay slots after it issues, so the ADD in its first slot
     # reads the old A3: *p + c + 1, not 2 * *p + 1.
     ("ldlat", False, """{n}:
@@ -2192,6 +2219,7 @@ LIFTED = {
     "swjump": ["0x111", "0x222", "0x333", "0x999"],
     "jcallpre": ["jcallpre_h(param_2)", "param_2 + 3"],
     "twoland": ["+ 0x1e1c", "+ 0xe1c", "+ 0x100"],
+    "cpylt": [],
     "adj": ["0xc3", "0x19"], "adjnop": ["0xc3", "0x19"],
     "retent": ["retent_h(", "+ 1"],
     "jcallpre8": ["jcallpre8_h(param_2)", "param_2 + 3"],
@@ -2247,7 +2275,7 @@ ABSENT = {"ldlat": ["* 2"], **{name: ["func_0x"] for name in ("lguard", "lguard0
           **{name: ["return iVar1 + 7;"] for name in ("cpyclob", "cpyclobs", "cpybdec", "cpydeep", "cpyunk", "cpytwo")}}
 # Labels declared as functions too, as a symbol table or a seed list would, and what the C of the
 # function at a label must hold.
-DECLARE = {"c2split": ["test", "exit"], "twocall": ["callee"], "cpyti": ["g"], "cpyclob": ["g"], "cpyclobs": ["g"], "cpybdec": ["g"], "cpydeep": ["g", "g2"], "cpytwo": ["g"]}
+DECLARE = {"cpylt": ["g"], "c2split": ["test", "exit"], "twocall": ["callee"], "cpyti": ["g"], "cpyclob": ["g"], "cpyclobs": ["g"], "cpybdec": ["g"], "cpydeep": ["g", "g2"], "cpytwo": ["g"]}
 PLAIN_AT = {"c2split": ("test", ["c2split_h(param_1 + 7"]), "cbraw": ("cb", ["param_2 - param_1"])}
 # Cases that are warned or lifted depending on the decompiler, and what their C holds when lifted.
 EITHER = {"entmany": ["0x101", "+ 0xae", "+ 0x50"], "samepred": ["+ 0xf) * 2", "param_2 + 1"]}

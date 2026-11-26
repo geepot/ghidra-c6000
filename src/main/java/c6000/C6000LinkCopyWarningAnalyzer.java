@@ -58,7 +58,8 @@ public final class C6000LinkCopyWarningAnalyzer extends AbstractAnalyzer {
 			bookmarks.removeBookmarks(function.getBody(), BookmarkType.WARNING, CATEGORY, monitor);
 			for (Instruction branch : program.getListing().getInstructions(function.getBody(), true)) {
 				var flow = C6000PacketStagingAnalyzer.flow(branch);
-				if (C6000PacketStagingAnalyzer.inert(branch) || branch.getFlowOverride() != FlowOverride.NONE ||
+				// A latched branch too: its kind is its landing's, a computed jump where no return was proven (issue #153).
+				if (branch.getFlowOverride() != FlowOverride.NONE ||
 					!flow.isComputed() || !flow.isJump() || branch.getFlows().length > 0 || !walker.mayHoldEntryLink(branch)) continue;
 				bookmarks.setBookmark(branch.getMinAddress(), BookmarkType.WARNING, CATEGORY, branch +
 					" goes through the register " + function.getName() + " copied its return address to, but a call may change it" +

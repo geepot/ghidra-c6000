@@ -141,6 +141,10 @@
 
 ### Fixed
 
+* `C6000 Link Copy Warnings` covers a latched branch too: one through a copy of B3 that lands
+  as a computed jump, because the call before it is not proven to leave the copy alone, had no
+  warning (issue #153).
+
 * A load's result lands four delay slots after it issues, a 16-bit multiply's one. Where a
   later instruction issues before that and reads the register, or writes it and must be
   overwritten by it, native lifting now holds the write until the last such instruction has
