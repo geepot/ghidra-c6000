@@ -2633,6 +2633,22 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 		}
 
 		private List<Register> issueWrites(Instruction insn) {
+			// Called from many scans, several per instruction, each rebuilding the list and iterating
+			// hardware().getResultObjects(). Memoize by instruction, cleared on any program change (as
+			// hardware()/flow() do). The result is read-only to every caller, so share it.
+			long stamp = program.getModificationNumber();
+			if (issueWritesStamp != stamp) { issueWritesCache.clear(); issueWritesStamp = stamp; }
+			List<Register> known = issueWritesCache.get(insn);
+			if (known != null) return known;
+			List<Register> computed = java.util.Collections.unmodifiableList(issueWritesNow(insn));
+			issueWritesCache.put(insn, computed);
+			return computed;
+		}
+
+		private final java.util.IdentityHashMap<Instruction, List<Register>> issueWritesCache = new java.util.IdentityHashMap<>();
+		private long issueWritesStamp = -1;
+
+		private List<Register> issueWritesNow(Instruction insn) {
 			List<Register> writes = new ArrayList<>();
 			// Native delay carriers include their followers' results; those have
 			// their own physical instruction and issue time in this walk.
