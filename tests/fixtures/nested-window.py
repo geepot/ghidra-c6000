@@ -1780,6 +1780,31 @@ CASES = [
         ADD     .L1     A4,1,A4
         NOP             4
 """),
+    # issue #154: a callback right behind a return's window, whose first packet is a jump with a
+    # branch in its window: cb(a, c) = c ? a + 0x1f : a + 0xf.
+    ("cbd", False, """{n}:
+        MVKL    .S1     {n}_cb,A4
+        MVKH    .S1     {n}_cb,A4
+        B       .S2     B3
+        NOP             5
+{n}_cb:
+        B       .S1     {n}_x
+||      ADD     .L1     A4,1,A4
+        MV      .L1X    B4,A1
+        NOP
+  [ A1] B       .S1     {n}_y
+        NOP             2
+{n}_x:
+        ADD     .L1     A4,2,A4
+        ADD     .L1     A4,4,A4
+        ADD     .L1     A4,8,A4
+        B       .S2     B3
+        NOP             5
+{n}_y:
+        ADDK    .S1     0x10,A4
+        B       .S2     B3
+        NOP             5
+"""),
     # issue #152: a load lands four delay slots after it issues, so the ADD in its first slot
     # reads the old A3: *p + c + 1, not 2 * *p + 1.
     ("ldlat", False, """{n}:
@@ -2372,7 +2397,7 @@ LIFTED = {
     "localsub": ["return param_2 + 1;"],
     # known-good, latched before the fix: the B B3 stays a call to h, which returns to ret
     "localptr": ["localptr_h(", "iVar1 + 0x10"],
-    "lguard": ["do {", "lguard_h()", "+ 0x32"], "lguard0": ["do {", "lguard0_h()", "+ 0x32"],
+    "lguard": ["do {", "lguard_h(", "+ 0x32"], "lguard0": ["do {", "lguard0_h(", "+ 0x32"],
     "lafter": ["lafter_h(", "+ 0x32"], "lnewfn": ["iVar1 + 0x32"],
     # b ? (a ? a + 0x1f0 : 0x5d8) : (a ? a + 0x187 : 0x56f): the landing in twin's delay slot is carried
     "owntail": ["param_1 + 7;", "+ 0x568;"],
@@ -2390,7 +2415,7 @@ ABSENT = {"lnkclob": ["while", "do {"], "ldlat": ["* 2"], **{name: ["func_0x"] f
 # Labels declared as functions too, as a symbol table or a seed list would, and what the C of the
 # function at a label must hold.
 DECLARE = {"lnkclob": ["g"], "lnkkept": ["g"], "cpylt": ["g"], "cpyltu": ["g"], "c2split": ["test", "exit"], "twocall": ["callee"], "cpyti": ["g"], "cpyclob": ["g"], "cpyclobs": ["g"], "cpybdec": ["g"], "cpydeep": ["g", "g2"], "cpytwo": ["g"]}
-PLAIN_AT = {"c2split": ("test", ["c2split_h(param_1 + 7"]), "cbraw": ("cb", ["param_2 - param_1"])}
+PLAIN_AT = {"c2split": ("test", ["c2split_h(param_1 + 7"]), "cbraw": ("cb", ["param_2 - param_1"]), "cbd": ("cb", ["+ 0x1f", "+ 0xf"])}
 # Cases that are warned or lifted depending on the decompiler, and what their C holds when lifted.
 EITHER = {"entmany": ["0x101", "+ 0xae", "+ 0x50"], "samepred": ["+ 0xf) * 2", "param_2 + 1"]}
 LINK = re.compile(r"(MVK[LH]\s+\.S[12]\s+|\.word\s+|\*\+B14[(\[])([a-z]\w+)")

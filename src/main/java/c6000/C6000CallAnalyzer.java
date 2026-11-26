@@ -396,11 +396,8 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 			// Start where nothing is in flight; a jump into outer from elsewhere starts there too.
 			Instruction first = settled(outer);
 			String why = compare(first, outer, null);
-			if (why == null && first != outer) {
-				for (Reference ref : program.getReferenceManager().getReferencesTo(outer.getMinAddress())) {
-					if (ref.getReferenceType().isFlow() && !ref.getReferenceType().isFallthrough()) return compare(outer, outer, null);
-				}
-			}
+			// A function's entry is come in at too, with nothing of the code before it in flight (issue #154).
+			if (why == null && first != outer && entered(outer)) return compare(outer, outer, null);
 			return why;
 		}
 

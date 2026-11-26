@@ -145,7 +145,9 @@ public final class C6000NestedWindowAnalyzer extends AbstractAnalyzer {
 				chains.computeIfAbsent(root(chain, pair[0].getMinAddress()), k -> new ArrayList<>()).add(pair);
 			for (List<Instruction[]> links : chains.values()) {
 				Instruction branch = links.get(0)[0], inner = links.get(0)[1];
-				Address at = program.getListing().getInstructionAt(inner.getMinAddress()) != null ?
+				// At the inner branch where it is this function's code; one behind an unlaid window of a
+				// jump is decoded but belongs to no body, and the outer branch carries the warning.
+				Address at = program.getListing().getInstructionAt(inner.getMinAddress()) != null && function.getBody().contains(inner.getMinAddress()) ?
 					inner.getMinAddress() : branch.getMinAddress();
 				StringBuilder more = new StringBuilder();
 				for (int i = 1; i < links.size(); i++) more.append(i == 1 ? "" : ", ").append(links.get(i)[1].getMinAddress());

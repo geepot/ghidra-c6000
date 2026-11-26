@@ -141,6 +141,12 @@
 
 ### Fixed
 
+* A nest that starts at a function's entry is compared with the hardware from that entry. The
+  comparison began at the last branch that could still be in flight, which for a function right
+  behind another's return window is that return: it has landed before the entry issues, the
+  run ended there, and a jump in the function's first execute packet with a branch in its
+  window was never looked at (issue #154).
+
 * After a call, B3 is taken to hold the return address only where the callee is followed and
   every way out of it is a branch through B3 itself. It was assumed for every call. A callee
   that returns through a copy of its link, having used B3 for a call of its own (cl6x does
