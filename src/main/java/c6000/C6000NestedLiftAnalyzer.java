@@ -279,6 +279,18 @@ public final class C6000NestedLiftAnalyzer extends AbstractAnalyzer {
 							ghidra.program.model.symbol.SourceType.ANALYSIS, ref.getOperandIndex());
 					}
 				}
+				// Ghidra rewrites every CALL of an instruction to the target of its primary call
+				// reference. One that lands two calls to different functions must have none, or the
+				// decompiler shows the first callee twice (issue #158).
+				Map<Address, Set<Address>> called = new HashMap<>();
+				for (var latch : plan.latches())
+					if (latch.kind() == 2 && latch.target() != null)
+						called.computeIfAbsent(latch.land().getMinAddress(), k -> new HashSet<>()).add(latch.target());
+				for (var site : called.entrySet()) {
+					if (site.getValue().size() < 2) continue;
+					for (Reference ref : references.getReferencesFrom(site.getKey()))
+						if (ref.getReferenceType().isCall() && ref.isPrimary()) references.setPrimary(ref, false);
+				}
 				// The landings are new flows: a call among them needs a function at its target, and the
 				// code a landed call returns to may never have been decoded (a call lifted as a tail
 				// call before, issue #114).
