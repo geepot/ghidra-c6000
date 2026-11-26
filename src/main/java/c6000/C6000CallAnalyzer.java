@@ -545,8 +545,14 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 			try {
 				why = compare(first, outer, null, null);
 				for (int i = 0; why == null && i < stretch.size(); i++) {
-					// The first instruction no run has issued, with a transfer still to come.
-					if (issuedAny.contains(stretch.get(i).getMinAddress())) continue;
+					// The first instruction no run has issued, with a transfer still to come; and a
+					// label a jump comes in at, which is entered without what was in flight before it.
+					// A jump from inside the stretch is one of its own branches landing, which the runs have.
+					boolean label = false;
+					if (i > 0) for (Reference ref : program.getReferenceManager().getReferencesTo(stretch.get(i).getMinAddress()))
+						label |= ref.getReferenceType().isFlow() && !ref.getReferenceType().isFallthrough() &&
+							(ref.getFromAddress().compareTo(first.getMinAddress()) < 0 || ref.getFromAddress().compareTo(stretch.get(stretch.size() - 1).getMaxAddress()) > 0);
+					if (issuedAny.contains(stretch.get(i).getMinAddress()) && !label) continue;
 					Instruction through = null;
 					for (int j = i; through == null && j < stretch.size(); j++) if (transfer(stretch.get(j))) through = stretch.get(j);
 					if (through == null) break;

@@ -136,7 +136,15 @@ public final class C6000NestedLiftAnalyzer extends AbstractAnalyzer {
 					foreign.computeIfAbsent(insn.getMinAddress(), k -> new ArrayList<>()).add(held);
 					theirs.add(held.slot());
 				}
-		if (!foreign.isEmpty()) {
+		// So does a branch another stretch latched: relifting this one without its fields would make
+		// it a native branch again and leave its landing with nothing to land.
+		Map<Address, Instruction> latchedBefore = new TreeMap<>();
+		for (Instruction insn : program.getListing().getInstructions(new ghidra.program.model.address.AddressSet(start, plan.last()), true))
+			if (C6000PacketStagingAnalyzer.inert(insn) && planned.latches().stream().noneMatch(l -> l.branch().getMinAddress().equals(insn.getMinAddress()))) {
+				latchedBefore.put(insn.getMinAddress(), insn);
+				theirs.add(C6000PacketStagingAnalyzer.field(insn, "c_latch_t"));
+			}
+		if (!theirs.isEmpty()) {
 			Set<Integer> used = new HashSet<>(theirs);
 			for (var latch : plan.latches()) used.add(latch.slot());
 			Map<Integer, Integer> renumbered = new HashMap<>();
@@ -157,6 +165,13 @@ public final class C6000NestedLiftAnalyzer extends AbstractAnalyzer {
 		}
 		Map<Address, Map<Register, BigInteger>> fields = new TreeMap<>();
 		Map<Address, Integer> landings = new HashMap<>();
+		for (var entry : latchedBefore.entrySet()) {
+			var branch = fields.computeIfAbsent(entry.getKey(), k -> new HashMap<>());
+			put(program, branch, "c_inert_wrap", entry.getValue().getRegister(0) != null ? 2 : 1);
+			put(program, branch, "c_inert", 1);
+			put(program, branch, "c_latch_t", C6000PacketStagingAnalyzer.field(entry.getValue(), "c_latch_t"));
+			put(program, branch, "c_flow_delay", 0);
+		}
 		// The other stretch's landings first, as they were.
 		for (var entry : foreign.entrySet()) {
 			Address at = entry.getKey();

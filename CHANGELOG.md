@@ -131,6 +131,12 @@
 
 ### Fixed
 
+* The entries a stretch is planned and checked from include each label inside it that a jump
+  from outside the stretch comes in at: such a path runs without what was in flight before the
+  label. A plan that left it out passed its check and was dropped after relifting.
+* A lifting keeps a branch that another stretch latched inside its stretch, as it keeps that
+  stretch's landings.
+
 * A value's origin is not disturbed by a write that has issued and not yet landed, such as a
   load in the packet that copies the register: the copy still has the value from before. Two
   predicates that are copies of one value were not recognised as such there, so an outcome
