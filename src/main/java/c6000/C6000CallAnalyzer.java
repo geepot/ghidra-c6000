@@ -3230,13 +3230,28 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 			if (existing != null) return existing;
 			if ((!throughData && listing.getDefinedDataContaining(at) != null) ||
 				listing.getInstructionContaining(at) != null) return null;
+			// lookBack() decodes through words Ghidra left undecoded (an earlier jump's delay slots, data),
+			// starting LOOK_BACK words before each branch; neighbouring branches' windows overlap, so the
+			// same words were disassembled again for every nearby branch (~15% of recognize()'s allocation
+			// on delayed-call). Remember the outcome per address, failures included, cleared on any program
+			// change. Capped lower than the other caches: a pseudo-instruction carries its own buffer and
+			// context, and the reuse is local to overlapping windows.
+			long stamp = program.getModificationNumber();
+			if (decodedStamp != stamp || decoded.size() > 8_192) { decoded.clear(); decodedStamp = stamp; }
+			if (decoded.containsKey(at)) return decoded.get(at);
+			Instruction made;
 			try {
-				return pseudo.disassemble(at);
+				made = pseudo.disassemble(at);
 			}
 			catch (Exception e) {
-				return null;
+				made = null;
 			}
+			decoded.put(at, made);
+			return made;
 		}
+
+		private final Map<Address, Instruction> decoded = new HashMap<>();
+		private long decodedStamp = -1;
 
 		private boolean parallelWithNext(Instruction instruction) throws MemoryAccessException {
 			Address address = instruction.getMinAddress();
