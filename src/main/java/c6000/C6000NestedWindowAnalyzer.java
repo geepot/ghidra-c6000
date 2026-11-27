@@ -65,8 +65,10 @@ public final class C6000NestedWindowAnalyzer extends AbstractAnalyzer {
 		int warned = 0;
 		for (Function function : program.getFunctionManager().getFunctions(set, true)) {
 			monitor.checkCancelled();
-			bookmarks.removeBookmarks(function.getBody(), BookmarkType.WARNING, CATEGORY, monitor);
-			bookmarks.removeBookmarks(function.getBody(), BookmarkType.WARNING, SPLIT, monitor);
+			// The body, and the code no function owns that it runs on into (issue #156).
+			var code = C6000NestedLiftAnalyzer.reach(program, function);
+			bookmarks.removeBookmarks(code, BookmarkType.WARNING, CATEGORY, monitor);
+			bookmarks.removeBookmarks(code, BookmarkType.WARNING, SPLIT, monitor);
 			// An active reviewed schedule lifts every transfer in flight.
 			if (C6000ProgramActions.hasActiveReview(program, function)) continue;
 			// Nested pairs, outer then inner, chained where one's inner is another's outer: a pipelined
@@ -74,7 +76,7 @@ public final class C6000NestedWindowAnalyzer extends AbstractAnalyzer {
 			List<Instruction[]> pairs = new ArrayList<>();
 			Map<Address, Address> chain = new HashMap<>();
 			Map<Address, String> reasons = new HashMap<>();
-			for (Instruction branch : program.getListing().getInstructions(function.getBody(), true)) {
+			for (Instruction branch : program.getListing().getInstructions(code, true)) {
 				monitor.checkCancelled();
 				String op = C6000CallAnalyzer.baseName(branch);
 				if (!op.startsWith("B") || op.startsWith("BITC") || op.startsWith("BITR")) continue;
@@ -127,7 +129,7 @@ public final class C6000NestedWindowAnalyzer extends AbstractAnalyzer {
 			}
 			// A jump into another function that is reached with a link of this function in B3 on
 			// one path and something else on another (issue #151).
-			for (Instruction branch : program.getListing().getInstructions(function.getBody(), true)) {
+			for (Instruction branch : program.getListing().getInstructions(code, true)) {
 				monitor.checkCancelled();
 				if (!C6000CallAnalyzer.baseName(branch).startsWith("B") || branch.getRegister(0) != null || C6000PacketStagingAnalyzer.inert(branch)) continue;
 				Address[] to = C6000PacketStagingAnalyzer.hardware(branch).getDefaultFlows();

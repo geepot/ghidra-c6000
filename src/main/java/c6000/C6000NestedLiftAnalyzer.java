@@ -113,7 +113,7 @@ public final class C6000NestedLiftAnalyzer extends AbstractAnalyzer {
 	 * delay slot then is not entered from outside, and what follows it stays out of the body though
 	 * the function, and the decompiler, run it (issue #156).
 	 */
-	private static ghidra.program.model.address.AddressSetView reach(Program program, Function function) {
+	static ghidra.program.model.address.AddressSetView reach(Program program, Function function) {
 		var functions = program.getFunctionManager();
 		var listing = program.getListing();
 		ghidra.program.model.address.AddressSet set = new ghidra.program.model.address.AddressSet(function.getBody());
