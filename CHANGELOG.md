@@ -141,6 +141,13 @@
 
 ### Fixed
 
+* Analyzing the same program twice gives the same function bodies. Register Branch Flow,
+  Delayed Calls and Jump Tables fixed up the bodies of the functions they had changed in the
+  order of a `HashSet`, and a function's hash is its identity hash, which differs between runs.
+  One function's new body can claim code that another's then does not, so which function owned
+  some code, and on a whole image how many functions there were, changed from run to run. The
+  bodies are now fixed up in entry-point order.
+
 * `LDW` loads from its address as it is. The alignment mask it had hid a pointer into the
   frame from the decompiler, which dropped the frame stores such a load reads (issue #162).
 * `C6000 Code Pointers` refuses an address that undecoded code runs on into: a word of data
