@@ -254,3 +254,10 @@ a call and the jump to where it returns. Ghidra has a flow type for one kind of 
 instruction, so such an instruction's flow type reads `INVALID`. Its references have the right
 types and its p-code is what the decompiler uses, so function bodies and C are not affected; code
 that asks `getFlowType()` for it (a script, another analyzer) is told nothing useful.
+
+## Ghidra 12.1.4: `Unable to find unique hash for varnode`
+
+On Ghidra 12.1.4 the decompiler gives up on an occasional function with this error; Ghidra 12.2
+decompiles the same functions. One such function appeared when `LDW` stopped masking its address
+(issue #162). The mask was not put back: it made the C of other functions wrong without any
+error, on both versions.
