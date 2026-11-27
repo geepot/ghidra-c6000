@@ -141,6 +141,15 @@
 
 ### Fixed
 
+* Nine compact constructors (`ADDAW`/`SUBAW` with B15, `SUB … 0,` and `ADD … -1,` on .L and .S,
+  `MVK 0,` and `MVK 1,`) printed their operands as part of the mnemonic: `MVK.D1 0, A3` was one
+  mnemonic. `C6000CallAnalyzer.mnemonic()` keeps one mnemonic per instruction prototype, so the
+  first such instruction asked answered for all others of its prototype, and which one that was
+  depended on the order analysis asked in: a change that only made analysis faster could change
+  what was decoded. The operands are now operands, as in every other constructor, and
+  `mnemonic()` never keeps a mnemonic that holds operand text. A unit test fails on any
+  constructor that joins operands to its mnemonic.
+
 * `LDW` loads from its address as it is. The alignment mask it had hid a pointer into the
   frame from the decompiler, which dropped the frame stores such a load reads (issue #162).
 * `C6000 Code Pointers` refuses an address that undecoded code runs on into: a word of data
