@@ -1997,6 +1997,31 @@ CASES = [
         LDW     .D2T2   *+B15[2],B0
         NOP             4
 """),
+    # issue #162: frame stores read back by LDW through a pointer that is the frame or a global.
+    # An alignment mask on LDW's address hid the frame from the decompiler, which dropped them.
+    ("alb", False, """{n}:
+        STW     .D2T2   B3,*B15--[2]
+        SUBAW   .D2     B15,8,B15
+        MV      .L1X    B15,A0
+        STW     .D1T1   A4,*+A0[1]
+        STW     .D1T1   A6,*+A0[6]
+        MV      .L1X    B4,A1
+        NOP
+  [ A1] MVKL    .S1     {n}_gd,A0
+  [ A1] MVKH    .S1     {n}_gd,A0
+        LDW     .D1T1   *+A0[1],A5
+        LDW     .D1T1   *+A0[6],A4
+        NOP             4
+        ADD     .L1     A4,A5,A4
+        ADDAW   .D2     B15,8,B15
+        LDW     .D2T2   *++B15[2],B3
+        NOP             4
+        B       .S2     B3
+        NOP             5
+{n}_gd:
+        .word   0xfffffffe, 0xfffffffe, 0xfffffffe, 0xfffffffe
+        .word   0xfffffffe, 0xfffffffe, 0xfffffffe, 0xfffffffe
+"""),
     ("plain", False, """{n}:
         STW     .D2T2   B3,*B15--[2]
         B       .S1     {n}_h
@@ -2590,7 +2615,7 @@ LIFTED = {
     "callarml0": ["param_2 + 3;", "return param_2 + 100;"],
 }
 # What the C of a case that latches nothing must hold, and must not.
-PLAIN = {"ldlat": ["param_3 + 1"], "ld54m": ["== 5"], "lnkpathc": ["lnkpathc_h(", "*param_3 = "], "kpre0": ["kpre0_h(", "+ 0x10"], "kwp0": ["kwp0_h(", "+ 0x10"], "cpyret": ["return param_1 + 1;"], "cpycall": ["return iVar1 + 7;"], "cpyfar": ["return iVar1 + 7;"], "cpyti": ["return param_2 + 1;"],
+PLAIN = {"alb": ["= param_1;", "= param_3;"], "ldlat": ["param_3 + 1"], "ld54m": ["== 5"], "lnkpathc": ["lnkpathc_h(", "*param_3 = "], "kpre0": ["kpre0_h(", "+ 0x10"], "kwp0": ["kwp0_h(", "+ 0x10"], "cpyret": ["return param_1 + 1;"], "cpycall": ["return iVar1 + 7;"], "cpyfar": ["return iVar1 + 7;"], "cpyti": ["return param_2 + 1;"],
          "swtwo": ["switch(", "0x28"], "farlink": ["farlink_h(param_1 + 0x2d)", "+ 1;"], "twocall": ["(0,*param_1)", "(0,param_1[1])"],
          **{name: ["(*param_3)(param_2)", "+ 9"] for name in ("mjoin", "mjoinp", "mjoinu")},
          "mjoind": ["mjoind_h(param_2)", "+ 9"], "mjoinm": ["(*param_3)(param_2 + 1)", "+ 9"]}

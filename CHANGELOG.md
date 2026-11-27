@@ -141,6 +141,11 @@
 
 ### Fixed
 
+* `LDW` loads from its address as it is. The alignment mask it had hid a pointer into the
+  frame from the decompiler, which dropped the frame stores such a load reads (issue #162).
+* `C6000 Code Pointers` refuses an address that undecoded code runs on into: a word of data
+  equal to an address in the middle of a stub no longer starts a function there (issue #161).
+
 * `C6000 Nested Branch Lifting` follows a function's flow into code no function owns. A body
   is fitted to the windows its code had when it was made, so code behind a call's return point
   that was once another window's delay slot stays outside it, and a nest there was never
