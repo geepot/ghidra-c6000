@@ -178,7 +178,8 @@ public final class C6000CodePointerAnalyzer extends AbstractAnalyzer {
 		if (program.getFunctionManager().getFunctionContaining(at) != null) return false;
 		if (listing.getDefinedDataContaining(at) != null) return false;
 		Instruction here = listing.getInstructionContaining(at);
-		if (here == null) return pseudo.isValidSubroutine(at, true);
+		// Undecoded: it must decode as a subroutine, and the undecoded code before it must not run on into it.
+		if (here == null) return pseudo.isValidSubroutine(at, true) && !new C6000CallAnalyzer.Walker(program).fallenInto(at);
 		if (!here.getMinAddress().equals(at) || here.isInDelaySlot()) return false;
 		// A function does not start inside an execute packet, and nothing reads its code as data.
 		Instruction before = listing.getInstructionBefore(at);

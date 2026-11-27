@@ -1955,6 +1955,48 @@ CASES = [
         B       .S2     B3
         NOP             5
 """),
+    # issue #161: a word of data that equals an address in the middle of code nothing has decoded.
+    # The instructions before it decode and fall into it, so it is no entry and no function.
+    ("stubw", False, """{n}:
+        B       .S2     B3
+        NOP             5
+        .word   0xfffffffe
+        .word   {n}_notcb
+        .word   0xfffffffe
+        .word   0xfffffffe
+        .word   0xfffffffe
+        .word   0xfffffffe
+{n}_stub:
+        STW     .D2T2   B0,*B15--[2]
+        MVK     .S2     3,B0
+        STW     .D2T2   B0,*+B15[1]
+        MVKL    .S2     {n}_h,B0
+{n}_notcb:
+        MVKH    .S2     {n}_h,B0
+        B       .S2     B0
+        LDW     .D2T2   *+B15[2],B0
+        NOP             4
+"""),
+    # The control: the word names the start of the stub, which is a function.
+    ("stubw0", False, """{n}:
+        B       .S2     B3
+        NOP             5
+        .word   0xfffffffe
+        .word   {n}_cb
+        .word   0xfffffffe
+        .word   0xfffffffe
+        .word   0xfffffffe
+        .word   0xfffffffe
+{n}_cb:
+        STW     .D2T2   B0,*B15--[2]
+        MVK     .S2     3,B0
+        STW     .D2T2   B0,*+B15[1]
+        MVKL    .S2     {n}_h,B0
+        MVKH    .S2     {n}_h,B0
+        B       .S2     B0
+        LDW     .D2T2   *+B15[2],B0
+        NOP             4
+"""),
     ("plain", False, """{n}:
         STW     .D2T2   B3,*B15--[2]
         B       .S1     {n}_h

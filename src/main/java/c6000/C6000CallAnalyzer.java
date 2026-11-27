@@ -317,6 +317,38 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 		}
 
 		/**
+		 * Code that is not decoded yet runs on into {@code at}: instructions decode from just behind
+		 * bytes that are no instruction, within the two fetch packets before {@code at}, up to exactly
+		 * {@code at}, and hold something other than padding that is not behind the window of a jump
+		 * or return that always goes. Whatever runs {@code at} has then run that code first, so
+		 * {@code at} is no function's entry (issue #161). False where that is not shown: code that
+		 * reaches further back may be another function's end.
+		 */
+		boolean fallenInto(Address at) {
+			Instruction here = decode(at);
+			if (here == null) return false;
+			long base = Math.max((at.getOffset() & ~31L) - 32, program.getMemory().getBlock(at) == null ? at.getOffset() : program.getMemory().getBlock(at).getStart().getOffset());
+			for (long from = base; from < at.getOffset(); from += 2) {
+				List<Instruction> path = new ArrayList<>();
+				Instruction insn = decode(at.getNewAddress(from));
+				while (insn != null && insn.getMinAddress().compareTo(at) < 0 && path.size() < 4 * MAX_WINDOW) {
+					path.add(insn);
+					insn = next(insn);
+				}
+				if (insn == null || !insn.getMinAddress().equals(at) || path.isEmpty()) continue;
+				// Only where that code begins behind bytes that are no instruction: read from the
+				// middle of other code, what comes before the target may be a window that has
+				// already been left, and says nothing.
+				if (from == base || decode(at.getNewAddress(from - 4)) != null) return false;
+				path.add(here);
+				for (int k = reachable(path, -1, path.size() - 1); k < path.size() - 1; k++)
+					if (!idle(path.get(k)) && !baseName(path.get(k)).equals("CPKT")) return true;
+				return false;
+			}
+			return false;
+		}
+
+		/**
 		 * Where {@code path} can start for {@code dispatch} to be reached through it: past the window of
 		 * every unpredicated jump or return, other than the one at {@code except}, that lands before the
 		 * dispatch issues, since nothing falls through there (SPRUFE8B 4.2.6). Code after such a window
