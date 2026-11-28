@@ -4,6 +4,14 @@
 
 ### Changed
 
+* The call walker remembers, until the program next changes, the answers it asks for again
+  and again: an instruction's flow, the registers it writes, its parallel bit and extra
+  cycles, whether an entry or a jump from elsewhere reaches it, and its pseudo-disassembly
+  in undecoded words. Its predicate proof evaluates an instruction's p-code only when that
+  instruction writes the predicate register. Analysis of a large image takes about 55% of
+  the time it did and allocates about 40% as much. The static instruction caches are
+  released when analysis ends, so they no longer keep a closed program's objects alive.
+
 * The analysis languages lift `LDNW`, `LDNDW`, `STNW` and `STNDW` as one 4- or 8-byte
   access instead of one access per byte. The decompiler merged the byte loads step by
   step and could keep some of them, so a device word read through `LDNDW` was read twice
