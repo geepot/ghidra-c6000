@@ -22,6 +22,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.Comparator;
+import java.util.TreeSet;
 import java.util.TreeMap;
 import java.util.WeakHashMap;
 
@@ -115,7 +117,10 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 		AutoAnalysisManager analysis = AutoAnalysisManager.getAnalysisManager(program);
 		Disassembler disassembler = Disassembler.getDisassembler(program, monitor, null);
 		Walker walker = new Walker(program);
-		Set<Function> callers = new HashSet<>();
+		// Fix bodies up in entry order. FunctionDB.hashCode() is the identity hash, so a HashSet
+		// visited functions in a different order on each run, and one function's fixed-up body can
+		// claim code another's then does not: the same program analyzed twice got different bodies.
+		Set<Function> callers = new TreeSet<>(Comparator.comparing(Function::getEntryPoint));
 		int recovered = 0;
 		for (Address at : branches) {
 			monitor.checkCancelled();

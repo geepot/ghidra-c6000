@@ -21,6 +21,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.Comparator;
+import java.util.TreeSet;
 
 import ghidra.app.cmd.function.CreateFunctionCmd;
 import ghidra.app.services.AbstractAnalyzer;
@@ -124,7 +126,10 @@ public class C6000JumpTableAnalyzer extends AbstractAnalyzer {
 
 		C6000CallAnalyzer.Walker walker = new C6000CallAnalyzer.Walker(program);
 		Disassembler disassembler = Disassembler.getDisassembler(program, monitor, null);
-		Set<Function> bodies = new HashSet<>();
+		// Fix bodies up in entry order. FunctionDB.hashCode() is the identity hash, so a HashSet
+		// visited functions in a different order on each run, and one function's fixed-up body can
+		// claim code another's then does not: the same program analyzed twice got different bodies.
+		Set<Function> bodies = new TreeSet<>(Comparator.comparing(Function::getEntryPoint));
 		int recovered = 0;
 		for (Address at : branches) {
 			monitor.checkCancelled();

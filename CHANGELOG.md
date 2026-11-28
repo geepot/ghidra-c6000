@@ -4,6 +4,14 @@
 
 ### Changed
 
+* Delay-window recovery re-proves only the branches and jumps near what changed since its
+  previous pass (512 bytes either side, and the functions a change touched), and one full
+  pass, queued behind every analyzer, confirms the windows before analysis ends. Analysis
+  of a large image takes about two thirds of the time it did. A window that a body fix-up
+  undid after the last pass is now laid again by the confirming pass, so its function's
+  body keeps the call's delay slots. `-Dc6000.delayWindows.incremental=false` makes every
+  pass a full one again.
+
 * The analysis languages lift `LDNW`, `LDNDW`, `STNW` and `STNDW` as one 4- or 8-byte
   access instead of one access per byte. The decompiler merged the byte loads step by
   step and could keep some of them, so a device word read through `LDNDW` was read twice
@@ -140,6 +148,13 @@
   are skipped (issue #71).
 
 ### Fixed
+
+* Analyzing the same program twice gives the same function bodies. Register Branch Flow,
+  Delayed Calls and Jump Tables fixed up the bodies of the functions they had changed in the
+  order of a `HashSet`, and a function's hash is its identity hash, which differs between runs.
+  One function's new body can claim code that another's then does not, so which function owned
+  some code, and on a whole image how many functions there were, changed from run to run. The
+  bodies are now fixed up in entry-point order.
 
 * `LDW` loads from its address as it is. The alignment mask it had hid a pointer into the
   frame from the decompiler, which dropped the frame stores such a load reads (issue #162).
