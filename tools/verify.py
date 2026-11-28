@@ -198,6 +198,8 @@ def main():
     parser.add_argument("--only", action="append", help="select a fixture name; repeat to select more")
     parser.add_argument("--list", action="store_true", help="list fixtures without building")
     parser.add_argument("--timeout", type=int, default=600, help="seconds per build/generator/headless invocation")
+    parser.add_argument("--keep-install", action="store_true",
+                        help="keep the run's copy of Ghidra (scratch/verify-*/ghidra) after a passing run")
     args = parser.parse_args()
     cases = CORE + (TI if args.with_ti else [])
     if args.only:
@@ -378,6 +380,9 @@ def main():
     report["passed"] = all(r["passed"] for r in report["results"])
     (work / "summary.json").write_text(json.dumps(report, indent=2) + "\n")
     print(f"{'VERIFIED' if report['passed'] else 'FAILED'}: {work / 'summary.json'}")
+    # The copy is about the size of Ghidra itself; a failed run keeps it to rerun a fixture by hand.
+    if report["passed"] and not args.keep_install:
+        shutil.rmtree(install)
     return 0 if report["passed"] else 1
 
 

@@ -4,6 +4,9 @@
 
 ### Changed
 
+* `tools/verify.py` removes its run's copy of Ghidra (`scratch/verify-*/ghidra`, about the
+  size of Ghidra) after a passing run; a failed run keeps it. Every run left one behind.
+  `--keep-install` keeps it after a pass too.
 * The analysis languages lift `LDNW`, `LDNDW`, `STNW` and `STNDW` as one 4- or 8-byte
   access instead of one access per byte. The decompiler merged the byte loads step by
   step and could keep some of them, so a device word read through `LDNDW` was read twice

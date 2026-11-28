@@ -111,6 +111,11 @@ an error message. Each invocation creates a new `scratch/verify-*` directory con
 | Verified archive | The exact zip tested, retained separately from mutable `dist/` outputs. |
 | Build and fixture files | Build logs, generated inputs and manifests, generator/headless logs, and decompiler output where produced. |
 
+The run also installs the archive into its own copy of Ghidra, `ghidra/`, which is about
+the size of Ghidra itself. A passing run removes it; a failed run keeps it, so a fixture
+can be rerun by hand with its command from the summary. `--keep-install` keeps it after a
+pass too.
+
 For a failure, start with the log named in the summary. Check the requested scope and
 endian modes before treating a passing summary as a release check. The
 [release checklist](release.md#checklist-before-tagging) defines the full matrix
