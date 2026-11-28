@@ -141,6 +141,10 @@
 
 ### Fixed
 
+* A function whose first instruction is a delayed call is no longer a thunk of the callee.
+  Created while the `B` was still a jump, Ghidra took it for one (a lone jump to a
+  function); once C6000 Delayed Calls proves the call, the function is made a real one
+  again, with its own body and signature.
 * `LDW` loads from its address as it is. The alignment mask it had hid a pointer into the
   frame from the decompiler, which dropped the frame stores such a load reads (issue #162).
 * `C6000 Code Pointers` refuses an address that undecoded code runs on into: a word of data

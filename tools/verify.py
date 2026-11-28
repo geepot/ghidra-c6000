@@ -50,6 +50,7 @@ CORE = [
     case("far-call-pair", "FarCallPair", "C6000_FAR_CALL_PAIR_OK", None, analysis=True),
     case("delayed-call-timing", "DelayedCallTiming", "C6000_DELAYED_CALL_TIMING_OK", "json", ["check", "cases.json"], analysis=True),
     case("idle-call", "IdleCall", "C6000_IDLE_CALL_OK", None, analysis=True),
+    case("entry-call", "EntryCall", "C6000_ENTRY_CALL_OK", None, analysis=True),
     case("wide-call-window", "WideCallWindow", "C6000_WIDE_CALL_WINDOW_OK", None, analysis=True),
     case("call-packet-slots", "CallPacketSlots", "C6000_CALL_PACKET_SLOTS_OK", None, analysis=True),
     case("tail-call-slots", "TailCallSlots", "C6000_TAIL_CALL_SLOTS_OK", None, analysis=True),
@@ -306,6 +307,8 @@ def main():
                     command += ["-preScript", "C6000DelayedCallTimingTest.java", "prepare", directory / "cases.json"]
                 elif fixture == "preempted-jump":
                     command += ["-preScript", "C6000PreemptedJumpTest.java", "prepare"]
+                elif fixture == "entry-call":
+                    command += ["-preScript", "C6000EntryCallTest.java", "prepare"]
                 elif fixture == "register-branch-tail":
                     command += ["-preScript", "C6000RegisterBranchTailTest.java", "prepare"]
                 elif fixture == "register-call":
