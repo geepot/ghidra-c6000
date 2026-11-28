@@ -792,6 +792,19 @@ header (SPRUFE8B 3.10.2) that another function owns, so extending the window's o
 fails after the window is laid; the failure must propagate and the window must be
 exactly as before.
 
+## A change far from the delay window it decides
+
+`far-entry.py IMAGE CASES.json [be]` and `C6000FarEntryTest.java CASES.json` check that the
+recovery pass right after a change re-proves a window the change decides, however far away
+it lies. `cl6x` 8.5.0.LTS words give a `B callee ; NOP 5` at 102c whose look-back sets B3 to
+its return point before a label at 1028, and a jump to that label at 1808, 2 KB away, whose
+own look-back sets B3 to the same address. With the `B` marked a tail call, recovery refuses
+its window while B3 holds the link on both ways in (SPRUFE8B 4.2.6). Recovery runs until a
+pass changes nothing; then the jump's `MVKL` is changed to another constant, so B3 is unknown
+when the `B` lands, and the next pass must lay the window. No function owns the code, and
+the change lies outside the 512-byte reach of a distance rule: only the `B`'s read set (the
+jump's look-back, followed from the label) selects it. The confirming full pass must agree.
+
 ## Additional decoder accuracy checks
 
 The release runner includes compact stack offsets (`compact-dstk`), unscaled
