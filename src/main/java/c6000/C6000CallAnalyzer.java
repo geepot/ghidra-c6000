@@ -116,7 +116,7 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 		Disassembler disassembler = Disassembler.getDisassembler(program, monitor, null);
 		Walker walker = new Walker(program);
 		Set<Function> callers = new HashSet<>();
-		int recovered = 0;
+		int recovered = 0, unthunked = 0;
 		for (Address at : branches) {
 			monitor.checkCancelled();
 			Instruction branch = listing.getInstructionAt(at);
@@ -138,6 +138,12 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 			// A window laid while the B was still a jump decoded the slots but not the return point: decode it (SPRUFE8B 3.5, 4.2.6).
 			if (call.link() != null && listing.getInstructionContaining(call.link()) == null) C6000DelaySlots.announce(program, disassembler.disassemble(call.link(), null, true));
 			Function caller = listing.getFunctionContaining(at);
+			// A function created while this B was still a jump took it for a thunk of the
+			// callee (CreateThunkFunctionCmd's single-jump rule); it calls and comes back.
+			if (caller != null && caller.isThunk()) {
+				caller.setThunkedFunction(null);
+				unthunked++;
+			}
 			if (caller != null) callers.add(caller);
 			if (call.target() != null) {
 				boolean referenced = false;
@@ -170,6 +176,7 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 			CreateFunctionCmd.fixupFunctionBody(program, caller, monitor);
 		}
 		if (recovered > 0) Msg.info(this, getName() + "> recovered " + recovered + " delayed call(s)");
+		if (unthunked > 0) Msg.info(this, getName() + "> " + unthunked + " function(s) entered by a call are not thunks");
 		return true;
 	}
 
