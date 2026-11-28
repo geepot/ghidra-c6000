@@ -198,11 +198,12 @@ public final class C6000CodePointerAnalyzer extends AbstractAnalyzer {
 			if (ref.getReferenceType().isJump() && functions.getFunctionContaining(ref.getFromAddress()) != null) return false;
 		Instruction prior = listing.getInstructionBefore(at);
 		if (prior == null || !at.equals(prior.getFallThrough()) || functions.getFunctionContaining(prior.getMinAddress()) == null) return true;
-		// The last delay slot of a jump or return that always goes: its fall-through is where the
-		// listing goes on, not where the program does (SPRUFE8B 4.2.6).
+		// The last delay slot of a jump, return or tail call that always goes: its fall-through is
+		// where the listing goes on, not where the program does (SPRUFE8B 4.2.6). A call that
+		// returns comes back past its window, so code there is its function's.
 		Instruction owner = C6000DelaySlots.unitOwner(program, prior);
 		if (owner == null || owner == prior || owner.getMinAddress().equals(prior.getMinAddress())) return false;
 		var flow = C6000PacketStagingAnalyzer.flow(owner);
-		return (flow.isJump() || flow.isTerminal()) && !flow.isConditional() && !flow.isCall();
+		return (flow.isJump() || flow.isTerminal()) && !flow.isConditional() && (!flow.isCall() || flow.isTerminal());
 	}
 }

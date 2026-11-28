@@ -1598,6 +1598,23 @@ CASES = [
         .word   {n}_cb
         .word   {n}_notcb
 """),
+    # Two far-call trampolines in a row, as the linker lays them (SPRAB89A 5.3.2: MVKL/MVKH into B31,
+    # B B31). The first is the case's function, a tail call to h; the second is named only by a word
+    # of data (a handler table), here before the case, where no code runs on into it. The first's
+    # last delay slot is where the listing goes on, not where the program does (SPRUFE8B 4.2.6), so
+    # nothing falls into the second, and it is a function.
+    ("cbtramp", False, """        .word   {n}_cb
+{n}:
+        MVKL    .S2     {n}_h,B31
+        MVKH    .S2     {n}_h,B31
+        B       .S2     B31
+        NOP             5
+{n}_cb:
+        MVKL    .S2     {n}_h,B31
+        MVKH    .S2     {n}_h,B31
+        B       .S2     B31
+        NOP             5
+"""),
     # issue #151: the jump to h is reached with this function's link in B3 when n > 0 and with the
     # caller's when n == 0. It is lifted one way, so it is warned. In lnkpathc the n == 0 arm
     # returns itself, the jump only ever sees back in B3, and it is a call with no warning.
