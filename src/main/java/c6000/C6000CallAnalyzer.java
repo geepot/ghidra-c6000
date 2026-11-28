@@ -22,6 +22,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.Comparator;
+import java.util.TreeSet;
 import java.util.TreeMap;
 import java.util.WeakHashMap;
 
@@ -115,7 +117,10 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 		AutoAnalysisManager analysis = AutoAnalysisManager.getAnalysisManager(program);
 		Disassembler disassembler = Disassembler.getDisassembler(program, monitor, null);
 		Walker walker = new Walker(program);
-		Set<Function> callers = new HashSet<>();
+		// Fix bodies up in entry order. FunctionDB.hashCode() is the identity hash, so a HashSet
+		// visited functions in a different order on each run, and one function's fixed-up body can
+		// claim code another's then does not: the same program analyzed twice got different bodies.
+		Set<Function> callers = new TreeSet<>(Comparator.comparing(Function::getEntryPoint));
 		int recovered = 0;
 		for (Address at : branches) {
 			monitor.checkCancelled();
@@ -1648,7 +1653,7 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 						if (issuedAny != null) issuedAny.add(insn.getMinAddress());
 						if (issued.size() > MAX_ISSUED) return Run.unproven("its windows issue too many instructions to compare");
 						if (untimed(program, insn)) return Run.unproven(insn + " at " + insn.getMinAddress() + " has timing outside the cycle model");
-						span = Math.max(span, 1 + extraCycles(program, insn));
+						span = Math.max(span, 1 + extraCycles(insn));
 						ranCycles[ran.size()] = (int) (ranFrom + cycle);
 						ran.add(insn);
 						if (transfer(insn)) {
@@ -2345,6 +2350,39 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 		 * data, at any byte of {@code insn}.
 		 */
 		private boolean externalEntry(Instruction insn) {
+			return entryFact(externalEntries, insn, false);
+		}
+
+		/** A jump, branch or call from another address targets {@code insn}, or it is an entry. */
+		private boolean enteredFromElsewhere(Instruction insn) {
+			return entryFact(enteredElsewhere, insn, true);
+		}
+
+		// Both answers ask the database three times for every byte of the instruction (symbol table,
+		// function manager, references); the look-backs ask them again for the same instructions on
+		// every branch, which made externalEntry the walker's largest source of garbage (about 44% of
+		// what recognize() allocates). They depend only on program state: memoize per address and
+		// length, cleared on any program change and capped like the other caches. Address keys keep
+		// no instruction alive; the values are small cached Integers, so a hit allocates nothing.
+		private final Map<Address, Integer> externalEntries = new HashMap<>(), enteredElsewhere = new HashMap<>();
+		private long entryStamp = -1;
+
+		private boolean entryFact(Map<Address, Integer> memo, Instruction insn, boolean flowIn) {
+			long stamp = program.getModificationNumber();
+			if (entryStamp != stamp || externalEntries.size() + enteredElsewhere.size() > 200_000) {
+				externalEntries.clear();
+				enteredElsewhere.clear();
+				entryStamp = stamp;
+			}
+			int length = insn.getLength();
+			Integer known = memo.get(insn.getMinAddress());
+			if (known != null && known >> 1 == length) return (known & 1) != 0;
+			boolean fact = flowIn ? enteredFromElsewhereNow(insn) : externalEntryNow(insn);
+			memo.put(insn.getMinAddress(), length << 1 | (fact ? 1 : 0));
+			return fact;
+		}
+
+		private boolean externalEntryNow(Instruction insn) {
 			for (Address at = insn.getMinAddress(); at.compareTo(insn.getMaxAddress()) <= 0; at = at.next()) {
 				if (program.getSymbolTable().isExternalEntryPoint(at) || program.getFunctionManager().getFunctionAt(at) != null) return true;
 				for (Reference ref : program.getReferenceManager().getReferencesTo(at)) if (ref.getReferenceType().isData()) return true;
@@ -2352,8 +2390,7 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 			return false;
 		}
 
-		/** A jump, branch or call from another address targets {@code insn}, or it is an entry. */
-		private boolean enteredFromElsewhere(Instruction insn) {
+		private boolean enteredFromElsewhereNow(Instruction insn) {
 			if (externalEntry(insn)) return true;
 			for (Reference ref : program.getReferenceManager().getReferencesTo(insn.getMinAddress())) {
 				if (ref.getReferenceType().isFlow() && !ref.getReferenceType().isFallthrough()) return true;
@@ -2392,7 +2429,7 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 				int span = 1;
 				for (int i = branchIndex; i >= 0 && cycles[i] == cycle; i--) {
 					if (untimed(program, prefix.get(i))) return null;
-					span = Math.max(span, 1 + extraCycles(program, prefix.get(i)));
+					span = Math.max(span, 1 + extraCycles(prefix.get(i)));
 				}
 				Instruction last = branch;
 				boolean turned = false;
@@ -2418,7 +2455,7 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 						}
 						trace.before(cycle);
 						trace.instruction(insn, runs, cycle, index);
-						span = Math.max(span, 1 + extraCycles(program, insn));
+						span = Math.max(span, 1 + extraCycles(insn));
 						last = insn;
 						end = insn.getMaxAddress().getOffset() + 1;
 						if (!parallelWithNext(insn)) break;
@@ -2557,7 +2594,7 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 					int span = 1;
 					while (true) {
 						if (!baseName(current).equals("NOP")) return null;
-						span = Math.max(span, 1 + extraCycles(program, current));
+						span = Math.max(span, 1 + extraCycles(current));
 						if (!parallelWithNext(current)) break;
 						current = next(current);
 						if (current == null) return null;
@@ -2603,7 +2640,7 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 					catch (MemoryAccessException unavailable) { parallel = false; }
 					if (!parallel) { cycle += span;span = 1; }
 				}
-				cycles[i] = cycle;span = Math.max(span, 1 + extraCycles(program, path.get(i)));
+				cycles[i] = cycle;span = Math.max(span, 1 + extraCycles(path.get(i)));
 			}
 			return cycles;
 		}
@@ -2628,6 +2665,23 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 		}
 
 		private List<Register> issueWrites(Instruction insn) {
+			// Called from many scans, several per instruction, each rebuilding the list and iterating
+			// hardware().getResultObjects(). Memoize by instruction, cleared on any program change (as
+			// hardware()/flow() do). The result is read-only to every caller, so share it.
+			long stamp = program.getModificationNumber();
+			// Capped like hardware()'s cache: a long read-only pass with one Walker must not hold every instruction.
+			if (issueWritesStamp != stamp || issueWritesCache.size() > 200_000) { issueWritesCache.clear(); issueWritesStamp = stamp; }
+			List<Register> known = issueWritesCache.get(insn);
+			if (known != null) return known;
+			List<Register> computed = java.util.Collections.unmodifiableList(issueWritesNow(insn));
+			issueWritesCache.put(insn, computed);
+			return computed;
+		}
+
+		private final java.util.IdentityHashMap<Instruction, List<Register>> issueWritesCache = new java.util.IdentityHashMap<>();
+		private long issueWritesStamp = -1;
+
+		private List<Register> issueWritesNow(Instruction insn) {
 			List<Register> writes = new ArrayList<>();
 			// Native delay carriers include their followers' results; those have
 			// their own physical instruction and issue time in this walk.
@@ -3043,6 +3097,11 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 				String p = predicate(instruction);
 				if (query >= anchor && p != null && p.replace("!", "").equals(register.getName()) &&
 					(p.startsWith("!") ? !nonzero : nonzero) == false) continue;
+				// Only a write to the register can falsify the fact; skip the p-code evaluation below for
+				// everything else (whatever constantWrite returned, such an instruction changed nothing here).
+				boolean writes = false;
+				for (Register r : issueWrites(instruction)) if (overlaps(r, register)) { writes = true; break; }
+				if (!writes) continue;
 				// A constant replacement can preserve the predicate's truth value,
 				// even when the instruction's own predicate is not known.
 				// Backwards, one that would falsify the fact cannot have run (SPRUFE8B 3.12 MVK, 4.2.1).
@@ -3119,7 +3178,7 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 						Instruction next = next(current);
 						if (next == null || slots.size() >= MAX_WINDOW || untimed(program, next)) return null;
 						slots.add(next);
-						packetCycles = Math.max(packetCycles, 1 + extraCycles(program, next));
+						packetCycles = Math.max(packetCycles, 1 + extraCycles(next));
 						current = next;
 					} while (parallelWithNext(current));
 					if (!branchPacket) cycles += packetCycles;
@@ -3176,15 +3235,67 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 			if (existing != null) return existing;
 			if ((!throughData && listing.getDefinedDataContaining(at) != null) ||
 				listing.getInstructionContaining(at) != null) return null;
+			// lookBack() decodes through words Ghidra left undecoded (an earlier jump's delay slots, data),
+			// starting LOOK_BACK words before each branch; neighbouring branches' windows overlap, so the
+			// same words were disassembled again for every nearby branch (~15% of recognize()'s allocation
+			// on delayed-call). Remember the outcome per address, failures included, cleared on any program
+			// change. Capped lower than the other caches: a pseudo-instruction carries its own buffer and
+			// context, and the reuse is local to overlapping windows.
+			long stamp = program.getModificationNumber();
+			if (decodedStamp != stamp || decoded.size() > 8_192) { decoded.clear(); decodedStamp = stamp; }
+			if (decoded.containsKey(at)) return decoded.get(at);
+			Instruction made;
 			try {
-				return pseudo.disassemble(at);
+				made = pseudo.disassemble(at);
 			}
 			catch (Exception e) {
-				return null;
+				made = null;
 			}
+			decoded.put(at, made);
+			return made;
 		}
 
+		private final Map<Address, Instruction> decoded = new HashMap<>();
+		private long decodedStamp = -1;
+
 		private boolean parallelWithNext(Instruction instruction) throws MemoryAccessException {
+			// issueCycles() asks this for every pair on every path it times, and the proof checks time the
+			// same paths again and again: on the real image this memory read was ~17% of all CPU. Memoize
+			// by instruction, cleared on any program change and capped like the walker's other caches; a
+			// failure (no compact header) is remembered and thrown again, so callers see what they did.
+			long stamp = program.getModificationNumber();
+			if (parallelStamp != stamp || parallelBits.size() > 200_000) { parallelBits.clear(); parallelStamp = stamp; }
+			Object known = parallelBits.get(instruction);
+			if (known == null) {
+				try { known = parallelWithNextNow(instruction); }
+				catch (MemoryAccessException e) { known = e; }
+				parallelBits.put(instruction, known);
+			}
+			if (known instanceof MemoryAccessException e) throw e;
+			return (Boolean) known;
+		}
+
+		/**
+		 * The cycles an instruction adds past its own (NOP and BNOP counts, CALLP, protected loads), as
+		 * C6000CallAnalyzer.extraCycles gives them: issueCycles() and the packet walks ask again for every
+		 * instruction on every path (~11% of CPU on our cl6x-compiled image, through baseName and a header read).
+		 * Memoized by instruction, cleared on any program change and capped like parallelWithNext.
+		 */
+		private int extraCycles(Instruction insn) {
+			long stamp = program.getModificationNumber();
+			if (extraStamp != stamp || extraCycleMemo.size() > 200_000) { extraCycleMemo.clear(); extraStamp = stamp; }
+			Integer known = extraCycleMemo.get(insn);
+			if (known == null) extraCycleMemo.put(insn, known = C6000CallAnalyzer.extraCycles(program, insn));
+			return known;
+		}
+
+		private final java.util.IdentityHashMap<Instruction, Integer> extraCycleMemo = new java.util.IdentityHashMap<>();
+		private long extraStamp = -1;
+
+		private final java.util.IdentityHashMap<Instruction, Object> parallelBits = new java.util.IdentityHashMap<>();
+		private long parallelStamp = -1;
+
+		private boolean parallelWithNextNow(Instruction instruction) throws MemoryAccessException {
 			Address address = instruction.getMinAddress();
 			if (instruction.getLength() == 4) {
 				return (program.getMemory().getInt(address) & 1) != 0;

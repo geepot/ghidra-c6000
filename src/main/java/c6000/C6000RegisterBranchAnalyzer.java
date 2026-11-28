@@ -17,9 +17,10 @@ package c6000;
 
 import java.math.BigInteger;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.Comparator;
+import java.util.TreeSet;
 
 import ghidra.app.cmd.function.CreateFunctionCmd;
 import ghidra.app.services.AbstractAnalyzer;
@@ -155,7 +156,10 @@ public class C6000RegisterBranchAnalyzer extends AbstractAnalyzer {
 	private static void detachTails(Program program, List<Address> branches, TaskMonitor monitor)
 			throws CancelledException {
 		Listing listing = program.getListing();
-		Set<Function> owners = new HashSet<>();
+		// Fix bodies up in entry order. FunctionDB.hashCode() is the identity hash, so a HashSet
+		// visited functions in a different order on each run, and one function's fixed-up body can
+		// claim code another's then does not: the same program analyzed twice got different bodies.
+		Set<Function> owners = new TreeSet<>(Comparator.comparing(Function::getEntryPoint));
 		for (Address at : branches) {
 			Instruction branch = listing.getInstructionAt(at);
 			Address end = branch == null ? null : C6000DelaySlots.windowEnd(program, branch, monitor);

@@ -121,7 +121,7 @@ public final class C6000PacketStagingAnalyzer extends AbstractAnalyzer {
 		return known;
 	}
 
-	private static final java.util.IdentityHashMap<Instruction, Instruction> hardwareCache = new java.util.IdentityHashMap<>();
+	private static java.util.IdentityHashMap<Instruction, Instruction> hardwareCache = new java.util.IdentityHashMap<>();
 	private static java.lang.ref.WeakReference<Program> hardwareOf = new java.lang.ref.WeakReference<>(null);
 	private static long hardwareStamp;
 
@@ -169,7 +169,47 @@ public final class C6000PacketStagingAnalyzer extends AbstractAnalyzer {
 	 * which would change the landing it may carry for another branch: it is a call or a return as
 	 * the landing that reads its latch says.
 	 */
-	public static ghidra.program.model.symbol.FlowType flow(Instruction ins) {
+	public static synchronized ghidra.program.model.symbol.FlowType flow(Instruction ins) {
+		// Like hardware(): the walker asks this for the same instruction many times between program
+		// changes, and for an inert (latched) branch each answer scans a window of up to MAX_WINDOW
+		// instructions (landingSite). Cache it with the same program-modification invalidation.
+		Program owner = ins.getProgram();
+		long stamp = owner.getModificationNumber();
+		if (flowOf.get() != owner || flowStamp != stamp || flowCache.size() > 200_000) {
+			flowCache.clear();
+			flowOf = new java.lang.ref.WeakReference<>(owner);
+			flowStamp = stamp;
+		}
+		ghidra.program.model.symbol.FlowType known = flowCache.get(ins);
+		if (known == null) flowCache.put(ins, known = flowNow(ins));
+		return known;
+	}
+
+	private static java.util.IdentityHashMap<Instruction, ghidra.program.model.symbol.FlowType> flowCache =
+		new java.util.IdentityHashMap<>();
+	private static java.lang.ref.WeakReference<Program> flowOf = new java.lang.ref.WeakReference<>(null);
+	private static long flowStamp;
+
+	/**
+	 * Analysis is over: drop the instruction caches. They are static, and their keys are instructions,
+	 * which reach their program; the weak program reference does not help while an entry holds one.
+	 * Kept, they hold up to 200,000 instructions (about 741 B each once nothing else does) until the
+	 * next call, and in the tool they keep a closed program's objects alive. New maps, because
+	 * IdentityHashMap.clear() keeps its full-size table. Anything asked after this just refills them.
+	 */
+	@Override
+	public void analysisEnded(Program program) {
+		release();
+	}
+
+	static synchronized void release() {
+		hardwareCache = new java.util.IdentityHashMap<>();
+		hardwareOf = new java.lang.ref.WeakReference<>(null);
+		flowCache = new java.util.IdentityHashMap<>();
+		flowOf = new java.lang.ref.WeakReference<>(null);
+	}
+
+	private static ghidra.program.model.symbol.FlowType flowNow(Instruction ins) {
 		Instruction hardware = hardware(ins);
 		if (hardware == ins) return ins.getFlowType();
 		var override = ins.getFlowOverride();
@@ -197,8 +237,10 @@ public final class C6000PacketStagingAnalyzer extends AbstractAnalyzer {
 
 	/** The kind of the landing {@code ins} carries for latch {@code slot}: 1 jump, 2 call, 3 return; 0 if none. */
 	private static int landingKind(Instruction ins, int slot) {
-		for (String name : new String[] { "c_land1", "c_land2" })
-			if (field(ins, name) != 0 && field(ins, name + "_t") == slot) return field(ins, name);
+		for (String name : new String[] { "c_land1", "c_land2" }) {
+			int kind = field(ins, name);
+			if (kind != 0 && field(ins, name + "_t") == slot) return kind;
+		}
 		return 0;
 	}
 
