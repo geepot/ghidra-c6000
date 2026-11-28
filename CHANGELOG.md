@@ -4,6 +4,10 @@
 
 ### Changed
 
+* `tools/verify.py --jobs 2` gives each endian run its own temp directory. Each Ghidra
+  launch resets its user temp directory to owner-only permissions in steps that briefly
+  deny the owner too, so the run sharing it could fail to create a temp file (`IOException:
+  Permission denied`) and fail a fixture at random.
 * The analysis languages lift `LDNW`, `LDNDW`, `STNW` and `STNDW` as one 4- or 8-byte
   access instead of one access per byte. The decompiler merged the byte loads step by
   step and could keep some of them, so a device word read through `LDNDW` was read twice

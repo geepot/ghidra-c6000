@@ -275,7 +275,11 @@ def main():
         local_env = env.copy()
         home = work / endian / "home"
         home.mkdir(parents=True)
-        local_env["_JAVA_OPTIONS"] = f"-Duser.home={home}"
+        # Each Ghidra launch resets its temp directory to owner-only in steps that briefly deny the
+        # owner too, so a parallel run sharing it can fail to create a temp file.
+        temp = work / endian / "tmp"
+        temp.mkdir()
+        local_env["_JAVA_OPTIONS"] = f"-Duser.home={home} -Djava.io.tmpdir={temp}"
         project = work / endian / "projects"
         project.mkdir()
         runs = [(item, variant) for item in cases for variant in
