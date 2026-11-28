@@ -712,14 +712,14 @@ CTgt10: reloc is cq_scst10 [ reloc = (inst_start & 0xffffffe0) + (cq_scst10 << 2
 # 5-bit constant left by two (word addressing mode).
 # ---------------------------------------------------------------------------
 
-:ADDAW^CUnitDB15^" B15, "^Cucst5d^", "^RA97 is c_is16=1 & CUnitDB15 & j10=1 & j6=0 & j5=1 & j4=1 & j3=0 & j2=1 & j1=1 & RA97 & Cucst5d { RA97 = B15 + (Cucst5d << 2); }
+:ADDAW^CUnitDB15 "B15, "^Cucst5d^", "^RA97 is c_is16=1 & CUnitDB15 & j10=1 & j6=0 & j5=1 & j4=1 & j3=0 & j2=1 & j1=1 & RA97 & Cucst5d { RA97 = B15 + (Cucst5d << 2); }
 
 # ---------------------------------------------------------------------------
 # Figure C-19. Dx5p - SPRUFE8B appendix C.4.  src2 = dst = B15.
 # ---------------------------------------------------------------------------
 
-:ADDAW^CUnitD^" B15, "^Cucst5p^", B15" is c_is16=1 & CUnitD & j12=0 & j11=1 & j10=1 & j6=1 & j5=1 & j4=1 & j3=0 & j2=1 & j1=1 & j7=0 & Cucst5p { B15 = B15 + (Cucst5p << 2); }
-:SUBAW^CUnitD^" B15, "^Cucst5p^", B15" is c_is16=1 & CUnitD & j12=0 & j11=1 & j10=1 & j6=1 & j5=1 & j4=1 & j3=0 & j2=1 & j1=1 & j7=1 & Cucst5p { B15 = B15 - (Cucst5p << 2); }
+:ADDAW^CUnitD "B15, "^Cucst5p^", B15" is c_is16=1 & CUnitD & j12=0 & j11=1 & j10=1 & j6=1 & j5=1 & j4=1 & j3=0 & j2=1 & j1=1 & j7=0 & Cucst5p { B15 = B15 + (Cucst5p << 2); }
+:SUBAW^CUnitD "B15, "^Cucst5p^", B15" is c_is16=1 & CUnitD & j12=0 & j11=1 & j10=1 & j6=1 & j5=1 & j4=1 & j3=0 & j2=1 & j1=1 & j7=1 & Cucst5p { B15 = B15 - (Cucst5p << 2); }
 
 # ---------------------------------------------------------------------------
 # Figure C-20. Dx1 - SPRUFE8B appendix C.4.  op = 010, 100 and 110 are
@@ -801,8 +801,8 @@ CTgt10: reloc is cq_scst10 [ reloc = (inst_start & 0xffffffe0) + (cq_scst10 << 2
 # op = 000/001/101/111 are LSDx1 (Figure G-4).
 # ---------------------------------------------------------------------------
 
-:SUB^CUnitL^" 0, "^RA97^", "^RB97 is c_is16=1 & CUnitL & j12=1 & j11=1 & j10=0 & j6=1 & j5=1 & j4=0 & j3=0 & j2=1 & j1=1 & j15=0 & j14=1 & j13=0 & RA97 & RB97 { RB97 = 0 - RA97; }
-:ADD^CUnitL^" -1, "^RA97^", "^RB97 is c_is16=1 & CUnitL & j12=1 & j11=1 & j10=0 & j6=1 & j5=1 & j4=0 & j3=0 & j2=1 & j1=1 & j15=0 & j14=1 & j13=1 & RA97 & RB97 { RB97 = RA97 - 1; }
+:SUB^CUnitL "0, "^RA97^", "^RB97 is c_is16=1 & CUnitL & j12=1 & j11=1 & j10=0 & j6=1 & j5=1 & j4=0 & j3=0 & j2=1 & j1=1 & j15=0 & j14=1 & j13=0 & RA97 & RB97 { RB97 = 0 - RA97; }
+:ADD^CUnitL "-1, "^RA97^", "^RB97 is c_is16=1 & CUnitL & j12=1 & j11=1 & j10=0 & j6=1 & j5=1 & j4=0 & j3=0 & j2=1 & j1=1 & j15=0 & j14=1 & j13=1 & RA97 & RB97 { RB97 = RA97 - 1; }
 
 # ---------------------------------------------------------------------------
 # Figure E-5. M3 - SPRUFE8B appendix E.4.  dst is an even register; with
@@ -933,8 +933,8 @@ CTgt10: reloc is cq_scst10 [ reloc = (inst_start & 0xffffffe0) + (cq_scst10 << 2
 # a branch form, so it is valid with either compact-header BR value.
 # ---------------------------------------------------------------------------
 
-:SUB^CUnitS^" 0, "^RA97^", "^RB97 is c_is16=1 & CUnitS & j12=1 & j11=1 & j10=0 & j6=1 & j5=1 & j4=0 & j3=1 & j2=1 & j1=1 & j15=0 & j14=1 & j13=0 & RA97 & RB97 { RB97 = 0 - RA97; }
-:ADD^CUnitS^" -1, "^RA97^", "^RB97 is c_is16=1 & CUnitS & j12=1 & j11=1 & j10=0 & j6=1 & j5=1 & j4=0 & j3=1 & j2=1 & j1=1 & j15=0 & j14=1 & j13=1 & RA97 & RB97 { RB97 = RA97 - 1; }
+:SUB^CUnitS "0, "^RA97^", "^RB97 is c_is16=1 & CUnitS & j12=1 & j11=1 & j10=0 & j6=1 & j5=1 & j4=0 & j3=1 & j2=1 & j1=1 & j15=0 & j14=1 & j13=0 & RA97 & RB97 { RB97 = 0 - RA97; }
+:ADD^CUnitS "-1, "^RA97^", "^RB97 is c_is16=1 & CUnitS & j12=1 & j11=1 & j10=0 & j6=1 & j5=1 & j4=0 & j3=1 & j2=1 & j1=1 & j15=0 & j14=1 & j13=1 & RA97 & RB97 { RB97 = RA97 - 1; }
 :MVC^CUnitS RA97^", ILC" is c_is16=1 & CUnitS & j12=1 & j11=1 & j10=0 & j6=1 & j5=1 & j4=0 & j3=1 & j2=1 & j1=1 & j15=1 & j14=1 & j13=0 & q_s=1 & RA97 { ILC = RA97; }
 
 # ---------------------------------------------------------------------------
@@ -972,8 +972,8 @@ CTgt10: reloc is cq_scst10 [ reloc = (inst_start & 0xffffffe0) + (cq_scst10 << 2
 # source/destination explicitly in the three-operand ADD and XOR forms.
 # ---------------------------------------------------------------------------
 
-:MVK^CUnitLSD^" 0, "^RA97 is c_is16=1 & CUnitLSD & j12=1 & j11=1 & j10=0 & j6=1 & j5=1 & j2=1 & j1=1 & j15=0 & j14=0 & j13=0 & RA97 { RA97 = 0; }
-:MVK^CUnitLSD^" 1, "^RA97 is c_is16=1 & CUnitLSD & j12=1 & j11=1 & j10=0 & j6=1 & j5=1 & j2=1 & j1=1 & j15=0 & j14=0 & j13=1 & RA97 { RA97 = 1; }
+:MVK^CUnitLSD "0, "^RA97 is c_is16=1 & CUnitLSD & j12=1 & j11=1 & j10=0 & j6=1 & j5=1 & j2=1 & j1=1 & j15=0 & j14=0 & j13=0 & RA97 { RA97 = 0; }
+:MVK^CUnitLSD "1, "^RA97 is c_is16=1 & CUnitLSD & j12=1 & j11=1 & j10=0 & j6=1 & j5=1 & j2=1 & j1=1 & j15=0 & j14=0 & j13=1 & RA97 { RA97 = 1; }
 :ADD^CUnitLSD RA97, 1, RB97 is c_is16=1 & CUnitLSD & j12=1 & j11=1 & j10=0 & j6=1 & j5=1 & j2=1 & j1=1 & j15=1 & j14=0 & j13=1 & RA97 & RB97 { RB97 = RA97 + 1; }
 :XOR^CUnitLSD RA97, 1, RB97 is c_is16=1 & CUnitLSD & j12=1 & j11=1 & j10=0 & j6=1 & j5=1 & j2=1 & j1=1 & j15=1 & j14=1 & j13=1 & RA97 & RB97 { RB97 = RA97 ^ 1; }
 

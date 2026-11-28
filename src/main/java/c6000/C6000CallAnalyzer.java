@@ -3344,12 +3344,19 @@ public class C6000CallAnalyzer extends AbstractAnalyzer {
 	private static final Map<InstructionPrototype, String> MNEMONICS = java.util.Collections.synchronizedMap(new WeakHashMap<>());
 
 	/**
-	 * {@code insn.getMnemonicString()}, which prints it from the parse tree on every call. Every
-	 * piece of a mnemonic in this language is a literal or a subtable with constant text (no field
-	 * value), so it depends only on the constructors and the delay-slot flag: what a prototype is.
+	 * {@code insn.getMnemonicString()}, which prints it from the parse tree on every call. A mnemonic
+	 * made of literals and subtables with constant text (no field value) depends only on the
+	 * constructors and the delay-slot flag: what a prototype is, so it is kept per prototype. One that
+	 * holds operand text (a constructor whose display joins its operands to the mnemonic with no
+	 * space before them) differs between instructions of one prototype, and is never kept: the first
+	 * instruction asked would answer for all of them.
 	 */
 	static String mnemonic(Instruction insn) {
-		return MNEMONICS.computeIfAbsent(insn.getPrototype(), p -> insn.getMnemonicString());
+		String known = MNEMONICS.get(insn.getPrototype());
+		if (known != null) return known;
+		String text = insn.getMnemonicString();
+		if (text.indexOf(' ') < 0 && text.indexOf(',') < 0) MNEMONICS.put(insn.getPrototype(), text);
+		return text;
 	}
 
 	/** Mnemonic without a predicate prefix or the compact underscore marker. */

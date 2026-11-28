@@ -734,7 +734,7 @@ w("# Figure C-18. Dx5 - SPRUFE8B appendix C.4.  src2 is B15; ADDAW shifts the")
 w("# 5-bit constant left by two (word addressing mode).")
 w("# ---------------------------------------------------------------------------")
 w("")
-con("ADDAW^CUnitDB15^\" B15, \"^Cucst5d^\", \"^RA97",
+con("ADDAW^CUnitDB15 \"B15, \"^Cucst5d^\", \"^RA97",
     ["j10=1", "j6=0", "j5=1", "j4=1", "j3=0", "j2=1", "j1=1", "RA97", "Cucst5d"],
     "RA97 = B15 + (Cucst5d << 2);")
 w("")
@@ -746,7 +746,7 @@ w("# ---------------------------------------------------------------------------
 w("")
 for op, mn, sem in ((0, "ADDAW", "B15 = B15 + (Cucst5p << 2);"),
                     (1, "SUBAW", "B15 = B15 - (Cucst5p << 2);")):
-    con('%s^CUnitD^" B15, "^Cucst5p^", B15"' % mn,
+    con('%s^CUnitD "B15, "^Cucst5p^", B15"' % mn,
         ["j12=0", "j11=1", "j10=1", "j6=1", "j5=1", "j4=1", "j3=0", "j2=1", "j1=1",
          "j7=%d" % op, "Cucst5p"], sem)
 w("")
@@ -890,10 +890,10 @@ w("# Figure D-11. Lx1 - SPRUFE8B appendix D.4.  op = 100 and 110 are reserved;")
 w("# op = 000/001/101/111 are LSDx1 (Figure G-4).")
 w("# ---------------------------------------------------------------------------")
 w("")
-con('SUB^CUnitL^" 0, "^RA97^", "^RB97',
+con('SUB^CUnitL "0, "^RA97^", "^RB97',
     ["j12=1", "j11=1", "j10=0", "j6=1", "j5=1", "j4=0", "j3=0", "j2=1", "j1=1",
      "j15=0", "j14=1", "j13=0", "RA97", "RB97"], "RB97 = 0 - RA97;")
-con('ADD^CUnitL^" -1, "^RA97^", "^RB97',
+con('ADD^CUnitL "-1, "^RA97^", "^RB97',
     ["j12=1", "j11=1", "j10=0", "j6=1", "j5=1", "j4=0", "j3=0", "j2=1", "j1=1",
      "j15=0", "j14=1", "j13=1", "RA97", "RB97"], "RB97 = RA97 - 1;")
 w("")
@@ -1111,10 +1111,10 @@ w("# and is only defined for s = 1.  The MVC sub-opcode does not overlap")
 w("# a branch form, so it is valid with either compact-header BR value.")
 w("# ---------------------------------------------------------------------------")
 w("")
-con('SUB^CUnitS^" 0, "^RA97^", "^RB97',
+con('SUB^CUnitS "0, "^RA97^", "^RB97',
     ["j12=1", "j11=1", "j10=0", "j6=1", "j5=1", "j4=0", "j3=1", "j2=1", "j1=1",
      "j15=0", "j14=1", "j13=0", "RA97", "RB97"], "RB97 = 0 - RA97;")
-con('ADD^CUnitS^" -1, "^RA97^", "^RB97',
+con('ADD^CUnitS "-1, "^RA97^", "^RB97',
     ["j12=1", "j11=1", "j10=0", "j6=1", "j5=1", "j4=0", "j3=1", "j2=1", "j1=1",
      "j15=0", "j14=1", "j13=1", "RA97", "RB97"], "RB97 = RA97 - 1;")
 con('MVC^CUnitS RA97^", ILC"',
@@ -1169,10 +1169,10 @@ w("# unit-independent operations are constructed here.  G-4 spells the shared")
 w("# source/destination explicitly in the three-operand ADD and XOR forms.")
 w("# ---------------------------------------------------------------------------")
 w("")
-con('MVK^CUnitLSD^" 0, "^RA97',
+con('MVK^CUnitLSD "0, "^RA97',
     ["j12=1", "j11=1", "j10=0", "j6=1", "j5=1", "j2=1", "j1=1",
      "j15=0", "j14=0", "j13=0", "RA97"], "RA97 = 0;")
-con('MVK^CUnitLSD^" 1, "^RA97',
+con('MVK^CUnitLSD "1, "^RA97',
     ["j12=1", "j11=1", "j10=0", "j6=1", "j5=1", "j2=1", "j1=1",
      "j15=0", "j14=0", "j13=1", "RA97"], "RA97 = 1;")
 con('ADD^CUnitLSD RA97, 1, RB97',
