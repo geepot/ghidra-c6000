@@ -52,7 +52,7 @@ public final class C6000DelaySlots {
      */
     static void announce(Program program, ghidra.program.model.address.AddressSetView decoded) {
         if (decoded == null || decoded.isEmpty()) return;
-        var analysis = ghidra.app.plugin.core.analysis.AutoAnalysisManager.getAnalysisManager(program);
+        var analysis = ghidra.app.plugin.core.analysis.AutoAnalysisManager.getAnalysisManager(C6000Recording.raw(program));
         if (analysis != null) analysis.codeDefined(decoded);
     }
 
@@ -60,10 +60,22 @@ public final class C6000DelaySlots {
     public static List<Repair> recover(Program program, TaskMonitor monitor, MessageLog log)
             throws Exception {
         int transaction = program.startTransaction("Recover C6000 delay windows");
+        // Off (incremental=false), nothing listens for changes: every pass is a full one, as before.
+        var changes = INCREMENTAL ? C6000ChangeTracker.of(program).take(program) : null;
         try {
             long before = program.getModificationNumber();
             if (Long.valueOf(before).equals(SETTLED.get(program))) return new ArrayList<>();
-            List<Repair> result = recoverWindows(program, monitor, log);
+            // Re-prove only what the changes since the last pass can have affected. A full pass on the first
+            // call and after a change that names no address, and one more once nothing else is left to
+            // analyze (confirm), so the windows only settle on a pass that checked every branch.
+            boolean incremental = changes != null && !changes.fresh() && changes.unplaced() == 0;
+            Selection selection = incremental ? Selection.changed(program, changes.addresses()) : Selection.all(program);
+            List<Repair> result = recoverWindows(program, monitor, log, selection);
+            if (incremental) {
+                UNCONFIRMED.add(program);
+                C6000DelayWindowConfirmation.queue(program);
+            }
+            else if (result.isEmpty()) UNCONFIRMED.remove(program);
             if (result.isEmpty() && program.getModificationNumber() == before) SETTLED.put(program, before);
             else SETTLED.remove(program);
             // A disassembler poll stops quietly: report its cancel.
@@ -76,11 +88,135 @@ public final class C6000DelaySlots {
         }
     }
 
-    private static List<Repair> recoverWindows(Program program, TaskMonitor monitor, MessageLog log)
+    /** Programs with an incremental pass since a full pass last found nothing to repair. */
+    private static final Set<Program> UNCONFIRMED =
+        Collections.synchronizedSet(Collections.newSetFromMap(new WeakHashMap<>()));
+
+    /**
+     * The confirming full pass (C6000DelayWindowConfirmation, queued behind every analyzer): check every
+     * branch once if incremental passes ran since a full pass last found nothing to repair. Also run from
+     * RegisterBranchAnalyzer.analysisEnded, for passes made outside auto-analysis.
+     */
+    public static void confirm(Program program, TaskMonitor monitor, MessageLog log) throws Exception {
+        if (!UNCONFIRMED.remove(program)) return;
+        int transaction = program.startTransaction("Confirm C6000 delay windows");
+        C6000ChangeTracker.of(program).take(program);
+        try {
+            long before = program.getModificationNumber();
+            List<Repair> result = recoverWindows(program, monitor, log, Selection.all(program));
+            if (!result.isEmpty()) {
+                // Typically windows a change after the last pass undid: a body fix-up that recomputed a
+                // function's body from flow and left a call's delay slots out, with nothing running
+                // recovery afterwards.
+                StringBuilder at = new StringBuilder();
+                for (Repair repair : result) if (at.length() < 1000) at.append(repair.branch()).append(' ');
+                Msg.warn(C6000DelaySlots.class, "C6000 Delay Slots> the confirming full pass at the end of analysis laid " +
+                    result.size() + " window(s) again in " + program.getName() + ": " + at);
+                // A repair re-lays its window with a bare Disassembler, which no analyzer hears of (see
+                // announce). Mid-analysis, later passes picked up what followed from it; here nothing
+                // else may be left to run. Announce the windows so the instruction analyzers, this
+                // recovery among them, run on them, and confirm again once they are done.
+                AddressSet repaired = new AddressSet();
+                var factory = program.getAddressFactory();
+                for (Repair repair : result) {
+                    Address branch = factory.getAddress(repair.branch()), end = factory.getAddress(repair.end());
+                    if (branch == null) continue;
+                    repaired.add(branch, end == null || end.compareTo(branch) < 0 ? branch : end);
+                }
+                announce(program, repaired);
+                UNCONFIRMED.add(program);
+                C6000DelayWindowConfirmation.queue(program);
+            }
+            if (result.isEmpty() && program.getModificationNumber() == before) SETTLED.put(program, before);
+            else SETTLED.remove(program);
+        }
+        finally {
+            program.endTransaction(transaction, true);
+        }
+    }
+
+    /**
+     * Incremental recovery; -Dc6000.delayWindows.incremental=false makes every pass a full one again, with no
+     * change tracking and no recording.
+     */
+    private static final boolean INCREMENTAL =
+        !"false".equalsIgnoreCase(System.getProperty("c6000.delayWindows.incremental"));
+
+    /**
+     * What a pass re-proves: everything, or the branches, jumps and windows whose last proof read
+     * something a change since the last pass touched (C6000Recording, C6000ProofReads), and those never
+     * proved. Every proof records what it reads, full passes too, so the next pass knows.
+     */
+    private static final class Selection {
+        final AddressSetView changed;      // null: a full pass
+        final C6000ProofReads proofs;      // null: no recording (every pass is a full one)
+        final Set<Address> forcedJumps = new HashSet<>(), forcedLays = new HashSet<>();
+
+        private Selection(Program program, AddressSetView changed) {
+            this.changed = changed;
+            this.proofs = INCREMENTAL ? C6000ProofReads.of(program) : null;
+            if (proofs != null && changed == null) proofs.clear();
+            if (proofs != null && changed != null) {
+                // A return re-proved needs the cuts of the jumps that cut it last time.
+                for (var entry : proofs.lays.entrySet())
+                    if (C6000ProofReads.stale(entry.getValue(), changed, entry.getKey())) {
+                        var cutters = proofs.cutters.get(entry.getKey());
+                        if (cutters != null) forcedJumps.addAll(cutters);
+                    }
+            }
+        }
+
+        static Selection all(Program program) {
+            return new Selection(program, null);
+        }
+
+        static Selection changed(Program program, AddressSetView changed) {
+            return new Selection(program, changed);
+        }
+
+        boolean recording() {
+            return proofs != null;
+        }
+
+        boolean jump(Instruction ins) {
+            return changed == null || forcedJumps.contains(ins.getAddress()) ||
+                C6000ProofReads.stale(proofs.jumps.get(ins.getAddress()), changed, ins.getAddress());
+        }
+
+        boolean lay(Instruction ins) {
+            return changed == null || forcedLays.contains(ins.getAddress()) ||
+                C6000ProofReads.stale(proofs.lays.get(ins.getAddress()), changed, ins.getAddress());
+        }
+
+        boolean fall(Instruction ins) {
+            return changed == null || C6000ProofReads.stale(proofs.falls.get(ins.getAddress()), changed, ins.getAddress());
+        }
+
+        /** A jump was proved: keep what it read, and re-prove the returns whose cut it changed. */
+        void provedJump(Address at, AddressSetView reads, Address cutTo) {
+            proofs.jumps.put(at, C6000ProofReads.pack(reads));
+            forcedLays.addAll(proofs.cut(at, cutTo));
+        }
+    }
+
+    /** The cuts, with their instructions viewed through {@code recording}. */
+    private static Map<Address, C6000CallAnalyzer.Preemption> view(Map<Address, C6000CallAnalyzer.Preemption> cuts,
+            C6000Recording recording) {
+        Map<Address, C6000CallAnalyzer.Preemption> viewed = new HashMap<>();
+        for (var entry : cuts.entrySet()) {
+            var p = entry.getValue();
+            viewed.put(entry.getKey(), new C6000CallAnalyzer.Preemption(recording.view(C6000Recording.raw(p.jump())),
+                recording.view(C6000Recording.raw(p.transfer())), p.cycle(), p.windowEnd(), p.landing(), p.exact()));
+        }
+        return viewed;
+    }
+
+    /** Recover the windows {@code selection} picks: every one, or those a change since the last pass can affect. */
+    private static List<Repair> recoverWindows(Program program, TaskMonitor monitor, MessageLog log, Selection selection)
             throws Exception {
         Map<Address, C6000CallAnalyzer.Preemption> cuts = new HashMap<>();
         List<Repair> result = new ArrayList<>();
-        int preempted = neutralise(program, cuts, result, monitor);
+        int preempted = neutralise(program, cuts, result, monitor, selection);
         if (preempted > 0) log.appendMsg("C6000 Delay Slots", "continued " + preempted + " preempted jump(s)");
         List<Address> candidates = new ArrayList<>(), stale = new ArrayList<>(), uncut = new ArrayList<>();
         var it = program.getListing().getInstructions(true);
@@ -88,6 +224,7 @@ public final class C6000DelaySlots {
             var ins = it.next();
             String full = C6000CallAnalyzer.mnemonic(ins), name = C6000CallAnalyzer.baseName(ins);
             if (full.startsWith("_")) continue;
+            if (!selection.lay(ins)) continue;
             if (!(name.equals("B.S1") || name.equals("B.S2") || name.equals("BNOP.S1") ||
                     name.equals("BNOP.S2") || name.equals("CALLP.S1") || name.equals("CALLP.S2"))) continue;
             // A latched branch has no window: the instruction it lands behind transfers.
@@ -115,17 +252,31 @@ public final class C6000DelaySlots {
             candidates.add(ins.getAddress());
         }
         for (Address at : stale) result.add(release(program, program.getListing().getInstructionAt(at)));
-        Reader reader = new Reader(program, cuts);
+        Reader reader = selection.recording() ? null : new Reader(program, cuts);
         for (Address at : candidates) {
             monitor.checkCancelled();
-            if (!lay(program, reader, at, cuts.get(at), result, monitor) && uncut.contains(at))
+            boolean laid;
+            if (selection.recording()) {
+                // The proof reads through its own recording; cuts from jump proofs are viewed through it too.
+                var recording = new C6000Recording(program);
+                var viewed = view(cuts, recording);
+                try { laid = lay(recording.program(), new Reader(recording.program(), viewed), at, viewed.get(at), result, monitor); }
+                finally { selection.proofs.lays.put(at, C6000ProofReads.pack(recording.reads())); }
+            }
+            else laid = lay(program, reader, at, cuts.get(at), result, monitor);
+            if (!laid && uncut.contains(at))
                 result.add(release(program, program.getListing().getInstructionAt(at)));
         }
         // Windows lay() did not lay or confirm: the packet primer's parallel-peer windows, say.
         List<Instruction> windowed = new ArrayList<>();
         for (Instruction ins : program.getListing().getInstructions(true))
-            if (ins.getPrototype().getDelaySlotByteCount() > 0) windowed.add(ins);
-        for (Instruction ins : windowed) proveFallThrough(program, ins);
+            if (ins.getPrototype().getDelaySlotByteCount() > 0 && selection.fall(ins)) windowed.add(ins);
+        for (Instruction ins : windowed) {
+            if (!selection.recording()) { proveFallThrough(program, ins); continue; }
+            var recording = new C6000Recording(program);
+            try { proveFallThrough(recording.program(), recording.view(ins)); }
+            finally { selection.proofs.falls.put(ins.getAddress(), C6000ProofReads.pack(recording.reads())); }
+        }
         if (!result.isEmpty()) Msg.info(C6000DelaySlots.class, "C6000 Delay Slots> recovered " + result.size() + " proven window(s)");
         return result;
     }
@@ -216,7 +367,7 @@ public final class C6000DelaySlots {
         var decompiler = new ghidra.app.decompiler.DecompInterface();
         try {
             decompiler.setOptions(new ghidra.app.decompiler.DecompileOptions());
-            if (!decompiler.openProgram(program)) return false;
+            if (!decompiler.openProgram(C6000Recording.raw(program))) return false;
             var result = decompiler.decompileFunction(function, 60, monitor);
             String error = result == null || result.decompileCompleted() ? null : result.getErrorMessage();
             return error != null && error.contains("Bad instruction count exceeded");
@@ -248,7 +399,7 @@ public final class C6000DelaySlots {
         var decompiler = new ghidra.app.decompiler.DecompInterface();
         // Default options: the CodeBrowser's bad-data limit is not a tool option.
         decompiler.setOptions(new ghidra.app.decompiler.DecompileOptions());
-        if (!decompiler.openProgram(program)) return 0;
+        if (!decompiler.openProgram(C6000Recording.raw(program))) return 0;
         int transaction = program.startTransaction("Release C6000 delay windows for the decompiler");
         try {
             for (Function function : candidates) {
@@ -393,7 +544,7 @@ public final class C6000DelaySlots {
         try {
             p.getProgramContext().setValue(p.getRegister("c_flow_delay"), at, at, BigInteger.valueOf(keep));
             // Never polled: a cancel here would leave the window half decoded.
-            Disassembler disassembler = Disassembler.getDisassembler(p, TaskMonitor.DUMMY, null);
+            Disassembler disassembler = Disassembler.getDisassembler(C6000Recording.raw(p), TaskMonitor.DUMMY, null);
             // A terminal branch has no fall-through: decode each released slot run too.
             for (Address cursor = at; cursor.compareTo(end) <= 0;) {
                 if (listing.getInstructionContaining(cursor) == null)
@@ -469,20 +620,28 @@ public final class C6000DelaySlots {
      * @return the number of jumps continued or restored
      */
     private static int neutralise(Program program, Map<Address, C6000CallAnalyzer.Preemption> cuts,
-            List<Repair> result, TaskMonitor monitor) throws Exception {
-        var listing = program.getListing();
-        var references = program.getReferenceManager();
-        var walker = new C6000CallAnalyzer.Walker(program);
-        var reader = new Reader(program, Map.of());
+            List<Repair> result, TaskMonitor monitor, Selection selection) throws Exception {
         List<Address> jumps = new ArrayList<>();
-        for (var it = listing.getInstructions(true); it.hasNext();) {
+        for (var it = program.getListing().getInstructions(true); it.hasNext();) {
             var ins = it.next();
-            if (C6000CallAnalyzer.Walker.displacementJump(ins)) jumps.add(ins.getAddress());
+            if (C6000CallAnalyzer.Walker.displacementJump(ins) && selection.jump(ins)) jumps.add(ins.getAddress());
         }
-        Disassembler disassembler = null;
+        // Without recording, one walker and reader serve the whole pass (their caches with them).
+        var sharedWalker = selection.recording() ? null : new C6000CallAnalyzer.Walker(program);
+        var sharedReader = selection.recording() ? null : new Reader(program, Map.of());
+        Program raw = program;
         int count = 0;
         for (Address at : jumps) {
             monitor.checkCancelled();
+            var recording = selection.recording() ? new C6000Recording(raw) : null;
+            Address cutTo = null;
+            try {
+            program = recording == null ? raw : recording.program();
+            var listing = program.getListing();
+            var references = program.getReferenceManager();
+            var walker = recording == null ? sharedWalker : new C6000CallAnalyzer.Walker(program);
+            var reader = recording == null ? sharedReader : new Reader(program, Map.of());
+            Disassembler disassembler = null;
             // Disassembly below can change the listing the list was taken from.
             Instruction jump = listing.getInstructionAt(at);
             if (jump == null || !C6000CallAnalyzer.Walker.displacementJump(jump)) continue;
@@ -505,7 +664,7 @@ public final class C6000DelaySlots {
                 reader.window(preemption.transfer(), monitor, preemption) != null;
             boolean changed = false;
             if (proven && listing.getInstructionAt(next) == null) {
-                if (disassembler == null) disassembler = Disassembler.getDisassembler(program, monitor, null);
+                if (disassembler == null) disassembler = Disassembler.getDisassembler(C6000Recording.raw(program), monitor, null);
                 announce(program, disassembler.disassemble(next, null, true));
                 changed = true;
             }
@@ -519,6 +678,7 @@ public final class C6000DelaySlots {
                 continue;
             }
             cuts.put(preemption.transfer().getAddress(), preemption);
+            cutTo = preemption.transfer().getAddress();
             for (Reference r : references.getReferencesFrom(at)) {
                 if (r.getReferenceType().isFlow() && !r.getReferenceType().isOverride() && r.getToAddress().equals(target)) {
                     references.delete(r);
@@ -545,6 +705,10 @@ public final class C6000DelaySlots {
                     try { owner.setBody(new AddressSet(owner.getBody()).union(window)); }
                     catch (ghidra.program.database.function.OverlappingFunctionException e) { }
                 }
+            }
+            }
+            finally {
+                if (recording != null) selection.provedJump(at, recording.reads(), cutTo);
             }
         }
         return count;
@@ -623,7 +787,7 @@ public final class C6000DelaySlots {
             context = context.combineValues(new RegisterValue(p.getRegister("c_branch_terminal"),
                 BigInteger.ONE));
         }
-        var disassembler = Disassembler.getDisassembler(p, monitor, null);
+        var disassembler = Disassembler.getDisassembler(C6000Recording.raw(p), monitor, null);
         // The pseudo parser's default argument cannot override stored context.
         // Supply an explicit future seed without writing the ProgramContext.
         var seed = new ghidra.program.disassemble.DisassemblerContextImpl(p.getProgramContext());
@@ -663,7 +827,7 @@ public final class C6000DelaySlots {
             if(registerBranch)
                 p.getProgramContext().setValue(p.getRegister("c_branch_terminal"),at,at,BigInteger.ONE);
             // Never polled: a cancel here would leave the window half decoded.
-            Disassembler disassembler=Disassembler.getDisassembler(p,TaskMonitor.DUMMY,null);
+            Disassembler disassembler=Disassembler.getDisassembler(C6000Recording.raw(p),TaskMonitor.DUMMY,null);
             disassembler.disassemble(at,new AddressSet(at,end),false);
             // The released slots after a terminal transfer are reached by no fall-through.
             if(end.compareTo(window.end())>0&&listing.getInstructionContaining(window.end().next())==null)
@@ -754,7 +918,7 @@ public final class C6000DelaySlots {
             for (var entry : fields.entrySet())
                 for (var field : entry.getValue().entrySet())
                     p.getProgramContext().setValue(field.getKey(), entry.getKey(), entry.getKey(), field.getValue());
-            var disassembler = Disassembler.getDisassembler(p, TaskMonitor.DUMMY, null);
+            var disassembler = Disassembler.getDisassembler(C6000Recording.raw(p), TaskMonitor.DUMMY, null);
             disassembler.disassemble(start, new AddressSet(start, end), false);
             for (var unit : undo.units()) {
                 // A landing with no fall-through ends the flow from start: decode what follows it too.
