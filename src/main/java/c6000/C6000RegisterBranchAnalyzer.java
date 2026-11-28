@@ -188,4 +188,20 @@ public class C6000RegisterBranchAnalyzer extends AbstractAnalyzer {
 			}
 		}
 	}
+
+	/**
+	 * Confirm incremental delay-window recovery if the queued confirmation did not run (a pass made
+	 * outside auto-analysis); otherwise there is nothing left to confirm.
+	 */
+	@Override
+	public void analysisEnded(Program program) {
+		C6000DelayWindowConfirmation.forget(program);
+		try {
+			C6000DelaySlots.confirm(program, TaskMonitor.DUMMY, new MessageLog());
+		}
+		catch (Exception e) {
+			Msg.error(this, "C6000 delay-window confirmation failed", e);
+		}
+		super.analysisEnded(program);
+	}
 }

@@ -66,12 +66,16 @@ public final class C6000DelaySlots {
             long before = program.getModificationNumber();
             if (Long.valueOf(before).equals(SETTLED.get(program))) return new ArrayList<>();
             // Re-prove only what the changes since the last pass can have affected. A full pass on the first
-            // call, after a change that names no address, and whenever an incremental pass repairs nothing,
-            // so the windows only settle on a pass that checked every branch.
+            // call and after a change that names no address, and one more once nothing else is left to
+            // analyze (confirm), so the windows only settle on a pass that checked every branch.
             AddressSetView region = changes != null && !changes.fresh() && changes.unplaced() == 0 ?
                 neighbourhood(program, changes.addresses()) : null;
             List<Repair> result = recoverWindows(program, monitor, log, region);
-            if (region != null && result.isEmpty()) result = recoverWindows(program, monitor, log, null);
+            if (region != null) {
+                UNCONFIRMED.add(program);
+                C6000DelayWindowConfirmation.queue(program);
+            }
+            else if (result.isEmpty()) UNCONFIRMED.remove(program);
             if (result.isEmpty() && program.getModificationNumber() == before) SETTLED.put(program, before);
             else SETTLED.remove(program);
             // A disassembler poll stops quietly: report its cancel.
@@ -80,6 +84,53 @@ public final class C6000DelaySlots {
         }
         finally {
             // Aborting a nested transaction aborts all of auto-analysis; a failed window is put back instead.
+            program.endTransaction(transaction, true);
+        }
+    }
+
+    /** Programs with an incremental pass since a full pass last found nothing to repair. */
+    private static final Set<Program> UNCONFIRMED =
+        Collections.synchronizedSet(Collections.newSetFromMap(new WeakHashMap<>()));
+
+    /**
+     * The confirming full pass (C6000DelayWindowConfirmation, queued behind every analyzer): check every
+     * branch once if incremental passes ran since a full pass last found nothing to repair. Also run from
+     * RegisterBranchAnalyzer.analysisEnded, for passes made outside auto-analysis.
+     */
+    public static void confirm(Program program, TaskMonitor monitor, MessageLog log) throws Exception {
+        if (!UNCONFIRMED.remove(program)) return;
+        int transaction = program.startTransaction("Confirm C6000 delay windows");
+        C6000ChangeTracker.of(program).take(program);
+        try {
+            long before = program.getModificationNumber();
+            List<Repair> result = recoverWindows(program, monitor, log, null);
+            if (!result.isEmpty()) {
+                // Typically windows a change after the last pass undid: a body fix-up that recomputed a
+                // function's body from flow and left a call's delay slots out, with nothing running
+                // recovery afterwards.
+                StringBuilder at = new StringBuilder();
+                for (Repair repair : result) if (at.length() < 1000) at.append(repair.branch()).append(' ');
+                Msg.warn(C6000DelaySlots.class, "C6000 Delay Slots> the confirming full pass at the end of analysis laid " +
+                    result.size() + " window(s) again in " + program.getName() + ": " + at);
+                // A repair re-lays its window with a bare Disassembler, which no analyzer hears of (see
+                // announce). Mid-analysis, later passes picked up what followed from it; here nothing
+                // else may be left to run. Announce the windows so the instruction analyzers, this
+                // recovery among them, run on them, and confirm again once they are done.
+                AddressSet repaired = new AddressSet();
+                var factory = program.getAddressFactory();
+                for (Repair repair : result) {
+                    Address branch = factory.getAddress(repair.branch()), end = factory.getAddress(repair.end());
+                    if (branch == null) continue;
+                    repaired.add(branch, end == null || end.compareTo(branch) < 0 ? branch : end);
+                }
+                announce(program, repaired);
+                UNCONFIRMED.add(program);
+                C6000DelayWindowConfirmation.queue(program);
+            }
+            if (result.isEmpty() && program.getModificationNumber() == before) SETTLED.put(program, before);
+            else SETTLED.remove(program);
+        }
+        finally {
             program.endTransaction(transaction, true);
         }
     }
