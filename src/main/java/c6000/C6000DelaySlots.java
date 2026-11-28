@@ -60,10 +60,18 @@ public final class C6000DelaySlots {
     public static List<Repair> recover(Program program, TaskMonitor monitor, MessageLog log)
             throws Exception {
         int transaction = program.startTransaction("Recover C6000 delay windows");
+        // Off (incremental=false), nothing listens for changes: every pass is a full one, as before.
+        var changes = INCREMENTAL ? C6000ChangeTracker.of(program).take(program) : null;
         try {
             long before = program.getModificationNumber();
             if (Long.valueOf(before).equals(SETTLED.get(program))) return new ArrayList<>();
-            List<Repair> result = recoverWindows(program, monitor, log);
+            // Re-prove only what the changes since the last pass can have affected. A full pass on the first
+            // call, after a change that names no address, and whenever an incremental pass repairs nothing,
+            // so the windows only settle on a pass that checked every branch.
+            AddressSetView region = changes != null && !changes.fresh() && changes.unplaced() == 0 ?
+                neighbourhood(program, changes.addresses()) : null;
+            List<Repair> result = recoverWindows(program, monitor, log, region);
+            if (region != null && result.isEmpty()) result = recoverWindows(program, monitor, log, null);
             if (result.isEmpty() && program.getModificationNumber() == before) SETTLED.put(program, before);
             else SETTLED.remove(program);
             // A disassembler poll stops quietly: report its cancel.
@@ -76,11 +84,57 @@ public final class C6000DelaySlots {
         }
     }
 
-    private static List<Repair> recoverWindows(Program program, TaskMonitor monitor, MessageLog log)
+    /**
+     * Incremental recovery; -Dc6000.delayWindows.incremental=false makes every pass a full one again, with no
+     * change tracking.
+     */
+    private static final boolean INCREMENTAL =
+        !"false".equalsIgnoreCase(System.getProperty("c6000.delayWindows.incremental"));
+
+    /** How far a change reaches: a branch's proof reads its look-back (40 words) and window, and beyond. */
+    private static final long REACH = 512;
+
+    /**
+     * What a pass must re-prove after {@code changed}: every changed range widened by {@link #REACH} on each
+     * side, and the whole body of every function a change touched. On our cl6x-compiled image every repair whose
+     * cause lay outside a branch's look-back and window was within 512 bytes of a change, and inside a
+     * function a change touched.
+     */
+    static AddressSetView neighbourhood(Program program, AddressSetView changed) {
+        AddressSet region = new AddressSet(widen(changed, REACH));
+        for (var it = program.getFunctionManager().getFunctionsOverlapping(changed); it.hasNext();)
+            region.add(it.next().getBody());
+        return region;
+    }
+
+    /** {@code region} with every range widened by {@code reach} on each side. */
+    private static AddressSetView widen(AddressSetView region, long reach) {
+        AddressSet wider = new AddressSet();
+        for (AddressRange range : region) {
+            var space = range.getAddressSpace();
+            long lo = Math.max(space.getMinAddress().getOffset(), range.getMinAddress().getOffset() - reach);
+            long hi = Math.min(space.getMaxAddress().getOffset(), range.getMaxAddress().getOffset() + reach);
+            if (hi < range.getMaxAddress().getOffset()) hi = space.getMaxAddress().getOffset();
+            wider.add(range.getMinAddress().getNewAddress(lo), range.getMinAddress().getNewAddress(hi));
+        }
+        return wider;
+    }
+
+    /** True when a pass over {@code region} (null: everything) must look at {@code ins}: it or a target lies there. */
+    private static boolean affected(AddressSetView region, Instruction ins) {
+        if (region == null || region.contains(ins.getAddress())) return true;
+        for (Address target : ins.getFlows()) if (region.contains(target)) return true;
+        return false;
+    }
+
+    /** Recover every window, or (region non-null) only those of branches in or targeting {@code region}. */
+    private static List<Repair> recoverWindows(Program program, TaskMonitor monitor, MessageLog log, AddressSetView region)
             throws Exception {
         Map<Address, C6000CallAnalyzer.Preemption> cuts = new HashMap<>();
         List<Repair> result = new ArrayList<>();
-        int preempted = neutralise(program, cuts, result, monitor);
+        // A jump that cuts a return's window lies within a few packets of it; check jumps over a wider
+        // region, or a return re-proved near the edge would miss its cut and look stale.
+        int preempted = neutralise(program, cuts, result, monitor, region == null ? null : widen(region, REACH));
         if (preempted > 0) log.appendMsg("C6000 Delay Slots", "continued " + preempted + " preempted jump(s)");
         List<Address> candidates = new ArrayList<>(), stale = new ArrayList<>(), uncut = new ArrayList<>();
         var it = program.getListing().getInstructions(true);
@@ -88,6 +142,7 @@ public final class C6000DelaySlots {
             var ins = it.next();
             String full = C6000CallAnalyzer.mnemonic(ins), name = C6000CallAnalyzer.baseName(ins);
             if (full.startsWith("_")) continue;
+            if (!affected(region, ins)) continue;
             if (!(name.equals("B.S1") || name.equals("B.S2") || name.equals("BNOP.S1") ||
                     name.equals("BNOP.S2") || name.equals("CALLP.S1") || name.equals("CALLP.S2"))) continue;
             // A latched branch has no window: the instruction it lands behind transfers.
@@ -124,7 +179,7 @@ public final class C6000DelaySlots {
         // Windows lay() did not lay or confirm: the packet primer's parallel-peer windows, say.
         List<Instruction> windowed = new ArrayList<>();
         for (Instruction ins : program.getListing().getInstructions(true))
-            if (ins.getPrototype().getDelaySlotByteCount() > 0) windowed.add(ins);
+            if (ins.getPrototype().getDelaySlotByteCount() > 0 && affected(region, ins)) windowed.add(ins);
         for (Instruction ins : windowed) proveFallThrough(program, ins);
         if (!result.isEmpty()) Msg.info(C6000DelaySlots.class, "C6000 Delay Slots> recovered " + result.size() + " proven window(s)");
         return result;
@@ -469,7 +524,7 @@ public final class C6000DelaySlots {
      * @return the number of jumps continued or restored
      */
     private static int neutralise(Program program, Map<Address, C6000CallAnalyzer.Preemption> cuts,
-            List<Repair> result, TaskMonitor monitor) throws Exception {
+            List<Repair> result, TaskMonitor monitor, AddressSetView region) throws Exception {
         var listing = program.getListing();
         var references = program.getReferenceManager();
         var walker = new C6000CallAnalyzer.Walker(program);
@@ -477,7 +532,7 @@ public final class C6000DelaySlots {
         List<Address> jumps = new ArrayList<>();
         for (var it = listing.getInstructions(true); it.hasNext();) {
             var ins = it.next();
-            if (C6000CallAnalyzer.Walker.displacementJump(ins)) jumps.add(ins.getAddress());
+            if (C6000CallAnalyzer.Walker.displacementJump(ins) && affected(region, ins)) jumps.add(ins.getAddress());
         }
         Disassembler disassembler = null;
         int count = 0;
