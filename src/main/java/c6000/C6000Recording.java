@@ -39,8 +39,11 @@ final class C6000Recording {
 		FunctionIterator.class, Iterator.class);
 
 	private final AddressSet reads = new AddressSet();
+	// Open captures (C6000ReadCache): the reads of each answer being computed, innermost first.
+	private final ArrayDeque<AddressSet> captures = new ArrayDeque<>();
 	// The last packet range noted: a proof reads the same packets over and over, and adding a range
-	// already there still walks the address set's tree.
+	// already there still walks the address set's tree. Forgotten when a capture opens or closes, so
+	// every open capture holds it.
 	private ghidra.program.model.address.AddressSpace lastSpace;
 	private long lastLo = 1, lastHi = 0;
 	private final IdentityHashMap<Object, Object> views = new IdentityHashMap<>();
@@ -58,6 +61,33 @@ final class C6000Recording {
 	/** Every address read through the view so far, widened to whole fetch packets. */
 	AddressSetView reads() {
 		return reads;
+	}
+
+	/** The recording {@code object} is a view of; null if it is not one. */
+	static C6000Recording of(Object object) {
+		if (object != null && Proxy.isProxyClass(object.getClass()) &&
+			Proxy.getInvocationHandler(object) instanceof Handler handler) return handler.recording();
+		return null;
+	}
+
+	/** Start collecting the reads of one computation, for a cache to keep with its answer; see {@link #release}. */
+	AddressSet capture() {
+		AddressSet set = new AddressSet();
+		captures.push(set);
+		lastSpace = null;
+		return set;
+	}
+
+	/** End the capture {@link #capture} began. */
+	void release(AddressSet set) {
+		captures.remove(set);
+		lastSpace = null;
+	}
+
+	/** Record {@code set} as read: what a cached answer read when it was computed. */
+	void replay(AddressSetView set) {
+		reads.add(set);
+		for (AddressSet open : captures) open.add(set);
 	}
 
 	/** The recording view of {@code object}, if it came from this or another recording's program. */
@@ -115,7 +145,9 @@ final class C6000Recording {
 		hi = Math.min(hi, space.getMaxAddress().getOffset());
 		if (space == lastSpace && lo >= lastLo && hi <= lastHi) return;
 		lastSpace = space; lastLo = lo; lastHi = hi;
-		reads.add(from.getNewAddress(lo), from.getNewAddress(hi));
+		Address min = from.getNewAddress(lo), max = from.getNewAddress(hi);
+		reads.add(min, max);
+		for (AddressSet open : captures) open.add(min, max);
 	}
 
 	private void note(AddressSetView set) {
@@ -133,6 +165,10 @@ final class C6000Recording {
 
 		Handler(Object target) {
 			this.target = target;
+		}
+
+		C6000Recording recording() {
+			return C6000Recording.this;
 		}
 
 		@Override
