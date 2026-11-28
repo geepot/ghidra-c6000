@@ -37,6 +37,7 @@ CORE = [
     case("compact-memory", "CompactMemory", "C6000_COMPACT_MEMORY_OK", "json"),
     case("compact-compare-destination", "CompactCompareDestination", "C6000_COMPACT_COMPARE_DESTINATION_OK"),
     case("full32-encoding-info", "Full32EncodingInfo", "C6000_FULL32_ENCODING_INFO_OK"),
+    case("mnemonic-prototypes", "MnemonicPrototypes", "C6000_MNEMONIC_PROTOTYPES_OK", None),
     case("reserved-predicate", "ReservedPredicate", "C6000_RESERVED_PREDICATE_OK"),
     case("return-delay", "ReturnDelay", "C6000_RETURN_DELAY_OK"),
     case("preempted-jump", "PreemptedJump", "C6000_PREEMPTED_JUMP_OK", None, analysis=True),
@@ -281,7 +282,8 @@ def main():
         runs = [(item, variant) for item in cases for variant in
                 (("default", "analysis", "c67x", "c67x-analysis")
                  if item[0] in {"pipeline-c67x", "pipeline-resources", "delayed-call-timing",
-                                "analysis-float", "analysis-nonaligned", "circular-mask-switch"} else ("default",))]
+                                "analysis-float", "analysis-nonaligned", "circular-mask-switch"}
+                 else ("default", "analysis") if item[0] == "mnemonic-prototypes" else ("default",))]
         for index, ((fixture, manifests, scripts, analysis), variant) in enumerate(runs):
             directory = work / endian / f"{index:02d}-{fixture}-{variant}"
             directory.mkdir()
