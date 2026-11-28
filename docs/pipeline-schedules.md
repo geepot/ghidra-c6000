@@ -352,11 +352,20 @@ for shared-entry rules, stale-source refusals and regression commands.
 Unsupported timing contracts fail closed. These include changing repeated DP source
 reads, nested/predicated loop reloads (SPKERNELR/SPMASKR), loop interrupt entry/restart
 in this compiler, unplanned or nested calls, unproved register transfers and return
-links, special control-register side effects, and unproved dynamic control-flow scopes. No
-whole-ISA pipeline-completeness claim is made. Raw instruction decode remains available
-for unsupported functions. Other function ownership and defined data are never absorbed
-into a schedule. Schedules beyond 4096 states or one million p-code operations are
-refused; increasing the decompiler timeout is not a workaround.
+links, special control-register side effects, and unproved dynamic control-flow scopes.
+No whole-ISA pipeline-completeness claim is made. Raw instruction decode remains
+available for unsupported functions. Other function ownership and defined data are never
+absorbed into a schedule. A schedule beyond 4096 states
+(`C6000PipelineCompiler.maxStates`) or `maxPcodeOps` p-code operations (by default
+the builder's one million) is compiled again: without the refinements, then
+forgetting predicate facts wherever the pipeline is drained, then wherever no branch is
+pending and no loop runs, which merges copies of the same code that differ only in
+facts. Forgetting a fact is sound; it only costs a refusal when the fact was needed. A
+last try doubles the state cap and raises the operation cap by a third, refined and merged.
+A schedule over them still is refused, and the builder's one million operations stay a
+hard limit; increasing the decompiler timeout is not a workaround. Facts about a
+predicate register that is written again before anything reads it are forgotten on every
+attempt.
 
 `pipeline-contracts.py` / `C6000PipelineContractTest.java` reproduce the issue #16
 parallel-input, MPYSP-result and updating-load hazards in each endian mode, then
@@ -410,9 +419,12 @@ nonzero), with no write to it in flight; a predicated instruction whose conditio
 false does not write its destination (SPRUFE8B 3.5). A multi-cycle instruction whose
 predicate value was unknown at issue takes that value's truth once a later branch forks
 the facts on it, so a complementary writer is still proved exclusive (SPRUFE8B 3.6).
-Counter branches retain their actual
-raw taken condition and do not infer predicate truth from a failed sign test. This
-pruning never permits a resource collision or flushes a pending effect early.
+A predicated constant write that changes a predicate register's truth (`[A1] MVK 0,B0`)
+forks on its own predicate, so the path where it ran knows the value and the other keeps
+the old one. The fork costs states; a schedule over the state cap is compiled once more
+without it before it is refused. Counter branches retain their actual raw taken condition
+and do not infer predicate truth from a failed sign test. This pruning never permits a
+resource collision or flushes a pending effect early.
 
 `loop-counter-proof.py` / `C6000LoopCounterProofTest.java` check known and unknown
 counts, both parallel setup forms, E4 counter visibility and preserved refusals.

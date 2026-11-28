@@ -54,7 +54,16 @@ public final class C6000PipelineCompiler {
         if(!states.isEmpty()||!instructions.isEmpty()||!b.code.isEmpty()||traceContract!=null||closedCall!=null||callerTail!=null||storeTailContract!=null)
             throw fail("store-tail compiler instance already used");
         storeTailContract=Objects.requireNonNull(contract);
-        return new StoreTailResult(compileInternal(),contract,storeTailBoundaries);
+        try{return new StoreTailResult(compileInternal(),contract,storeTailBoundaries);}
+        catch(IllegalArgumentException e){
+            // the same retries as compile()
+            if(widenDrained>0||!refine||lastTry||!oversize(e))throw e;
+            for(int level=0;level<=4;level++){
+                try{return relaxed(level).compileStoreTail(contract);}
+                catch(IllegalArgumentException again){if(level<4&&(level==0||level==3||oversize(again)))continue;if(level<3){level=2;continue;}throw e;}
+            }
+            throw e;
+        }
     }
 
     private List<StoreTailWrite> storeTailWrites(Insn instruction,int age) {
@@ -505,6 +514,44 @@ public final class C6000PipelineCompiler {
             writes.add(p.getRegister(name).getAddress().getOffset());
         }
         entryWrites=List.copyOf(writes);
+        entryNames=Set.copyOf(previousE1Writes);
+    }
+    private final Set<String> entryNames;
+    /** The first attempt also splits paths on predicated constant writes that change a predicate
+     * register's truth. That costs states; an oversize schedule retries without it, then merged. */
+    private boolean refine=true;
+
+    // ---- merged compile for schedules that are too large
+    // Most of a large schedule is the same code compiled again for each combination of predicate
+    // facts reaching it (one large function: 3,387 states, 623 without the facts). Facts only prune paths
+    // and prove exclusivity, so forgetting them is sound. When a schedule is over the state or
+    // p-code cap, it is compiled once more forgetting the facts wherever the pipeline is drained
+    // (nothing in flight, no branch pending, no loop), which merges those copies; if still too
+    // large, once more forgetting them wherever no branch is pending and no loop runs. If that
+    // refuses too (a lost fact was needed), the original refusal stands.
+    private int widenDrained;
+    private static boolean oversize(IllegalArgumentException e){
+        var m=e.getMessage();return m!=null&&(m.contains("too large for the decompiler")||m.contains("distinct pipeline states"));
+    }
+    private C6000PipelineCompiler merged(int level){var retry=new C6000PipelineCompiler(program,function,entryNames);retry.widenDrained=level;retry.refine=false;retry.monitor=monitor;return retry;}
+    /** By default the builder's limit. Decompile time grows fast with schedule size (69k ops
+     * 17 s, 79k 53 s, 99k 160 s, 138k 182 s; a typical large DSP routine is about 19k), so a
+     * caller with a decompile timeout may lower it. */
+    public static int maxPcodeOps=1000000;
+    /** The state cap, taken when a compiler is made. */
+    public static int maxStates=4096;
+    // A schedule still over the caps once merged as far as it goes gets two last tries with them
+    // raised, refined first, then merged: the caps guard the decompiler's time, and the one such
+    // schedule we met (5,547 states and 164,965 ops; merged it loses a fact it needs)
+    // decompiled in 99 s.
+    private int stateCap=maxStates,opCap=maxPcodeOps;
+    private boolean lastTry;
+    private C6000PipelineCompiler relaxed(int level){
+        C6000PipelineCompiler retry;
+        if(level==3){retry=new C6000PipelineCompiler(program,function,entryNames);retry.monitor=monitor;retry.lastTry=true;}
+        else retry=merged(Math.min(level,2));
+        if(level>2){retry.stateCap=2*maxStates;retry.opCap=maxPcodeOps*4/3;}
+        return retry;
     }
 
     private static final Set<String> COUNTER_OPS=Set.of("c6000_tscl_read","c6000_tsch_read","c6000_tsc_start");
@@ -547,7 +594,7 @@ public final class C6000PipelineCompiler {
     private int state(State s){
         Integer n=states.get(s);
         if(n!=null)return n;
-        if(states.size()>=4096)throw fail("schedule exceeds 4096 distinct pipeline states");
+        if(states.size()>=stateCap)throw fail("schedule exceeds "+stateCap+" distinct pipeline states");
         int i=states.size();
         states.put(s,i);
         return i;
@@ -997,7 +1044,17 @@ public final class C6000PipelineCompiler {
 
     public Result compile()throws Exception{
         if(traceContract!=null||closedCall!=null||callerTail!=null||storeTailContract!=null)throw fail("trace compiler is not an ordinary function schedule");
-        return compileInternal();
+        try{return compileInternal();}
+        catch(IllegalArgumentException e){
+            // without the refinements, merged at drained points, merged wherever no branch is
+            // pending, then with the caps raised, refined and merged
+            if(widenDrained>0||!refine||lastTry||!oversize(e))throw e;
+            for(int level=0;level<=4;level++){
+                try{return relaxed(level).compileInternal();}
+                catch(IllegalArgumentException again){if(level<4&&(level==0||level==3||oversize(again)))continue;if(level<3){level=2;continue;}throw e;}
+            }
+            throw e;
+        }
     }
     public Result compile(TaskMonitor monitor)throws Exception{
         this.monitor=Objects.requireNonNull(monitor);
@@ -1307,6 +1364,7 @@ public final class C6000PipelineCompiler {
         b.label("exit");
         b.op(PcodeOp.RETURN,null,new Varnode(program.getRegister("C6000_PIPE_RET").getAddress(),4));
         var code=b.finish();
+        if(code.length>opCap)throw fail("schedule of "+code.length+" p-code ops is too large for the decompiler");
         Map<Integer,Integer> stalls=new LinkedHashMap<>();
         for(var e:stallLabels.entrySet())stalls.put(e.getKey(),b.labels.get(e.getValue()));
         return new Result(code,states.size(),packets,covered,Map.copyOf(cycleStarts),Map.copyOf(stalls));
@@ -1316,6 +1374,20 @@ public final class C6000PipelineCompiler {
 
     private void emitTransfer(State source,ReturnFlow returnFlow,List<Insn> pack,long pc,int idle,List<Flight> flights,List<Branch> branches,List<Hazard> hazards,LoopFrame loop,Insn issueBranch,Map<Long,Map<Long,Varnode>> captured,Map<Long,Eval> issued,boolean updateLoopStatus,boolean finishedCurrentBuffer){
         if(updateLoopStatus){var tsr=new Varnode(program.getRegister("TSR").getAddress(),4);boolean active=loop!=null&&!loop.abrupt()&&!finishedCurrentBuffer;b.op(active?PcodeOp.INT_OR:PcodeOp.INT_AND,tsr,tsr,c(active?0x4000:0xffffbfffL,4));}
+        // A predicated constant into a predicate register ([B0] MVK 0,A0) ties the two: split on
+        // the issue-time predicate, so the path where it ran knows the value and the other keeps
+        // the old one. Without it [B0] B x and [A0] B y look as if both could be taken (SPRUFE8B 3.6).
+        if(refine)for(var i:pack){
+            if(i.predicate()==null||predicateTruth(i,source.facts())>=0||!knownPredicateWrite(i,source.facts()))continue;
+            int index=predicateIndex(i.predicate().getAddress().getOffset());var e=issued.get(i.instruction().getAddress().getOffset());
+            if(index<0||e==null||e.predicate()==null)continue;
+            var ran=source.facts().constrain(index,i.inverted()?0:1);var skipped=source.facts().constrain(index,i.inverted()?1:0);
+            if(ran==null||skipped==null)continue;
+            String no="write_not_taken_"+b.labelCounter++;b.jump(PcodeOp.CBRANCH,no,invert(e.predicate()));
+            emitTransfer(withFacts(source,ran),returnFlow,pack,pc,idle,flights,branches,hazards,loop,issueBranch,captured,issued,false,finishedCurrentBuffer);
+            b.label(no);emitTransfer(withFacts(source,skipped),returnFlow,pack,pc,idle,flights,branches,hazards,loop,issueBranch,captured,issued,false,finishedCurrentBuffer);
+            return;
+        }
         if(issueBranch==null){emitFactTransfer(source,returnFlow,pack,pc,idle,flights,branches,hazards,loop,source.facts());return;}
         var instruction=issueBranch.instruction();long at=instruction.getAddress().getOffset();var register=instruction.getRegister(0);var plan=closedCalls.get(at);boolean call=plan!=null||issueBranch.name().equals("CALLP");
         Long origin=register==null?null:source.returns().links().get(register.getAddress().getOffset());
@@ -1375,6 +1447,19 @@ public final class C6000PipelineCompiler {
 
     private Varnode invert(Varnode value){var inverted=temp(1);b.op(PcodeOp.BOOL_NEGATE,inverted,value);return inverted;}
     private int predicateIndex(long offset){for(int k=0;k<6;k++){String name=(k<3?"A":"B")+(k%3);if(program.getRegister(name).getAddress().getOffset()==offset)return k;}return -1;}
+    /** A single-cycle write of a known zero/nonzero value over a whole predicate register, whose
+     * truth differs from the register's (or the register's is unknown). A write of the truth the
+     * register already has keeps it on both paths; advanceFacts handles that without a split. */
+    private boolean knownPredicateWrite(Insn instruction,PredicateFacts facts){
+        for(var d:instruction.outputs()){
+            int index=predicateIndex(d.offset());
+            if(d.phase()!=1||d.flags()||d.size()!=4||d.mask()!=-1||d.sourceWrite()>=0||index<0)continue;
+            int written=outputFact(instruction,facts,-1).truth();
+            if(written>=0&&written!=facts.values().get(index).truth())return true;
+        }
+        return false;
+    }
+    private static State withFacts(State s,PredicateFacts facts){return new State(s.pc(),s.idle(),s.flights(),s.branches(),s.hazards(),s.loop(),facts,s.returns());}
     private int predicateToken(Insn instruction,PredicateFacts facts){
         if(instruction.predicate()==null)return -1;int index=predicateIndex(instruction.predicate().getAddress().getOffset());return index<0?-1:facts.values().get(index).token();
     }
@@ -1425,15 +1510,22 @@ public final class C6000PipelineCompiler {
         // into a loop invariant. Widen to independent unknown values there,
         // but keep a branch loop's truths that only self-guarded writes reach.
         boolean backward=pc<source.pc();
-        boolean widen=backward||loop!=null&&source.loop()!=null&&loop.time()<source.loop().time();
-        if(widen)facts=backward&&loop==null&&source.loop()==null?selfGuardedFacts(facts,pc,source.pc(),pack,flights,before):PredicateFacts.unknown();
+        boolean widen=backward||loop!=null&&source.loop()!=null&&loop.time()<source.loop().time()
+            ||widenDrained>=1&&flights.isEmpty()&&branches.isEmpty()&&loop==null
+            ||widenDrained>=2&&branches.isEmpty()&&loop==null;
+        int[] tokens=new int[flights.size()];
+        for(int k=0;k<tokens.length;k++){var flight=flights.get(k);var instruction=instructions.get(flight.pc());tokens[k]=flight.age()==1&&pack.contains(instruction)?predicateToken(instruction,before):flight.predicateToken();}
+        if(!widen&&loop==null)facts=forgetDead(facts,pc,branches,hazards,tokens);
+        // flight predicate tokens follow the canonical renaming; a value no register holds any more is forgotten
         var names=facts.names();
-        List<Flight> captured=new ArrayList<>();for(var flight:flights){var instruction=instructions.get(flight.pc());boolean fresh=flight.age()==1&&pack.contains(instruction);
-            int truth=fresh?predicateTruth(instruction,before):flight.predicateTruth(),token=fresh?predicateToken(instruction,before):flight.predicateToken();
+        List<Flight> captured=new ArrayList<>();for(int k=0;k<tokens.length;k++){var flight=flights.get(k);var instruction=instructions.get(flight.pc());boolean fresh=flight.age()==1&&pack.contains(instruction);
+            int truth=fresh?predicateTruth(instruction,before):flight.predicateTruth();
             // a branch since issue may have decided the value the predicate sampled: the flight is
             // then known to run or not (SPRUFE8B 3.6), and one that doesn't run writes nothing
-            if(truth<0&&token>=0)truth=sampledTruth(instruction,before,token);
-            captured.add(new Flight(flight.pc(),flight.age(),truth,truth<0&&token>=0&&!widen?names.getOrDefault(token,-1):-1));} // the sampled value, while a predicate GPR still holds it
+            if(truth<0&&tokens[k]>=0)truth=sampledTruth(instruction,before,tokens[k]);
+            int token=widen||truth>=0||tokens[k]<0?-1:names.getOrDefault(tokens[k],-1); // the sampled value, while a predicate GPR still holds it
+            captured.add(new Flight(flight.pc(),flight.age(),truth,token));}
+        if(widen)facts=backward&&loop==null&&source.loop()==null?selfGuardedFacts(facts,pc,source.pc(),pack,flights,before):PredicateFacts.unknown();
         State target=new State(pc,idle,List.copyOf(captured),List.copyOf(branches),List.copyOf(hazards),loop,facts.canonical(),returnFlow);
         b.jump(PcodeOp.BRANCH,"node"+state(target),null);
     }
@@ -1468,6 +1560,81 @@ public final class C6000PipelineCompiler {
     private boolean fetchHeader(long at){
         try{return (program.getMemory().getInt(entry.getNewAddress(at))>>>28)==0xe;}catch(ghidra.program.model.mem.MemoryAccessException error){return false;}
     }
+    // ---- dead predicate facts
+    // A fact about a predicate register that is written again before anything reads it decides
+    // nothing more: forget it, so states that differ only there are one. Forgetting never makes
+    // a schedule wrong (an unknown predicate is tested at run time, and the fresh token equals no
+    // other); the liveness below only picks the facts worth keeping, and a fact dropped too early
+    // costs states or a refusal. Facts an in-flight instruction's predicate token still names are
+    // kept (they prove its writes complementary). Not inside a loop (the buffer replays reads) or
+    // under a call or trace contract.
+    private static final int ALL_PREDICATES=0x3f;
+    private PredicateFacts forgetDead(PredicateFacts facts,long pc,List<Branch> branches,List<Hazard> hazards,int[] flightTokens){
+        if(strictScope()||traceContract!=null)return facts;
+        int live=livePredicates(pc);
+        for(var branch:branches)if(!branch.returns())live|=livePredicates(branch.target());
+        for(var hazard:hazards)if(hazard.pc()>=0){var p=decodeKnown(hazard.pc()).predicate();if(p!=null){int k=predicateIndex(p.getAddress().getOffset());if(k>=0)live|=1<<k;}}
+        if(live==ALL_PREDICATES)return facts;
+        var kept=new HashSet<Integer>();for(int token:flightTokens)kept.add(token);
+        var values=new ArrayList<>(facts.values());
+        for(int k=0;k<6;k++)if((live>>k&1)==0&&!kept.contains(values.get(k).token()))values.set(k,new PredicateValue(1000+k,-1));
+        return new PredicateFacts(List.copyOf(values));
+    }
+
+    /** The predicate registers (bit k: A0, A1, A2, B0, B1, B2) code from pc may read before an
+     * unconditional single-cycle write replaces them. Walks execute packets: peers read before
+     * any of them writes; a fallthrough ends when an unconditional branch lands; a register
+     * branch (a return) leaves. A packet the compiler refuses (code that doesn't decode, flow
+     * out of owned code) reads nothing: no schedule that compiles goes through it. A walk over
+     * 4,096 packets reads everything. The walk leaves the compile as it found it: what it
+     * decodes is forgotten again, since selfGuarded() reads only code the compile itself decoded. */
+    private final Map<Long,Integer> livePredicates=new HashMap<>();
+    private record LiveNode(long pc,int budget){}
+    private int livePredicates(long pc){
+        if(!livePredicates.containsKey(pc)){
+            var saved=new AddressSet(covered);var decoded=new HashSet<>(instructions.keySet());
+            try{solvePredicateLiveness(pc);}finally{covered.clear();covered.add(saved);instructions.keySet().retainAll(decoded);}
+        }
+        return livePredicates.get(pc);
+    }
+    private void solvePredicateLiveness(long root){
+        Map<LiveNode,int[]> nodes=new LinkedHashMap<>();Map<LiveNode,List<LiveNode>> next=new HashMap<>();
+        var work=new ArrayDeque<LiveNode>();var start=new LiveNode(root,-1);work.add(start);nodes.put(start,null);
+        while(!work.isEmpty()){
+            if(nodes.size()>4096){livePredicates.put(root,ALL_PREDICATES);return;}
+            var node=work.poll();int gen=0,kill=0;var successors=new ArrayList<LiveNode>();
+            try{
+                var pack=packet(node.pc());int span=1;boolean redirect=false;
+                for(var i:pack){
+                    span=Math.max(span,i.span());
+                    if(i.predicate()!=null)gen|=predicateBit(i.predicate().getAddress().getOffset());
+                    // regs() also lists outputs: the reads are the p-code's register inputs
+                    for(var op:i.raw())for(var in:op.getInputs())if(in.isRegister())gen|=predicateBits(in.getOffset(),in.getSize());
+                    for(var read:i.reads())gen|=predicateBits(read.offset(),4);
+                    if(i.predicate()==null)for(var d:i.outputs())if(d.phase()==1&&!d.flags()&&d.mask()==-1&&d.sourceWrite()<0)for(int k=0;k<6;k++){long offset=program.getRegister((k<3?"A":"B")+(k%3)).getAddress().getOffset();if(d.offset()<=offset&&offset+4<=d.offset()+d.size())kill|=1<<k;}
+                    if(!Set.of("B","BNOP","BDEC","BPOS","CALLP").contains(i.name()))continue;
+                    redirect|=i.predicate()==null&&!Set.of("BDEC","BPOS").contains(i.name());
+                    var ins=i.instruction();
+                    if(ins.getRegister(0)==null&&ins.getNumOperands()>0&&ins.getAddress(0)!=null)successors.add(new LiveNode(ins.getAddress(0).getOffset(),-1));
+                }
+                // budget: cycles left before a branch already issued lands, -1 when none is pending
+                boolean pending=node.budget()>=0||redirect;
+                int left=node.budget()>=0?node.budget()-span:Integer.MAX_VALUE;
+                if(redirect)left=Math.min(left,6-span);
+                if(!pending||left>0)successors.add(new LiveNode(after(pack.get(pack.size()-1)),pending?left:-1));
+            }catch(Exception refused){gen=0;kill=0;successors.clear();}
+            nodes.put(node,new int[]{gen,kill});next.put(node,successors);
+            for(var s:successors)if(!nodes.containsKey(s)){nodes.put(s,null);work.add(s);}
+        }
+        var live=new HashMap<LiveNode,Integer>();for(var n:nodes.keySet())live.put(n,0);
+        for(boolean changed=true;changed;){
+            changed=false;
+            for(var e:nodes.entrySet()){int out=0;for(var s:next.get(e.getKey()))out|=live.get(s);int in=e.getValue()[0]|out&~e.getValue()[1];if(in!=live.get(e.getKey())){live.put(e.getKey(),in);changed=true;}}
+        }
+        for(var e:live.entrySet())if(e.getKey().budget()<0)livePredicates.putIfAbsent(e.getKey().pc(),e.getValue());
+    }
+    private int predicateBit(long offset){int k=predicateIndex(offset);return k<0?0:1<<k;}
+    private int predicateBits(long offset,int size){int bits=0;for(int k=0;k<6;k++){long r=program.getRegister((k<3?"A":"B")+(k%3)).getAddress().getOffset();if(offset<r+4&&r<offset+size)bits|=1<<k;}return bits;}
 
     private record MultiplyPortWrite(int owner,Insn instruction,int age) {}
     private void validateMpyliWritePorts(State state,List<Insn> packet){

@@ -28,8 +28,11 @@ public class C6000PipelineCallsTest extends GhidraScript {
    try{
     if(closed){var plans=new ArrayList<C6000PipelineCompiler.ClosedCallPlan>();for(var x:row.getAsJsonArray("sites")){var site=x.getAsJsonObject();plans.add(new C6000PipelineCompiler.ClosedCallPlan(currentProgram.getLanguageID().getIdAsString(),window(c,end),window(n(site,"callee"),n(site,"callee_end")),c,null,n(site,"call"),n(site,"link"),n(site,"continuation"),n(site,"callee_return"),n(row,"caller_return"),new C6000PipelineCompiler.TraceEntry(true,Set.of()),"Synthetic sequential leaf calls, separate owners and explicit drained entry"));}
      var result=C6000PipelineCompiler.compileClosedCallsTrace(currentProgram,function,plans);schedule=result.schedule();boundaries=result.boundaries();proofs=result.proofs();
-    }else schedule=new C6000PipelineCompiler(currentProgram,function).compile();
+    }else{int cap=C6000PipelineCompiler.maxStates;if(row.has("state_cap"))C6000PipelineCompiler.maxStates=row.get("state_cap").getAsInt();
+     try{var compiler=new C6000PipelineCompiler(currentProgram,function);schedule=row.has("store_tail")?compiler.compileStoreTail(new C6000PipelineCompiler.StoreTailContract(2,"Synthetic observation: no caller access until the stores commit")).schedule():compiler.compile();}finally{C6000PipelineCompiler.maxStates=cap;}
+    }
     if(row.has("refused"))throw new AssertionError("Accepted "+name);accepted++;
+    if(row.has("max_states")&&schedule.states()>row.get("max_states").getAsInt())throw new AssertionError(name+" states="+schedule.states()+" expected at most "+row.get("max_states"));
    }catch(IllegalArgumentException error){if(!row.has("refused")||!error.getMessage().contains(row.get("refused").getAsString()))throw new AssertionError(name+" unexpected refusal "+error);row.addProperty("error",error.toString());records.add(row);refused++;println("EXPECTED_REFUSAL "+name+" "+error.getMessage());continue;}
    if(!oldBody.equals(function.getBody().toString())||!oldHash.equals(hash(c,c+0x400)))throw new AssertionError("Source/owner changed");
    var state=new BytesPcodeExecutorState(currentProgram.getLanguage(),PcodeStateCallbacks.NONE);for(var register:currentProgram.getLanguage().getRegisters())if(!register.isProcessorContext()&&register.getMinimumByteSize()==4)state.setVar(register,arithmetic.fromConst(0,4));
@@ -45,7 +48,7 @@ public class C6000PipelineCallsTest extends GhidraScript {
    if(!frame.isFinished())throw new AssertionError(name+" exceeded bound");for(var x:row.getAsJsonObject("expected").entrySet())equal(x.getValue().getAsLong(),reg(state,x.getKey()),name+" "+x.getKey());
    if(row.has("memory_word"))equal(n(row,"memory_word"),arithmetic.toLong(state.getVar(toAddr(0x8200),4,false,PcodeExecutorStatePiece.Reason.INSPECT),PcodeArithmetic.Purpose.INSPECT),name+" store across return");
    if(closed){equal(row.getAsJsonArray("sites").size(),enters,name+" enter count");equal(enters,returns,name+" return count");if(!kinds.get(kinds.size()-1).equals("CALLER_RETURN"))throw new AssertionError("Missing final return");}
-   row.addProperty("cycles",cycles);row.addProperty("operations",operations);row.addProperty("executed",true);records.add(row);println("PIPELINE_CALL_CASE "+name+" cycles="+cycles);
+   row.addProperty("cycles",cycles);row.addProperty("operations",operations);row.addProperty("executed",true);records.add(row);println("PIPELINE_CALL_CASE "+name+" cycles="+cycles+" states="+schedule.states());
   }Files.writeString(Path.of(getScriptArgs()[1]),new GsonBuilder().setPrettyPrinting().create().toJson(records));println("C6000_PIPELINE_CALLS_OK accepted="+accepted+" refused="+refused);
  }
 }
