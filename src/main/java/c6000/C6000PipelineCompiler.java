@@ -926,18 +926,29 @@ public final class C6000PipelineCompiler {
 
     private void commit(Insn i,Eval eval,int phase)throws Exception{
         String end="commit"+b.labelCounter++;
-        // BDEC writes only when its raw counter test actually takes the branch.
-        b.jump(PcodeOp.CBRANCH,end,not(writesWhen(i,eval)));
+        // BDEC writes only when its raw counter test actually takes the branch. A guard that is
+        // always true is not emitted: until the decompiler drops its dead edge, parameter recovery
+        // would see the old value merge into the write and trim real call arguments.
+        boolean always=!i.name().equals("BDEC")&&i.predicate()==null;
+        if(!always)b.jump(PcodeOp.CBRANCH,end,not(writesWhen(i,eval)));
         for(var d:i.outputs())if(d.phase()==phase){
             String skip="raw_write_"+b.labelCounter++;
-            if(d.sourceWrite()>=0)b.jump(PcodeOp.CBRANCH,skip,not(eval.written().get(d.sourceWrite())));
+            boolean guarded=d.sourceWrite()>=0&&!unconditionalWrite(i);
+            if(guarded)b.jump(PcodeOp.CBRANCH,skip,not(eval.written().get(d.sourceWrite())));
             Varnode value=outputValue(eval,d);
             if (d.flags()) b.op(PcodeOp.INT_OR, arch(d.offset(),d.size()), arch(d.offset(),d.size()), value);
             else if(d.mask()==-1)b.op(PcodeOp.COPY, arch(d.offset(),d.size()), value);
             else{var keep=temp(d.size());var bits=temp(d.size());b.op(PcodeOp.INT_AND,keep,arch(d.offset(),d.size()),c(~d.mask(),d.size()));b.op(PcodeOp.INT_AND,bits,value,c(d.mask(),d.size()));b.op(PcodeOp.INT_OR,arch(d.offset(),d.size()),keep,bits);}
-            if(d.sourceWrite()>=0)b.label(skip);
+            if(guarded)b.label(skip);
         }
         b.label(end);
+    }
+
+    /** Raw p-code with no branch but the predicate guard reaches every raw write once the predicate holds. */
+    private static boolean unconditionalWrite(Insn i){
+        var raw=i.raw();
+        for(int n=0;n<raw.length;n++){int o=raw[n].getOpcode();if(n!=i.guard()&&(o==PcodeOp.BRANCH||o==PcodeOp.CBRANCH))return false;}
+        return true;
     }
 
     private Varnode writesWhen(Insn instruction,Eval eval){
