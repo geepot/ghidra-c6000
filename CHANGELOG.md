@@ -143,6 +143,10 @@
 
 * `LDW` loads from its address as it is. The alignment mask it had hid a pointer into the
   frame from the decompiler, which dropped the frame stores such a load reads (issue #162).
+* `C6000 Code Pointers` makes a function of code named by a pointer right behind a tail call
+  (a row of far-call trampolines, `MVKL`/`MVKH` into B31 and `B B31`). The tail call's last
+  delay slot was taken for code falling into the next stub, as a call's would be, so only the
+  first trampoline of a row became a function.
 * `C6000 Code Pointers` refuses an address that undecoded code runs on into: a word of data
   equal to an address in the middle of a stub no longer starts a function there (issue #161).
 
