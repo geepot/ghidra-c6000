@@ -108,8 +108,9 @@ public final class C6000PacketStagingAnalyzer extends AbstractAnalyzer {
 	 */
 	static synchronized Instruction hardware(Instruction ins) {
 		// The analyses ask this for the same instruction objects many times between changes to the
-		// program; each answer costs a context read from the database and often a decode.
-		Program owner = ins.getProgram();
+		// program; each answer costs a context read from the database and often a decode. Under a
+		// delay-window recording ins.getProgram() is the recording's view: compare the program behind it.
+		Program owner = C6000Recording.raw(ins.getProgram());
 		long stamp = owner.getModificationNumber();
 		if (hardwareOf.get() != owner || hardwareStamp != stamp || hardwareCache.size() > 200_000) {
 			hardwareCache.clear();

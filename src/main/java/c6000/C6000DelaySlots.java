@@ -52,7 +52,7 @@ public final class C6000DelaySlots {
      */
     static void announce(Program program, ghidra.program.model.address.AddressSetView decoded) {
         if (decoded == null || decoded.isEmpty()) return;
-        var analysis = ghidra.app.plugin.core.analysis.AutoAnalysisManager.getAnalysisManager(program);
+        var analysis = ghidra.app.plugin.core.analysis.AutoAnalysisManager.getAnalysisManager(C6000Recording.raw(program));
         if (analysis != null) analysis.codeDefined(decoded);
     }
 
@@ -322,7 +322,7 @@ public final class C6000DelaySlots {
         var decompiler = new ghidra.app.decompiler.DecompInterface();
         try {
             decompiler.setOptions(new ghidra.app.decompiler.DecompileOptions());
-            if (!decompiler.openProgram(program)) return false;
+            if (!decompiler.openProgram(C6000Recording.raw(program))) return false;
             var result = decompiler.decompileFunction(function, 60, monitor);
             String error = result == null || result.decompileCompleted() ? null : result.getErrorMessage();
             return error != null && error.contains("Bad instruction count exceeded");
@@ -354,7 +354,7 @@ public final class C6000DelaySlots {
         var decompiler = new ghidra.app.decompiler.DecompInterface();
         // Default options: the CodeBrowser's bad-data limit is not a tool option.
         decompiler.setOptions(new ghidra.app.decompiler.DecompileOptions());
-        if (!decompiler.openProgram(program)) return 0;
+        if (!decompiler.openProgram(C6000Recording.raw(program))) return 0;
         int transaction = program.startTransaction("Release C6000 delay windows for the decompiler");
         try {
             for (Function function : candidates) {
@@ -499,7 +499,7 @@ public final class C6000DelaySlots {
         try {
             p.getProgramContext().setValue(p.getRegister("c_flow_delay"), at, at, BigInteger.valueOf(keep));
             // Never polled: a cancel here would leave the window half decoded.
-            Disassembler disassembler = Disassembler.getDisassembler(p, TaskMonitor.DUMMY, null);
+            Disassembler disassembler = Disassembler.getDisassembler(C6000Recording.raw(p), TaskMonitor.DUMMY, null);
             // A terminal branch has no fall-through: decode each released slot run too.
             for (Address cursor = at; cursor.compareTo(end) <= 0;) {
                 if (listing.getInstructionContaining(cursor) == null)
@@ -611,7 +611,7 @@ public final class C6000DelaySlots {
                 reader.window(preemption.transfer(), monitor, preemption) != null;
             boolean changed = false;
             if (proven && listing.getInstructionAt(next) == null) {
-                if (disassembler == null) disassembler = Disassembler.getDisassembler(program, monitor, null);
+                if (disassembler == null) disassembler = Disassembler.getDisassembler(C6000Recording.raw(program), monitor, null);
                 announce(program, disassembler.disassemble(next, null, true));
                 changed = true;
             }
@@ -729,7 +729,7 @@ public final class C6000DelaySlots {
             context = context.combineValues(new RegisterValue(p.getRegister("c_branch_terminal"),
                 BigInteger.ONE));
         }
-        var disassembler = Disassembler.getDisassembler(p, monitor, null);
+        var disassembler = Disassembler.getDisassembler(C6000Recording.raw(p), monitor, null);
         // The pseudo parser's default argument cannot override stored context.
         // Supply an explicit future seed without writing the ProgramContext.
         var seed = new ghidra.program.disassemble.DisassemblerContextImpl(p.getProgramContext());
@@ -769,7 +769,7 @@ public final class C6000DelaySlots {
             if(registerBranch)
                 p.getProgramContext().setValue(p.getRegister("c_branch_terminal"),at,at,BigInteger.ONE);
             // Never polled: a cancel here would leave the window half decoded.
-            Disassembler disassembler=Disassembler.getDisassembler(p,TaskMonitor.DUMMY,null);
+            Disassembler disassembler=Disassembler.getDisassembler(C6000Recording.raw(p),TaskMonitor.DUMMY,null);
             disassembler.disassemble(at,new AddressSet(at,end),false);
             // The released slots after a terminal transfer are reached by no fall-through.
             if(end.compareTo(window.end())>0&&listing.getInstructionContaining(window.end().next())==null)
@@ -860,7 +860,7 @@ public final class C6000DelaySlots {
             for (var entry : fields.entrySet())
                 for (var field : entry.getValue().entrySet())
                     p.getProgramContext().setValue(field.getKey(), entry.getKey(), entry.getKey(), field.getValue());
-            var disassembler = Disassembler.getDisassembler(p, TaskMonitor.DUMMY, null);
+            var disassembler = Disassembler.getDisassembler(C6000Recording.raw(p), TaskMonitor.DUMMY, null);
             disassembler.disassemble(start, new AddressSet(start, end), false);
             for (var unit : undo.units()) {
                 // A landing with no fall-through ends the flow from start: decode what follows it too.
