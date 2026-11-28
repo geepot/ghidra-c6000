@@ -905,7 +905,11 @@ the `prepare` pre-script, which declares the functions) and `C6000WindowNeighbou
 checks `cl6x` 8.3.15 words. In `retjump` (1000) `B tail1` issues `B B3` in its last
 slot, so native recovery refuses its window and the slots 1008-1013 belong to no
 function. Review must accept them, activation must absorb them, and the C must return
-22. Review must refuse adjacent unowned covered code when the body does not own the
+22, also once `retjump` is declared with no parameters and an undefined return: with every
+unpredicated write still behind its always-true guard, the decompiler, which may then not
+read A4 on entry, drops the return. `ldret` (1180), declared the same way, must return the
+word its `LDW` lands in A4: with the raw-write guard still around the load it prints `void`.
+Review must refuse adjacent unowned covered code when the body does not own the
 code before it, or when another function owns it. `absorber` (112c) has the same shape,
 and its slots share the fetch packet of `neighbour` (1120): a batch with both must
 refuse the absorber and enable the neighbour, and once the neighbour is recorded the

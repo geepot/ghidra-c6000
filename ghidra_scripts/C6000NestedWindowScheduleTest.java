@@ -10,12 +10,13 @@ import ghidra.app.script.GhidraScript;
 import ghidra.program.model.address.AddressSet;
 import ghidra.program.model.listing.Function;
 import ghidra.program.model.listing.Instruction;
+import ghidra.program.model.symbol.SourceType;
 import java.util.List;
 import java.util.Set;
 
 public class C6000NestedWindowScheduleTest extends GhidraScript {
-	private static final long[] ENTRIES = { 0x10c0L, 0x1000L, 0x1040L, 0x1080L, 0x10e0L, 0x1120L, 0x112cL };
-	private static final String[] NAMES = { "callee", "retjump", "ifcall", "ifcall2", "ifcall3", "neighbour", "absorber" };
+	private static final long[] ENTRIES = { 0x10c0L, 0x1000L, 0x1040L, 0x1080L, 0x10e0L, 0x1120L, 0x112cL, 0x1180L };
+	private static final String[] NAMES = { "callee", "retjump", "ifcall", "ifcall2", "ifcall3", "neighbour", "absorber", "ldret" };
 	private int checks;
 
 	interface Action { void run() throws Exception; }
@@ -60,6 +61,23 @@ public class C6000NestedWindowScheduleTest extends GhidraScript {
 		}
 		String c = decompile(retjump);
 		if (!c.contains("return 0x16;") && !c.contains("return 22;")) throw new AssertionError("retjump must return 22:\n" + c);
+		checks++;
+		// Its inputs declared void, its return left undefined: the decompiler may not read A4 on
+		// entry, so an always-true guard around the write of A4 made it drop the return.
+		retjump.updateFunction(currentProgram.getCompilerSpec().getDefaultCallingConvention().getName(), null, List.of(),
+			Function.FunctionUpdateType.DYNAMIC_STORAGE_ALL_PARAMS, true, SourceType.USER_DEFINED);
+		c = decompile(retjump);
+		if (!c.contains("return 0x16;") && !c.contains("return 22;")) throw new AssertionError("retjump(void) must return 22:\n" + c);
+		checks++;
+		// The same for a load's raw write: the load lands in A4 before the return.
+		Function ldret = getFunctionAt(toAddr(0x1180L));
+		var loaded = review(ldret);
+		C6000PipelineContracts.record(currentProgram, ldret, loaded, monitor);
+		C6000PipelineContracts.activate(currentProgram, ldret, monitor);
+		ldret.updateFunction(currentProgram.getCompilerSpec().getDefaultCallingConvention().getName(), null, List.of(),
+			Function.FunctionUpdateType.DYNAMIC_STORAGE_ALL_PARAMS, true, SourceType.USER_DEFINED);
+		c = decompile(ldret);
+		if (c.contains("void ldret") || !c.contains("return in_stack")) throw new AssertionError("ldret(void) must return the loaded word:\n" + c);
 		checks++;
 		println("C6000_NESTED_WINDOW_SCHEDULE_OK checks=" + checks);
 	}

@@ -4,6 +4,13 @@
 
 ### Changed
 
+* Every exact schedule's p-code changes: an unpredicated write is no longer wrapped in its
+  always-true commit guards (the predicate test, and for a load or store without an internal
+  branch the raw-write test), as issue #101 did for native lifting. Until the decompiler
+  removed those dead edges, the value from before the write merged into it, so a function
+  declared with no parameters and an undefined return lost its return. Recorded reviews pin
+  the generated p-code, so each enabled schedule is refused as stale until it is reviewed
+  and enabled again.
 * The analysis languages lift `LDNW`, `LDNDW`, `STNW` and `STNDW` as one 4- or 8-byte
   access instead of one access per byte. The decompiler merged the byte loads step by
   step and could keep some of them, so a device word read through `LDNDW` was read twice
